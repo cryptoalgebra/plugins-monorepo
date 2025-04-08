@@ -1,0 +1,10 @@
+{
+  "name": "test-utils",
+  "version": "1.0.0",
+  "private": "true",
+  "description": "",
+  "devDependencies": {
+    "@ethersproject/abstract-provider": "^5.8.0",
+    "mocha-chai-jest-snapshot": "^1.1.6"
+  }
+}

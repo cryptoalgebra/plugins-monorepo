@@ -3,5 +3,5 @@
   "compilerOptions": {
     "outDir": "dist"
   },
-  "include": ["./scripts", "./ignition", "./test", "./typechain-types"]
+  "include": ["./*.ts"]
 }

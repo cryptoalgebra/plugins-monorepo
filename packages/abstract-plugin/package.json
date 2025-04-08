@@ -1,12 +1,15 @@
 {
-  "name": "@cryptoalgebra/sliding-fee-plugin",
+  "name": "@cryptoalgebra/abstract-plugin",
   "version": "1.2.1",
   "description": "",
+  "files": [
+    "contracts/**/*.sol",
+    "!contracts/AlgebraBasePlugin.sol"
+  ],
   "scripts": {
     "compile": "npx hardhat compile"
   },
   "dependencies": {
-    "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "^1.2.1",
     "@cryptoalgebra/integral-periphery": "^1.2.1"
   }

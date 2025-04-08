@@ -1,16 +1,18 @@
 {
   "name": "plugins-monorepo",
   "private": "true",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^0.15.10",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.10",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.22.19",
     "lerna": "^8.2.1"
+  },
+  "dependencies": {
+    "@cryptoalgebra/integral-core": "^1.2.1",
+    "@cryptoalgebra/integral-periphery": "^1.2.1"
   }
 }

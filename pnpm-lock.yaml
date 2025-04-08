@@ -7,7 +7,20 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@cryptoalgebra/integral-core':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
     devDependencies:
+      '@nomicfoundation/hardhat-ignition':
+        specifier: ^0.15.10
+        version: 0.15.10(@nomicfoundation/hardhat-verify@2.0.13(hardhat@2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(hardhat@2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3))
+      '@nomicfoundation/hardhat-ignition-ethers':
+        specifier: ^0.15.10
+        version: 0.15.10(@nomicfoundation/hardhat-ethers@3.0.8(ethers@6.13.5)(hardhat@2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(@nomicfoundation/hardhat-ignition@0.15.10(@nomicfoundation/hardhat-verify@2.0.13(hardhat@2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(hardhat@2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(@nomicfoundation/ignition-core@0.15.10)(ethers@6.13.5)(hardhat@2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3))
       '@nomicfoundation/hardhat-toolbox':
         specifier: ^5.0.0
         version: 5.0.0(b97983278a443d774ac498131468112c)
@@ -18,7 +31,26 @@ importers:
         specifier: ^8.2.1
         version: 8.2.1(encoding@0.1.13)
 
-  packages/sliding-fee: {}
+  packages/abstract-plugin:
+    dependencies:
+      '@cryptoalgebra/integral-core':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+
+  packages/sliding-fee:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
 
 packages:
 
@@ -32,6 +64,14 @@ packages:
   '@babel/helper-validator-identifier@7.25.9':
     resolution: {integrity: sha512-Ed61U6XJc3CVRfkERJWDz4dJwKe7iLmmJsbOGu9wSloNSFttHV0I8g6UAgb7qnK5ly5bGLPd4oXZlxCdANBOWQ==}
     engines: {node: '>=6.9.0'}
+
+  '@cryptoalgebra/integral-core@1.2.1':
+    resolution: {integrity: sha512-+Lj7y2ZqpJ58fNtqTRvrMv/HPcyqNkMpINu9LQK6/iMDePmzNoywogLLiGU34MlxAaGEwO6XNWM7ENq/YzzZzA==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/integral-periphery@1.2.1':
+    resolution: {integrity: sha512-yEBd7IxewEGDanECgTcD3o/wKlSxgLtc1l9PV3CHhWBOG7larKUa/DuHgkqS9fNysBnt4eyzuXC83rtNRmazuA==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -559,6 +599,9 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
+  '@openzeppelin/contracts@4.9.3':
+    resolution: {integrity: sha512-He3LieZ1pP2TNt5JbkPA4PNT9WC3gOTOlDcFGJW4Le4QKqwmiNJCRt44APfxMxvq7OugU/cqYuPcSBzOw38DAg==}
+
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
@@ -739,6 +782,10 @@ packages:
 
   '@types/secp256k1@4.0.6':
     resolution: {integrity: sha512-hHxJU6PAEUn0TP4S/ZOzuTUvJWuZ6eIKeNKb5RBpODvSl6hp1Wrw4s7ATY50rklRCScUDpHzVA/DQdSjJ3UoYQ==}
+
+  '@uniswap/v2-core@1.0.1':
+    resolution: {integrity: sha512-MtybtkUPSyysqLY2U210NBDeCHX+ltHt3oADGdjqoThZaFRDKwM6k1Nb3F0A3hk5hwuQvytFWhrWHOEq6nVJ8Q==}
+    engines: {node: '>=10'}
 
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
@@ -3664,6 +3711,16 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.25.9': {}
 
+  '@cryptoalgebra/integral-core@1.2.1':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.3
+
+  '@cryptoalgebra/integral-periphery@1.2.1':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.2.1
+      '@openzeppelin/contracts': 4.9.3
+      '@uniswap/v2-core': 1.0.1
+
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
@@ -4521,6 +4578,8 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
+  '@openzeppelin/contracts@4.9.3': {}
+
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
@@ -4734,6 +4793,8 @@ snapshots:
   '@types/secp256k1@4.0.6':
     dependencies:
       '@types/node': 22.14.0
+
+  '@uniswap/v2-core@1.0.1': {}
 
   '@yarnpkg/lockfile@1.1.0': {}
 

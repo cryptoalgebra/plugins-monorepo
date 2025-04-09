@@ -3,15 +3,15 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePlugin.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
 import './interfaces/IVolatilityOracle.sol';
 
 import './libraries/VolatilityOracle.sol';
-import { AlgebraBasePlugin } from '@cryptoalgebra/abstract-plugin/contracts/AlgebraBasePlugin.sol';
+import { AlgebraAbstractPlugin } from '@cryptoalgebra/abstract-plugin/contracts/AlgebraAbstractPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 VolatilityOraclePlugin plugin
 /// @notice This contract stores timepoints and calculates adaptive fee and statistical averages
-abstract contract VolatilityOraclePlugin is AlgebraBasePlugin, IVolatilityOracle {
+abstract contract VolatilityOraclePlugin is AlgebraAbstractPlugin, IVolatilityOracle {
   using Plugins for uint8;
 
   uint256 internal constant UINT16_MODULO = 65536;

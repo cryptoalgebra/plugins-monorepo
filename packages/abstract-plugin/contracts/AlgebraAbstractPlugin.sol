@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import './BasePlugin.sol';
+import './AbstractPlugin.sol';
 
-/// @title Algebra' internal Integral 1.2.1 plugin base
+/// @title Algebra's internal Integral 1.2.1 plugin base
 /// @notice This contract inherits BasePlugin and implements virtual functions
-abstract contract AlgebraBasePlugin is BasePlugin {
+abstract contract AlgebraAbstractPlugin is AbstractPlugin {
   address internal immutable factory;
 
-  constructor(address _pool, address _factory, address _pluginFactory) BasePlugin(_pool, _pluginFactory) {
+  constructor(address _pool, address _factory, address _pluginFactory) AbstractPlugin(_pool, _pluginFactory) {
     factory = _factory;
   }
 

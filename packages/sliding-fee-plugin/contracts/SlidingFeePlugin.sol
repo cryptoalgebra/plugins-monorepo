@@ -5,9 +5,9 @@ import {TickMath} from '@cryptoalgebra/integral-core/contracts/libraries/TickMat
 import {FullMath} from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 
 import {ISlidingFeePlugin} from './interfaces/ISlidingFeePlugin.sol';
-import {AlgebraBasePlugin} from '@cryptoalgebra/abstract-plugin/contracts/AlgebraBasePlugin.sol';
+import {AlgebraAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/AlgebraAbstractPlugin.sol';
 
-abstract contract SlidingFeePlugin is AlgebraBasePlugin, ISlidingFeePlugin {
+abstract contract SlidingFeePlugin is AlgebraAbstractPlugin, ISlidingFeePlugin {
   struct FeeFactors {
     uint128 zeroToOneFeeFactor;
     uint128 oneToZeroFeeFactor;

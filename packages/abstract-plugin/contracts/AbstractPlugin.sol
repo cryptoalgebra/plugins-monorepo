@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+// TODO: change to 0.8^
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/base/common/Timestamp.sol';
@@ -9,11 +10,11 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 
-import './interfaces/IBasePlugin.sol';
+import './interfaces/IAbstractPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 plugin base
 /// @notice This contract simplifies development process of plugins by providing base functionality
-abstract contract BasePlugin is IBasePlugin, Timestamp {
+abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   using Plugins for uint8;
 
   /// @dev The role can be granted in AlgebraFactory
@@ -47,7 +48,7 @@ abstract contract BasePlugin is IBasePlugin, Timestamp {
     return IAlgebraPool(pool).plugin();
   }
 
-  /// @inheritdoc IBasePlugin
+  /// @inheritdoc IAbstractPlugin
   function collectPluginFee(address token, uint256 amount, address recipient) external override {
     _authorize();
     SafeTransfer.safeTransfer(token, recipient, amount);

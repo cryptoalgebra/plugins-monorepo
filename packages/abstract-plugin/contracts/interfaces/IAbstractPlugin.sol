@@ -5,7 +5,7 @@ pragma abicoder v2;
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 
 /// @title The interface for the BasePlugin
-interface IBasePlugin is IAlgebraPlugin {
+interface IAbstractPlugin is IAlgebraPlugin {
   /// @notice Claim plugin fee
   /// @param token The token address
   /// @param amount Amount of tokens

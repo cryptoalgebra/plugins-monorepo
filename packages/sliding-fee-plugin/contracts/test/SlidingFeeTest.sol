@@ -6,7 +6,7 @@ import '../SlidingFeePlugin.sol';
 contract SlidingFeeTest is SlidingFeePlugin {
   event Fee(uint16 fee);
   uint8 public constant override defaultPluginConfig = 0;
-  constructor(uint16 _baseFee) AlgebraBasePlugin(msg.sender, msg.sender, msg.sender) SlidingFeePlugin(_baseFee) {}
+  constructor(uint16 _baseFee) AlgebraAbstractPlugin(msg.sender, msg.sender, msg.sender) SlidingFeePlugin(_baseFee) {}
 
   function getFeeForSwap(bool zeroToOne, int24 lastTick, int24 currentTick) external returns (uint16 fee) {
     fee = _getFeeAndUpdateFactors(zeroToOne, currentTick, lastTick);

@@ -2,16 +2,16 @@
 pragma solidity ^0.8.0;
 
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoolEntryPoint.sol';
-import './interfaces/IBasePluginFactory.sol';
+import './interfaces/IAbstractPluginFactory.sol';
 
-abstract contract BasePluginFactory is IBasePluginFactory {
+abstract contract AbstractPluginFactory is IAbstractPluginFactory {
   address public immutable override entryPoint;
 
   constructor(address _entryPoint) {
     entryPoint = _entryPoint;
   }
 
-  /// @inheritdoc IBasePluginFactory
+  /// @inheritdoc IAbstractPluginFactory
   function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external virtual returns (address customPool) {
     return IAlgebraCustomPoolEntryPoint(entryPoint).createCustomPool(address(this), creator, tokenA, tokenB, data);
   }

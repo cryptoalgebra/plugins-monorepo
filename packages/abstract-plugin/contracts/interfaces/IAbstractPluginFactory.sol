@@ -5,7 +5,7 @@ import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoo
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
 
 /// @title The interface for the BasePluginFactory
-interface IBasePluginFactory is IAlgebraPluginFactory {
+interface IAbstractPluginFactory is IAlgebraPluginFactory {
   /// @notice Returns the address of AlgebraCustomPoolEntryPoint
   /// @dev This is a main entry point for creating, managing plugins
   /// @return The AlgebraCustomPoolEntryPoint contract address

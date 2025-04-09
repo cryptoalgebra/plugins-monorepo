@@ -7,7 +7,6 @@ import '../types/AlgebraFeeConfigurationU144.sol';
 
 /// @title AdaptiveFee
 /// @notice Calculates fee based on combination of sigmoids
-/// @dev Version for AlgebraBasePluginV1
 library AdaptiveFee {
   uint16 internal constant INITIAL_MIN_FEE = 0.01e4; // 0.01%
 

@@ -2,7 +2,7 @@
   "name": "plugins-monorepo",
   "private": "true",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -rf node_modules pnpm-lock.yaml"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.10",

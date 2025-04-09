@@ -8,6 +8,10 @@ interface IFarmingPluginFactory {
   /// @return The farming contract address
   function farmingAddress() external view returns (address);
 
+  /// @dev updates farmings manager address on the factory
+  /// @param newFarmingAddress The new tokenomics contract address
+  function setFarmingAddress(address newFarmingAddress) external;
+
   /// @notice Emitted when the farming address is changed
   /// @param newFarmingAddress The farming address after the address was changed
   event FarmingAddress(address newFarmingAddress);

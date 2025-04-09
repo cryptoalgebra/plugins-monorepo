@@ -1,0 +1,20 @@
+{
+  "name": "@cryptoalgebra/base-plugin",
+  "version": "1.2.1",
+  "description": "",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test"
+  },
+  "dependencies": {
+    "@cryptoalgebra/abstract-plugin": "workspace:^",
+    "@cryptoalgebra/dynamic-fee-plugin": "workspace:^",
+    "@cryptoalgebra/farming-proxy-plugin": "workspace:^",
+    "@cryptoalgebra/integral-core": "^1.2.1",
+    "@cryptoalgebra/integral-periphery": "^1.2.1",
+    "@cryptoalgebra/volatility-oracle-plugin": "workspace:^"
+  },
+  "devDependencies": {
+    "test-utils": "workspace:^"
+  }
+}

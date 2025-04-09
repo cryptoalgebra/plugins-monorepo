@@ -43,6 +43,31 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
 
+  packages/base-plugin:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/dynamic-fee-plugin':
+        specifier: workspace:^
+        version: link:../dynamic-fee-plugin
+      '@cryptoalgebra/farming-proxy-plugin':
+        specifier: workspace:^
+        version: link:../farming-proxy-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/volatility-oracle-plugin':
+        specifier: workspace:^
+        version: link:../volatility-oracle-plugin
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
   packages/dynamic-fee-plugin:
     dependencies:
       '@cryptoalgebra/abstract-plugin':

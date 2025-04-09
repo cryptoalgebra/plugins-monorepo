@@ -11,11 +11,13 @@ export default async function snapshotGasCost(
     | TransactionReceipt
     | Promise<BigInt>
     | BigInt
+    | Promise<bigint>
+    | bigint
     | Contract
     | Promise<Contract>
 ): Promise<void> {
   const resolved = await x;
-  if (resolved instanceof BigInt || resolved instanceof Number || typeof resolved == 'number') {
+  if (typeof resolved == 'bigint' || resolved instanceof BigInt || resolved instanceof Number) {
     expect(Number(resolved)).toMatchSnapshot();
   } else if ('deploymentTransaction' in resolved) {
     const receipt = await resolved.deploymentTransaction()?.wait();

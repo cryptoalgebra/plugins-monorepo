@@ -2,7 +2,9 @@
   "name": "plugins-monorepo",
   "private": "true",
   "scripts": {
-    "clean": "rm -rf node_modules pnpm-lock.yaml"
+    "clean": "rm -rf node_modules pnpm-lock.yaml",
+    "test": "pnpm -r test",
+    "compile": "pnpm -r compile"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.10",

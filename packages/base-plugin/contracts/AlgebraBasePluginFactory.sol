@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import './interfaces/IBasePluginFactory.sol';
+import './interfaces/IAlgebraBasePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import './AlgebraBasePlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default plugin factory
 /// @notice This contract creates Algebra adaptive fee plugins for Algebra liquidity pools
 /// @dev This plugin factory can only be used for Algebra base pools
-contract AlgebraBasePluginFactory is IBasePluginFactory {
-  /// @inheritdoc IBasePluginFactory
+contract AlgebraBasePluginFactory is IAlgebraBasePluginFactory {
+  /// @inheritdoc IAlgebraBasePluginFactory
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
-  /// @inheritdoc IBasePluginFactory
+  /// @inheritdoc IAlgebraBasePluginFactory
   address public immutable override algebraFactory;
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -21,7 +21,7 @@ contract AlgebraBasePluginFactory is IBasePluginFactory {
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
-  /// @inheritdoc IBasePluginFactory
+  /// @inheritdoc IAlgebraBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
   modifier onlyAdministrator() {
@@ -46,7 +46,7 @@ contract AlgebraBasePluginFactory is IBasePluginFactory {
     require(msg.sender == algebraFactory);
   }
 
-  /// @inheritdoc IBasePluginFactory
+  /// @inheritdoc IAlgebraBasePluginFactory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);
     require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender));

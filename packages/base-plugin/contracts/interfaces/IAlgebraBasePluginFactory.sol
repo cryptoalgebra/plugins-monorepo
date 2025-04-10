@@ -10,7 +10,7 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 
 /// @title The interface for the AlgebraBasePluginFactory
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
-interface IBasePluginFactory is IAlgebraPluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory {
+interface IAlgebraBasePluginFactory is IAlgebraPluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory {
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraBasePluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);

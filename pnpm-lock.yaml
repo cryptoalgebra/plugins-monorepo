@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
@@ -37,8 +37,8 @@ importers:
   packages/abstract-plugin:
     dependencies:
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
@@ -55,8 +55,8 @@ importers:
         specifier: workspace:^
         version: link:../farming-proxy-plugin
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
@@ -74,8 +74,8 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
@@ -90,8 +90,8 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
@@ -106,8 +106,8 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
@@ -118,12 +118,18 @@ importers:
 
   packages/test-utils:
     devDependencies:
+      '@cryptoalgebra/integral-core':
+        specifier: ^1.2.3
+        version: 1.2.3
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
         version: 5.8.0
       bignumber.js:
         specifier: ^9.2.1
         version: 9.2.1
+      hardhat:
+        specifier: ^2.22.19
+        version: 2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)
       mocha-chai-jest-snapshot:
         specifier: ^1.1.6
         version: 1.1.6
@@ -134,12 +140,15 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.3
+        version: 1.2.3
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
     devDependencies:
+      '@cryptoalgebra/base-plugin':
+        specifier: workspace:^
+        version: link:../base-plugin
       test-utils:
         specifier: workspace:^
         version: link:../test-utils
@@ -313,6 +322,10 @@ packages:
 
   '@cryptoalgebra/integral-core@1.2.1':
     resolution: {integrity: sha512-+Lj7y2ZqpJ58fNtqTRvrMv/HPcyqNkMpINu9LQK6/iMDePmzNoywogLLiGU34MlxAaGEwO6XNWM7ENq/YzzZzA==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/integral-core@1.2.3':
+    resolution: {integrity: sha512-HSczE4uSpp3GwAPn3yJbrstcfk5+TwdXxGUJUWFJUMKoD/z8KoDXPz6eKiKU5zimXSDm1WTPgSIRz0gbkDUa6A==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   '@cryptoalgebra/integral-periphery@1.2.1':
@@ -4351,6 +4364,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.25.9
 
   '@cryptoalgebra/integral-core@1.2.1':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.3
+
+  '@cryptoalgebra/integral-core@1.2.3':
     dependencies:
       '@openzeppelin/contracts': 4.9.3
 

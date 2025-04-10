@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "workspace:^",
-    "@cryptoalgebra/integral-core": "^1.2.1",
+    "@cryptoalgebra/integral-core": "^1.2.3",
     "@cryptoalgebra/integral-periphery": "^1.2.1"
   },
   "devDependencies": {

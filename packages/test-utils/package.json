@@ -4,8 +4,13 @@
   "private": "true",
   "description": "",
   "devDependencies": {
+    "@cryptoalgebra/integral-core": "^1.2.3",
     "@ethersproject/abstract-provider": "^5.8.0",
     "bignumber.js": "^9.2.1",
+    "hardhat": "^2.22.19",
     "mocha-chai-jest-snapshot": "^1.1.6"
+  },
+  "peerDependencies": {
+    "hardhat": "^2.22.19"
   }
 }

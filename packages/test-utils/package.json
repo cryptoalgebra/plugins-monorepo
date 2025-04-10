@@ -5,6 +5,7 @@
   "description": "",
   "devDependencies": {
     "@ethersproject/abstract-provider": "^5.8.0",
+    "bignumber.js": "^9.2.1",
     "mocha-chai-jest-snapshot": "^1.1.6"
   }
 }

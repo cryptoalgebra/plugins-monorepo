@@ -121,6 +121,9 @@ importers:
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
         version: 5.8.0
+      bignumber.js:
+        specifier: ^9.2.1
+        version: 9.2.1
       mocha-chai-jest-snapshot:
         specifier: ^1.1.6
         version: 1.1.6
@@ -1291,6 +1294,9 @@ packages:
 
   before-after-hook@2.2.3:
     resolution: {integrity: sha512-NzUnlZexiaH/46WDhANlyR2bXRopNg4F/zuSA3OpZnllCUgRaOF2znDioDWrmbNVsuZk6l9pMquQB38cfBZwkQ==}
+
+  bignumber.js@9.2.1:
+    resolution: {integrity: sha512-+NzaKgOUvInq9TIUZ1+DRspzf/HApkCwD4btfuasFTdrfnOxqx853TgDpMolp+uv4RpRp7bPcEU2zKr9+fRmyw==}
 
   bin-links@4.0.4:
     resolution: {integrity: sha512-cMtq4W5ZsEwcutJrVId+a/tjt8GSbS+h0oNkdl6+6rBuEv8Ot33Bevj5KPm40t309zuhVic8NjpuL42QCiJWWA==}
@@ -5703,6 +5709,8 @@ snapshots:
   bech32@1.1.4: {}
 
   before-after-hook@2.2.3: {}
+
+  bignumber.js@9.2.1: {}
 
   bin-links@4.0.4:
     dependencies:

@@ -149,9 +149,6 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
     devDependencies:
-      '@cryptoalgebra/base-plugin':
-        specifier: workspace:^
-        version: link:../base-plugin
       test-utils:
         specifier: workspace:^
         version: link:../test-utils

@@ -10,7 +10,7 @@
     "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@cryptoalgebra/dynamic-fee-plugin": "workspace:^",
     "@cryptoalgebra/farming-proxy-plugin": "workspace:^",
-    "@cryptoalgebra/integral-core": "^1.2.3",
+    "@cryptoalgebra/integral-core": "1.2.5",
     "@cryptoalgebra/integral-periphery": "^1.2.1",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^"
   },

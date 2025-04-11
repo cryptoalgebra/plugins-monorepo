@@ -4,7 +4,7 @@
   "private": "true",
   "description": "",
   "devDependencies": {
-    "@cryptoalgebra/integral-core": "^1.2.3",
+    "@cryptoalgebra/integral-core": "1.2.5",
     "@ethersproject/abstract-provider": "^5.8.0",
     "bignumber.js": "^9.2.1",
     "hardhat": "^2.22.19",

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": "true",
   "description": "",
+  "scripts": {
+    "remove-node-modules": "rm -rf node_modules"
+  },
   "devDependencies": {
     "@cryptoalgebra/integral-core": "1.2.5",
     "@ethersproject/abstract-provider": "^5.8.0",

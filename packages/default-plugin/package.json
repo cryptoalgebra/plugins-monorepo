@@ -1,5 +1,5 @@
 {
-  "name": "@cryptoalgebra/base-plugin",
+  "name": "@cryptoalgebra/default-plugin",
   "version": "1.2.1",
   "description": "",
   "scripts": {

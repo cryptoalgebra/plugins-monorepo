@@ -8,11 +8,11 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePlugin
 
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 
-/// @title The interface for the AlgebraBasePluginFactory
+/// @title The interface for the AlgebraDefaultPluginFactory
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
-interface IAlgebraBasePluginFactory is IAlgebraPluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory {
+interface IAlgebraDefaultPluginFactory is IAlgebraPluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory {
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
-  /// @dev allows to change settings of AlgebraBasePluginFactory
+  /// @dev allows to change settings of AlgebraDefaultPluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);
 
   /// @notice Returns the address of AlgebraFactory

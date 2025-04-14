@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
-import { MockTimeAlgebraBasePlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
 import { expect } from 'test-utils/expect';
 
 import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
@@ -48,8 +48,8 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
     const pluginAddress = await mockPluginFactory.pluginByPool(pool);
 
-    const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraBasePlugin');
-    const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraBasePlugin;
+    const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraDefaultPlugin');
+    const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraDefaultPlugin;
 
     await pool.setPlugin(plugin);
 
@@ -98,7 +98,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let swapExact1For0: SwapFunction;
   let swapToHigherPrice: SwapToPriceFunction;
   let pool: MockTimeAlgebraPool;
-  let plugin: MockTimeAlgebraBasePlugin;
+  let plugin: MockTimeAlgebraDefaultPlugin;
   let virtualPoolMock: MockTimeVirtualPool;
   let mockPluginFactory: MockTimeDSFactory;
   let mint: MintFunction;

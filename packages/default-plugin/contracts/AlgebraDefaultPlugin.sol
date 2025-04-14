@@ -10,7 +10,7 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 
 /// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraBasePlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin {
+contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin

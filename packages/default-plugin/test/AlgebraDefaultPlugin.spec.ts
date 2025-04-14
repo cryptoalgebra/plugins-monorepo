@@ -8,12 +8,12 @@ import { pluginFixture } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, expandTo18Decimals, getMaxTick, getMinTick } from 'test-utils/utilities';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 
-import { MockPool, MockTimeAlgebraBasePlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockPool, MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
 
-describe('AlgebraBasePlugin', () => {
+describe('AlgebraDefaultPlugin', () => {
   let wallet: Wallet, other: Wallet;
 
-  let plugin: MockTimeAlgebraBasePlugin; // modified plugin
+  let plugin: MockTimeAlgebraDefaultPlugin; // modified plugin
   let mockPool: MockPool; // mock of AlgebraPool
   let mockPluginFactory: MockTimeDSFactory; // modified plugin factory
 
@@ -28,7 +28,7 @@ describe('AlgebraBasePlugin', () => {
     [wallet, other] = await (ethers as any).getSigners();
   });
 
-  beforeEach('deploy test AlgebraBasePlugin', async () => {
+  beforeEach('deploy test AlgebraDefaultPlugin', async () => {
     ({ plugin, mockPool, mockPluginFactory } = await loadFixture(pluginFixture));
   });
 
@@ -718,7 +718,7 @@ describe('AlgebraBasePlugin', () => {
     });
   });
 
-  describe('AlgebraBasePlugin external methods', () => {
+  describe('AlgebraDefaultPlugin external methods', () => {
     describe('#changeFeeConfiguration', () => {
       const configuration = {
         alpha1: 3002,

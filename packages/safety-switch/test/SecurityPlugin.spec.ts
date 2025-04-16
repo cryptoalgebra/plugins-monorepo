@@ -10,7 +10,7 @@ describe('SecurityPlugin', () => {
   let registry: SecurityRegistry;
   let mockFactory: MockFactory
 
-  async function slidingFeeFixture() {
+  async function safetySwitchFixture() {
 
     const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = (await mockFactoryFactory.deploy()) as any as MockFactory;
@@ -28,8 +28,8 @@ describe('SecurityPlugin', () => {
     [wallet, other] = await (ethers as any).getSigners();
   });
 
-  beforeEach('deploy SlidingFeeTest', async () => {
-    ({plugin, registry, mockFactory} = await loadFixture(slidingFeeFixture))
+  beforeEach('deploy safetySwitchTest', async () => {
+    ({plugin, registry, mockFactory} = await loadFixture(safetySwitchFixture))
   });
 
   describe('#SecurityPlugin', () => {

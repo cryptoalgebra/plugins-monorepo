@@ -103,6 +103,25 @@ importers:
         specifier: workspace:^
         version: link:../test-utils
 
+  packages/managed-fee:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@openzeppelin/contracts':
+        specifier: 4.9.3
+        version: 4.9.3
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
   packages/safety-switch:
     dependencies:
       '@cryptoalgebra/abstract-plugin':

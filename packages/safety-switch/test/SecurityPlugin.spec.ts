@@ -3,7 +3,6 @@ import { ethers } from 'hardhat';
 import { Wallet, ZeroAddress } from 'ethers';
 import { SecurityPluginTest, SecurityRegistry, MockFactory } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import snapshotGasCost from 'test-utils/snapshotGasCost';
 
 describe('SecurityPlugin', () => {
   let wallet: Wallet, other: Wallet;

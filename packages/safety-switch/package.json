@@ -1,5 +1,5 @@
 {
-  "name": "@cryptoalgebra/sliding-fee-plugin",
+  "name": "@cryptoalgebra/safety-switch-plugin",
   "version": "1.2.1",
   "description": "",
   "scripts": {

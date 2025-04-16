@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
-import {AlgebraAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/AlgebraAbstractPlugin.sol';
+import {BaseAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -11,7 +11,7 @@ import './interfaces/IManagedSwapFeePlugin.sol';
 
 /// @title Algebra Integral 1.2.1 managed swap fee plugin
 /// @notice This plugin get fees value from the swap router and apply that fees to swap
-abstract contract ManagedSwapFeePlugin is AlgebraAbstractPlugin, IManagedSwapFeePlugin {
+abstract contract ManagedSwapFeePlugin is BaseAbstractPlugin, IManagedSwapFeePlugin {
   using Plugins for uint8;
   using ECDSA for bytes32;
 

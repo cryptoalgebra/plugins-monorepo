@@ -2,13 +2,13 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
-import '@cryptoalgebra/abstract-plugin/contracts/AlgebraAbstractPlugin.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 import './interfaces/ISecurityPlugin.sol';
 import './interfaces/ISecurityRegistry.sol';
 
 /// @title Algebra Integral 1.2 security plugin
-abstract contract SecurityPlugin is AlgebraAbstractPlugin, ISecurityPlugin {
+abstract contract SecurityPlugin is BaseAbstractPlugin, ISecurityPlugin {
   using Plugins for uint8;
 
   uint8 private constant defaultPluginConfig = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);

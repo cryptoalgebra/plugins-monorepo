@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoolEntryPoint.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
 
-/// @title The interface for the BasePluginFactory
-interface IAbstractPluginFactory is IAlgebraPluginFactory {
+/// @title The interface for the CustomPluginFactory
+interface ICustomPluginFactory is IAlgebraPluginFactory {
   /// @notice Returns the address of AlgebraCustomPoolEntryPoint
   /// @dev This is a main entry point for creating, managing plugins
   /// @return The AlgebraCustomPoolEntryPoint contract address

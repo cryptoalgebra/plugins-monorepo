@@ -11,13 +11,13 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc IAlgebraDefaultPluginFactory
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
   /// @dev values of constants for sigmoids in fee calculation formula
   AlgebraFeeConfiguration public override defaultFeeConfiguration;
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
   /// @inheritdoc IFarmingPluginFactory
@@ -38,7 +38,7 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
     require(msg.sender == algebraFactory);
   }
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IBasePluginFactory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);
     require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender));

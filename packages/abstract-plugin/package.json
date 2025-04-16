@@ -4,7 +4,7 @@
   "description": "",
   "files": [
     "contracts/**/*.sol",
-    "!contracts/AlgebraAbstractPlugin.sol"
+    "!contracts/BaseAbstractPlugin.sol"
   ],
   "scripts": {
     "compile": "npx hardhat compile",

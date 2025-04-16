@@ -6,7 +6,7 @@ import '../ManagedSwapFeePlugin.sol';
 contract ManagedSwapFeeTest is ManagedSwapFeePlugin {
   event Fee(uint24 fee);
   uint8 public constant override defaultPluginConfig = 0;
-  constructor() AlgebraAbstractPlugin(msg.sender, msg.sender, msg.sender) ManagedSwapFeePlugin(msg.sender) {}
+  constructor() BaseAbstractPlugin(msg.sender, msg.sender, msg.sender) ManagedSwapFeePlugin(msg.sender) {}
 
   function getFeeForSwap(bytes calldata pluginData) external returns (uint24 fee) {
     fee = _getManagedFee(pluginData);

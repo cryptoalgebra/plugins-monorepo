@@ -7,7 +7,7 @@ import '../SecurityRegistry.sol';
 contract SecurityPluginTest is SecurityPlugin {
 
   uint8 public constant override defaultPluginConfig = 0;
-  constructor(address factory, address securityRegistry) AlgebraAbstractPlugin(msg.sender, factory, msg.sender) SecurityPlugin(securityRegistry) {}
+  constructor(address factory, address securityRegistry) BaseAbstractPlugin(msg.sender, factory, msg.sender) SecurityPlugin(securityRegistry) {}
 
   function swap() external {
     _checkStatus();

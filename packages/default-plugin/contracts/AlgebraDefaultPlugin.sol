@@ -22,7 +22,7 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config
-  ) AlgebraAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) {}
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) {}
 
   // ###### HOOKS ######
 

@@ -50,10 +50,10 @@ importers:
         version: link:../abstract-plugin
       '@cryptoalgebra/dynamic-fee-plugin':
         specifier: workspace:^
-        version: link:../dynamic-fee-plugin
+        version: link:../dynamic-fee
       '@cryptoalgebra/farming-proxy-plugin':
         specifier: workspace:^
-        version: link:../farming-proxy-plugin
+        version: link:../farming-proxy
       '@cryptoalgebra/integral-core':
         specifier: 1.2.5
         version: 1.2.5
@@ -71,7 +71,7 @@ importers:
         specifier: workspace:^
         version: link:../test-utils
 
-  packages/dynamic-fee-plugin:
+  packages/dynamic-fee:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^
@@ -87,7 +87,7 @@ importers:
         specifier: workspace:^
         version: link:../test-utils
 
-  packages/farming-proxy-plugin:
+  packages/farming-proxy:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^
@@ -98,6 +98,25 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: ^1.2.1
         version: 1.2.1
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
+  packages/limit-order:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -141,7 +160,7 @@ importers:
         specifier: workspace:^
         version: link:../test-utils
 
-  packages/sliding-fee-plugin:
+  packages/sliding-fee:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^

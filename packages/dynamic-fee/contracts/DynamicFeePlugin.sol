@@ -10,11 +10,11 @@ import './interfaces/IDynamicFeeManager.sol';
 
 import './libraries/AdaptiveFee.sol';
 import { AlgebraFeeConfigurationU144 } from './types/AlgebraFeeConfigurationU144.sol';
-import '@cryptoalgebra/abstract-plugin/contracts/AlgebraAbstractPlugin.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default plugin
 /// @notice This contract stores timepoints and calculates adaptive fee and statistical averages
-abstract contract DynamicFeePlugin is AlgebraAbstractPlugin, IDynamicFeeManager {
+abstract contract DynamicFeePlugin is BaseAbstractPlugin, IDynamicFeeManager {
   using Plugins for uint8;
   using AlgebraFeeConfigurationU144Lib for AlgebraFeeConfiguration;
 

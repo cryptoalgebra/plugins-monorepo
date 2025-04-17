@@ -7,11 +7,11 @@ import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol'
 import './interfaces/IVolatilityOracle.sol';
 
 import './libraries/VolatilityOracle.sol';
-import { AlgebraAbstractPlugin } from '@cryptoalgebra/abstract-plugin/contracts/AlgebraAbstractPlugin.sol';
+import { BaseAbstractPlugin } from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 VolatilityOraclePlugin plugin
 /// @notice This contract stores timepoints and calculates adaptive fee and statistical averages
-abstract contract VolatilityOraclePlugin is AlgebraAbstractPlugin, IVolatilityOracle {
+abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracle {
   using Plugins for uint8;
 
   uint256 internal constant UINT16_MODULO = 65536;

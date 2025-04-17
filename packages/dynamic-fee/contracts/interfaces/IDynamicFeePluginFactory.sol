@@ -4,8 +4,7 @@ pragma abicoder v2;
 
 import '../types/AlgebraFeeConfiguration.sol';
 
-/// @title The interface for the Algebra dynamic fee manager
-/// @dev This contract calculates adaptive fee
+/// @title The interface for the Algebra dynamic fee plugin factory
 interface IDynamicFeePluginFactory {
   /// @notice Emitted when the default fee configuration is changed
   /// @param newConfig The structure with dynamic fee parameters

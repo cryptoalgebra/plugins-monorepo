@@ -7,12 +7,12 @@ import './AlgebraDefaultPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default plugin factory
 /// @notice This contract creates Algebra adaptive fee plugins for Algebra liquidity pools
-/// @dev This plugin factory can only be used for Algebra base pools
+/// @dev This plugin factory can only be used for Algebra default pools
 contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc IAlgebraDefaultPluginFactory
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -21,7 +21,7 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
   modifier onlyAdministrator() {
@@ -46,7 +46,7 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
     require(msg.sender == algebraFactory);
   }
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IBasePluginFactory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);
     require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender));

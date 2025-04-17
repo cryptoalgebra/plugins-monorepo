@@ -6,7 +6,6 @@ import "@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.s
 import '../interfaces/ILimitOrderPluginFactory.sol';
 import '../interfaces/ILimitOrderPlugin.sol';
 import './LimitOrderTestPlugin.sol';
-import 'hardhat/console.sol';
 
 /// @title Algebra Integral limit plugin factory
 contract LimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrderPluginFactory {
@@ -28,14 +27,13 @@ contract LimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrderPluginFac
 
   /// @inheritdoc IAlgebraPluginFactory
   function afterCreatePoolHook(address, address, address) external view override {
-        console.log("factory");
+    
   }
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
     ILimitOrderPlugin plugin = new LimitOrderTestPlugin(pool, algebraFactory, address(this), limitOrderModule);
     pluginByPool[pool] = address(plugin);
-    console.log("factory");
     return address(plugin);
   }
 

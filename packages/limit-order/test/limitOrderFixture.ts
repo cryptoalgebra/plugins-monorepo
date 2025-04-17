@@ -48,14 +48,14 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
     nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 1,
   });
 
-  const wnativeFactory = await ethers.getContractFactory(WNativeToken.abi, WNativeToken.bytecode);
-  const wnative = (await wnativeFactory.deploy()) as any as IWNativeToken & { address: string};
-
   const factoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
   const factory = (await factoryFactory.deploy(poolDeployerAddress)) as any as AlgebraFactory;
 
   const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
   const poolDeployer = (await poolDeployerFactory.deploy(factory, factory)) as any as AlgebraPoolDeployer;
+
+  const wnativeFactory = await ethers.getContractFactory(WNativeToken.abi, WNativeToken.bytecode);
+  const wnative = (await wnativeFactory.deploy()) as any as IWNativeToken & { address: string};
 
   const calleeContractFactory = await ethers.getContractFactory(TEST_CALLEE_ABI, TEST_CALLEE_BYTECODE);
   const swapTarget = (await calleeContractFactory.deploy()) as any as TestAlgebraCallee;
@@ -70,10 +70,9 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
 
   await pluginFactory.setLimitOrderModule(loModule);
   await factory.setDefaultPluginFactory(pluginFactory)
-  console.log("here")
-  console.log(await factory.getAddress())
+
   await factory.createPool(token0, token1, ZERO_ADDRESS);
-  console.log("here")
+
   const poolAddress = await factory.poolByPair(token0, token1);
   const pool = (poolFactory.attach(poolAddress)) as any as AlgebraPool;
 

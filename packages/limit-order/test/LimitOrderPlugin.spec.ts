@@ -5,7 +5,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ZERO_ADDRESS, limitOrderPluginFixture } from './limitOrderFixture';
 import { encodePriceSqrt, MAX_SQRT_RATIO, MIN_SQRT_RATIO} from 'test-utils/utilities';
 
-import { LimitOrderModule, TestERC20, IWNativeToken, LimitOrderTestPlugin } from '../typechain';
+import { LimitOrderManager, TestERC20, IWNativeToken, LimitOrderTestPlugin } from '../typechain';
 
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 import { AlgebraPool, TestAlgebraCallee } from '@cryptoalgebra/integral-core/typechain';
@@ -13,7 +13,7 @@ import { AlgebraPool, TestAlgebraCallee } from '@cryptoalgebra/integral-core/typ
 describe('LimitOrders', () => {
   let wallet: Wallet, other: Wallet;
 
-  let loModule: LimitOrderModule
+  let loModule: LimitOrderManager
   let pool: AlgebraPool; 
   let pool0Wnative: AlgebraPool;
   let poolWnative1: AlgebraPool;
@@ -75,7 +75,7 @@ describe('LimitOrders', () => {
     let pluginAddress = await poolWnative1.plugin();
     let plugin = (pluginContractFacroty.attach(pluginAddress)) as any as LimitOrderTestPlugin;
 
-    await plugin.setLimitOrderModule(loModule);
+    await plugin.setLimitOrderManager(loModule);
     expect(await loModule.initialized(poolWnative1)).to.be.eq(false);
     await loModule.place({token0: await wnative.getAddress(), token1: await token1.getAddress(), deployer: ZeroAddress}, -60, true, 10n**8n);
 

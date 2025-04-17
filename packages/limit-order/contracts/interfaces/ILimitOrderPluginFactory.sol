@@ -5,7 +5,7 @@ pragma abicoder v2;
 /// @title The interface for the ILimitOrderPluginFactory
 interface ILimitOrderPluginFactory {
 
-  event LimitOrderModule(address newLimitOrderModule);
+  event LimitOrderManager(address newLimitOrderManager);
 
-  function setLimitOrderModule(address newLimitOrderModule) external;
+  function setLimitOrderManager(address newLimitOrderManager) external;
 }

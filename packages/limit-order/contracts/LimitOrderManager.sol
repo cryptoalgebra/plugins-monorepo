@@ -8,10 +8,10 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-periphery/contracts/libraries/CallbackValidation.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 
-import './interfaces/ILimitOrderModule.sol';
+import './interfaces/ILimitOrderManager.sol';
 import './base/LimitOrderPayments.sol';
 
-contract LimitOrderModule is ILimitOrderModule, LimitOrderPayments {
+contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
   constructor(address _wNativeToken, address _poolDeployer, address _basePluginFactory, address _factory) LimitOrderPayments(_wNativeToken) {
     poolDeployer = _poolDeployer;
     basePluginFactory = _basePluginFactory;

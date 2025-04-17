@@ -10,7 +10,7 @@ import './LimitOrderTestPlugin.sol';
 /// @title Algebra Integral limit plugin factory
 contract LimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrderPluginFactory {
 
-  address public limitOrderModule;
+  address public limitOrderManager;
 
   address public algebraFactory;
 
@@ -27,12 +27,12 @@ contract LimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrderPluginFac
 
   /// @inheritdoc IAlgebraPluginFactory
   function afterCreatePoolHook(address, address, address) external view override {
-    
+
   }
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    ILimitOrderPlugin plugin = new LimitOrderTestPlugin(pool, algebraFactory, address(this), limitOrderModule);
+    ILimitOrderPlugin plugin = new LimitOrderTestPlugin(pool, algebraFactory, address(this), limitOrderManager);
     pluginByPool[pool] = address(plugin);
     return address(plugin);
   }
@@ -47,9 +47,9 @@ contract LimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrderPluginFac
     return _createPlugin(pool);
   }
 
-  function setLimitOrderModule(address newLimitOrderModule) external override  {
-    require(limitOrderModule != newLimitOrderModule);
-    limitOrderModule = newLimitOrderModule;
-    emit LimitOrderModule(newLimitOrderModule);
+  function setLimitOrderManager(address newLimitOrderManager) external override  {
+    require(limitOrderManager != newLimitOrderManager);
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 }

@@ -4,7 +4,7 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
-import '../interfaces/ILimitOrderModule.sol';
+import '../interfaces/ILimitOrderManager.sol';
 import '../LimitOrderPlugin.sol';
 
 /// @title Algebra Integral 1.2 limit order plugin
@@ -14,7 +14,7 @@ contract LimitOrderTestPlugin is LimitOrderPlugin {
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig = uint8(Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG);
 
-  constructor(address _pool, address _factory, address _pluginFactory, address limitOrderModule) BaseAbstractPlugin(_pool, _factory, _pluginFactory) LimitOrderPlugin(limitOrderModule){}
+  constructor(address _pool, address _factory, address _pluginFactory, address limitOrderManager) BaseAbstractPlugin(_pool, _factory, _pluginFactory) LimitOrderPlugin(limitOrderManager){}
 
   // ###### HOOKS ######
 
@@ -24,14 +24,14 @@ contract LimitOrderTestPlugin is LimitOrderPlugin {
   }
 
   function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
-    if (limitOrderModule != address(0)) {
-      ILimitOrderModule(limitOrderModule).afterInitialize(pool, tick);
+    if (limitOrderManager != address(0)) {
+      ILimitOrderManager(limitOrderManager).afterInitialize(pool, tick);
     }
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
   function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
-    _updateLimitOrderModuleState(msg.sender, zeroToOne);
+    _updateLimitOrderManagerState(msg.sender, zeroToOne);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

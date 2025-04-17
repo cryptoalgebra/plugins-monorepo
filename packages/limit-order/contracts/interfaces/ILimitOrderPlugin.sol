@@ -5,9 +5,9 @@ pragma abicoder v2;
 /// @title The interface for the AlgebraLimitOrderPlugin
 interface ILimitOrderPlugin {
 
-  function limitOrderModule() external view returns (address);
+  function limitOrderManager() external view returns (address);
 
-  function setLimitOrderModule(address newModule) external;
+  function setLimitOrderManager(address newModule) external;
 
-  event LimitOrderModule(address newModule);
+  event LimitOrderManager(address newModule);
 }

@@ -6,7 +6,7 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraMintC
 
 import '../libraries/EpochLibrary.sol';
 
-interface ILimitOrderModule is IAlgebraMintCallback {
+interface ILimitOrderManager is IAlgebraMintCallback {
   error ZeroLiquidity();
   error InRange();
   error CrossedRange();

@@ -12,7 +12,7 @@ import {
   abi as POOL_ABI,
   bytecode as POOL_BYTECODE,
 } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
-import { LimitOrderTestPluginFactory, LimitOrderModule, IWNativeToken } from '../typechain';
+import { LimitOrderTestPluginFactory, LimitOrderManager, IWNativeToken } from '../typechain';
 import { tokensFixture } from 'test-utils/externalFixtures';
 import { getCreateAddress } from 'ethers';
 import {AlgebraPool, AlgebraFactory, TestAlgebraCallee, AlgebraPoolDeployer, TestERC20 } from '@cryptoalgebra/integral-core/typechain';
@@ -26,7 +26,7 @@ export const TEST_POOL_START_TIME = 1601906400;
 export const TEST_POOL_DAY_BEFORE_START = 1601906400 - 24 * 60 * 60;
 
 interface LimitOrderPluginFixture{
-  loModule: LimitOrderModule;
+  loModule: LimitOrderManager;
   token0: TestERC20;
   token1: TestERC20;
   wnative: IWNativeToken;
@@ -65,10 +65,10 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
   const pluginFactoryFactory = await ethers.getContractFactory('LimitOrderTestPluginFactory');
   const pluginFactory = (await pluginFactoryFactory.deploy(factory)) as any as LimitOrderTestPluginFactory;
 
-  const loModuleFactory = await ethers.getContractFactory('LimitOrderModule');
-  const loModule = (await loModuleFactory.deploy(wnative, poolDeployer, pluginFactory, factory)) as any as LimitOrderModule
+  const loModuleFactory = await ethers.getContractFactory('LimitOrderManager');
+  const loModule = (await loModuleFactory.deploy(wnative, poolDeployer, pluginFactory, factory)) as any as LimitOrderManager
 
-  await pluginFactory.setLimitOrderModule(loModule);
+  await pluginFactory.setLimitOrderManager(loModule);
   await factory.setDefaultPluginFactory(pluginFactory)
 
   await factory.createPool(token0, token1, ZERO_ADDRESS);
@@ -80,7 +80,7 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
   const poolAddress0Wnative = await factory.poolByPair(token0, wnative);
   const pool0Wnative = (poolFactory.attach(poolAddress0Wnative)) as any as AlgebraPool;
 
-  await pluginFactory.setLimitOrderModule(ZERO_ADDRESS);
+  await pluginFactory.setLimitOrderManager(ZERO_ADDRESS);
 
   await factory.createPool(wnative, token1, ZERO_ADDRESS);
   const poolAddressWnative1 = await factory.poolByPair(wnative, token1);

@@ -62,7 +62,7 @@ importers:
         version: 1.2.1
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
-        version: link:../volatility-oracle-plugin
+        version: link:../volatility-oracle
     devDependencies:
       decimal.js:
         specifier: ^10.5.0
@@ -194,7 +194,23 @@ importers:
         specifier: ^1.1.6
         version: 1.1.6
 
-  packages/volatility-oracle-plugin:
+  packages/volatility-oracle:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
+  packages/whitelist-fee-discount:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^

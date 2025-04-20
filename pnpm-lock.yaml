@@ -43,6 +43,28 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
 
+  packages/alm:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/alm-vault':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
   packages/default-plugin:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
@@ -392,6 +414,13 @@ packages:
   '@babel/types@7.27.0':
     resolution: {integrity: sha512-H45s8fVLYjbhFH62dIJ3WtmJ6RSPt/3DRO0ZcT2SUiYiQyz3BLVb9ADEnLl91m74aQPS3AzzeajZHYOalWe3bg==}
     engines: {node: '>=6.9.0'}
+
+  '@cryptoalgebra/alm-vault@1.2.1':
+    resolution: {integrity: sha512-7FsfLlAczra4sRNsggTjbZnJYl6bae401NjZYlU0NDn6WZupMMHDhqo1m8nL72aX0X5YSgzZomC/9qL2UlUXHg==}
+
+  '@cryptoalgebra/integral-base-plugin@1.2.1':
+    resolution: {integrity: sha512-BgeLkSbuaTGs1LwBh4XDHAN9YUuKmjx13rdGeM0uKQrEndP1uay3rSA6WGlZEUHIKnXAcjrj5aGqyK+4MwgM9w==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   '@cryptoalgebra/integral-core@1.2.1':
     resolution: {integrity: sha512-+Lj7y2ZqpJ58fNtqTRvrMv/HPcyqNkMpINu9LQK6/iMDePmzNoywogLLiGU34MlxAaGEwO6XNWM7ENq/YzzZzA==}
@@ -4460,6 +4489,19 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
+
+  '@cryptoalgebra/alm-vault@1.2.1':
+    dependencies:
+      '@cryptoalgebra/integral-base-plugin': 1.2.1
+      '@cryptoalgebra/integral-core': 1.2.5
+      '@cryptoalgebra/integral-periphery': 1.2.1
+      '@openzeppelin/contracts': 4.9.3
+      bignumber.js: 9.2.1
+
+  '@cryptoalgebra/integral-base-plugin@1.2.1':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.2.1
+      '@cryptoalgebra/integral-periphery': 1.2.1
 
   '@cryptoalgebra/integral-core@1.2.1':
     dependencies:

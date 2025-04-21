@@ -5,10 +5,10 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 
 import './MockTimeAlgebraDefaultPlugin.sol';
-import '../interfaces/IAlgebraDefaultPluginFactory.sol';
+import '../interfaces/IDefaultAlmPluginFactory.sol';
 
-contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+contract MockTimeDSFactory is IDefaultAlmPluginFactory {
+  /// @inheritdoc IDefaultAlmPluginFactory
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @inheritdoc IBasePluginFactory
@@ -19,9 +19,6 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
 
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
-
-  /// @inheritdoc IFarmingPluginFactory
-  address public override farmingAddress;
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
@@ -66,10 +63,4 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
     emit DefaultFeeConfiguration(newConfig);
   }
 
-  /// @inheritdoc IFarmingPluginFactory
-  function setFarmingAddress(address newFarmingAddress) external override {
-    require(farmingAddress != newFarmingAddress);
-    farmingAddress = newFarmingAddress;
-    emit FarmingAddress(newFarmingAddress);
-  }
 }

@@ -22,16 +22,29 @@ import {
   abi as COM_VAULT_STUB_DEPLOYER_ABI,
   bytecode as COM_VAULT_STUB_DEPLOYER_BYTECODE,
 } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraVaultFactoryStub.sol/AlgebraVaultFactoryStub.json';
+import {
+  abi as ENTRYPOINT_ABI,
+  bytecode as ENTRYPOINT_BYTECODE,
+} from '@cryptoalgebra/integral-periphery/artifacts/contracts/AlgebraCustomPoolEntryPoint.sol/AlgebraCustomPoolEntryPoint.json';
+import {
+  abi as POOL_DEPLOYER_CORE_ABI,
+  bytecode as POOL_DEPLOYER_CORE_BYTECODE,
+} from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPoolDeployer.sol/AlgebraPoolDeployer.json';
 
 import { ethers } from 'hardhat';
 import {
   MockTimeAlgebraPoolDeployer,
+  AlgebraPoolDeployer,
+  AlgebraFactory,
   AlgebraCommunityVault,
   TestAlgebraCallee,
   MockTimeAlgebraPool,
-  AlgebraFactory,
   TestERC20,
 } from '@cryptoalgebra/integral-core/typechain';
+
+import {
+  AlgebraCustomPoolEntryPoint
+} from '@cryptoalgebra/integral-periphery/typechain';
 import { getCreateAddress } from 'ethers';
 
 interface TokensFixture {
@@ -106,5 +119,48 @@ export const algebraPoolDeployerMockFixture: () => Promise<MockPoolDeployerFixtu
       const poolAddress = await poolDeployer.computeAddress(sortedTokens[0], sortedTokens[1]);
       return MockTimeAlgebraPoolFactory.attach(poolAddress) as any as MockTimeAlgebraPool;
     },
+  };
+};
+
+
+
+interface algebraDeployFixture extends TokensFixture {
+  poolDeployer: AlgebraPoolDeployer;
+  factory: AlgebraFactory;
+  entryPoint: AlgebraCustomPoolEntryPoint;
+}
+export const algebraCoreFixture: () => Promise<algebraDeployFixture> = async () => {
+  const { token0, token1 } = await tokensFixture();
+
+  const [deployer] = await ethers.getSigners();
+  // precompute
+  const poolDeployerAddress = getCreateAddress({
+    from: deployer.address,
+    nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 1,
+  });
+
+  const factoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+  const factory = (await factoryFactory.deploy(poolDeployerAddress)) as any as AlgebraFactory;
+
+  const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_CORE_ABI, POOL_DEPLOYER_CORE_BYTECODE);
+  const poolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
+
+  const ADMIN_ROLE = await factory.POOLS_ADMINISTRATOR_ROLE();
+  await factory.grantRole(ADMIN_ROLE, poolDeployer);
+
+  const entrypointFactory = await ethers.getContractFactory(ENTRYPOINT_ABI, ENTRYPOINT_BYTECODE);
+  const entryPoint = await entrypointFactory.deploy(factory) as any as AlgebraCustomPoolEntryPoint;
+  
+  let customPoolDeployerRole = await factory.CUSTOM_POOL_DEPLOYER()
+  let poolAdministratorRole = await factory.POOLS_ADMINISTRATOR_ROLE()
+  await factory.grantRole(customPoolDeployerRole, await entryPoint.getAddress());
+  await factory.grantRole(poolAdministratorRole, await entryPoint.getAddress());
+
+  return {
+    poolDeployer,
+    token0,
+    token1,
+    factory,
+    entryPoint
   };
 };

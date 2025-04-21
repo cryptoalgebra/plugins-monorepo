@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-import '../AlgebraDefaultPlugin.sol';
+import '../DefaultAlmPlugin.sol';
 
 // used for testing time dependent behavior
-contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
+contract MockTimeAlgebraDefaultPlugin is DefaultAlmPlugin {
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
   // Monday, October 5, 2020 9:00:00 AM GMT-05:00
@@ -15,7 +15,7 @@ contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config
-  ) AlgebraDefaultPlugin(_pool, _factory, _pluginFactory, _config) {}
+  ) DefaultAlmPlugin(_pool, _factory, _pluginFactory, _config) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

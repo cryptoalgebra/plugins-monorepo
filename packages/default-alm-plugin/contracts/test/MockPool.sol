@@ -52,6 +52,8 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   address public override plugin;
 
   address public override communityVault;
+  
+  address public factory;
 
   /// @inheritdoc IAlgebraPoolState
   mapping(int24 => TickManagement.Tick) public override ticks;
@@ -226,6 +228,10 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   function setPluginConfig(uint8 newConfig) external override {
     require(msg.sender == owner || msg.sender == plugin);
     globalState.pluginConfig = newConfig;
+  }
+
+  function setFactory(address _factory) external {
+    factory = _factory;
   }
 
   /// @inheritdoc IAlgebraPoolPermissionedActions

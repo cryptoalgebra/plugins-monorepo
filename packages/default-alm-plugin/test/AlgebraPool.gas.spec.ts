@@ -285,30 +285,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
           });
         });
 
-        describe('farming connected', async () => {
-          beforeEach('connect virtual pool', async () => {
-            await mockPluginFactory.setFarmingAddress(wallet);
-            await plugin.connect(wallet).setIncentive(virtualPoolMock);
-          });
-
-          it('first swap in block with no tick movement', async () => {
-            await snapshotGasCost(swapExact1For0(2000, wallet.address));
-            expect((await pool.globalState()).price).to.not.eq(startingPrice);
-            expect((await pool.globalState()).tick).to.eq(startingTick);
-          });
-
-          it('first swap in block moves tick, no initialized crossings', async () => {
-            await snapshotGasCost(swapExact1For0(expandTo18Decimals(1) / 10000n, wallet.address));
-            expect((await pool.globalState()).tick).to.eq(startingTick + 1);
-          });
-
-          it('second swap in block with no tick movement', async () => {
-            await swapExact1For0(expandTo18Decimals(1) / 10000n, wallet.address);
-            expect((await pool.globalState()).tick).to.eq(startingTick + 1);
-            await snapshotGasCost(swapExact1For0(2000, wallet.address));
-            expect((await pool.globalState()).tick).to.eq(startingTick + 1);
-          });
-        });
       });
     });
   }

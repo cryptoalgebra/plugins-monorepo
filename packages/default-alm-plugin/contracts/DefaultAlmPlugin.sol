@@ -2,15 +2,15 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
-
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePlugin.sol';
-import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
+import '@cryptoalgebra/alm-plugin/contracts/AlmPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
+import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin {
+/// @title Algebra Integral 1.2.1 ALM plugin
+contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin
@@ -55,8 +55,22 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
-    _updateVirtualPoolTick(zeroToOne);
+  function afterSwap(address, address, bool, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+    if (rebalanceManager != address(0)) {
+      require(gasleft() >= 1600000, 'Not enough gas left');
+      if (!_ableToGetTimepoints(slowTwapPeriod)) {
+        return IAlgebraPlugin.afterSwap.selector;
+      }
+
+      ( , int24 currentTick, , ) = _getPoolState();
+      uint32 lastBlockTimestamp = _getLastBlockTimestamp();
+
+      int24 slowTwapTick = _getTwapTick(slowTwapPeriod);
+      int24 fastTwapTick = _getTwapTick(fastTwapPeriod);
+
+      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+    }
+
     return IAlgebraPlugin.afterSwap.selector;
   }
 
@@ -76,4 +90,5 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     uint88 volatilityAverage = _getAverageVolatilityLast();
     fee = _getCurrentFee(volatilityAverage);
   }
+
 }

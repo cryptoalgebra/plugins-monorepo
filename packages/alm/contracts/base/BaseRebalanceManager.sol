@@ -69,9 +69,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     uint16 limitReservePct;
   }
 
-  // TODO: норм упаковать
   address public vault;
-  bool public isAlmInitialized;
   bool public paused;
   bool public allowToken1;
   State public state;
@@ -180,17 +178,20 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   }
 
   function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
-
     require(msg.sender == IAlgebraPool(pool).plugin(), 'Should only called by plugin');
+    if (vault == address(0)) return;
     TwapResult memory twapResult = _obtainTWAPs(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
-
     _rebalance(twapResult);
   }
 
   function _rebalance(TwapResult memory obtainTWAPsResult) internal {
     if (paused) return;
-    if (vault == address(0)) return;
     if (obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit == 0) return;
+    if (
+      obtainTWAPsResult.currentPriceAccountingDecimals == 0 ||
+      obtainTWAPsResult.slowAvgPriceAccountingDecimals == 0 ||
+      obtainTWAPsResult.fastAvgPriceAccountingDecimals == 0
+    ) return;
 
     (DecideStatus decideStatus, State newState) = _decideRebalance(obtainTWAPsResult);
 
@@ -212,9 +213,9 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
           ranges = _getRangesWithoutState(obtainTWAPsResult);
         }
 
-
         if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
+        require(gasleft() >= 1000000, 'Not enough gas left');
         try IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
           lastRebalanceTimestamp = _blockTimestamp();
           lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
@@ -240,14 +241,11 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     int24 fastTwapTick,
     uint32 lastBlockTimestamp
   ) internal view returns (TwapResult memory twapResult) {
-
-
     twapResult.currentTick = currentTick;
-
     twapResult.sameBlock = _blockTimestamp() == lastBlockTimestamp;
     bool _allowToken1 = allowToken1;
+
     if (_allowToken1) {
-      // почему они эту строку наверх не вынесли? (иначе тут stack too deep)
       (uint256 amount0, uint256 amount1) = IAlgebraVault(vault).getTotalAmounts();
       twapResult.totalPairedToken = amount0;
       twapResult.totalDepositToken = amount1;
@@ -273,9 +271,6 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     twapResult.slowAvgPriceAccountingDecimals = slowPrice;
     twapResult.fastAvgPriceAccountingDecimals = fastPrice;
 
-
-    // uint256 currentPriceAccountingDecimals = _getPriceAccountingDecimals(_depositToken, _pairedToken, uint128(10 ** _pairedTokenDecimals), twapResult.currentTick);
-
     twapResult.currentPriceAccountingDecimals = currentPriceAccountingDecimals;
     uint256 totalPairedInDepositWithDecimals = currentPriceAccountingDecimals * twapResult.totalPairedToken;
     uint256 totalPairedInDeposit = totalPairedInDepositWithDecimals / (10 ** _pairedTokenDecimals);
@@ -285,13 +280,11 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       twapResult.percentageOfDepositToken = 10000;
     } else {
       uint256 totalTokensAmount = twapResult.totalDepositToken + twapResult.totalPairedInDeposit;
-
       uint16 percentageOfDepositToken = totalTokensAmount == 0 ? 0 : uint16((twapResult.totalDepositToken * 10000) / totalTokensAmount);
       twapResult.percentageOfDepositToken = percentageOfDepositToken;
     }
 
     uint256 depositTokenBalance = _getDepositTokenVaultBalance();
-
 
     if (depositTokenBalance > 0) {
       uint256 totalTokensAmount = twapResult.totalDepositToken + twapResult.totalPairedInDeposit;
@@ -308,26 +301,19 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     bool isExtremeVolatility = fastSlowDiff >= thresholds.extremeVolatility || fastCurrentDiff >= thresholds.extremeVolatility;
     if (!isExtremeVolatility) {
       bool isHighVolatility = fastSlowDiff >= thresholds.highVolatility || fastCurrentDiff >= thresholds.highVolatility;
-
       if (!isHighVolatility) {
-
         if (
           !((state == State.OverInventory || state == State.Normal) &&
             lastRebalanceCurrentPrice != 0 &&
             twapResult.percentageOfDepositToken < thresholds.underInventoryThreshold - thresholds.dtrDelta)
         ) {
-
           if (_blockTimestamp() < lastRebalanceTimestamp + minTimeBetweenRebalances) {
-
             return (DecideStatus.TooSoon, State.Special);
           }
 
           (bool needToRebalance, State newState) = _updateStatus(twapResult);
-
           if (needToRebalance) {
-
             if (fastCurrentDiff < thresholds.someVolatility) {
-
               return (DecideStatus.Normal, newState); // normal rebalance
             } else {
               return (DecideStatus.TooSoon, newState); // too soon
@@ -338,13 +324,8 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
         }
       } else {
         // handle high volatility
-        // Если fastSlowDiff >= _highVolatility ИЛИ fastCurrentDiff => _highVolatility (5%), то считаем, что сейчас высокая волатильность.
         if (state != State.Special) {
-          // Проверяем, что сейчас Status != SPECIAL, иначе - ребаланс не делается
-
           if (fastCurrentDiff >= thresholds.someVolatility && twapResult.sameBlock) {
-            // Если fastCurrentDiff >= _someVolatility (low? - 1%):
-            // Проверяем, что последний timepoint был записан не в том же блоке, в котором мы исполняем транзакцию, иначе - ребаланс не делается
             return (DecideStatus.TooSoon, State.Special);
           }
         } else {
@@ -354,10 +335,8 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       }
       // high volatility, fastSlowDiff >= thresholds.highVolatility
       state = State.Special;
-
       return (DecideStatus.Special, State.Special);
     } else {
-      // Если fastSlowDiff >= _extremeVolatility ИЛИ fastCurrentDiff => _extremeVolatility (25%), то считаем, что сейчас экстремальная волатильность и ребаланс не делается
       return (DecideStatus.ExtremeVolatility, State.Special);
     }
   }
@@ -367,80 +346,45 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       if (state != State.Normal) {
         if (state != State.OverInventory) {
           if (twapResult.percentageOfDepositToken <= thresholds.simulate) {
-            // if less than 93%
             if (twapResult.percentageOfDepositToken >= thresholds.normalThreshold) {
-              // if greater than 80% (REBALANCE TO NORMAL)
-              // state == UnderInventory || state == Special
-              // 80% <= twapResult.percentageOfDepositToken <= 93%
-              // типа из андеринветори или спешл ребалансим в НОРМАЛ
               return (true, State.Normal);
             }
           } else {
-            // state == UnderInventory || state == Special
-            // twapResult.percentageOfDepositToken >= 93%
             return (true, State.OverInventory);
           }
         } else if (twapResult.percentageOfDepositToken >= thresholds.underInventoryThreshold) {
-          // if greater than 77%
           if (twapResult.percentageOfDepositToken <= thresholds.overInventoryThreshold) {
-            // if less than 91% (REBALANCE TO NORMAL)
-            // state == OverInventory
-            // 77% <= twapResult.percentageOfDepositToken <= 91%
-            // типа из оверинвентори в НОРМАЛ
             return (true, State.Normal);
           }
-          // WHAT IF GREATER THAN 91%? (STAYING OVER-INVENTORY)
         } else {
-          // state == OverInventory
-          // twapResult.percentageOfDepositToken <= 77%
-          // из оверинвентори хуячимся в андеринвентори
           return (true, State.UnderInventory);
         }
 
         uint256 priceChange = _calcPercentageDiff(lastRebalanceCurrentPrice, twapResult.currentPriceAccountingDecimals); // percentage diff between lastRebalanceCurrentPrice and currentPriceAccountingDecimals
         if (priceChange > thresholds.priceChangeThreshold) {
-          // CASES:
-          // 1. we are still under-inventory and price changed by more than (1/0.5)%
-          // 2. we are still over-inventory and price changed by more than (1/0.5)%
-
           return (true, state);
         }
       } else if (twapResult.percentageOfDepositToken <= thresholds.simulate) {
         if (twapResult.percentageOfDepositToken < thresholds.underInventoryThreshold) {
-          // state == Normal
-          // twapResult.percentageOfDepositToken < 77% <= 93 %
           return (true, State.UnderInventory);
         }
       } else {
-        // state == Normal
-        // twapResult.percentageOfDepositToken > 93%
         return (true, State.OverInventory);
       }
 
       if (twapResult.percentageOfDepositTokenUnused <= thresholds.depositTokenUnusedThreshold) {
-        // if less than 1%
         return (false, State.Normal); // no rebalance needed
       } else {
-        // CASES:
-        // 1. state == Normal and 75% < twapResult.percentageOfDepositToken < 93%
         return (true, state);
       }
     } else {
       if (twapResult.percentageOfDepositToken <= thresholds.simulate) {
-        // if less than 93%
         if (twapResult.percentageOfDepositToken >= thresholds.underInventoryThreshold) {
-          // if greater than 77% (REBALANCE TO NORMAL)
-          // state == Special OR not lastRebalanceCurrentPrice
-          // 77% <= twapResult.percentageOfDepositToken <= 93%
           return (true, State.Normal);
         } else {
-          // state == Special OR not lastRebalanceCurrentPrice
-          // twapResult.percentageOfDepositToken <= 77%
           return (true, State.UnderInventory);
         }
       } else {
-        // state == Special OR not lastRebalanceCurrentPrice
-        // twapResult.percentageOfDepositToken > 93%
         return (true, State.OverInventory);
       }
     }
@@ -460,7 +404,6 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       int24 commonTick;
       int24 tickForLowerPrice;
       if (newState == State.Normal) {
-        // If HEALTHY status (NORMAL) use target price
         int24 targetTick = getTickAtPrice(_tokenDecimals, targetPrice);
         commonTick = roundTickToTickSpacingConsideringNegative(_tickSpacing, targetTick);
       } else {
@@ -471,7 +414,6 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       int24 tickForHigherPrice = roundTickToTickSpacingConsideringNegative(_tickSpacing, upperTick);
 
       if (lowerPriceBound == 0) {
-        // Under-inventory state
         int24 lowerTick = _allowToken1 ? TickMath.MIN_TICK : TickMath.MAX_TICK;
         tickForLowerPrice = (lowerTick / _tickSpacing) * _tickSpacing; // adjust to tick spacing
       } else {
@@ -485,18 +427,14 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
         ranges.limitUpper = int24(commonTick);
 
         if (newState != State.UnderInventory) {
-          // if not under-inventory
-          // we do not use v16 because if Token0 then we reverse the structure of ticks
           int24 roundedMinTick = roundTickToTickSpacing(_tickSpacing, TickMath.MIN_TICK);
           ranges.limitLower = int24(roundedMinTick); // use MIN tick
         } else {
-          // if under-inventorys
           ranges.baseLower = currentTickIsRound ? twapResult.currentTick : ranges.baseLower;
           ranges.limitUpper = currentTickIsRound ? twapResult.currentTick - _tickSpacing : ranges.limitUpper;
         }
 
         if (newState == State.OverInventory) {
-          // if over-inventory
           ranges.limitUpper = currentTickIsRound ? twapResult.currentTick : _tickSpacing + ranges.limitUpper;
           ranges.baseLower = currentTickIsRound ? _tickSpacing + twapResult.currentTick : _tickSpacing + ranges.baseLower;
           ranges.baseUpper = int24(ranges.baseUpper + _tickSpacing);
@@ -586,7 +524,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   function _getPriceAccountingDecimals(
     address token0,
     address token1,
-    uint128 pairedTokendecimals,
+    uint128 _pairedTokenDecimals,
     int24 averageTick
   ) private pure returns (uint256 price) {
     uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(averageTick);
@@ -594,13 +532,13 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       uint256 priceX128 = FullMath.mulDiv(uint160(sqrtPriceX96), uint160(sqrtPriceX96), uint256(type(uint64).max) + 1);
       return
         token1 < token0
-          ? FullMath.mulDiv(priceX128, pairedTokendecimals, uint256(type(uint128).max) + 1)
-          : FullMath.mulDiv(uint256(type(uint128).max) + 1, pairedTokendecimals, priceX128);
+          ? FullMath.mulDiv(priceX128, _pairedTokenDecimals, uint256(type(uint128).max) + 1)
+          : FullMath.mulDiv(uint256(type(uint128).max) + 1, _pairedTokenDecimals, priceX128);
     } else {
       return
         token1 < token0
-          ? FullMath.mulDiv(uint256(sqrtPriceX96) * uint256(sqrtPriceX96), pairedTokendecimals, uint256(type(uint192).max) + 1)
-          : FullMath.mulDiv(uint256(type(uint192).max) + 1, pairedTokendecimals, uint256(sqrtPriceX96) * uint256(sqrtPriceX96));
+          ? FullMath.mulDiv(uint256(sqrtPriceX96) * uint256(sqrtPriceX96), _pairedTokenDecimals, uint256(type(uint192).max) + 1)
+          : FullMath.mulDiv(uint256(type(uint192).max) + 1, _pairedTokenDecimals, uint256(sqrtPriceX96) * uint256(sqrtPriceX96));
     }
   }
 
@@ -652,30 +590,30 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     }
   }
 
-  //                                                                                                                                                                    upper             target    lower
   function _getPriceBounds(State _state, TwapResult memory twapResult, bool _allowToken1) private view returns (uint256, uint256, uint256) {
     uint256 targetPrice = twapResult.currentPriceAccountingDecimals;
 
     uint256 lowerPriceBound = 0;
     if (_state != State.UnderInventory) {
-      // if not under-inventory (because if under - we place lower as Min)
       lowerPriceBound = targetPrice - _calcPart(thresholds.baseLowPct, targetPrice);
     }
     uint256 upperPriceBound = targetPrice + _calcPart(thresholds.baseHighPct, targetPrice);
+
     if (_state == State.Normal) {
       uint256 totalTokens = twapResult.totalDepositToken + twapResult.totalPairedInDeposit;
       uint256 partOfTotalTokens = _calcPart(totalTokens, thresholds.limitReservePct); // 5% of totalTokensInToken0
       uint256 excess = twapResult.totalPairedInDeposit - partOfTotalTokens;
-      uint256 partOfExcess = excess * thresholds.baseLowPct; // 20% of excess
+      uint256 partOfExcess = excess * thresholds.baseLowPct;
       uint256 excessCoef = partOfExcess / twapResult.totalDepositToken;
       if (excessCoef != 0) {
         targetPrice += _calcPart(excessCoef, targetPrice);
       }
     }
+
     if (!_allowToken1) {
-      targetPrice = _removeDecimals(targetPrice, decimalsSum); // targetPrice
-      lowerPriceBound = _removeDecimals(lowerPriceBound, decimalsSum); // lowerPriceBound
-      upperPriceBound = _removeDecimals(upperPriceBound, decimalsSum); // upperPriceBound
+      targetPrice = _removeDecimals(targetPrice, decimalsSum);
+      lowerPriceBound = _removeDecimals(lowerPriceBound, decimalsSum);
+      upperPriceBound = _removeDecimals(upperPriceBound, decimalsSum);
     }
 
     return (upperPriceBound, targetPrice, lowerPriceBound);

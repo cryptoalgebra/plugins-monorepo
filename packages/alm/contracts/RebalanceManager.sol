@@ -7,7 +7,6 @@ contract RebalanceManager is BaseRebalanceManager {
   constructor(address _vault, uint32 _minTimeBetweenRebalances, Thresholds memory _thresholds) {
     require(_vault != address(0), 'Invalid vault address');
     paused = false;
-    // TODO: добавить require'ов
     vault = _vault;
     pool = IAlgebraVault(vault).pool();
     factory = IAlgebraPool(pool).factory();

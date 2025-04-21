@@ -6,8 +6,6 @@ import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IAlgebraPool} from '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 
-import 'hardhat/console.sol';
-
 contract MockVault is IAlgebraVault, ERC20 {
   event MockRebalance(int24 baseLower, int24 baseUpper, int24 limitLower, int24 limitUpper);
 
@@ -47,6 +45,7 @@ contract MockVault is IAlgebraVault, ERC20 {
 
   uint256 public totalAmount0;
   uint256 public totalAmount1;
+  bool public shouldRevertOnRebalance;
 
   constructor(
     address _pool,
@@ -81,6 +80,10 @@ contract MockVault is IAlgebraVault, ERC20 {
     // affiliate = NULL_ADDRESS; // by default there is no affiliate address
   }
 
+  function setShouldRevertOnRebalance(bool _shouldRevertOnRebalance) public {
+    shouldRevertOnRebalance = _shouldRevertOnRebalance;
+  }
+
   function setAllowTokens(bool _allowToken0, bool _allowToken1) public {
     (allowToken0, allowToken1) = (_allowToken0, _allowToken1);
   }
@@ -94,11 +97,7 @@ contract MockVault is IAlgebraVault, ERC20 {
   function withdraw(uint256, address) external returns (uint256, uint256) {}
 
   function rebalance(int24 _baseLower, int24 _baseUpper, int24 _limitLower, int24 _limitUpper, int256 swapQuantity) external {
-    console.log('VAULT REBALANCE CALLED');
-    console.logInt(_baseLower);
-    console.logInt(_baseUpper);
-    console.logInt(_limitLower);
-    console.logInt(_limitUpper);
+    if (shouldRevertOnRebalance) revert('shouldRevertOnRebalance');
     emit MockRebalance(_baseLower, _baseUpper, _limitLower, _limitUpper);
   }
 

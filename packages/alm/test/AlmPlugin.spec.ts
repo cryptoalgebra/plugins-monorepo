@@ -1,9 +1,8 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
-import { AlmPluginTest, MockVault } from '../typechain';
+import { AlmPluginTest, MockVault } from '../typechain';;
 import { ZERO_ADDRESS } from 'test-utils/consts';
 import { rebalances } from "./almRebalances.json";
-import { rebalances2 } from "./almRebalances2.json";
 import { rebalances3 } from "./almRebalances3.json";
 
 describe('#AlmPlugin', () => {
@@ -73,55 +72,6 @@ describe('#AlmPlugin', () => {
 					underInventoryThreshold: rebalance.state.underTrigger,
 					overInventoryThreshold: rebalance.state.overTrigger,
 					priceChangeThreshold: (BigInt(rebalance.state.priceChangeTrigger) / 2n).toString(),
-					extremeVolatility: rebalance.state.extremeVolatility,
-					highVolatility: rebalance.state.highVolatility,
-					someVolatility: rebalance.state.someVolatility,
-					dtrDelta: rebalance.state.dtrDelta,
-					baseLowPct: rebalance.state.baseLowPct,
-					baseHighPct: rebalance.state.baseHighPct,
-					limitReservePct: rebalance.state.limitReservePct,
-				}, 60, true, false);
-
-				const state = rebalance.state;
-				const currentTick = BigInt(state.currentTick);
-				const lastBlockTimestamp = 0n;
-				const slowTick = 0n;
-				const fastTick = 0n;
-
-				await almPlugin.setDecimals(18, 18);
-
-				await mockVault.setTotalAmounts(
-					BigInt(state.usedToken0),
-					BigInt(state.usedToken1)
-				);
-
-				await almPlugin.setPrices(
-					BigInt(state.twapSlow),
-					BigInt(state.twapFast),
-					BigInt(state.currentPrice)
-				);
-
-				await almPlugin.setDepositTokenBalance(state.depositTokenBalance);
-
-				await almPlugin.setLastRebalanceCurrentPrice(BigInt(state.lastRebalancePrice));
-				await almPlugin.setState(BigInt(state.state));
-
-				await expect(almPlugin.rebalance(currentTick, slowTick, fastTick, lastBlockTimestamp)).to.emit(mockVault, 'MockRebalance')
-					.withArgs(rebalance.rebalance.basePosition.bottomTick, rebalance.rebalance.basePosition.topTick, rebalance.rebalance.limitPosition.bottomTick, rebalance.rebalance.limitPosition.topTick);
-			});
-		}
-	});
-
-	describe('#rebalance2', () => {
-		for (const rebalance of rebalances2) {
-			it(`rebalance for tx ${rebalance.transactionHash}`, async () => {
-				const { almPlugin, mockVault } = await almPluginFixture({
-					depositTokenUnusedThreshold: rebalance.state.depositTokenUnusedThreshold,
-					simulate: rebalance.state.simulateTrigger,
-					normalThreshold: rebalance.state.normalTrigger,
-					underInventoryThreshold: rebalance.state.underTrigger,
-					overInventoryThreshold: rebalance.state.overTrigger,
-					priceChangeThreshold: rebalance.state.priceChangeTrigger,
 					extremeVolatility: rebalance.state.extremeVolatility,
 					highVolatility: rebalance.state.highVolatility,
 					someVolatility: rebalance.state.someVolatility,

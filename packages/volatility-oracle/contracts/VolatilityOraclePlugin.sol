@@ -113,34 +113,4 @@ abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracl
     VolatilityOracle.Timepoint memory lastTimepoint = timepoints[timepointIndex];
     return lastTimepoint.tick;
   }
-
-  function _getLastBlockTimestamp() internal view returns (uint32 blockTimestamp) {
-    VolatilityOracle.Timepoint memory lastTimepoint = timepoints[timepointIndex];
-    return lastTimepoint.blockTimestamp;
-  }
-
-  function _getTwapTick(uint32 period) internal view returns (int24 timeWeightedAverageTick) {
-    require(period != 0, 'Period is zero');
-
-    uint32[] memory secondAgos = new uint32[](2);
-    secondAgos[0] = period;
-    secondAgos[1] = 0;
-
-    (, int24 tick, , ) = _getPoolState();
-    (int56[] memory tickCumulatives, ) = timepoints.getTimepoints(_blockTimestamp(), secondAgos, tick, timepointIndex);
-
-    int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
-
-    timeWeightedAverageTick = int24(tickCumulativesDelta / int56(uint56(period)));
-
-    // Always round to negative infinity
-    if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(period)) != 0)) timeWeightedAverageTick--;
-  }
-
-  function _ableToGetTimepoints(uint32 period) internal view returns (bool) {
-    uint16 lastIndex = timepoints.getOldestIndex(timepointIndex);
-    uint32 oldestTimestamp = timepoints[lastIndex].blockTimestamp;
-
-    return VolatilityOracle._lteConsideringOverflow(oldestTimestamp, _blockTimestamp() - period, _blockTimestamp());
-  }
 }

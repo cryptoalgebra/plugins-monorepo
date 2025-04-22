@@ -12,7 +12,7 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 /// @title Algebra Integral 1.2.1 ALM plugin
 contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin {
   using Plugins for uint8;
-
+  using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
     uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.DYNAMIC_FEE);
@@ -84,6 +84,37 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
   function getCurrentFee() external view override returns (uint16 fee) {
     uint88 volatilityAverage = _getAverageVolatilityLast();
     fee = _getCurrentFee(volatilityAverage);
+  }
+
+  
+  function _getLastBlockTimestamp() private view returns (uint32 blockTimestamp) {
+    VolatilityOracle.Timepoint memory lastTimepoint = timepoints[timepointIndex];
+    return lastTimepoint.blockTimestamp;
+  }
+
+  function _getTwapTick(uint32 period) private view returns (int24 timeWeightedAverageTick) {
+    require(period != 0, 'Period is zero');
+
+    uint32[] memory secondAgos = new uint32[](2);
+    secondAgos[0] = period;
+    secondAgos[1] = 0;
+
+    (, int24 tick, , ) = _getPoolState();
+    (int56[] memory tickCumulatives, ) = timepoints.getTimepoints(_blockTimestamp(), secondAgos, tick, timepointIndex);
+
+    int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
+
+    timeWeightedAverageTick = int24(tickCumulativesDelta / int56(uint56(period)));
+
+    // Always round to negative infinity
+    if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(period)) != 0)) timeWeightedAverageTick--;
+  }
+
+  function _ableToGetTimepoints(uint32 period) private view returns (bool) {
+    uint16 lastIndex = timepoints.getOldestIndex(timepointIndex);
+    uint32 oldestTimestamp = timepoints[lastIndex].blockTimestamp;
+
+    return VolatilityOracle._lteConsideringOverflow(oldestTimestamp, _blockTimestamp() - period, _blockTimestamp());
   }
 
 }

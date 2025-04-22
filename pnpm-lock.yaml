@@ -82,9 +82,6 @@ importers:
       '@cryptoalgebra/dynamic-fee-plugin':
         specifier: workspace:^
         version: link:../dynamic-fee
-      '@cryptoalgebra/farming-proxy-plugin':
-        specifier: workspace:^
-        version: link:../farming-proxy
       '@cryptoalgebra/integral-core':
         specifier: 1.2.5
         version: 1.2.5

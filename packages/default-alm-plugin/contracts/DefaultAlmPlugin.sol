@@ -7,7 +7,6 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePlugin.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
-import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 ALM plugin
 contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin {

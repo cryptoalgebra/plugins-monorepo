@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
-import { MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockTimeAlgebraDefaultPlugin, MockTimeDSFactory } from '../typechain';
 import { expect } from 'test-utils/expect';
 
 import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
@@ -65,9 +65,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       pool,
     });
 
-    const virtualPoolMockFactory = await ethers.getContractFactory('MockTimeVirtualPool');
-    const virtualPoolMock = (await virtualPoolMockFactory.deploy()) as any as MockTimeVirtualPool;
-
     await pool.initialize(encodePriceSqrt(1, 1));
     await pool.setCommunityVault(wallet.address);
 
@@ -84,7 +81,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       advanceTime,
       pool,
       plugin,
-      virtualPoolMock,
       mockPluginFactory,
       swapExact0For1,
       swapExact1For0,
@@ -99,8 +95,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let swapToHigherPrice: SwapToPriceFunction;
   let pool: MockTimeAlgebraPool;
   let plugin: MockTimeAlgebraDefaultPlugin;
-  let virtualPoolMock: MockTimeVirtualPool;
-  let mockPluginFactory: MockTimeDSFactory;
   let mint: MintFunction;
   let advanceTime: any;
 
@@ -122,7 +116,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       };
 
       beforeEach('load the fixture', async () => {
-        ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, virtualPoolMock, mockPluginFactory, mint, swapToHigherPrice } =
+        ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, mint, swapToHigherPrice } =
           await loadFixture(gasTestCommunityFeeFixture));
       });
 
@@ -291,7 +285,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
 
   describe('Positions', function () {
     beforeEach('load inner fixture', async () => {
-      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, virtualPoolMock, mockPluginFactory, mint, swapToHigherPrice } = await loadFixture(
+      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, mint, swapToHigherPrice } = await loadFixture(
         gasTestFixture
       ));
     });
@@ -441,7 +435,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     };
 
     beforeEach('load inner fixture', async () => {
-      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, virtualPoolMock, mockPluginFactory, mint, swapToHigherPrice } = await loadFixture(
+      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, mint, swapToHigherPrice } = await loadFixture(
         filledStorageFixture
       ));
     });

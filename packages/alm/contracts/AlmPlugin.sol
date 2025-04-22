@@ -7,10 +7,16 @@ import './interfaces/IRebalanceManager.sol';
 
 
 abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
+  /// @inheritdoc	IAlmPlugin
   address public rebalanceManager;
+
+  /// @inheritdoc	IAlmPlugin
   uint32 public slowTwapPeriod;
+  
+  /// @inheritdoc	IAlmPlugin
   uint32 public fastTwapPeriod;
 
+  /// @inheritdoc	IAlmPlugin
   function initializeALM(address _rebalanceManager, uint32 _slowTwapPeriod, uint32 _fastTwapPeriod) external {
     _authorize();
     require(_rebalanceManager != address(0), '_rebalanceManager must be non zero address');
@@ -20,18 +26,21 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
     fastTwapPeriod = _fastTwapPeriod;
   }
 
+  /// @inheritdoc	IAlmPlugin
   function setSlowTwapPeriod(uint32 _slowTwapPeriod) external {
     _authorize();
     require(_slowTwapPeriod >= fastTwapPeriod, '_slowTwapPeriod must be >= fastTwapPeriod');
     slowTwapPeriod = _slowTwapPeriod;
   }
 
+  /// @inheritdoc	IAlmPlugin
   function setFastTwapPeriod(uint32 _fastTwapPeriod) external {
     _authorize();
     require(_fastTwapPeriod <= slowTwapPeriod, '_fastTwapPeriod must be <= slowTwapPeriod');
     fastTwapPeriod = _fastTwapPeriod;
   }
 
+  /// @inheritdoc	IAlmPlugin
   function setRebalanceManager(address _rebalanceManager) external {
     _authorize();
     rebalanceManager = _rebalanceManager;

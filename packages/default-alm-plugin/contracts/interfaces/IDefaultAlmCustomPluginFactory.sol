@@ -5,11 +5,11 @@ pragma abicoder v2;
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 
-/// @title The interface for the IDefaultAlmCustomPoolDeployer
-interface IDefaultAlmCustomPoolDeployer is IAlgebraPluginFactory, IDynamicFeePluginFactory {
+/// @title The interface for the IDefaultAlmCustomPluginFactory
+interface IDefaultAlmCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory {
 
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
-  /// @dev allows to change settings of AlgebraALMCustomPoolDeployer
+  /// @dev allows to change settings of AlgebraALMCustomPluginFactory
   function ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR() external pure returns (bytes32);
 
   /// @notice Returns the address of AlgebraFactory

@@ -4,14 +4,14 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
 import { algebraCoreFixture } from 'test-utils/externalFixtures';
 
-import { DefaultAlmCustomPoolDeployer } from '../typechain';
+import { DefaultAlmCustomPluginFactory } from '../typechain';
 import { AlgebraFactory } from '@cryptoalgebra/integral-core/typechain';
 
-describe('ALMPluginCustomDeployer', () => {
+describe('AlmPluginCustomPluginFactory', () => {
   let wallet: Wallet, other: Wallet;
 
   let factory: AlgebraFactory;
-  let customPoolDeployer: DefaultAlmCustomPoolDeployer;
+  let customPluginFactory: DefaultAlmCustomPluginFactory;
   let tokens: [string, string];
 
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -23,24 +23,24 @@ describe('ALMPluginCustomDeployer', () => {
   beforeEach('deploy test volatilityOracle & custom deployer', async () => {
     const fix  = await loadFixture(algebraCoreFixture)
     factory = fix.factory;
-    const customDeployerFactory = await ethers.getContractFactory('DefaultAlmCustomPoolDeployer');
-    customPoolDeployer = (await customDeployerFactory.deploy(factory, fix.entryPoint)) as any as DefaultAlmCustomPoolDeployer;
+    const customDeployerFactory = await ethers.getContractFactory('DefaultAlmCustomPluginFactory');
+    customPluginFactory = (await customDeployerFactory.deploy(factory, fix.entryPoint)) as any as DefaultAlmCustomPluginFactory;
 
     tokens = ["0x0000000000000000000000000000000000000001", "0x0000000000000000000000000000000000000002"];
   });
 
   describe('#Create custom pool', () => {
     it('only custom deployer', async () => {
-      expect(customPoolDeployer.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')).to.be
+      expect(customPluginFactory.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')).to.be
         .revertedWithoutReason;
     });
 
     it('custom pool is created', async () => {
-      await customPoolDeployer.createCustomPool(wallet.address, tokens[0], tokens[1], '0x');
+      await customPluginFactory.createCustomPool(wallet.address, tokens[0], tokens[1], '0x');
 
-      const poolAddress = await factory.customPoolByPair(customPoolDeployer, tokens[0], tokens[1]); 
+      const poolAddress = await factory.customPoolByPair(customPluginFactory, tokens[0], tokens[1]); 
       await expect(poolAddress).to.not.eq(ZERO_ADDRESS);
-      expect(await customPoolDeployer.pluginByPool(poolAddress)).to.not.eq(ZERO_ADDRESS);   
+      expect(await customPluginFactory.pluginByPool(poolAddress)).to.not.eq(ZERO_ADDRESS);   
     });
   });
 
@@ -56,13 +56,13 @@ describe('ALMPluginCustomDeployer', () => {
         baseFee: 150,
       };
       it('fails if caller is not owner', async () => {
-        await expect(customPoolDeployer.connect(other).setDefaultFeeConfiguration(configuration)).to.be.revertedWith('Only administrator');
+        await expect(customPluginFactory.connect(other).setDefaultFeeConfiguration(configuration)).to.be.revertedWith('Only administrator');
       });
 
       it('updates defaultFeeConfiguration', async () => {
-        await customPoolDeployer.setDefaultFeeConfiguration(configuration);
+        await customPluginFactory.setDefaultFeeConfiguration(configuration);
 
-        const newConfig = await customPoolDeployer.defaultFeeConfiguration();
+        const newConfig = await customPluginFactory.defaultFeeConfiguration();
 
         expect(newConfig.alpha1).to.eq(configuration.alpha1);
         expect(newConfig.alpha2).to.eq(configuration.alpha2);
@@ -74,8 +74,8 @@ describe('ALMPluginCustomDeployer', () => {
       });
 
       it('emits event', async () => {
-        await expect(customPoolDeployer.setDefaultFeeConfiguration(configuration))
-          .to.emit(customPoolDeployer, 'DefaultFeeConfiguration')
+        await expect(customPluginFactory.setDefaultFeeConfiguration(configuration))
+          .to.emit(customPluginFactory, 'DefaultFeeConfiguration')
           .withArgs([
             configuration.alpha1,
             configuration.alpha2,
@@ -92,22 +92,22 @@ describe('ALMPluginCustomDeployer', () => {
         conf2.alpha1 = 30000;
         conf2.alpha2 = 30000;
         conf2.baseFee = 15000;
-        await expect(customPoolDeployer.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Max fee exceeded');
+        await expect(customPluginFactory.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Max fee exceeded');
       });
 
       it('cannot set zero gamma', async () => {
         let conf2 = { ...configuration };
         conf2.gamma1 = 0;
-        await expect(customPoolDeployer.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Gammas must be > 0');
+        await expect(customPluginFactory.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Gammas must be > 0');
 
         conf2 = { ...configuration };
         conf2.gamma2 = 0;
-        await expect(customPoolDeployer.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Gammas must be > 0');
+        await expect(customPluginFactory.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Gammas must be > 0');
 
         conf2 = { ...configuration };
         conf2.gamma1 = 0;
         conf2.gamma2 = 0;
-        await expect(customPoolDeployer.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Gammas must be > 0');
+        await expect(customPluginFactory.setDefaultFeeConfiguration(conf2)).to.be.revertedWith('Gammas must be > 0');
       });
     });
   });

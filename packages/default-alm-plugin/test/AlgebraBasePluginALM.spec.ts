@@ -1122,6 +1122,8 @@ describe('DefaultAlmPlugin', () => {
           await plugin.advanceTime(5000);
           await expect(mockPool.swapToTick(500_000)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
           await checkState(State.OverInventory);
+
+          initTick = 0;
         });
       });
     });

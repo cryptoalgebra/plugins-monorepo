@@ -56,20 +56,15 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
   }
 
   function afterSwap(address, address, bool, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
-    if (rebalanceManager != address(0)) {
-      require(gasleft() >= 1600000, 'Not enough gas left');
-      if (!_ableToGetTimepoints(slowTwapPeriod)) {
-        return IAlgebraPlugin.afterSwap.selector;
-      }
+    if (rebalanceManager == address(0) || !_ableToGetTimepoints(slowTwapPeriod)) return IAlgebraPlugin.afterSwap.selector;
 
-      ( , int24 currentTick, , ) = _getPoolState();
-      uint32 lastBlockTimestamp = _getLastBlockTimestamp();
+    ( , int24 currentTick, , ) = _getPoolState();
+    uint32 lastBlockTimestamp = _getLastBlockTimestamp();
 
-      int24 slowTwapTick = _getTwapTick(slowTwapPeriod);
-      int24 fastTwapTick = _getTwapTick(fastTwapPeriod);
+    int24 slowTwapTick = _getTwapTick(slowTwapPeriod);
+    int24 fastTwapTick = _getTwapTick(fastTwapPeriod);
 
-      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
-    }
+    _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
 
     return IAlgebraPlugin.afterSwap.selector;
   }

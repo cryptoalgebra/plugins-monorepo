@@ -215,7 +215,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
         if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
-        require(gasleft() >= 1000000, 'Not enough gas left');
+        require(gasleft() >= 1600000, 'Not enough gas left');
         try IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
           lastRebalanceTimestamp = _blockTimestamp();
           lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;

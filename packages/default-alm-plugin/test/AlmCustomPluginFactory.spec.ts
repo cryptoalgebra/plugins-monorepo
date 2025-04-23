@@ -7,7 +7,7 @@ import { algebraCoreFixture } from 'test-utils/externalFixtures';
 import { DefaultAlmCustomPluginFactory } from '../typechain';
 import { AlgebraFactory } from '@cryptoalgebra/integral-core/typechain';
 
-describe('AlmPluginCustomPluginFactory', () => {
+describe('AlmCustomPluginFactory', () => {
   let wallet: Wallet, other: Wallet;
 
   let factory: AlgebraFactory;

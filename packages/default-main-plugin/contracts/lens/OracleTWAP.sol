@@ -2,7 +2,7 @@
 pragma solidity =0.8.20;
 pragma abicoder v1;
 
-import '../interfaces/IAlgebraDefaultPluginFactory.sol';
+import '../interfaces/IDefaultMainPluginFactory.sol';
 import '../interfaces/IOracleTWAP.sol';
 
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/interfaces/IVolatilityOracle.sol';
@@ -65,7 +65,7 @@ contract OracleTWAP is IOracleTWAP {
   }
 
   function _getPluginForPool(address pool) internal view returns (address) {
-    address pluginAddress = IAlgebraDefaultPluginFactory(pluginFactory).pluginByPool(pool);
+    address pluginAddress = IDefaultMainPluginFactory(pluginFactory).pluginByPool(pool);
     require(pluginAddress != address(0), 'Oracle does not exist');
     return pluginAddress;
   }

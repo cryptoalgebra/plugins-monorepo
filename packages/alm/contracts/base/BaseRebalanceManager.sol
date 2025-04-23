@@ -70,6 +70,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   }
 
   address public vault;
+  address public manager;
   bool public paused;
   bool public allowToken1;
   State public state;
@@ -170,6 +171,11 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     emit SetVault(_vault);
   }
 
+  function setManager(address _manager) external {
+    _authorize();
+    manager = _manager;
+  }
+
   function unpause() external {
     _authorize();
     require(paused, 'Already unpaused');
@@ -177,53 +183,47 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     emit Unpaused();
   }
 
-  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
-    require(msg.sender == IAlgebraPool(pool).plugin(), 'Should only called by plugin');
-    if (vault == address(0)) return;
+  function getRebalanceRanges(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
+    require(msg.sender == manager, 'Should only called by plugin');
+    if (vault == address(0)) revert('Vault address is zero address');
     TwapResult memory twapResult = _obtainTWAPs(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
     _rebalance(twapResult);
   }
 
   function _rebalance(TwapResult memory obtainTWAPsResult) internal {
-    if (paused) return;
-    if (obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit == 0) return;
+    if (paused) revert('Paused');
+    if (obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit == 0) revert('Total amounts are 0');
     if (
       obtainTWAPsResult.currentPriceAccountingDecimals == 0 ||
       obtainTWAPsResult.slowAvgPriceAccountingDecimals == 0 ||
       obtainTWAPsResult.fastAvgPriceAccountingDecimals == 0
-    ) return;
+    ) revert('Average price is 0');
 
     (DecideStatus decideStatus, State newState) = _decideRebalance(obtainTWAPsResult);
 
-    if (decideStatus == DecideStatus.NoNeed || decideStatus == DecideStatus.TooSoon) return;
+    if (decideStatus == DecideStatus.NoNeed || decideStatus == DecideStatus.TooSoon) revert('No need or too soon');
 
     if (decideStatus != DecideStatus.NoNeedWithPending) {
       if (decideStatus != DecideStatus.ExtremeVolatility) {
         Ranges memory ranges;
         if (decideStatus == DecideStatus.Normal) {
-          if (
-            obtainTWAPsResult.currentPriceAccountingDecimals == 0 ||
-            obtainTWAPsResult.totalDepositToken == 0 ||
-            (newState == State.Normal &&
+          if (obtainTWAPsResult.currentPriceAccountingDecimals == 0) revert('current price is zero');
+          if (obtainTWAPsResult.totalDepositToken == 0) revert('Total deposit token is zero');
+          if (newState == State.Normal &&
               obtainTWAPsResult.totalPairedInDeposit <=
-              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
-          ) return;
+              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct)) revert('Not enough deposit tokens');
           ranges = _getRangesWithState(newState, obtainTWAPsResult);
         } else {
           ranges = _getRangesWithoutState(obtainTWAPsResult);
         }
 
-        if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
+        if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) revert('Positions are too narrow');
 
         require(gasleft() >= 1600000, 'Not enough gas left');
-        try IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
-          lastRebalanceTimestamp = _blockTimestamp();
-          lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
-          state = newState;
-        } catch {
-          state = State.Special;
-          _pause();
-        }
+        lastRebalanceTimestamp = _blockTimestamp();
+        lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
+        state = newState;
+        emit RebalanceRanges(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper);
       } else {
         IAlgebraVault(vault).setDepositMax(0, 0);
         state = State.Special;

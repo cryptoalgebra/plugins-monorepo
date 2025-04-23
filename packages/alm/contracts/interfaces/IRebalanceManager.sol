@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 interface IRebalanceManager {
+	event RebalanceRanges(int24 baseLower, int24 baseUpper, int24 limitLower, int24 limitUpper);
 	event SetPriceChangeThreshold(uint16 priceChangeThreshold);
 	event SetPercentages(uint16 baseLowPct, uint16 baseHighPct, uint16 limitReservePct);
 	event SetTriggers(uint16 simulate, uint16 normalThreshold, uint16 underInventoryThreshold, uint16 overInventoryThreshold);
@@ -15,7 +16,7 @@ interface IRebalanceManager {
 	event Paused();
 	event Unpaused();
 
-	function obtainTWAPAndRebalance(
+	function getRebalanceRanges(
 		int24 currentTick,
         int24 slowTwapTick,
         int24 fastTwapTick,

@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { MockFactory, MockPool, MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, AlgebraDefaultPluginFactory } from '../../typechain';
+import { MockFactory, MockPool, MockTimeDefaultMainPlugin, MockTimeDSFactory, DefaultMainPluginFactory } from '../../typechain';
 
 type Fixture<T> = () => Promise<T>;
 interface MockFactoryFixture {
@@ -15,14 +15,13 @@ async function mockFactoryFixture(): Promise<MockFactoryFixture> {
 }
 
 interface PluginFixture extends MockFactoryFixture {
-  plugin: MockTimeAlgebraDefaultPlugin
+  plugin: MockTimeDefaultMainPlugin
   mockPluginFactory: MockTimeDSFactory
   mockPool: MockPool;
 }
 
 export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<PluginFixture> {
   const { mockFactory } = await mockFactoryFixture();
-  //const { token0, token1, token2 } = await tokensFixture()
 
   const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
   const mockPluginFactory = (await mockPluginFactoryFactory.deploy(mockFactory)) as any as MockTimeDSFactory;
@@ -33,8 +32,8 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   await mockPluginFactory.beforeCreatePoolHook(mockPool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
   const pluginAddress = await mockPluginFactory.pluginByPool(mockPool);
 
-  const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraDefaultPlugin');
-  const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraDefaultPlugin;
+  const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeDefaultMainPlugin');
+  const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeDefaultMainPlugin;
 
   return {
     plugin,
@@ -45,14 +44,14 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
 };
 
 interface PluginFactoryFixture extends MockFactoryFixture {
-  pluginFactory: AlgebraDefaultPluginFactory;
+  pluginFactory: DefaultMainPluginFactory;
 }
 
 export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async function (): Promise<PluginFactoryFixture> {
   const { mockFactory } = await mockFactoryFixture();
 
-  const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
-  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as AlgebraDefaultPluginFactory;
+  const pluginFactoryFactory = await ethers.getContractFactory('DefaultMainPluginFactory');
+  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as DefaultMainPluginFactory;
 
   return {
     pluginFactory,

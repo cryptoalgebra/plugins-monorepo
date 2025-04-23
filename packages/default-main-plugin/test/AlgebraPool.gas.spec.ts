@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
-import { MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockTimeDefaultMainPlugin, MockTimeDSFactory } from '../typechain';
 import { expect } from 'test-utils/expect';
 
 import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
@@ -48,8 +48,8 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
     const pluginAddress = await mockPluginFactory.pluginByPool(pool);
 
-    const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraDefaultPlugin');
-    const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraDefaultPlugin;
+    const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeDefaultMainPlugin');
+    const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeDefaultMainPlugin;
 
     await pool.setPlugin(plugin);
 
@@ -65,8 +65,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       pool,
     });
 
-    const virtualPoolMockFactory = await ethers.getContractFactory('MockTimeVirtualPool');
-    const virtualPoolMock = (await virtualPoolMockFactory.deploy()) as any as MockTimeVirtualPool;
 
     await pool.initialize(encodePriceSqrt(1, 1));
     await pool.setCommunityVault(wallet.address);
@@ -84,7 +82,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       advanceTime,
       pool,
       plugin,
-      virtualPoolMock,
       mockPluginFactory,
       swapExact0For1,
       swapExact1For0,
@@ -98,8 +95,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let swapExact1For0: SwapFunction;
   let swapToHigherPrice: SwapToPriceFunction;
   let pool: MockTimeAlgebraPool;
-  let plugin: MockTimeAlgebraDefaultPlugin;
-  let virtualPoolMock: MockTimeVirtualPool;
+  let plugin: MockTimeDefaultMainPlugin;
   let mockPluginFactory: MockTimeDSFactory;
   let mint: MintFunction;
   let advanceTime: any;
@@ -122,7 +118,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       };
 
       beforeEach('load the fixture', async () => {
-        ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, virtualPoolMock, mockPluginFactory, mint, swapToHigherPrice } =
+        ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, mockPluginFactory, mint, swapToHigherPrice } =
           await loadFixture(gasTestCommunityFeeFixture));
       });
 
@@ -154,20 +150,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
             expect((await pool.globalState()).tick).to.eq(startingTick);
           });
 
-          it('first swap in block with no tick movement, static fee', async () => {
-            await plugin.changeFeeConfiguration({
-              alpha1: 0,
-              alpha2: 0,
-              beta1: 0,
-              beta2: 0,
-              gamma1: 1,
-              gamma2: 1,
-              baseFee: 100,
-            });
-            await snapshotGasCost(swapExact0For1(2000, wallet.address));
-            expect((await pool.globalState()).price).to.not.eq(startingPrice);
-            expect((await pool.globalState()).tick).to.eq(startingTick);
-          });
 
           it('first swap in block moves tick, no initialized crossings', async () => {
             await snapshotGasCost(swapExact0For1(expandTo18Decimals(1) / 10000n, wallet.address));
@@ -190,7 +172,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
 
           it('first swap in block, large swap, no initialized crossings', async () => {
             await snapshotGasCost(swapExact0For1(expandTo18Decimals(10), wallet.address));
-            expect((await pool.globalState()).tick).to.eq(-35586);
+            expect((await pool.globalState()).tick).to.eq(-35829);
           });
 
           it('first swap in block, large swap crossing several initialized ticks', async () => {
@@ -285,37 +267,13 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
           });
         });
 
-        describe('farming connected', async () => {
-          beforeEach('connect virtual pool', async () => {
-            await mockPluginFactory.setFarmingAddress(wallet);
-            await plugin.connect(wallet).setIncentive(virtualPoolMock);
-          });
-
-          it('first swap in block with no tick movement', async () => {
-            await snapshotGasCost(swapExact1For0(2000, wallet.address));
-            expect((await pool.globalState()).price).to.not.eq(startingPrice);
-            expect((await pool.globalState()).tick).to.eq(startingTick);
-          });
-
-          it('first swap in block moves tick, no initialized crossings', async () => {
-            await snapshotGasCost(swapExact1For0(expandTo18Decimals(1) / 10000n, wallet.address));
-            expect((await pool.globalState()).tick).to.eq(startingTick + 1);
-          });
-
-          it('second swap in block with no tick movement', async () => {
-            await swapExact1For0(expandTo18Decimals(1) / 10000n, wallet.address);
-            expect((await pool.globalState()).tick).to.eq(startingTick + 1);
-            await snapshotGasCost(swapExact1For0(2000, wallet.address));
-            expect((await pool.globalState()).tick).to.eq(startingTick + 1);
-          });
-        });
       });
     });
   }
 
   describe('Positions', function () {
     beforeEach('load inner fixture', async () => {
-      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, virtualPoolMock, mockPluginFactory, mint, swapToHigherPrice } = await loadFixture(
+      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, mockPluginFactory, mint, swapToHigherPrice } = await loadFixture(
         gasTestFixture
       ));
     });
@@ -465,29 +423,14 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     };
 
     beforeEach('load inner fixture', async () => {
-      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, virtualPoolMock, mockPluginFactory, mint, swapToHigherPrice } = await loadFixture(
+      ({ advanceTime, swapExact0For1, swapExact1For0, pool, plugin, mockPluginFactory, mint, swapToHigherPrice } = await loadFixture(
         filledStorageFixture
       ));
     });
 
     describe('swaps', async () => {
-      for (const isDynamicFee of [true, false]) {
+      for (const isDynamicFee of [false]) {
         describe(isDynamicFee ? 'dynamic fee' : 'static fee', async () => {
-          beforeEach(async () => {
-            if (!isDynamicFee) {
-              await plugin.changeFeeConfiguration({
-                alpha1: 0,
-                alpha2: 0,
-                beta1: 0,
-                beta2: 0,
-                gamma1: 1,
-                gamma2: 1,
-                baseFee: 100,
-              });
-              await advanceTime(15);
-              await swapExact0For1(1000, wallet.address);
-            }
-          });
 
           it('small swap with filled volatilityOracle', async () => {
             await advanceTime(15);

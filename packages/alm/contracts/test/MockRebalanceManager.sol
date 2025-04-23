@@ -18,9 +18,10 @@ contract MockRebalanceManager is RebalanceManager {
 
   constructor(
     address _vault,
+    address _manager,
     uint32 _minTimeBetweenRebalances,
     Thresholds memory _thresholds
-  ) RebalanceManager(_vault, _minTimeBetweenRebalances, _thresholds) {}
+  ) RebalanceManager(_vault, _manager, _minTimeBetweenRebalances, _thresholds) {}
 
   function setTokens(address _depositToken, address _pairedToken) public {
     (depositToken, pairedToken) = (_depositToken, _pairedToken);

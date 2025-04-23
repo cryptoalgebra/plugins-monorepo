@@ -4,10 +4,12 @@ pragma solidity =0.8.20;
 import './base/BaseRebalanceManager.sol';
 
 contract RebalanceManager is BaseRebalanceManager {
-  constructor(address _vault, uint32 _minTimeBetweenRebalances, Thresholds memory _thresholds) {
+  constructor(address _vault, address _manager, uint32 _minTimeBetweenRebalances, Thresholds memory _thresholds) {
     require(_vault != address(0), 'Invalid vault address');
+    require(_manager != address(0), 'Invalid manager address');
     paused = false;
     vault = _vault;
+    manager = _manager;
     pool = IAlgebraVault(vault).pool();
     factory = IAlgebraPool(pool).factory();
 

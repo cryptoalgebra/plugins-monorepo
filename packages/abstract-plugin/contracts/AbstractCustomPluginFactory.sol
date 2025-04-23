@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoolEntryPoint.sol';
 import './interfaces/ICustomPluginFactory.sol';
 
+/// @title Algebra Integral abstract plugin for Custom Plugin Factories
 abstract contract AbstractCustomPluginFactory is ICustomPluginFactory {
   address public immutable override entryPoint;
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity ^0.8.20;
 
 import './AbstractPlugin.sol';
 
-/// @title Algebra's internal Integral 1.2.1 plugin base
+/// @title Algebra's internal Integral 1.2.1 abstract plugin for `Base` plugins
 /// @notice This contract inherits AbstractPlugin
 abstract contract BaseAbstractPlugin is AbstractPlugin {
   address internal immutable factory;

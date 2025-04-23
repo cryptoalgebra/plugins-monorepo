@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// TODO: change to 0.8^
-pragma solidity =0.8.20;
+pragma solidity ^0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/base/common/Timestamp.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';

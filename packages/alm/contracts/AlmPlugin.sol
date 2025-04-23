@@ -46,12 +46,12 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
     rebalanceManager = _rebalanceManager;
   }
 
-  function getRebalanceRages(
+  function getRebalanceRanges(
     int24 currentTick,
     int24 slowTwapTick,
     int24 fastTwapTick,
     uint32 lastBlockTimestamp
   ) internal {
-    IRebalanceManager(rebalanceManager).getRebalanceRages(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+    IRebalanceManager(rebalanceManager).getRebalanceRanges(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
   }
 }

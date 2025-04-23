@@ -16,7 +16,7 @@ interface IRebalanceManager {
 	event Paused();
 	event Unpaused();
 
-	function getRebalanceRages(
+	function getRebalanceRanges(
 		int24 currentTick,
         int24 slowTwapTick,
         int24 fastTwapTick,

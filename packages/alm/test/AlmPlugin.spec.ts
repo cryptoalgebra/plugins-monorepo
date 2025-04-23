@@ -1,6 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
-import { AlmPluginTest, MockVault } from '../typechain';;
+import { AlmPluginTest, MockVault } from '../typechain';
 import { ZERO_ADDRESS } from 'test-utils/consts';
 import { rebalances } from "./almRebalances.json";
 import { rebalances3 } from "./almRebalances3.json";

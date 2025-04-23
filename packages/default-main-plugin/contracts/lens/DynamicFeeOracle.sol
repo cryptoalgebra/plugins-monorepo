@@ -48,12 +48,12 @@ contract DynamicFeeOracle is Ownable, IDynamicFeeOracle {
     override
     returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
   {
-    return _getFeeConfiguration(oracle);
+    return _parseConfig(_getFeeConfiguration(oracle));
   }
 
   /// @inheritdoc IDynamicFeeOracle
   function getCurrentFee(address oracle) external view returns (uint16 fee) {
-    AlgebraFeeConfigurationU144 feeConfig = _feeConfigs[oracle];
+    AlgebraFeeConfigurationU144 feeConfig = _getFeeConfiguration(oracle);
     if (feeConfig.alpha1() | feeConfig.alpha2() == 0) return feeConfig.baseFee();
     uint88 volatilityAverage = IDefaultMainPlugin(oracle).getAverageVolatilityLast();
 
@@ -63,13 +63,13 @@ contract DynamicFeeOracle is Ownable, IDynamicFeeOracle {
   function _getFeeConfiguration(address oracle)
     private
     view
-    returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
+    returns (AlgebraFeeConfigurationU144)
   {
     AlgebraFeeConfigurationU144 feeConfig = _feeConfigs[oracle];
     if(feeConfig.gamma1() == 0){
-      return _parseConfig(_defaultFeeConfig);
+      return _defaultFeeConfig;
     } else {
-      return _parseConfig(feeConfig);
+      return feeConfig;
     }
   }
 

@@ -151,9 +151,9 @@ export const algebraCoreFixture: () => Promise<algebraDeployFixture> = async () 
   const entrypointFactory = await ethers.getContractFactory(ENTRYPOINT_ABI, ENTRYPOINT_BYTECODE);
   const entryPoint = await entrypointFactory.deploy(factory) as any as AlgebraCustomPoolEntryPoint;
   
-  let customPluginFactoryRole = await factory.CUSTOM_POOL_DEPLOYER()
+  let customPoolDeployerRole = await factory.CUSTOM_POOL_DEPLOYER()
   let poolAdministratorRole = await factory.POOLS_ADMINISTRATOR_ROLE()
-  await factory.grantRole(customPluginFactoryRole, await entryPoint.getAddress());
+  await factory.grantRole(customPoolDeployerRole, await entryPoint.getAddress());
   await factory.grantRole(poolAdministratorRole, await entryPoint.getAddress());
 
   return {

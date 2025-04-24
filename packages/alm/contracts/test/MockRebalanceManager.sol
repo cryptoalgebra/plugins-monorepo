@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-import '../RebalanceManager.sol';
+import '../RebalanceManagerOracle.sol';
 
-contract MockRebalanceManager is RebalanceManager {
+contract MockRebalanceManager is RebalanceManagerOracle {
   event MockUpdateStatus(bool needToRebalance, State newState);
   event MockDecideRebalance(DecideStatus decideStatus, State newState);
 
@@ -21,7 +21,7 @@ contract MockRebalanceManager is RebalanceManager {
     address _manager,
     uint32 _minTimeBetweenRebalances,
     Thresholds memory _thresholds
-  ) RebalanceManager(_vault, _manager, _minTimeBetweenRebalances, _thresholds) {}
+  ) RebalanceManagerOracle(_vault, _manager, _minTimeBetweenRebalances, _thresholds) {}
 
   function setTokens(address _depositToken, address _pairedToken) public {
     (depositToken, pairedToken) = (_depositToken, _pairedToken);

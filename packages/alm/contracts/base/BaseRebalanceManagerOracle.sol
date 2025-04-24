@@ -8,13 +8,17 @@ import '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 import '@cryptoalgebra/integral-core/contracts/base/common/Timestamp.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracleInteractions.sol';
+import '@cryptoalgebra/volatility-oracle-plugin/contracts/interfaces/IVolatilityOracle.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
-import '../interfaces/IRebalanceManager.sol';
+import '../interfaces/IRebalanceManagerOracle.sol';
+import '../interfaces/IAlmPlugin.sol';
 
-abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
+abstract contract BaseRebalanceManagerOracle is IRebalanceManagerOracle, Timestamp {
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
   struct TwapResult {
@@ -183,7 +187,21 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     emit Unpaused();
   }
 
-  function getRebalanceRanges(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
+  function getRebalanceRanges() external {
+    (, int24 currentTick, , , , ) = IAlgebraPool(pool).globalState();
+    address plugin = IBasePluginFactory(address(IAlgebraFactory(factory).defaultPluginFactory())).pluginByPool(pool);
+    uint32 lastBlockTimestamp = IVolatilityOracle(plugin).lastTimepointTimestamp();
+
+    uint32 slowTwapPeriod = IAlmPlugin(plugin).slowTwapPeriod();
+    uint32 fastTwapPeriod = IAlmPlugin(plugin).fastTwapPeriod();
+
+    int24 slowTwapTick = VolatilityOracleInteractions.consult(plugin, slowTwapPeriod);
+    int24 fastTwapTick = VolatilityOracleInteractions.consult(plugin, fastTwapPeriod);
+
+    _getRebalanceRanges(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+  }
+
+  function _getRebalanceRanges(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) internal {
     require(msg.sender == manager, 'Should only called by plugin');
     if (vault == address(0)) revert('Vault address is zero address');
     TwapResult memory twapResult = _obtainTWAPs(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);

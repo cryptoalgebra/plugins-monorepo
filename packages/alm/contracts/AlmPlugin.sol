@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 import './interfaces/IAlmPlugin.sol';
-import './interfaces/IRebalanceManager.sol';
+import './interfaces/IRebalanceManagerOracle.sol';
 
 
 abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
@@ -46,12 +46,7 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
     rebalanceManager = _rebalanceManager;
   }
 
-  function getRebalanceRanges(
-    int24 currentTick,
-    int24 slowTwapTick,
-    int24 fastTwapTick,
-    uint32 lastBlockTimestamp
-  ) internal {
-    IRebalanceManager(rebalanceManager).getRebalanceRanges(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+  function getRebalanceRanges() internal {
+    IRebalanceManagerOracle(rebalanceManager).getRebalanceRanges();
   }
 }

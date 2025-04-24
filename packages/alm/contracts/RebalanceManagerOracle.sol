@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import './base/BaseRebalanceManager.sol';
+import './base/BaseRebalanceManagerOracle.sol';
 
-contract RebalanceManager is BaseRebalanceManager {
+contract RebalanceManagerOracle is BaseRebalanceManagerOracle {
   constructor(address _vault, address _manager, uint32 _minTimeBetweenRebalances, Thresholds memory _thresholds) {
     require(_vault != address(0), 'Invalid vault address');
     require(_manager != address(0), 'Invalid manager address');

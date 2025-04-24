@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-import '../base/BaseRebalanceManager.sol';
+import '../base/BaseRebalanceManagerOracle.sol';
 
-contract AlmPluginTest is BaseRebalanceManager {
+contract AlmPluginTest is BaseRebalanceManagerOracle {
   uint256 public depositTokenBalance;
   uint256 public slowPrice;
   uint256 public fastPrice;

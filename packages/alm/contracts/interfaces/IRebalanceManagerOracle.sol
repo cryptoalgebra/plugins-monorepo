@@ -16,5 +16,5 @@ interface IRebalanceManagerOracle {
 	event Paused();
 	event Unpaused();
 
-	function getRebalanceRanges() external;
+	function getRebalanceRanges(uint32 slowTwapPeriod, uint32 fastTwapPeriod) external;
 }

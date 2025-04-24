@@ -47,6 +47,6 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
   }
 
   function getRebalanceRanges() internal {
-    IRebalanceManagerOracle(rebalanceManager).getRebalanceRanges();
+    IRebalanceManagerOracle(rebalanceManager).getRebalanceRanges(slowTwapPeriod, fastTwapPeriod);
   }
 }

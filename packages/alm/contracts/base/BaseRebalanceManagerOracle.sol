@@ -10,13 +10,11 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracleInteractions.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/interfaces/IVolatilityOracle.sol';
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
 import '../interfaces/IRebalanceManagerOracle.sol';
-import '../interfaces/IAlmPlugin.sol';
 
 abstract contract BaseRebalanceManagerOracle is IRebalanceManagerOracle, Timestamp {
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
@@ -187,13 +185,10 @@ abstract contract BaseRebalanceManagerOracle is IRebalanceManagerOracle, Timesta
     emit Unpaused();
   }
 
-  function getRebalanceRanges() external {
+  function getRebalanceRanges(uint32 slowTwapPeriod, uint32 fastTwapPeriod) external {
     (, int24 currentTick, , , , ) = IAlgebraPool(pool).globalState();
-    address plugin = IBasePluginFactory(address(IAlgebraFactory(factory).defaultPluginFactory())).pluginByPool(pool);
+    address plugin = IAlgebraPool(pool).plugin();
     uint32 lastBlockTimestamp = IVolatilityOracle(plugin).lastTimepointTimestamp();
-
-    uint32 slowTwapPeriod = IAlmPlugin(plugin).slowTwapPeriod();
-    uint32 fastTwapPeriod = IAlmPlugin(plugin).fastTwapPeriod();
 
     int24 slowTwapTick = VolatilityOracleInteractions.consult(plugin, slowTwapPeriod);
     int24 fastTwapTick = VolatilityOracleInteractions.consult(plugin, fastTwapPeriod);

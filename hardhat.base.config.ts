@@ -109,6 +109,11 @@ export default {
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    base: {
+      url: `https://mainnet.base.org`,
+      chainId: 8453,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    }
   },
   etherscan: {
     // Your API key for Etherscan
@@ -155,6 +160,14 @@ export default {
           browserURL: 'https://artio.beratrail.io/',
         },
       },
+      {
+        network: 'base',
+        chainId: 8453,
+        urls: {
+          apiURL: 'https://api.basescan.org/api',
+          browserURL: 'https://basescan.org/',
+        },
+      }
     ],
   },
 };

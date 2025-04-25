@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-interface IRebalanceManager {
+interface IRebalanceManagerOracle {
 	event RebalanceRanges(int24 baseLower, int24 baseUpper, int24 limitLower, int24 limitUpper);
 	event SetPriceChangeThreshold(uint16 priceChangeThreshold);
 	event SetPercentages(uint16 baseLowPct, uint16 baseHighPct, uint16 limitReservePct);
@@ -16,10 +16,5 @@ interface IRebalanceManager {
 	event Paused();
 	event Unpaused();
 
-	function getRebalanceRanges(
-		int24 currentTick,
-        int24 slowTwapTick,
-        int24 fastTwapTick,
-        uint32 lastBlockTimestamp
-	) external;
+	function getRebalanceRanges(uint32 slowTwapPeriod, uint32 fastTwapPeriod) external;
 }

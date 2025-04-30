@@ -1,7 +1,6 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-const vault = "0x1487d907247e6e1bCfb6C73B193c74a16266368C"; 
-const manager = "0x1bE766fDf60b8BdE341f36611317FbEb9a361aee";
+const vault = "0x1487d907247e6e1bcfb6c73b193c74a16266368c"; 
 const minTimeBetweenRebalances = 600;
 
 // struct Thresholds {
@@ -36,8 +35,8 @@ const thresholds = [
 	500
 ];
 
-export default buildModule("RebalanceManagerOracle", (m) => {
-  const rebalanceManagerOracle = m.contract("RebalanceManagerOracle", [vault, manager, minTimeBetweenRebalances, thresholds]);
+export default buildModule("RebalanceManager", (m) => {
+  const rebalanceManagerOracle = m.contract("RebalanceManager", [vault, minTimeBetweenRebalances, thresholds]);
 
   return { rebalanceManagerOracle };
 });

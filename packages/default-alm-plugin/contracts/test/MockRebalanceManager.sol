@@ -22,6 +22,10 @@ contract MockRebalanceManager is RebalanceManager {
     Thresholds memory _thresholds
   ) RebalanceManager(_vault, _minTimeBetweenRebalances, _thresholds) {}
 
+  function validateThresholds(Thresholds memory _thresholds) public pure {
+    _validateThresholds(_thresholds);
+  }
+
   function setTokens(address _depositToken, address _pairedToken) public {
     (depositToken, pairedToken) = (_depositToken, _pairedToken);
   }

@@ -35,6 +35,21 @@ describe('DefaultAlmPlugin', () => {
   let mockPool: MockPool; // mock of AlgebraPool
   let mockFactory: MockFactory;
 
+  const DEFAULT_THRESHOLDS = {
+    depositTokenUnusedThreshold: 100,
+    simulate: 9400, // было 9300
+    normalThreshold: 8100, // было 8000
+    underInventoryThreshold: 7800, // было 7700
+    overInventoryThreshold: 9100,
+    priceChangeThreshold: 50,
+    extremeVolatility: 2500,
+    highVolatility: 900, // было 500
+    someVolatility: 200, // было 100
+    dtrDelta: 300,
+    baseLowPct: 3000, // было 2000
+    baseHighPct: 1500, // было 3000
+    limitReservePct: 500,
+  }
 
   async function initializeAtZeroTick(pool: MockPool) {
     await pool.initialize(encodePriceSqrt(1, 1));
@@ -47,27 +62,11 @@ describe('DefaultAlmPlugin', () => {
   // сделал отдельной фикстурой, потому что сначала пул должен проинициализироваться
   // потом уже должен деплоиться rebalanceManager, потому что он в конструкторе достает из пула tickSpacing
   async function deployAndSetRebalanceManager() {
-      const thresholds = {
-        depositTokenUnusedThreshold: 100,
-        simulate: 9400, // было 9300
-        normalThreshold: 8100, // было 8000
-        underInventoryThreshold: 7800, // было 7700
-        overInventoryThreshold: 9100,
-        priceChangeThreshold: 50,
-        extremeVolatility: 2500,
-        highVolatility: 900, // было 500
-        someVolatility: 200, // было 100
-        dtrDelta: 300,
-        baseLowPct: 3000, // было 2000
-        baseHighPct: 1500, // было 3000
-        limitReservePct: 500,
-      }
-
       const rebalanceManagerFactory = await ethers.getContractFactory('MockRebalanceManager');
       rebalanceManager = (await rebalanceManagerFactory.deploy(
         await mockVault.getAddress(),
         7200,
-        thresholds,
+        DEFAULT_THRESHOLDS,
       )) as any as MockRebalanceManager;
 
       await plugin.setRebalanceManager(rebalanceManager);
@@ -564,6 +563,87 @@ describe('DefaultAlmPlugin', () => {
       await deployAndSetRebalanceManager();
     });
 
+    describe('validate thresholds', () => {
+      it('should revert with invalid price change threshold', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, priceChangeThreshold: 10000 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('Invalid price change threshold');
+      });
+    
+      it('should revert with invalid base low percent', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, baseLowPct: 0 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('Invalid base low percent');
+      });
+    
+      it('should revert with invalid base high percent', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, baseHighPct: 0 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('Invalid base high percent');
+      });
+    
+      it('should revert with invalid limit reserve percent', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, limitReservePct: 0 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('Invalid limit reserve percent');
+      });
+    
+      it('should revert if _underInventoryThreshold <= 6000', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, underInventoryThreshold: 6000 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_underInventoryThreshold must be > 6000');
+      });
+    
+      it('should revert if _normalThreshold <= _underInventoryThreshold', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, underInventoryThreshold: 7000, normalThreshold: 7000 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_normalThreshold must be > _underInventoryThreshold');
+      });
+    
+      it('should revert if _overInventoryThreshold <= _normalThreshold', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, normalThreshold: 8000, overInventoryThreshold: 8000 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_overInventoryThreshold must be > _normalThreshold');
+      });
+    
+      it('should revert if simulate <= _overInventoryThreshold', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, overInventoryThreshold: 8500, simulate: 8500 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('Simulate must be > _overInventoryThreshold');
+      });
+    
+      it('should revert if simulate >= stopThresholdBps', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, stopThresholdBps: 9500, simulate: 9500 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('Simulate must be < 9500');
+      });
+    
+      it('should revert if _dtrDelta > 10000', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, dtrDelta: 10001 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_dtrDelta must be <= 10000');
+      });
+    
+      it('should revert if highVolatility < someVolatility', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, someVolatility: 300, highVolatility: 299 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_highVolatility must be >= someVolatility');
+      });
+    
+      it('should revert if extremeVolatility < highVolatility', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, highVolatility: 400, extremeVolatility: 399 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_extremeVolatility must be >= highVolatility');
+      });
+    
+      it('should revert if depositTokenUnusedThreshold < 100', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, depositTokenUnusedThreshold: 99 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000');
+      });
+    
+      it('should revert if depositTokenUnusedThreshold > 10000', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, depositTokenUnusedThreshold: 10001 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000');
+      });
+
+      it('should revert if someVolatility > 300', async () => {
+        const t = { ...DEFAULT_THRESHOLDS, someVolatility: 301 };
+        await expect(rebalanceManager.validateThresholds(t)).to.be.revertedWith('_someVolatility must be <= 300');
+      });
+    
+      it('should pass with valid thresholds', async () => {
+        await rebalanceManager.validateThresholds(DEFAULT_THRESHOLDS);
+      });
+    });    
+
     describe('setters', () => {
       before('prepare signers', async () => {
         [wallet, other] = await (ethers as any).getSigners();
@@ -572,6 +652,11 @@ describe('DefaultAlmPlugin', () => {
       beforeEach('grant role', async () => {
         await mockFactory.grantRole(await rebalanceManager.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet);
         expect(await mockFactory.hasRoleOrOwner(await rebalanceManager.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet)).to.be.equals(true);
+      });
+
+      it('should revert for unauthorized address', async () => {
+        const newVault = '0x1234567890123456789012345678901234567890';
+        await expect(rebalanceManager.connect(other).setVault(newVault)).to.be.reverted;
       });
 
       it('setPriceChangeThreshold', async () => {
@@ -718,412 +803,481 @@ describe('DefaultAlmPlugin', () => {
     const allowTokenCombos = [
       { allowToken1: false },
       { allowToken1: true },
-    ];    
-
-    allowTokenCombos.forEach(({allowToken1 }) => {
-      describe(`rebalances (allowToken1=${allowToken1})`, () => {
-        beforeEach(async () => {
-          await rebalanceManager.setAllowToken1(allowToken1);
-        });
-
-        it('first rebalance over -> over, pairedToken >= depositToken', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('first rebalance over -> over, pairedToken < depositToken', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await rebalanceManager.setTokens('0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000000');
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('over state no rebalance - some volatility', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('over state no rebalance - some volatility, pairedToken < depositToken', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await rebalanceManager.setTokens('0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000000');
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('under -> under', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(0n);
-          await rebalanceManager.setState(State.UnderInventory);
-          await setTotalAmounts(0n, 10000n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
-          await checkState(State.UnderInventory);
-        });
-
-        it('under state no rebalance - some volatility', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(0n);
-          await rebalanceManager.setState(State.UnderInventory);
-          await setTotalAmounts(0n, 10000n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.UnderInventory);
-          await checkState(State.UnderInventory);
-        });
-
-        it('over -> normal', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
-          await checkState(State.Normal);
-        });
-
-        it('over -> normal -> over', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal);
-          await checkState(State.Normal);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('over -> special, high volatility', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(2000)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Special, State.Special);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
-        });
-
-        it('over -> special, high volatility, rounded tick', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(2040)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Special, State.Special);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
-        });
-
-        it('no rebalance - extreme volatility', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(3000)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.ExtremeVolatility, State.Special);
-          await checkState(State.Special);
-        });
-
-        it('no rebalance - too soon', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await mockPool.swapToTick(100);
-          await checkState(State.Normal);
-          await plugin.advanceTime(1800);
-          await expect(mockPool.swapToTick(1000)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
-          await checkState(State.Normal);
-        });
-
-        it('no rebalance - volatility too low', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(250)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Normal);
-          await checkState(State.OverInventory);
-        });
-
-        it('no rebalance - percentageOfDepositTokenUnused too low', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          // await rebalanceManager.setDepositTokenBalance(0n);
-          await setTotalAmounts(9200n, 800n, allowToken1);
-          await plugin.advanceTime(3600);
-          await mockPool.swapToTick(10);
-          await checkState(State.Normal);
-
-          await plugin.advanceTime(7200);
-          await rebalanceManager.advanceTime(7200);
-
-          // await rebalanceManager.setState(1); // normal state
-          await expect(mockPool.swapToTick(11)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.NoNeedWithPending, State.Normal);
-          await checkState(State.Normal);
-        });
-
-        it('no rebalance - high volatility in the same block', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await rebalanceManager.advanceTime(3600);
-          await network.provider.send("evm_setAutomine", [false]);
-          // https://github.com/NomicFoundation/hardhat/issues/4090
-          await mockPool.swapToTick(1, { gasLimit: 2000000 });
-          const tx = await mockPool.swapToTick(2000, { gasLimit: 2000000 });
-          await network.provider.send("evm_mine");
-          await expect(tx).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
-          await checkState(State.Normal);
-          await network.provider.send("evm_setAutomine", [true]);
-        });
-
-        it('rebalance not triggered for low volatility', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Normal);
-          await checkState(State.OverInventory);
-        });
-
-        it('rebalance triggered for high volatility after time threshold', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(3600);
-          await mockPool.swapToTick(2000);
-          await checkState(State.Special);
-          await plugin.advanceTime(3600);
-          await expect(mockPool.swapToTick(10))
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.NoNeed, State.Special);
-          await checkState(State.Special);
-        });
-
-        it('over -> over -> normal', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-
-          await setTotalAmounts(8100n, 1900n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(10))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
-          await checkState(State.Normal);
-        });
-
-        it('over -> normal -> normal', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8100n, 1900n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(10)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
-          await checkState(State.Normal);
-
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(10))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
-          await checkState(State.Normal);
-        });
-
-        it('over -> under -> over', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(7500n, 2500n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
-          await checkState(State.UnderInventory);
-
-          await setTotalAmounts(9500n, 500n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(0))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.OverInventory)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('over -> under -> normal', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(7500n, 2500n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
-          await checkState(State.UnderInventory);
-
-          await setTotalAmounts(8100n, 1900n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(0))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
-          await checkState(State.Normal);
-        });
-
-        it('over -> over -> under', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-
-          await setTotalAmounts(7500n, 2500n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(0))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.UnderInventory)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
-          await checkState(State.UnderInventory);
-        });
-
-        it('over -> over -> current, priceChange < priceChangeThreshold', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-
-          await setTotalAmounts(9200n, 800n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(100))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.OverInventory)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
-          await checkState(State.OverInventory);
-        });
-
-        it('over -> normal -> under', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
-          await checkState(State.Normal);
-
-          await setTotalAmounts(7700n, 2300n, allowToken1);
-          await rebalanceManager.advanceTime(7200);
-          await plugin.advanceTime(7200);
-          await expect(mockPool.swapToTick(0))
-            .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.UnderInventory)
-            .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
-          await checkState(State.UnderInventory);
-        });
-
-        it('no rebalance - no vault, should pause', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await mockVault.setShouldRevertOnRebalance(true);
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(8000n, 2000n, allowToken1);
-          await plugin.advanceTime(5000);
-          await mockPool.swapToTick(0);
-          expect(await rebalanceManager.paused()).to.be.eq(true);
-          await checkState(State.Special);
-
-          await expect(mockPool.swapToTick(0)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
-          
-          await rebalanceManager.unpause();
-          expect(await rebalanceManager.paused()).to.be.eq(false);
-        });
-
-        it('no rebalance without rebalance manager', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await plugin.setRebalanceManager(ZERO_ADDRESS);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(0)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
-        });
-
-        it('no rebalance without vault', async () => {
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setVault(ZERO_ADDRESS);
-          
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(500_000, {gasLimit: 1_000_000})).not.to.emit(rebalanceManager, 'MockDecideRebalance');
-        });
-
-        it('no rebalance on extreme ticks', async () => {
-          initTick = 500_000;
-
-          await rebalanceManager.setDecimals(18, 18);
-          await plugin.initializeALM(rebalanceManager, 3600, 300);
-
-          await rebalanceManager.setDepositTokenBalance(10000n);
-          await setTotalAmounts(10000n, 0n, allowToken1);
-          await plugin.advanceTime(5000);
-          await expect(mockPool.swapToTick(500_000)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
-          await checkState(State.OverInventory);
-
-          initTick = 0;
+    ];
+
+    const defaultSwapToTickCombos = [
+      {defaultSwapToTick: 0},
+      {defaultSwapToTick: 1}
+    ]
+
+    defaultSwapToTickCombos.forEach(({ defaultSwapToTick }) => {
+      allowTokenCombos.forEach(({allowToken1 }) => {
+        describe(`rebalances (allowToken1=${allowToken1})`, () => {
+          beforeEach(async () => {
+            await rebalanceManager.setAllowToken1(allowToken1);
+          });
+
+          it('rebalance could call only plugin', async () => {
+            await expect(rebalanceManager.obtainTWAPAndRebalance(0n, 0n, 0n, 0n)).to.be.revertedWith('Should only called by plugin');
+          });
+
+          it('first rebalance over -> over, pairedToken >= depositToken', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('first rebalance with low percentageOfDepositToken', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+
+            await setTotalAmounts(1000n, 9000n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Special, State.Special);
+          });
+
+          it('first rebalance over -> over, pairedToken < depositToken', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await rebalanceManager.setTokens('0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000000');
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('over state no rebalance - some volatility', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('over state no rebalance - some volatility, pairedToken < depositToken', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await rebalanceManager.setTokens('0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000000');
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('under -> under', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(0n);
+            await rebalanceManager.setState(State.UnderInventory);
+            await setTotalAmounts(0n, 10000n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+          });
+
+          it('under state no rebalance - some volatility', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(0n);
+            await rebalanceManager.setState(State.UnderInventory);
+            await setTotalAmounts(0n, 10000n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.UnderInventory);
+            await checkState(State.UnderInventory);
+          });
+
+          it('over -> normal', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
+            await checkState(State.Normal);
+          });
+
+          it('over -> normal -> over', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal);
+            await checkState(State.Normal);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('over -> special, high volatility', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(2000)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Special, State.Special);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
+          });
+
+          it('over -> special, high volatility, rounded tick', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(2040)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Special, State.Special);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
+          });
+
+          it('no rebalance - extreme volatility', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(3000)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.ExtremeVolatility, State.Special);
+            await checkState(State.Special);
+          });
+
+          it('no rebalance - too soon', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await mockPool.swapToTick(100);
+            await checkState(State.Normal);
+            await plugin.advanceTime(1800);
+            await expect(mockPool.swapToTick(1000)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
+            await checkState(State.Normal);
+          });
+
+          it('no rebalance - volatility too low', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(250)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Normal);
+            await checkState(State.OverInventory);
+          });
+
+          it('no rebalance - percentageOfDepositTokenUnused too low', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            // await rebalanceManager.setDepositTokenBalance(0n);
+            await setTotalAmounts(9200n, 800n, allowToken1);
+            await plugin.advanceTime(3600);
+            await mockPool.swapToTick(defaultSwapToTick);
+            await checkState(State.Normal);
+
+            await plugin.advanceTime(7200);
+            await rebalanceManager.advanceTime(7200);
+
+            // await rebalanceManager.setState(1); // normal state
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.NoNeedWithPending, State.Normal);
+            await checkState(State.Normal);
+          });
+
+          it('no rebalance - high volatility in the same block', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await rebalanceManager.advanceTime(3600);
+            await network.provider.send("evm_setAutomine", [false]);
+            // https://github.com/NomicFoundation/hardhat/issues/4090
+            await mockPool.swapToTick(1, { gasLimit: 2000000 });
+            const tx = await mockPool.swapToTick(2000, { gasLimit: 2000000 });
+            await network.provider.send("evm_mine");
+            await expect(tx).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Special);
+            await checkState(State.Normal);
+            await network.provider.send("evm_setAutomine", [true]);
+          });
+
+          it('rebalance not triggered for low volatility', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(300)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.TooSoon, State.Normal);
+            await checkState(State.OverInventory);
+          });
+
+          it('rebalance triggered for high volatility after time threshold', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(3600);
+            await mockPool.swapToTick(2000);
+            await checkState(State.Special);
+            await plugin.advanceTime(3600);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.NoNeed, State.Special);
+            await checkState(State.Special);
+          });
+
+          it('over -> over -> normal', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+
+            await setTotalAmounts(8100n, 1900n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
+            await checkState(State.Normal);
+          });
+
+          it('over -> normal -> normal', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8100n, 1900n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
+            await checkState(State.Normal);
+
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
+            await checkState(State.Normal);
+          });
+
+          it('over -> under -> over', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(7500n, 2500n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+
+            await setTotalAmounts(9500n, 500n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.OverInventory)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('over -> under -> normal', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(7500n, 2500n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+
+            await setTotalAmounts(8100n, 1900n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.Normal)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
+            await checkState(State.Normal);
+          });
+
+          it('over -> under -> under', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(7500n, 2500n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.UnderInventory)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+          });
+
+          it('over -> over -> under', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+
+            await setTotalAmounts(7500n, 2500n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.UnderInventory)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+          });
+
+          it('over -> over -> current, priceChange < priceChangeThreshold', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+
+            await setTotalAmounts(9200n, 800n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(100))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.OverInventory)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.OverInventory);
+            await checkState(State.OverInventory);
+          });
+
+          it('over -> normal -> under', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.Normal);
+            await checkState(State.Normal);
+
+            await setTotalAmounts(7700n, 2300n, allowToken1);
+            await rebalanceManager.advanceTime(7200);
+            await plugin.advanceTime(7200);
+            await expect(mockPool.swapToTick(defaultSwapToTick))
+              .to.emit(rebalanceManager, 'MockUpdateStatus').withArgs(true, State.UnderInventory)
+              .to.emit(rebalanceManager, 'MockDecideRebalance').withArgs(DecideStatus.Normal, State.UnderInventory);
+            await checkState(State.UnderInventory);
+          });
+
+          it('no rebalance - no vault, should pause', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await mockVault.setShouldRevertOnRebalance(true);
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(8000n, 2000n, allowToken1);
+            await plugin.advanceTime(5000);
+            await mockPool.swapToTick(defaultSwapToTick);
+            expect(await rebalanceManager.paused()).to.be.eq(true);
+            await checkState(State.Special);
+
+            await expect(mockPool.swapToTick(defaultSwapToTick)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
+            
+            await rebalanceManager.unpause();
+            await expect(rebalanceManager.unpause()).to.be.revertedWith('Already unpaused');
+            expect(await rebalanceManager.paused()).to.be.eq(false);
+          });
+
+          it('no rebalance without rebalance manager', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await plugin.setRebalanceManager(ZERO_ADDRESS);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
+          });
+
+          it('no rebalance without vault', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setVault(ZERO_ADDRESS);
+            
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(defaultSwapToTick, {gasLimit: 1_000_000})).not.to.emit(rebalanceManager, 'MockDecideRebalance');
+          });
+
+          it('should revert with insufficient gas limit', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(0, {gasLimit: 1_000_000})).to.revertedWith('Not enough gas left');
+          });
+
+          it('should not rebalance with narrow positions', async () => {
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setPercentages(100n, 100n, 100n);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await mockPool.swapToTick(0);
+            expect(await rebalanceManager.lastRebalanceTimestamp()).to.be.equals(0n);
+          });
+
+          it('no rebalance on extreme ticks', async () => {
+            initTick = 500_000;
+
+            await rebalanceManager.setDecimals(18, 18);
+            await plugin.initializeALM(rebalanceManager, 3600, 300);
+
+            await rebalanceManager.setDepositTokenBalance(10000n);
+            await setTotalAmounts(10000n, 0n, allowToken1);
+            await plugin.advanceTime(5000);
+            await expect(mockPool.swapToTick(500_000)).not.to.emit(rebalanceManager, 'MockDecideRebalance');
+            await checkState(State.OverInventory);
+
+            initTick = 0;
+          });
         });
       });
     });

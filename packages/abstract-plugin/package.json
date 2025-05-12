@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "files": [
-    "contracts/**/*.sol",
-    "!contracts/BaseAbstractPlugin.sol"
+    "contracts/**/*.sol"
   ],
   "publishConfig": {
     "access": "public"

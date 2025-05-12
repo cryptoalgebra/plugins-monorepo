@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/safety-switch-plugin",
-  "version": "1.2.1",
+  "version": "1.0.0",
   "description": "",
   "scripts": {
     "compile": "npx hardhat compile",
@@ -11,7 +11,7 @@
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.2.5",
-    "@cryptoalgebra/integral-periphery": "^1.2.1",
+    "@cryptoalgebra/integral-periphery": "1.2.1",
     "@openzeppelin/contracts": "4.9.3"
   },
   "devDependencies": {

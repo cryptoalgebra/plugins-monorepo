@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/abstract-plugin",
-  "version": "1.2.1",
+  "version": "1.0.0",
   "description": "",
   "files": [
     "contracts/**/*.sol",
@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "@cryptoalgebra/integral-core": "1.2.5",
-    "@cryptoalgebra/integral-periphery": "^1.2.1"
+    "@cryptoalgebra/integral-periphery": "1.2.1"
   }
 }

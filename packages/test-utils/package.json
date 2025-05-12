@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@cryptoalgebra/integral-core": "1.2.5",
-    "@cryptoalgebra/integral-periphery": "^1.2.1",
+    "@cryptoalgebra/integral-periphery": "1.2.1",
     "@ethersproject/abstract-provider": "^5.8.0",
     "bignumber.js": "^9.2.1",
     "hardhat": "^2.22.19",

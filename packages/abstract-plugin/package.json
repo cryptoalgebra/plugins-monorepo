@@ -6,6 +6,9 @@
     "contracts/**/*.sol",
     "!contracts/BaseAbstractPlugin.sol"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",

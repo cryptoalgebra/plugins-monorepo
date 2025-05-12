@@ -2,6 +2,9 @@
   "name": "@cryptoalgebra/managed-fee-plugin",
   "version": "1.0.0",
   "description": "",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",

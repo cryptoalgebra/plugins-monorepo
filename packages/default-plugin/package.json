@@ -1,6 +1,7 @@
 {
   "name": "@cryptoalgebra/default-plugin",
   "version": "1.2.1",
+  "private": "true",
   "description": "",
   "scripts": {
     "compile": "npx hardhat compile",

@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/whitelist-fee-discount-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "publishConfig": {
     "access": "public"

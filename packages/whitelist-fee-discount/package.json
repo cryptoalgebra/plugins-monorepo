@@ -15,7 +15,6 @@
     "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.2.5",
     "@cryptoalgebra/integral-periphery": "1.2.1"
-    
   },
   "devDependencies": {
     "test-utils": "workspace:^"

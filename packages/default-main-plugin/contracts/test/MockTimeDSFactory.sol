@@ -45,7 +45,7 @@ contract MockTimeDSFactory is IDefaultMainPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeDefaultMainPlugin volatilityOracle = new MockTimeDefaultMainPlugin(pool, algebraFactory, address(this));
+    MockTimeDefaultMainPlugin volatilityOracle = new MockTimeDefaultMainPlugin(pool, algebraFactory, address(this), address(0));
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }

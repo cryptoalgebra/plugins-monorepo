@@ -16,6 +16,8 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
+  address public router;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -52,9 +54,12 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this));
+    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this), router);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
 
+  function setRouter(address _router) external onlyAdministrator {
+    router = _router;
+  }
 }

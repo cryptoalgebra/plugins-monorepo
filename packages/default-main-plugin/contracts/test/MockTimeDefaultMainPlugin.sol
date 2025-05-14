@@ -5,6 +5,8 @@ import '../DefaultMainPlugin.sol';
 
 // used for testing time dependent behavior
 contract MockTimeDefaultMainPlugin is DefaultMainPlugin {
+  event Fee(uint24 fee);
+
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
   // Monday, October 5, 2020 9:00:00 AM GMT-05:00
@@ -13,8 +15,9 @@ contract MockTimeDefaultMainPlugin is DefaultMainPlugin {
   constructor(
     address _pool,
     address _factory,
-    address _pluginFactory
-  ) DefaultMainPlugin(_pool, _factory, _pluginFactory) {}
+    address _pluginFactory,
+    address _router
+  ) DefaultMainPlugin(_pool, _factory, _pluginFactory, _router) {}
 
   function advanceTime(uint256 by) external {
     unchecked {
@@ -24,6 +27,11 @@ contract MockTimeDefaultMainPlugin is DefaultMainPlugin {
 
   function _blockTimestamp() internal view override returns (uint32) {
     return uint32(time);
+  }
+
+  function getFee(address sender, bytes calldata swapCallbackData) public {
+    uint24 fee = _getFee(sender, swapCallbackData);
+    emit Fee(fee);
   }
 
   struct UpdateParams {

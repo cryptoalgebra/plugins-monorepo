@@ -18,6 +18,8 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   address public immutable entryPoint;
 
+  address public router;
+
   /// @inheritdoc IDefaultMainCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -26,9 +28,10 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
     _;
   }
 
-  constructor(address _algebraFactory, address _entryPoint) {
+  constructor(address _algebraFactory, address _entryPoint, address _router) {
     entryPoint = _entryPoint;
     algebraFactory = _algebraFactory;
+    router = _router;
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -44,7 +47,7 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this)));
+    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this), router));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -52,5 +55,9 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool) {
     return IAlgebraCustomPoolEntryPoint(entryPoint).createCustomPool(address(this), creator, tokenA, tokenB, data);
+  }
+
+  function setRouter(address _router) external onlyAdministrator {
+    router = _router;
   }
 }

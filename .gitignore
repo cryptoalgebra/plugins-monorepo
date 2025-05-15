@@ -144,3 +144,6 @@ dist
 
 # IDE
 .idea
+
+# pnpm
+.pnpm-store

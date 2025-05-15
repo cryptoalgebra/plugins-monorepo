@@ -15,6 +15,8 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 
 /// @title Mock of Algebra concentrated liquidity pool for plugins testing
 contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlgebraPoolState {
+  event Fee(uint24 fee);
+
   struct GlobalState {
     uint160 price; // The square root of the current price in Q64.96 format
     int24 tick; // The current tick
@@ -182,6 +184,21 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
 
     if (globalState.pluginConfig & Plugins.AFTER_SWAP_FLAG != 0) {
       _plugin.afterSwap(msg.sender, msg.sender, true, 0, 0, 0, 0, '');
+    }
+  }
+
+  function swapToTickWithData(int24 targetTick, bytes calldata data) external {
+    IAlgebraPlugin _plugin = IAlgebraPlugin(plugin);
+    if (globalState.pluginConfig & Plugins.BEFORE_SWAP_FLAG != 0) {
+      (, overrideFee, pluginFee) = _plugin.beforeSwap(msg.sender, msg.sender, true, 0, 0, false, data);
+      emit Fee(overrideFee);
+    }
+
+    globalState.price = TickMath.getSqrtRatioAtTick(targetTick);
+    globalState.tick = targetTick;
+
+    if (globalState.pluginConfig & Plugins.AFTER_SWAP_FLAG != 0) {
+      _plugin.afterSwap(msg.sender, msg.sender, true, 0, 0, 0, 0, data);
     }
   }
 

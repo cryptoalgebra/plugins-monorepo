@@ -355,15 +355,15 @@ describe('DefaultMainPlugin', () => {
           await initializeAtZeroTick(mockPool);
           await plugin.setDefaultFee(228n);
 
-          await expect(plugin.getFee(wallet.address, new Uint8Array(0))).to.emit(plugin, 'Fee').withArgs(228n);
+          await expect(mockPool.swapToTickWithData(0, new Uint8Array(0))).to.emit(mockPool, 'Fee').withArgs(228n);
         });
 
         it('default fee without signature', async () => {
           await initializeAtZeroTick(mockPool);
           await plugin.setDefaultFee(228n);
-          await plugin.setRouterAddress('0x0000000000000000000000000000000000000001');
+          await plugin.setRouterAddress(wallet.address);
 
-          await expect(plugin.getFee('0x0000000000000000000000000000000000000001', await generateEmptySwapData())).to.emit(plugin, 'Fee').withArgs(228n);
+          await expect(mockPool.swapToTickWithData(0, await generateEmptySwapData())).to.emit(mockPool, 'Fee').withArgs(228n);
         });
 
         it('managed fee not from router with signature', async () => {
@@ -382,13 +382,13 @@ describe('DefaultMainPlugin', () => {
           const swapData = await generateSwapData(nonce, fee, user, expireTime, wallet);
           await plugin.setWhitelistStatus(wallet.address, true);
 
-          await expect(plugin.getFee(ZERO_ADDRESS, swapData)).to.emit(plugin, 'Fee').withArgs(228n);
+          await expect(mockPool.swapToTickWithData(0, swapData)).to.emit(mockPool, 'Fee').withArgs(228n);
         });
 
         it('managed fee from router with signature', async () => {
           await initializeAtZeroTick(mockPool);
           await plugin.setDefaultFee(228n);
-          await plugin.setRouterAddress('0x0000000000000000000000000000000000000001');
+          await plugin.setRouterAddress(wallet.address);
 
           let provider = ethers.provider;
           const block = await provider.getBlock('latest');
@@ -401,7 +401,7 @@ describe('DefaultMainPlugin', () => {
           const swapData = await generateSwapData(nonce, fee, user, expireTime, wallet);
           await plugin.setWhitelistStatus(wallet.address, true);
 
-          await expect(plugin.getFee('0x0000000000000000000000000000000000000001', swapData)).to.emit(plugin, 'Fee').withArgs(1337n);
+          await expect(mockPool.swapToTickWithData(0, swapData)).to.emit(mockPool, 'Fee').withArgs(1337n);
         });
       });
     });

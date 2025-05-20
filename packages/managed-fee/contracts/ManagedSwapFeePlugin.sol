@@ -10,26 +10,15 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import './interfaces/IManagedSwapFeePlugin.sol';
 
 /// @title Algebra Integral 1.2.1 managed swap fee plugin
-/// @notice This plugin get fees value from the swap router and apply that fees to swap
+/// @notice This plugin get fees value from the swap and apply that fees to swap
 abstract contract ManagedSwapFeePlugin is BaseAbstractPlugin, IManagedSwapFeePlugin {
   using Plugins for uint8;
   using ECDSA for bytes32;
 
   uint8 private constant defaultPluginConfig = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
-  address public override router;
   mapping(address => bool) public override whitelistedAddresses;
   mapping(bytes32 => bool) private usedNonces;
-
-  constructor(address _router) {
-    router = _router;
-  }
-
-  function setRouterAddress(address _router) external override {
-    _authorize();
-    router = _router;
-    emit RouterAddress(_router);
-  }
 
   function setWhitelistStatus(address _address, bool status) external override{
     _authorize();

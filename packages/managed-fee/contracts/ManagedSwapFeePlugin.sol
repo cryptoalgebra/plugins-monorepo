@@ -20,8 +20,6 @@ abstract contract ManagedSwapFeePlugin is BaseAbstractPlugin, IManagedSwapFeePlu
   mapping(address => bool) public override whitelistedAddresses;
   mapping(bytes32 => bool) private usedNonces;
 
-  constructor() {}
-
   function setWhitelistStatus(address _address, bool status) external override{
     _authorize();
     whitelistedAddresses[_address] = status;

@@ -13,9 +13,8 @@ contract MockTimeDefaultMainPlugin is DefaultMainPlugin {
   constructor(
     address _pool,
     address _factory,
-    address _pluginFactory,
-    address _router
-  ) DefaultMainPlugin(_pool, _factory, _pluginFactory, _router) {}
+    address _pluginFactory
+  ) DefaultMainPlugin(_pool, _factory, _pluginFactory) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

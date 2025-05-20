@@ -23,9 +23,8 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, IDef
   constructor(
     address _pool,
     address _factory,
-    address _pluginFactory,
-    address _router
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) ManagedSwapFeePlugin(_router) {}
+    address _pluginFactory
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) ManagedSwapFeePlugin() {}
 
   // ###### HOOKS ######
 

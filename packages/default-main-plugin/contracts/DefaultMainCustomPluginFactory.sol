@@ -18,8 +18,6 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   address public immutable entryPoint;
 
-  address public router;
-
   /// @inheritdoc IDefaultMainCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -46,7 +44,7 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this), router));
+    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this)));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }

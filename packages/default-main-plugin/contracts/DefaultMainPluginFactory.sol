@@ -54,7 +54,7 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this), router);
+    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this));
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }

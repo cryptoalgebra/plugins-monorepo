@@ -361,7 +361,6 @@ describe('DefaultMainPlugin', () => {
         it('default fee without signature', async () => {
           await initializeAtZeroTick(mockPool);
           await plugin.setDefaultFee(228n);
-          await plugin.setRouterAddress(wallet.address);
 
           await expect(mockPool.swapToTickWithData(0, await generateEmptySwapData())).to.emit(mockPool, 'Fee').withArgs(228n);
         });
@@ -369,7 +368,6 @@ describe('DefaultMainPlugin', () => {
         it('managed fee from router with signature', async () => {
           await initializeAtZeroTick(mockPool);
           await plugin.setDefaultFee(228n);
-          await plugin.setRouterAddress(wallet.address);
 
           let provider = ethers.provider;
           const block = await provider.getBlock('latest');

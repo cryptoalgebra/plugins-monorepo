@@ -51,12 +51,16 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, IDef
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata swapCallbackData) external override onlyPool returns (bytes4, uint24, uint24) {    
+  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata swapCallbackData) external override onlyPool returns (bytes4, uint24, uint24) {    
     uint24 fee;
-    
+
     _writeTimepoint();
-    
-    if (sender == router){
+
+    (bool success, ) = address(this).staticcall(
+      abi.encodeWithSelector(this.decodeSwapCallbackData.selector, swapCallbackData)
+    );
+
+    if (success) {
       ISwapRouter.SwapCallbackData memory swapData = abi.decode(swapCallbackData, (ISwapRouter.SwapCallbackData));
       if(swapData.pluginData.length > 0) {
         fee = _getManagedFee(swapData.pluginData);
@@ -95,5 +99,9 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, IDef
 
   function getAverageVolatilityLast() external view override returns (uint88 averageVolatilityLast) {
     averageVolatilityLast = _getAverageVolatilityLast();
+  }
+
+  function decodeSwapCallbackData(bytes memory data) public pure returns (ISwapRouter.SwapCallbackData memory callbackData) {
+    (callbackData) = abi.decode(data, (ISwapRouter.SwapCallbackData));
   }
 }

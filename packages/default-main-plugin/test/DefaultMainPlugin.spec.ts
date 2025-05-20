@@ -366,25 +366,6 @@ describe('DefaultMainPlugin', () => {
           await expect(mockPool.swapToTickWithData(0, await generateEmptySwapData())).to.emit(mockPool, 'Fee').withArgs(228n);
         });
 
-        it('managed fee not from router with signature', async () => {
-          await initializeAtZeroTick(mockPool);
-          await plugin.setDefaultFee(228n);
-          await plugin.setRouterAddress('0x0000000000000000000000000000000000000001');
-
-          let provider = ethers.provider;
-          const block = await provider.getBlock('latest');
-    
-          const nonce ="0x0000000000000000000000000000000000000000000000000000000000000001";
-          const fee = 1337;
-          const user = wallet.address;
-          const expireTime = block!.timestamp + 1000;
-    
-          const swapData = await generateSwapData(nonce, fee, user, expireTime, wallet);
-          await plugin.setWhitelistStatus(wallet.address, true);
-
-          await expect(mockPool.swapToTickWithData(0, swapData)).to.emit(mockPool, 'Fee').withArgs(228n);
-        });
-
         it('managed fee from router with signature', async () => {
           await initializeAtZeroTick(mockPool);
           await plugin.setDefaultFee(228n);

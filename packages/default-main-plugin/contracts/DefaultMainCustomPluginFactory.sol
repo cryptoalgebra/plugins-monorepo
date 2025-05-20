@@ -28,10 +28,9 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
     _;
   }
 
-  constructor(address _algebraFactory, address _entryPoint, address _router) {
+  constructor(address _algebraFactory, address _entryPoint) {
     entryPoint = _entryPoint;
     algebraFactory = _algebraFactory;
-    router = _router;
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -55,9 +54,5 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool) {
     return IAlgebraCustomPoolEntryPoint(entryPoint).createCustomPool(address(this), creator, tokenA, tokenB, data);
-  }
-
-  function setRouter(address _router) external onlyAdministrator {
-    router = _router;
   }
 }

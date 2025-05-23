@@ -4,22 +4,27 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
+import '@cryptoalgebra/managed-fee-plugin/contracts/ManagedSwapFeePlugin.sol';
+
+import '@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol';
 
 import './interfaces/IDefaultMainPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default main plugin
-contract DefaultMainPlugin is VolatilityOraclePlugin, IDefaultMainPlugin {
+contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, IDefaultMainPlugin {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
     uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
 
+  uint24 public defaultFee;
+
   constructor(
     address _pool,
     address _factory,
     address _pluginFactory
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) {}
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) ManagedSwapFeePlugin() {}
 
   // ###### HOOKS ######
 
@@ -45,9 +50,27 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, IDefaultMainPlugin {
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {
+  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata swapCallbackData) external override onlyPool returns (bytes4, uint24, uint24) {    
+    uint24 fee;
+
     _writeTimepoint();
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+
+    (bool success, ) = address(this).staticcall(
+      abi.encodeWithSelector(this.decodeSwapCallbackData.selector, swapCallbackData)
+    );
+
+    if (success) {
+      ISwapRouter.SwapCallbackData memory swapData = abi.decode(swapCallbackData, (ISwapRouter.SwapCallbackData));
+      if(swapData.pluginData.length > 0) {
+        fee = _getManagedFee(swapData.pluginData);
+      } else {
+        fee = defaultFee;
+      }
+    } else {
+      fee = defaultFee;
+    }
+
+    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
   
   /// @dev unused
@@ -68,7 +91,16 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, IDefaultMainPlugin {
     return IAlgebraPlugin.afterFlash.selector;
   }
 
+  function setDefaultFee(uint24 _defaultFee) external {
+    _authorize();
+    defaultFee = _defaultFee;
+  }
+
   function getAverageVolatilityLast() external view override returns (uint88 averageVolatilityLast) {
     averageVolatilityLast = _getAverageVolatilityLast();
+  }
+
+  function decodeSwapCallbackData(bytes memory data) public pure returns (ISwapRouter.SwapCallbackData memory callbackData) {
+    (callbackData) = abi.decode(data, (ISwapRouter.SwapCallbackData));
   }
 }

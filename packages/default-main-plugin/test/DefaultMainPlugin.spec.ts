@@ -1,9 +1,9 @@
-import { Wallet, ZeroAddress } from 'ethers';
+import { Wallet, keccak256, AbiCoder } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import checkTimepointEquals from 'test-utils/checkTimepointEquals';
 import { expect } from 'test-utils/expect';
-import { TEST_POOL_START_TIME } from 'test-utils/consts';
+import { TEST_POOL_START_TIME, ZERO_ADDRESS } from 'test-utils/consts';
 import { pluginFixture } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, expandTo18Decimals, getMaxTick, getMinTick } from 'test-utils/utilities';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
@@ -305,6 +305,82 @@ describe('DefaultMainPlugin', () => {
           await plugin.prepayTimepointsStorageSlots(0, 10);
           expect(plugin.prepayTimepointsStorageSlots(11, 2n ** 16n - 5n)).to.be.revertedWithoutReason;
           expect(plugin.prepayTimepointsStorageSlots(11, 2n ** 16n)).to.be.revertedWithoutReason;
+        });
+      });
+
+      describe('managed fee plugin', async () => {
+        async function generatePluginData(nonce: string, fee: number, user: string, expireTime: number, signer: Wallet): Promise<string> {
+          let hash = keccak256(AbiCoder.defaultAbiCoder().encode(
+            ['bytes32', 'uint24', 'address', 'uint32'],
+            [nonce, fee, user, expireTime])
+          );
+      
+          const hashBytes = Buffer.from(hash.slice(2), 'hex');
+          let signature = await signer.signMessage(hashBytes);
+      
+          return AbiCoder.defaultAbiCoder().encode(
+            ['tuple(bytes32, uint24, address, uint32, bytes)'],
+            [[nonce, fee, user, expireTime, signature]]
+          );
+        }
+
+        async function generateEmptySwapData(): Promise<string> {
+          return AbiCoder.defaultAbiCoder().encode(
+            ['tuple(bytes, bytes, address, bytes[])'],
+            [[new Uint8Array(0), new Uint8Array(0), ZERO_ADDRESS, []]]
+          );
+        }
+
+        async function generateSwapData(nonce: string, fee: number, user: string, expireTime: number, signer: Wallet): Promise<string> {
+          const pluginData = await generatePluginData(nonce, fee, user, expireTime, signer);
+
+          return AbiCoder.defaultAbiCoder().encode(
+            ['tuple(bytes, bytes, address, bytes[])'],
+            [[pluginData, new Uint8Array(0), ZERO_ADDRESS, []]]
+          );
+        }
+
+        it('can override default fee', async () => {
+          await initializeAtZeroTick(mockPool);
+          await plugin.setDefaultFee(228n);
+          expect(await plugin.defaultFee()).to.be.equals(228n);
+        });
+
+        it('cannot override default fee', async () => {
+          await initializeAtZeroTick(mockPool);
+          await expect(plugin.connect(other).setDefaultFee(228n)).to.be.reverted;
+        });
+
+        it('default fee bypass router', async () => {
+          await initializeAtZeroTick(mockPool);
+          await plugin.setDefaultFee(228n);
+
+          await expect(mockPool.swapToTickWithData(0, new Uint8Array(0))).to.emit(mockPool, 'Fee').withArgs(228n);
+        });
+
+        it('default fee without signature', async () => {
+          await initializeAtZeroTick(mockPool);
+          await plugin.setDefaultFee(228n);
+
+          await expect(mockPool.swapToTickWithData(0, await generateEmptySwapData())).to.emit(mockPool, 'Fee').withArgs(228n);
+        });
+
+        it('managed fee from router with signature', async () => {
+          await initializeAtZeroTick(mockPool);
+          await plugin.setDefaultFee(228n);
+
+          let provider = ethers.provider;
+          const block = await provider.getBlock('latest');
+    
+          const nonce ="0x0000000000000000000000000000000000000000000000000000000000000001";
+          const fee = 1337;
+          const user = wallet.address;
+          const expireTime = block!.timestamp + 1000;
+    
+          const swapData = await generateSwapData(nonce, fee, user, expireTime, wallet);
+          await plugin.setWhitelistStatus(wallet.address, true);
+
+          await expect(mockPool.swapToTickWithData(0, swapData)).to.emit(mockPool, 'Fee').withArgs(1337n);
         });
       });
     });

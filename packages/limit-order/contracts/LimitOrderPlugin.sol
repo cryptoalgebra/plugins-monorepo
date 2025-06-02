@@ -29,6 +29,10 @@ abstract contract LimitOrderPlugin is BaseAbstractPlugin, ILimitOrderPlugin {
   function initializeLimitOrderPlugin() external override {
     _authorize();
 
+    _initialize_LO();
+  }
+
+  function _initialize_LO() internal {
     if (limitOrderManager != address(0)) {
       (, int24 tick, , ) = _getPoolState();
       ILimitOrderManager(limitOrderManager).afterInitialize(pool, tick);

@@ -83,7 +83,7 @@ describe('LimitOrders', () => {
     expect(await loModule.tickLowerLasts(poolWnative1)).to.be.eq(-6960)
   })
 
-    it('external initialize works correct', async () => {
+  it('external initialize works correct', async () => {
       
     await initializeAtZeroTick(poolWnative1)
 

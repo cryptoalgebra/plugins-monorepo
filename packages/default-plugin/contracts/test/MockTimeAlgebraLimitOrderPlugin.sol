@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-import '../AlgebraDefaultPlugin.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderManager.sol';
+import '../AlgebraLimitOrderPlugin.sol';
 
 // used for testing time dependent behavior
-contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
+contract MockTimeAlgebraLimitOrderPlugin is AlgebraLimitOrderPlugin {
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
   // Monday, October 5, 2020 9:00:00 AM GMT-05:00
@@ -14,8 +15,9 @@ contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
     address _pool,
     address _factory,
     address _pluginFactory,
-    AlgebraFeeConfiguration memory _config
-  ) AlgebraDefaultPlugin(_pool, _factory, _pluginFactory, _config) {}
+    AlgebraFeeConfiguration memory _config,
+    address _LOmanager
+  ) AlgebraLimitOrderPlugin(_pool, _factory, _pluginFactory, _config, _LOmanager) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

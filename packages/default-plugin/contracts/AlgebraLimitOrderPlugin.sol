@@ -8,9 +8,10 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePlugin.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin {
+/// @title Algebra Integral 1.2.1 plugin that combines dynamic fee, farming proxy, volatility oracle and limit order plugins
+contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, LimitOrderPlugin {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin
@@ -21,8 +22,9 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     address _pool,
     address _factory,
     address _pluginFactory,
-    AlgebraFeeConfiguration memory _config
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) {}
+    AlgebraFeeConfiguration memory _config,
+    address _LOmanager
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) LimitOrderPlugin(_LOmanager) {}
 
   // ###### HOOKS ######
 
@@ -33,6 +35,7 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
 
   function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
     _initialize_TWAP(tick);
+    _initialize_LO();
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
@@ -57,6 +60,8 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
 
   function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
     _updateVirtualPoolTick(zeroToOne);
+    _updateLimitOrderManagerState(pool, zeroToOne);
+    _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

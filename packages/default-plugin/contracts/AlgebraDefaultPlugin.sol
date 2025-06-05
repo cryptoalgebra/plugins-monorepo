@@ -56,8 +56,8 @@ contract AlgebraDefaultPlugin is SlidingFeePlugin, VolatilityOraclePlugin {
     return (IAlgebraPlugin.beforeSwap.selector, newFee, 0);
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
-     _updatePluginConfigInPool(defaultPluginConfig);
+  function afterSwap(address, address, bool, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+    _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

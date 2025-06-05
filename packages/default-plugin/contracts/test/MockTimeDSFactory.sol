@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
-
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import './MockTimeAlgebraDefaultPlugin.sol';
 import '../interfaces/IAlgebraDefaultPluginFactory.sol';
 
@@ -14,18 +12,14 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
-  /// @dev values of constants for sigmoids in fee calculation formula
-  AlgebraFeeConfiguration public override defaultFeeConfiguration;
+  /// @inheritdoc IAlgebraDefaultPluginFactory
+  uint16 public override baseFee;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
-  /// @inheritdoc IFarmingPluginFactory
-  address public override farmingAddress;
-
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
-    defaultFeeConfiguration = AdaptiveFee.initialFeeConfiguration();
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -54,22 +48,13 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
+    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), baseFee);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
 
-  /// @inheritdoc IDynamicFeePluginFactory
-  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override {
-    AdaptiveFee.validateFeeConfiguration(newConfig);
-    defaultFeeConfiguration = newConfig;
-    emit DefaultFeeConfiguration(newConfig);
-  }
-
-  /// @inheritdoc IFarmingPluginFactory
-  function setFarmingAddress(address newFarmingAddress) external override {
-    require(farmingAddress != newFarmingAddress);
-    farmingAddress = newFarmingAddress;
-    emit FarmingAddress(newFarmingAddress);
+  function setSlidingBaseFee(uint16 _baseFee) external override {
+    baseFee = _baseFee;
+    emit SlidingBaseFee(baseFee);
   }
 }

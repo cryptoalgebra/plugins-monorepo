@@ -6,7 +6,6 @@ import '../AlgebraDefaultPlugin.sol';
 // used for testing time dependent behavior
 contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
-
   // Monday, October 5, 2020 9:00:00 AM GMT-05:00
   uint256 public time = 1601906400;
 
@@ -14,8 +13,8 @@ contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
     address _pool,
     address _factory,
     address _pluginFactory,
-    AlgebraFeeConfiguration memory _config
-  ) AlgebraDefaultPlugin(_pool, _factory, _pluginFactory, _config) {}
+    uint16 _baseFee
+  ) AlgebraDefaultPlugin(_pool, _factory, _pluginFactory, _baseFee) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

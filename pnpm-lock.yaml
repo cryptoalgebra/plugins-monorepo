@@ -73,18 +73,15 @@ importers:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^
         version: link:../abstract-plugin
-      '@cryptoalgebra/dynamic-fee-plugin':
-        specifier: workspace:^
-        version: link:../dynamic-fee
-      '@cryptoalgebra/farming-proxy-plugin':
-        specifier: workspace:^
-        version: link:../farming-proxy
       '@cryptoalgebra/integral-core':
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.1
         version: 1.2.1
+      '@cryptoalgebra/sliding-fee-plugin':
+        specifier: workspace:^
+        version: link:../sliding-fee
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
         version: link:../volatility-oracle

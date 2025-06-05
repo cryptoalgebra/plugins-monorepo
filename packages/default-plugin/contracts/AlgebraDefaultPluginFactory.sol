@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import './AlgebraDefaultPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default plugin factory
-/// @notice This contract creates Algebra adaptive fee plugins for Algebra liquidity pools
+/// @notice This contract creates Algebra sliding fee plugins for Algebra liquidity pools
 /// @dev This plugin factory can only be used for Algebra default pools
 contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc IAlgebraDefaultPluginFactory
@@ -15,11 +15,8 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
-  /// @inheritdoc IDynamicFeePluginFactory
-  AlgebraFeeConfiguration public override defaultFeeConfiguration; // values of constants for sigmoids in fee calculation formula
-
-  /// @inheritdoc IFarmingPluginFactory
-  address public override farmingAddress;
+  /// @inheritdoc IAlgebraDefaultPluginFactory
+  uint16 public override baseFee;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
@@ -31,8 +28,6 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
-    defaultFeeConfiguration = AdaptiveFee.initialFeeConfiguration();
-    emit DefaultFeeConfiguration(defaultFeeConfiguration);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -59,22 +54,14 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
-    pluginByPool[pool] = address(volatilityOracle);
-    return address(volatilityOracle);
+    address volatilityOracle = address(new AlgebraDefaultPlugin(pool, algebraFactory, address(this), baseFee));
+    pluginByPool[pool] = volatilityOracle;
+    return volatilityOracle;
   }
 
-  /// @inheritdoc IDynamicFeePluginFactory
-  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override onlyAdministrator {
-    AdaptiveFee.validateFeeConfiguration(newConfig);
-    defaultFeeConfiguration = newConfig;
-    emit DefaultFeeConfiguration(newConfig);
-  }
-
-  /// @inheritdoc IFarmingPluginFactory
-  function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {
-    require(farmingAddress != newFarmingAddress);
-    farmingAddress = newFarmingAddress;
-    emit FarmingAddress(newFarmingAddress);
+  /// @inheritdoc IAlgebraDefaultPluginFactory
+  function setSlidingBaseFee(uint16 _baseFee) external override onlyAdministrator {
+    baseFee = _baseFee;
+    emit SlidingBaseFee(baseFee);
   }
 }

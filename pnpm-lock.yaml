@@ -68,6 +68,43 @@ importers:
         specifier: workspace:^
         version: link:../test-utils
 
+  packages/default-all-inlcusive:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/alm-plugin':
+        specifier: workspace:^
+        version: link:../alm
+      '@cryptoalgebra/dynamic-fee-plugin':
+        specifier: workspace:^
+        version: link:../dynamic-fee
+      '@cryptoalgebra/farming-proxy-plugin':
+        specifier: workspace:^
+        version: link:../farming-proxy
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
+      '@cryptoalgebra/limit-order-plugin':
+        specifier: workspace:^
+        version: link:../limit-order
+      '@cryptoalgebra/safety-switch-plugin':
+        specifier: workspace:^
+        version: link:../safety-switch
+      '@cryptoalgebra/volatility-oracle-plugin':
+        specifier: workspace:^
+        version: link:../volatility-oracle
+    devDependencies:
+      decimal.js:
+        specifier: ^10.5.0
+        version: 10.5.0
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
   packages/default-plugin:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
@@ -206,6 +243,9 @@ importers:
       '@cryptoalgebra/integral-core':
         specifier: 1.2.5
         version: 1.2.5
+      '@cryptoalgebra/integral-periphery':
+        specifier: ^1.2.1
+        version: 1.2.1
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
         version: 5.8.0

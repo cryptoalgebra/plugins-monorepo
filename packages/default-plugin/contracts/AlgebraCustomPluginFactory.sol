@@ -19,7 +19,7 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
   address public immutable entryPoint;
 
   /// @inheritdoc IAlgebraCustomPluginFactory
-  uint16 public override baseFee;  
+  uint16 public override baseFee = 3000;  
 
   /// @inheritdoc IAlgebraCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;

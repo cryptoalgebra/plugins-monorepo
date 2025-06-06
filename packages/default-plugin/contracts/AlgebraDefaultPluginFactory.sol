@@ -16,7 +16,7 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   address public immutable override algebraFactory;
 
   /// @inheritdoc IAlgebraDefaultPluginFactory
-  uint16 public override baseFee;
+  uint16 public override baseFee = 3000;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;

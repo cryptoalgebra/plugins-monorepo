@@ -83,6 +83,27 @@ describe('LimitOrders', () => {
     expect(await loModule.tickLowerLasts(poolWnative1)).to.be.eq(-6960)
   })
 
+    it('external initialize works correct', async () => {
+      
+    await initializeAtZeroTick(poolWnative1)
+
+    await wnative.deposit({value:10n**8n});
+
+    await swapTarget.mint(pool, poolWnative1, -600, 600, 10n**8n)
+    await swapTarget.swapToLowerSqrtPrice(poolWnative1, encodePriceSqrt(1,2), wallet);
+
+    const pluginContractFacroty = await ethers.getContractFactory('LimitOrderTestPlugin');
+    let pluginAddress = await poolWnative1.plugin();
+    let plugin = (pluginContractFacroty.attach(pluginAddress)) as any as LimitOrderTestPlugin;
+
+    await plugin.setLimitOrderManager(loModule);
+    expect(await loModule.initialized(poolWnative1)).to.be.eq(false);
+    await plugin.initializeLimitOrderPlugin();
+
+    expect(await loModule.initialized(poolWnative1)).to.be.eq(true);
+    expect(await loModule.tickLowerLasts(poolWnative1)).to.be.eq(-6960)
+  })
+
   describe('#place', async () => {
 
     describe('works correct', async () => {

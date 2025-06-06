@@ -43,7 +43,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
 
   packages/alm:
@@ -52,13 +52,13 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/alm-vault':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@cryptoalgebra/integral-core':
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@openzeppelin/contracts':
         specifier: ^4.9.3
@@ -120,7 +120,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
@@ -142,7 +142,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
     devDependencies:
       test-utils:
@@ -158,7 +158,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
     devDependencies:
       test-utils:
@@ -174,7 +174,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@openzeppelin/contracts':
         specifier: ^4.9.3
@@ -193,7 +193,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@openzeppelin/contracts':
         specifier: 4.9.3
@@ -212,7 +212,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@openzeppelin/contracts':
         specifier: 4.9.3
@@ -231,7 +231,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
     devDependencies:
       test-utils:
@@ -244,7 +244,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
@@ -268,7 +268,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
     devDependencies:
       test-utils:
@@ -284,7 +284,7 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
+        specifier: 1.2.1
         version: 1.2.1
     devDependencies:
       test-utils:

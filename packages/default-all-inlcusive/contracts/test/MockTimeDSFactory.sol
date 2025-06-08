@@ -14,6 +14,9 @@ contract MockTimeDSFactory is IAlgebraDefaultAllInclusivePluginFactory {
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
+  /// @dev values of constants for sigmoids in fee calculation formula
+  AlgebraFeeConfiguration public override defaultFeeConfiguration;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
@@ -29,6 +32,7 @@ contract MockTimeDSFactory is IAlgebraDefaultAllInclusivePluginFactory {
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
+    defaultFeeConfiguration = AdaptiveFee.initialFeeConfiguration();
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -57,9 +61,16 @@ contract MockTimeDSFactory is IAlgebraDefaultAllInclusivePluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    address plugin = address(new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), securityRegistry, limitOrderManager));
+    address plugin = address(new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), securityRegistry, limitOrderManager, defaultFeeConfiguration));
     pluginByPool[pool] = plugin;
     return plugin;
+  }
+
+  /// @inheritdoc IDynamicFeePluginFactory
+  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override {
+    AdaptiveFee.validateFeeConfiguration(newConfig);
+    defaultFeeConfiguration = newConfig;
+    emit DefaultFeeConfiguration(newConfig);
   }
 
   /// @inheritdoc IFarmingPluginFactory

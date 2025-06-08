@@ -13,7 +13,7 @@ import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPlugin.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraDefaultAllInclusivePlugin is FarmingProxyPlugin, VolatilityOraclePlugin, AlmPlugin, LimitOrderPlugin, SecurityPlugin {
+contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, AlmPlugin, LimitOrderPlugin, SecurityPlugin {
   using Plugins for uint8;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
@@ -26,8 +26,9 @@ contract AlgebraDefaultAllInclusivePlugin is FarmingProxyPlugin, VolatilityOracl
     address _factory,
     address _pluginFactory,
     address _securityRegistry,
-    address _limitOrderManager
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) SecurityPlugin(_securityRegistry) LimitOrderPlugin(_limitOrderManager) {}
+    address _limitOrderManager,
+    AlgebraFeeConfiguration memory _config
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) SecurityPlugin(_securityRegistry) LimitOrderPlugin(_limitOrderManager) DynamicFeePlugin(_config) {}
 
   // ###### HOOKS ######
 
@@ -60,7 +61,9 @@ contract AlgebraDefaultAllInclusivePlugin is FarmingProxyPlugin, VolatilityOracl
   function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {
     _writeTimepoint();
     _checkStatus();
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+    uint88 volatilityAverage = _getAverageVolatilityLast();
+    uint24 fee = _getCurrentFee(volatilityAverage);
+    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
   function afterSwap(address _pool, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
@@ -119,5 +122,10 @@ contract AlgebraDefaultAllInclusivePlugin is FarmingProxyPlugin, VolatilityOracl
     uint32 oldestTimestamp = timepoints[lastIndex].blockTimestamp;
 
     return VolatilityOracle._lteConsideringOverflow(oldestTimestamp, _blockTimestamp() - period, _blockTimestamp());
+  }
+
+  function getCurrentFee() external view override returns (uint16 fee) {
+    uint88 volatilityAverage = _getAverageVolatilityLast();
+    fee = _getCurrentFee(volatilityAverage);
   }
 }

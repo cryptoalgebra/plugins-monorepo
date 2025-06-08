@@ -10,7 +10,7 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPlugin
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 /// @title The interface for the AlgebraDefaultPluginFactory
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
-interface IAlgebraDefaultAllInclusivePluginFactory is IBasePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory, ILimitOrderPluginFactory {
+interface IAlgebraDefaultAllInclusivePluginFactory is IBasePluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory, ILimitOrderPluginFactory {
 
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraDefaultPluginFactory

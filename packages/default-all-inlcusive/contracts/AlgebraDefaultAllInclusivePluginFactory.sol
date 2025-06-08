@@ -15,6 +15,8 @@ contract AlgebraDefaultAllInclusivePluginFactory is IAlgebraDefaultAllInclusiveP
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
+  /// @inheritdoc IDynamicFeePluginFactory
+  AlgebraFeeConfiguration public override defaultFeeConfiguration; // values of constants for sigmoids in fee calculation formula
 
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
@@ -35,6 +37,8 @@ contract AlgebraDefaultAllInclusivePluginFactory is IAlgebraDefaultAllInclusiveP
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
+    defaultFeeConfiguration = AdaptiveFee.initialFeeConfiguration();
+    emit DefaultFeeConfiguration(defaultFeeConfiguration);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -61,9 +65,16 @@ contract AlgebraDefaultAllInclusivePluginFactory is IAlgebraDefaultAllInclusiveP
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new AlgebraDefaultAllInclusivePlugin(pool, algebraFactory, address(this), securityRegistry, limitOrderManager));
+    address plugin = address(new AlgebraDefaultAllInclusivePlugin(pool, algebraFactory, address(this), securityRegistry, limitOrderManager, defaultFeeConfiguration));
     pluginByPool[pool] = plugin;
     return plugin;
+  }
+
+  /// @inheritdoc IDynamicFeePluginFactory
+  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override onlyAdministrator {
+    AdaptiveFee.validateFeeConfiguration(newConfig);
+    defaultFeeConfiguration = newConfig;
+    emit DefaultFeeConfiguration(newConfig);
   }
 
   /// @inheritdoc IFarmingPluginFactory

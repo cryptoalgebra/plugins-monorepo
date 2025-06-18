@@ -23,13 +23,6 @@ contract LimitOrderTestPlugin is LimitOrderPlugin {
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
-    if (limitOrderManager != address(0)) {
-      ILimitOrderManager(limitOrderManager).afterInitialize(pool, tick);
-    }
-    return IAlgebraPlugin.afterInitialize.selector;
-  }
-
   function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
     _updateLimitOrderManagerState(msg.sender, zeroToOne);
     return IAlgebraPlugin.afterSwap.selector;

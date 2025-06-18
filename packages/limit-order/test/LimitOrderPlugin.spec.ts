@@ -83,27 +83,6 @@ describe('LimitOrders', () => {
     expect(await loModule.tickLowerLasts(poolWnative1)).to.be.eq(-6960)
   })
 
-    it('external initialize works correct', async () => {
-      
-    await initializeAtZeroTick(poolWnative1)
-
-    await wnative.deposit({value:10n**8n});
-
-    await swapTarget.mint(pool, poolWnative1, -600, 600, 10n**8n)
-    await swapTarget.swapToLowerSqrtPrice(poolWnative1, encodePriceSqrt(1,2), wallet);
-
-    const pluginContractFacroty = await ethers.getContractFactory('LimitOrderTestPlugin');
-    let pluginAddress = await poolWnative1.plugin();
-    let plugin = (pluginContractFacroty.attach(pluginAddress)) as any as LimitOrderTestPlugin;
-
-    await plugin.setLimitOrderManager(loModule);
-    expect(await loModule.initialized(poolWnative1)).to.be.eq(false);
-    await plugin.initializeLimitOrderPlugin();
-
-    expect(await loModule.initialized(poolWnative1)).to.be.eq(true);
-    expect(await loModule.tickLowerLasts(poolWnative1)).to.be.eq(-6960)
-  })
-
   describe('#place', async () => {
 
     describe('works correct', async () => {
@@ -119,7 +98,7 @@ describe('LimitOrders', () => {
           expect(liquidityTotal).to.be.eq(10n**8n);
           expect(token0address).to.be.eq(await token0.getAddress());
           expect(token1address).to.be.eq(await token1.getAddress());
-          expect(token0Total).to.be.eq(1);
+          expect(token0Total).to.be.eq(0);
           expect(token1Total).to.be.eq(0);
 
           expect( await loModule.getEpochLiquidity(1, wallet)).to.be.eq(10n**8n);
@@ -313,9 +292,7 @@ describe('LimitOrders', () => {
     });
 
     it('reverts if msg sender is not plugin', async () => {
-
       await expect(loModule.afterSwap(ZERO_ADDRESS, false, 0)).to.be.revertedWithCustomError(loModule, "NotPlugin()")
-      await expect(loModule.afterInitialize(ZERO_ADDRESS, 0)).to.be.revertedWithCustomError(loModule, "NotPlugin()")
     });
 
   })
@@ -395,6 +372,10 @@ describe('LimitOrders', () => {
       await loModule.setTickSpacing(pool, 120)
 
       expect(await loModule.tickSpacings(pool)).to.be.eq(120)
+    });
+
+    it('should emit event', async () => {
+      expect(await loModule.setTickSpacing(pool, 120)).to.emit(loModule, 'LimitOrderTickSpacing').withArgs(pool, 120);
     });
 
     it('withdraw works correct after tickSpacing change', async () => {

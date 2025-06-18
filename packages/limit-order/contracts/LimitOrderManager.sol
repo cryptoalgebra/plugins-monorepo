@@ -77,6 +77,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
   function setTickSpacing(address pool, int24 tickSpacing) external override {
     require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender));
     tickSpacings[pool] = tickSpacing;
+    emit LimitOrderTickSpacing(pool, tickSpacing);
   }
 
   function getTickSpacing(address pool) private view returns (int24 tickSpacing) {
@@ -117,10 +118,10 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
 
       epochInfo.filled = true;
 
-      (uint256 amount0, uint256 amount1) = IAlgebraPool(pool).burn(lower, upper, epochInfo.liquidityTotal, '');
+      (uint256 amount0, uint256 amount1) = IAlgebraPool(pool).burn(lower, upper, epochInfo.liquidityTotal, ZERO_BYTES);
 
       unchecked {
-        epochInfo.token0Total += uint128(amount0) - 1;
+        epochInfo.token0Total += uint128(amount0);
         epochInfo.token1Total += uint128(amount1);
       }
 
@@ -174,13 +175,13 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     EpochInfo storage epochInfo;
     Epoch epoch = getEpoch(pool, tickLower, tickUpper, zeroForOne);
     if (epoch.equals(EPOCH_DEFAULT)) {
-      unchecked {
-        setEpoch(pool, tickLower, tickUpper, zeroForOne, epoch = epochNext);
-        // since epoch was just assigned the current value of epochNext,
-        // this is equivalent to epochNext++, which is what's intended,
-        // and it saves an SLOAD
-        epochNext = epoch.unsafeIncrement();
-      }
+
+      setEpoch(pool, tickLower, tickUpper, zeroForOne, epoch = epochNext);
+      // since epoch was just assigned the current value of epochNext,
+      // this is equivalent to epochNext++, which is what's intended,
+      // and it saves an SLOAD
+      epochNext = epoch.unsafeIncrement();
+
       epochInfo = epochInfos[epoch];
       epochInfo.token0 = poolKey.token0;
       epochInfo.token1 = poolKey.token1;
@@ -196,10 +197,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
 
     epochInfo.tickLower = tickLower;
     epochInfo.tickUpper = tickUpper;
-
-    if (epochInfo.token0Total == 0 && epochInfo.token1Total == 0) {
-      epochInfo.token0Total = 1;
-    }
 
     emit Place(msg.sender, epoch, pool, tickLower, tickUpper, zeroForOne, liquidityActual);
   }
@@ -226,13 +223,13 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     epochInfo.liquidityTotal = liquidityTotal - liquidity;
 
     // when the all liquidity of the position is taken, fees is sent to the pool
-    (uint256 amount0Fee, uint256 amount1Fee) = IAlgebraPool(pool).burn(tickLower, tickUpper, 0, '');
+    (uint256 amount0Fee, uint256 amount1Fee) = IAlgebraPool(pool).burn(tickLower, tickUpper, 0, ZERO_BYTES);
     if (liquidityTotal - liquidity == 0) {
       IAlgebraPool(pool).collect(
         pool,
         tickLower,
         tickUpper,
-        uint128(amount0Fee) + epochInfo.token0Total - 1,
+        uint128(amount0Fee) + epochInfo.token0Total,
         uint128(amount1Fee) + epochInfo.token1Total
       );
       epochInfo.token0Total = 0;
@@ -242,7 +239,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
       epochInfo.token1Total += uint128(amount1Fee);
     }
 
-    (amount0, amount1) = IAlgebraPool(pool).burn(tickLower, tickUpper, liquidity, '');
+    (amount0, amount1) = IAlgebraPool(pool).burn(tickLower, tickUpper, liquidity, ZERO_BYTES);
     IAlgebraPool(pool).collect(address(this), tickLower, tickUpper, uint128(amount0), uint128(amount1));
 
     claimTo(poolKey, to);
@@ -252,11 +249,10 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
 
   function withdraw(Epoch epoch, address to) external returns (uint256 amount0, uint256 amount1) {
     EpochInfo storage epochInfo = epochInfos[epoch];
+    if (!epochInfo.filled) revert NotFilled();
 
     PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({deployer: epochInfo.deployer, token0: epochInfo.token0, token1: epochInfo.token1});
     address pool = PoolAddress.computeAddress(poolDeployer, poolKey);
-
-    if (!epochInfo.filled) revert NotFilled();
 
     uint128 liquidity = epochInfo.liquidity[msg.sender];
     if (liquidity == 0) revert ZeroLiquidity();
@@ -280,10 +276,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     emit Withdraw(msg.sender, epoch, liquidity);
   }
 
-  function afterInitialize(address pool, int24 tick) external override onlyPlugin(pool) {
-    _initialize(pool, tick);
-  }
-
   function afterSwap(address pool, bool zeroToOne, int24 tick) external override onlyPlugin(pool) {
     int24 tickSpacing = getTickSpacing(pool);
     (int24 tickLower, int24 lower, int24 upper) = _getCrossedTicks(pool, tick, tickSpacing);
@@ -296,6 +288,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
       _fillEpoch(pool, lower, lower + tickSpacing, !zeroToOne);
     }
 
-    tickLowerLasts[pool] = getTickLower(tickLower, tickSpacing);
+    tickLowerLasts[pool] = tickLower;
   }
 }

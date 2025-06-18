@@ -4,12 +4,12 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
 import { ZERO_ADDRESS, pluginFactoryFixture } from './shared/fixtures';
 
-import { AlgebraDefaultPluginFactory, AlgebraDefaultPlugin, MockFactory } from '../typechain';
+import { AlgebraLimitOrderPluginFactory, AlgebraLimitOrderPlugin, MockFactory } from '../typechain';
 
-describe('AlgebraDefaultPluginFactory', () => {
+describe('AlgebraLimitOrderPluginFactory', () => {
   let wallet: Wallet, other: Wallet;
 
-  let pluginFactory: AlgebraDefaultPluginFactory;
+  let pluginFactory: AlgebraLimitOrderPluginFactory;
   let mockAlgebraFactory: MockFactory;
 
   before('prepare signers', async () => {
@@ -27,8 +27,8 @@ describe('AlgebraDefaultPluginFactory', () => {
     });
 
     it('factory can create plugin', async () => {
-      const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
-      const pluginFactoryMock = (await pluginFactoryFactory.deploy(wallet.address)) as any as AlgebraDefaultPluginFactory;
+      const pluginFactoryFactory = await ethers.getContractFactory('AlgebraLimitOrderPluginFactory');
+      const pluginFactoryMock = (await pluginFactoryFactory.deploy(wallet.address)) as any as AlgebraLimitOrderPluginFactory;
 
       const pluginAddress = await pluginFactoryMock.beforeCreatePoolHook.staticCall(
         wallet.address,
@@ -40,7 +40,7 @@ describe('AlgebraDefaultPluginFactory', () => {
       );
       await pluginFactoryMock.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
 
-      const pluginMock = (await ethers.getContractFactory('AlgebraDefaultPlugin')).attach(pluginAddress) as any as AlgebraDefaultPlugin;
+      const pluginMock = (await ethers.getContractFactory('AlgebraLimitOrderPlugin')).attach(pluginAddress) as any as AlgebraLimitOrderPlugin;
       const feeConfig = await pluginMock.feeConfig();
       expect(feeConfig.baseFee).to.be.not.eq(0);
     });
@@ -61,7 +61,7 @@ describe('AlgebraDefaultPluginFactory', () => {
       await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
       const pluginAddress = await pluginFactory.pluginByPool(other.address);
       expect(pluginAddress).to.not.be.eq(ZERO_ADDRESS);
-      const pluginMock = (await ethers.getContractFactory('AlgebraDefaultPlugin')).attach(pluginAddress) as any as AlgebraDefaultPlugin;
+      const pluginMock = (await ethers.getContractFactory('AlgebraLimitOrderPlugin')).attach(pluginAddress) as any as AlgebraLimitOrderPlugin;
       const feeConfig = await pluginMock.feeConfig();
       expect(feeConfig.baseFee).to.be.not.eq(0);
     });

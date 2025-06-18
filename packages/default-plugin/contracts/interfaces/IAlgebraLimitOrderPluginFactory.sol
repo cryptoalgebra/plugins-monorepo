@@ -4,14 +4,15 @@ pragma abicoder v2;
 
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
-/// @title The interface for the AlgebraDefaultPluginFactory
+/// @title The interface for the AlgebraLimitOrderPluginFactory
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
-interface IAlgebraDefaultPluginFactory is IBasePluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory {
+interface IAlgebraLimitOrderPluginFactory is IBasePluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory, ILimitOrderPluginFactory {
 
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
-  /// @dev allows to change settings of AlgebraDefaultPluginFactory
+  /// @dev allows to change settings of AlgebraLimitOrderPluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);
 
 }

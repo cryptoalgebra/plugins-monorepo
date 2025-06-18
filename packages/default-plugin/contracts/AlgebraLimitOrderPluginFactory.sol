@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import './interfaces/IAlgebraDefaultPluginFactory.sol';
+import './interfaces/IAlgebraLimitOrderPluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
-import './AlgebraDefaultPlugin.sol';
+import './AlgebraLimitOrderPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default plugin factory
 /// @notice This contract creates Algebra adaptive fee plugins for Algebra liquidity pools
 /// @dev This plugin factory can only be used for Algebra default pools
-contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+contract AlgebraLimitOrderPluginFactory is IAlgebraLimitOrderPluginFactory {
+  /// @inheritdoc IAlgebraLimitOrderPluginFactory
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @inheritdoc IBasePluginFactory
@@ -20,6 +20,9 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
+
+  /// @notice The address of the limit order manager
+  address public limitOrderManager;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
@@ -59,7 +62,7 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
+    IDynamicFeeManager volatilityOracle = new AlgebraLimitOrderPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, limitOrderManager);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -76,5 +79,12 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
     require(farmingAddress != newFarmingAddress);
     farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    require(limitOrderManager != newLimitOrderManager);
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 }

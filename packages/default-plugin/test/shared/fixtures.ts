@@ -1,5 +1,11 @@
 import { ethers } from 'hardhat';
-import { MockFactory, MockPool, MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, AlgebraDefaultPluginFactory } from '../../typechain';
+import { 
+  MockFactory, 
+  MockPool,
+  MockTimeAlgebraLimitOrderPlugin,
+  MockTimeDSFactory,
+  AlgebraLimitOrderPluginFactory,
+} from '../../typechain';
 
 type Fixture<T> = () => Promise<T>;
 interface MockFactoryFixture {
@@ -15,7 +21,7 @@ async function mockFactoryFixture(): Promise<MockFactoryFixture> {
 }
 
 interface PluginFixture extends MockFactoryFixture {
-  plugin: MockTimeAlgebraDefaultPlugin
+  plugin: MockTimeAlgebraLimitOrderPlugin
   mockPluginFactory: MockTimeDSFactory
   mockPool: MockPool;
 }
@@ -33,8 +39,8 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   await mockPluginFactory.beforeCreatePoolHook(mockPool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
   const pluginAddress = await mockPluginFactory.pluginByPool(mockPool);
 
-  const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraDefaultPlugin');
-  const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraDefaultPlugin;
+  const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraLimitOrderPlugin');
+  const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraLimitOrderPlugin;
 
   return {
     plugin,
@@ -45,14 +51,14 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
 };
 
 interface PluginFactoryFixture extends MockFactoryFixture {
-  pluginFactory: AlgebraDefaultPluginFactory;
+  pluginFactory: AlgebraLimitOrderPluginFactory;
 }
 
 export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async function (): Promise<PluginFactoryFixture> {
   const { mockFactory } = await mockFactoryFixture();
 
-  const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
-  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as AlgebraDefaultPluginFactory;
+  const pluginFactoryFactory = await ethers.getContractFactory('AlgebraLimitOrderPluginFactory');
+  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as AlgebraLimitOrderPluginFactory;
 
   return {
     pluginFactory,

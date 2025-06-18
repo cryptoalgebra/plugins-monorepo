@@ -1,5 +1,5 @@
 {
-  "name": "@cryptoalgebra/default-plugin",
+  "name": "@cryptoalgebra/default-limit-order-plugin",
   "version": "1.2.1",
   "private": "true",
   "description": "",
@@ -15,7 +15,9 @@
     "@cryptoalgebra/farming-proxy-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.2.5",
     "@cryptoalgebra/integral-periphery": "1.2.1",
-    "@cryptoalgebra/volatility-oracle-plugin": "workspace:^"
+    "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
+    "@cryptoalgebra/limit-order-plugin": "workspace:^",
+    "@openzeppelin/contracts": "^4.9.3"
   },
   "devDependencies": {
     "decimal.js": "^10.5.0",

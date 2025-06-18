@@ -292,6 +292,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
       _fillEpoch(pool, lower, lower + tickSpacing, !zeroToOne);
     }
 
-    tickLowerLasts[pool] = getTickLower(tickLower, tickSpacing);
+    tickLowerLasts[pool] = tickLower;
   }
 }

@@ -253,11 +253,10 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
 
   function withdraw(Epoch epoch, address to) external returns (uint256 amount0, uint256 amount1) {
     EpochInfo storage epochInfo = epochInfos[epoch];
+    if (!epochInfo.filled) revert NotFilled();
 
     PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({deployer: epochInfo.deployer, token0: epochInfo.token0, token1: epochInfo.token1});
     address pool = PoolAddress.computeAddress(poolDeployer, poolKey);
-
-    if (!epochInfo.filled) revert NotFilled();
 
     uint128 liquidity = epochInfo.liquidity[msg.sender];
     if (liquidity == 0) revert ZeroLiquidity();

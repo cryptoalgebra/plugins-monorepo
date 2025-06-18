@@ -397,6 +397,10 @@ describe('LimitOrders', () => {
       expect(await loModule.tickSpacings(pool)).to.be.eq(120)
     });
 
+    it('should emit event', async () => {
+      expect(await loModule.setTickSpacing(pool, 120)).to.emit(loModule, 'LimitOrderTickSpacing').withArgs(pool, 120);
+    });
+
     it('withdraw works correct after tickSpacing change', async () => {
       await loModule.setTickSpacing(pool, 120)
 

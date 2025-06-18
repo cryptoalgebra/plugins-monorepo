@@ -121,7 +121,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
       (uint256 amount0, uint256 amount1) = IAlgebraPool(pool).burn(lower, upper, epochInfo.liquidityTotal, ZERO_BYTES);
 
       unchecked {
-        epochInfo.token0Total += uint128(amount0) - 1;
+        epochInfo.token0Total += uint128(amount0);
         epochInfo.token1Total += uint128(amount1);
       }
 
@@ -198,10 +198,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     epochInfo.tickLower = tickLower;
     epochInfo.tickUpper = tickUpper;
 
-    if (epochInfo.token0Total == 0 && epochInfo.token1Total == 0) {
-      epochInfo.token0Total = 1;
-    }
-
     emit Place(msg.sender, epoch, pool, tickLower, tickUpper, zeroForOne, liquidityActual);
   }
 
@@ -233,7 +229,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
         pool,
         tickLower,
         tickUpper,
-        uint128(amount0Fee) + epochInfo.token0Total - 1,
+        uint128(amount0Fee) + epochInfo.token0Total,
         uint128(amount1Fee) + epochInfo.token1Total
       );
       epochInfo.token0Total = 0;

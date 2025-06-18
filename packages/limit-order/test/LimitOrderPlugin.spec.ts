@@ -98,7 +98,7 @@ describe('LimitOrders', () => {
           expect(liquidityTotal).to.be.eq(10n**8n);
           expect(token0address).to.be.eq(await token0.getAddress());
           expect(token1address).to.be.eq(await token1.getAddress());
-          expect(token0Total).to.be.eq(1);
+          expect(token0Total).to.be.eq(0);
           expect(token1Total).to.be.eq(0);
 
           expect( await loModule.getEpochLiquidity(1, wallet)).to.be.eq(10n**8n);

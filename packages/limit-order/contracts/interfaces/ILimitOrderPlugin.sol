@@ -7,8 +7,6 @@ interface ILimitOrderPlugin {
 
   function limitOrderManager() external view returns (address);
 
-  function initializeLimitOrderPlugin() external; 
-
   function setLimitOrderManager(address newModule) external;
 
   event LimitOrderManager(address newModule);

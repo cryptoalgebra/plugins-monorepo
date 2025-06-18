@@ -281,10 +281,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     emit Withdraw(msg.sender, epoch, liquidity);
   }
 
-  function afterInitialize(address pool, int24 tick) external override onlyPlugin(pool) {
-    _initialize(pool, tick);
-  }
-
   function afterSwap(address pool, bool zeroToOne, int24 tick) external override onlyPlugin(pool) {
     int24 tickSpacing = getTickSpacing(pool);
     (int24 tickLower, int24 lower, int24 upper) = _getCrossedTicks(pool, tick, tickSpacing);

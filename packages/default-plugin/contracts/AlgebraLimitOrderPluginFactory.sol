@@ -21,6 +21,9 @@ contract AlgebraLimitOrderPluginFactory is IAlgebraLimitOrderPluginFactory {
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   /// @notice The address of the limit order manager
   address public limitOrderManager;
 
@@ -62,7 +65,7 @@ contract AlgebraLimitOrderPluginFactory is IAlgebraLimitOrderPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraLimitOrderPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, limitOrderManager);
+    IDynamicFeeManager volatilityOracle = new AlgebraLimitOrderPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, limitOrderManager, securityRegistry);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -86,5 +89,12 @@ contract AlgebraLimitOrderPluginFactory is IAlgebraLimitOrderPluginFactory {
     require(limitOrderManager != newLimitOrderManager);
     limitOrderManager = newLimitOrderManager;
     emit LimitOrderManager(newLimitOrderManager);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address _securityRegistry) external override onlyAdministrator {
+    require(securityRegistry != _securityRegistry);
+    securityRegistry = _securityRegistry;
+    emit SecurityRegistry(_securityRegistry);
   }
 }

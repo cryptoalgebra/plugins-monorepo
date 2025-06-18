@@ -88,6 +88,9 @@ importers:
       '@cryptoalgebra/limit-order-plugin':
         specifier: workspace:^
         version: link:../limit-order
+      '@cryptoalgebra/safety-switch-plugin':
+        specifier: workspace:^
+        version: link:../safety-switch
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
         version: link:../volatility-oracle
@@ -140,11 +143,11 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.2.0
+        version: 1.2.0
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.1
-        version: 1.2.1
+        specifier: 1.2.0
+        version: 1.2.0
       '@openzeppelin/contracts':
         specifier: ^4.9.3
         version: 4.9.3
@@ -434,12 +437,20 @@ packages:
     resolution: {integrity: sha512-BgeLkSbuaTGs1LwBh4XDHAN9YUuKmjx13rdGeM0uKQrEndP1uay3rSA6WGlZEUHIKnXAcjrj5aGqyK+4MwgM9w==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
+  '@cryptoalgebra/integral-core@1.2.0':
+    resolution: {integrity: sha512-BKi/iOj3QflrBOeV5slpqXszpkNEirEd1qXwJxx4bNuTu9lih3aSorvhoNdgg6Jr5wlDuZrw/JrGvOIj4OqhbQ==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
   '@cryptoalgebra/integral-core@1.2.1':
     resolution: {integrity: sha512-+Lj7y2ZqpJ58fNtqTRvrMv/HPcyqNkMpINu9LQK6/iMDePmzNoywogLLiGU34MlxAaGEwO6XNWM7ENq/YzzZzA==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   '@cryptoalgebra/integral-core@1.2.5':
     resolution: {integrity: sha512-t7pjjsp1Jyql3HRxzBkStrY33ujIj84DnVaAj5BLBdhr6W92uxgUk1MHpYve0I0nqguczRoupjo6TwFPmRVoXg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/integral-periphery@1.2.0':
+    resolution: {integrity: sha512-gH3qLqoDHeq3qf0Pe277v7ei1712wGsYvW73KplNOtXtsPBmh4T3L6ZvL0DokZNvf676xdhyqo2zFp8Ip6ojNg==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   '@cryptoalgebra/integral-periphery@1.2.1':
@@ -4494,6 +4505,10 @@ snapshots:
       '@cryptoalgebra/integral-core': 1.2.1
       '@cryptoalgebra/integral-periphery': 1.2.1
 
+  '@cryptoalgebra/integral-core@1.2.0':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.3
+
   '@cryptoalgebra/integral-core@1.2.1':
     dependencies:
       '@openzeppelin/contracts': 4.9.3
@@ -4501,6 +4516,12 @@ snapshots:
   '@cryptoalgebra/integral-core@1.2.5':
     dependencies:
       '@openzeppelin/contracts': 4.9.3
+
+  '@cryptoalgebra/integral-periphery@1.2.0':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.2.0
+      '@openzeppelin/contracts': 4.9.3
+      '@uniswap/v2-core': 1.0.1
 
   '@cryptoalgebra/integral-periphery@1.2.1':
     dependencies:

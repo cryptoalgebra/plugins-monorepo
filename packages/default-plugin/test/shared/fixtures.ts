@@ -4,6 +4,7 @@ import {
   MockPool,
   MockTimeAlgebraLimitOrderPlugin,
   MockTimeDSFactory,
+  SecurityRegistry,
   AlgebraLimitOrderPluginFactory,
 } from '../../typechain';
 
@@ -35,6 +36,11 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
 
   const mockPoolFactory = await ethers.getContractFactory('MockPool');
   const mockPool = (await mockPoolFactory.deploy()) as any as MockPool;
+
+  const registryFactory = await ethers.getContractFactory('SecurityRegistry');
+  const registry = (await registryFactory.deploy(mockFactory)) as any as SecurityRegistry;
+
+  await mockPluginFactory.setSecurityRegistry(registry);
 
   await mockPluginFactory.beforeCreatePoolHook(mockPool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
   const pluginAddress = await mockPluginFactory.pluginByPool(mockPool);

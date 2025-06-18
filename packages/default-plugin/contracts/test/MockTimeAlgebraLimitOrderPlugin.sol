@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderManager.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol';
 import '../AlgebraLimitOrderPlugin.sol';
 
 // used for testing time dependent behavior
@@ -16,8 +17,9 @@ contract MockTimeAlgebraLimitOrderPlugin is AlgebraLimitOrderPlugin {
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
-    address _LOmanager
-  ) AlgebraLimitOrderPlugin(_pool, _factory, _pluginFactory, _config, _LOmanager) {}
+    address _LOmanager,
+    address _securityRegistry
+  ) AlgebraLimitOrderPlugin(_pool, _factory, _pluginFactory, _config, _LOmanager, _securityRegistry) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

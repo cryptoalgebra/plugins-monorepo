@@ -10,21 +10,24 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 plugin that combines dynamic fee, farming proxy, volatility oracle and limit order plugins
-contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, LimitOrderPlugin {
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
+
+/// @title Algebra Integral 1.2 plugin that combines dynamic fee, farming proxy, volatility oracle, safety switch and limit order plugins
+contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, LimitOrderPlugin, SecurityPlugin {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
-    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.DYNAMIC_FEE | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.BEFORE_FLASH_FLAG);
 
   constructor(
     address _pool,
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
-    address _LOmanager
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) LimitOrderPlugin(_LOmanager) {}
+    address _LOmanager,
+    address _securityRegistry
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) LimitOrderPlugin(_LOmanager) SecurityPlugin(_securityRegistry){}
 
   // ###### HOOKS ######
 
@@ -35,13 +38,17 @@ contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volati
 
   function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
     _initialize_TWAP(tick);
-    _initialize_LO();
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
   /// @dev unused
-  function beforeModifyPosition(address, address, int24, int24, int128, bytes calldata) external override onlyPool returns (bytes4, uint24) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+  function beforeModifyPosition(address, address, int24, int24, int128 liquidity, bytes calldata) external override onlyPool returns (bytes4, uint24) {
+    // security plugin checks
+    if (liquidity < 0) {
+      _checkStatusOnBurn();
+    } else {
+      _checkStatus();
+    }
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
   }
 
@@ -52,6 +59,7 @@ contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volati
   }
 
   function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {
+    _checkStatus();
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint24 fee = _getCurrentFee(volatilityAverage);
@@ -67,7 +75,7 @@ contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volati
 
   /// @dev unused
   function beforeFlash(address, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+    _checkStatus();
     return IAlgebraPlugin.beforeFlash.selector;
   }
 

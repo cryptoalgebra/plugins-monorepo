@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
-import { MockTimeAlgebraLimitOrderPlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockTimeAlgebraLimitOrderPlugin, MockTimeDSFactory, MockTimeVirtualPool, SecurityRegistry } from '../typechain';
 import { expect } from 'test-utils/expect';
 
 import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
@@ -44,6 +44,11 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
 
     const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const mockPluginFactory = (await mockPluginFactoryFactory.deploy(fix.factory)) as any as MockTimeDSFactory;
+
+    const registryFactory = await ethers.getContractFactory('SecurityRegistry');
+    const registry = (await registryFactory.deploy(mockPluginFactory)) as any as SecurityRegistry;
+  
+    await mockPluginFactory.setSecurityRegistry(registry);
 
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
     const pluginAddress = await mockPluginFactory.pluginByPool(pool);

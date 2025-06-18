@@ -25,6 +25,11 @@ export default {
       chainId: 1337,
       gas: 10000000,
     },
+    base: {
+      url: `https://base-mainnet.public.blastapi.io`,
+      chainId: 8453,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${INFURA_ID_PROJECT}`,
     },

@@ -175,13 +175,13 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     EpochInfo storage epochInfo;
     Epoch epoch = getEpoch(pool, tickLower, tickUpper, zeroForOne);
     if (epoch.equals(EPOCH_DEFAULT)) {
-      unchecked {
-        setEpoch(pool, tickLower, tickUpper, zeroForOne, epoch = epochNext);
-        // since epoch was just assigned the current value of epochNext,
-        // this is equivalent to epochNext++, which is what's intended,
-        // and it saves an SLOAD
-        epochNext = epoch.unsafeIncrement();
-      }
+
+      setEpoch(pool, tickLower, tickUpper, zeroForOne, epoch = epochNext);
+      // since epoch was just assigned the current value of epochNext,
+      // this is equivalent to epochNext++, which is what's intended,
+      // and it saves an SLOAD
+      epochNext = epoch.unsafeIncrement();
+
       epochInfo = epochInfos[epoch];
       epochInfo.token0 = poolKey.token0;
       epochInfo.token1 = poolKey.token1;

@@ -4,11 +4,11 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 
-import './MockTimeAlgebraDefaultPlugin.sol';
-import '../interfaces/IAlgebraDefaultPluginFactory.sol';
+import './MockTimeAlgebraLimitOrderPlugin.sol';
+import '../interfaces/IAlgebraLimitOrderPluginFactory.sol';
 
-contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+contract MockTimeDSFactory is IAlgebraLimitOrderPluginFactory {
+  /// @inheritdoc IAlgebraLimitOrderPluginFactory
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @inheritdoc IBasePluginFactory
@@ -19,9 +19,12 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
 
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
-
+  
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
+
+  /// @notice The address of the limit order manager
+  address public limitOrderManager;
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
@@ -54,7 +57,7 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
+    MockTimeAlgebraLimitOrderPlugin volatilityOracle = new MockTimeAlgebraLimitOrderPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, limitOrderManager);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -71,5 +74,12 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
     require(farmingAddress != newFarmingAddress);
     farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override {
+    require(limitOrderManager != newLimitOrderManager);
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 }

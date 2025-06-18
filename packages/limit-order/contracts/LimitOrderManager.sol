@@ -117,7 +117,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
 
       epochInfo.filled = true;
 
-      (uint256 amount0, uint256 amount1) = IAlgebraPool(pool).burn(lower, upper, epochInfo.liquidityTotal, '');
+      (uint256 amount0, uint256 amount1) = IAlgebraPool(pool).burn(lower, upper, epochInfo.liquidityTotal, ZERO_BYTES);
 
       unchecked {
         epochInfo.token0Total += uint128(amount0) - 1;
@@ -226,7 +226,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     epochInfo.liquidityTotal = liquidityTotal - liquidity;
 
     // when the all liquidity of the position is taken, fees is sent to the pool
-    (uint256 amount0Fee, uint256 amount1Fee) = IAlgebraPool(pool).burn(tickLower, tickUpper, 0, '');
+    (uint256 amount0Fee, uint256 amount1Fee) = IAlgebraPool(pool).burn(tickLower, tickUpper, 0, ZERO_BYTES);
     if (liquidityTotal - liquidity == 0) {
       IAlgebraPool(pool).collect(
         pool,
@@ -242,7 +242,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
       epochInfo.token1Total += uint128(amount1Fee);
     }
 
-    (amount0, amount1) = IAlgebraPool(pool).burn(tickLower, tickUpper, liquidity, '');
+    (amount0, amount1) = IAlgebraPool(pool).burn(tickLower, tickUpper, liquidity, ZERO_BYTES);
     IAlgebraPool(pool).collect(address(this), tickLower, tickUpper, uint128(amount0), uint128(amount1));
 
     claimTo(poolKey, to);

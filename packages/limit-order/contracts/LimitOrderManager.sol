@@ -77,6 +77,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
   function setTickSpacing(address pool, int24 tickSpacing) external override {
     require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender));
     tickSpacings[pool] = tickSpacing;
+    tickLowerLasts[pool] = getTickLower(getTick(pool), tickSpacing);
     emit LimitOrderTickSpacing(pool, tickSpacing);
   }
 

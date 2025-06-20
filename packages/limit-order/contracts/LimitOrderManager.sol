@@ -143,6 +143,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
 
     if (amount0Owed > 0) _pay(decoded.poolKey.token0, decoded.payer, msg.sender, amount0Owed);
     if (amount1Owed > 0) _pay(decoded.poolKey.token1, decoded.payer, msg.sender, amount1Owed);
+    _refundNativeToken(decoded.payer);
   }
 
   function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable override {

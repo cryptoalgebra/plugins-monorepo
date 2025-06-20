@@ -31,7 +31,9 @@ abstract contract LimitOrderPayments {
       // pull payment
       TransferHelper.safeTransferFrom(token, payer, recipient, value);
     }
+  }
 
+  function _refundNativeToken(address payer) internal {
     if (address(this).balance > 0) TransferHelper.safeTransferNative(payer, address(this).balance);
   }
 

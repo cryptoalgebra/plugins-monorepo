@@ -33,6 +33,10 @@ abstract contract LimitOrderPayments {
     }
   }
 
+  function _refundNativeToken(address payer) internal {
+    if (address(this).balance > 0) TransferHelper.safeTransferNative(payer, address(this).balance);
+  }
+
   function claimTo(PoolAddress.PoolKey memory poolkey, address to) internal {
     uint256 balanceToken0 = _balanceOfToken(poolkey.token0);
     uint256 balanceToken1 = _balanceOfToken(poolkey.token1);

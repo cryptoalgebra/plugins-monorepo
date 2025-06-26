@@ -20,6 +20,9 @@ const AlgebraLimitOrderPluginModule = buildModule("AlgebraLimitOrderPlugin", (m)
   // Set SecurityRegistry in factory
   m.call(pluginFactory, "setSecurityRegistry", [securityRegistry]);
 
+  // Set SecurityRegistry in factory
+  m.call(pluginFactory, "setFarming", [securityRegistry]);
+
   return {
     pluginFactory,
     limitOrderManager,

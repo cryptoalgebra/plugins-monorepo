@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers';
+import { Wallet, AbiCoder } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
@@ -44,21 +44,52 @@ describe('AlgebraDefaultPluginFactory', () => {
       const feeConfig = await pluginMock.feeConfig();
       expect(feeConfig.baseFee).to.be.not.eq(0);
     });
+
+    it('factory can create plugin with fee config', async () => {
+
+      const configuration =
+      {
+        alpha1: 0,
+        alpha2: 0,
+        beta1: 1001,
+        beta2: 1006,
+        gamma1: 20,
+        gamma2: 22,
+        baseFee: 1000,
+      }
+
+      const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
+      
+      const pluginFactoryMock = (await pluginFactoryFactory.deploy(mockAlgebraFactory)) as any as AlgebraDefaultPluginFactory;
+
+      await pluginFactoryMock.connect(wallet).setFeeConfiguration(2, configuration);
+
+      const pluginAddress = await mockAlgebraFactory.createPool.staticCall(
+        pluginFactoryMock,
+        AbiCoder.defaultAbiCoder().encode(['uint256'],[2])
+      );
+
+      await mockAlgebraFactory.createPool(pluginFactoryMock, AbiCoder.defaultAbiCoder().encode(['uint256'],[2]));
+
+      const pluginMock = (await ethers.getContractFactory('AlgebraDefaultPlugin')).attach(pluginAddress) as any as AlgebraDefaultPlugin;
+      const feeConfig = await pluginMock.feeConfig();
+      expect(feeConfig.baseFee).to.be.eq(1000);
+    });
   });
 
   describe('#CreatePluginForExistingPool', () => {
     it('only if has role', async () => {
-      expect(pluginFactory.connect(other).createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWithoutReason;
+      expect(pluginFactory.connect(other).createPluginForExistingPool(wallet.address, other.address, '0x')).to.be.revertedWithoutReason;
     });
 
     it('cannot create for nonexistent pool', async () => {
-      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWith('Pool not exist');
+      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address, '0x')).to.be.revertedWith('Pool not exist');
     });
 
     it('can create for existing pool', async () => {
       await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
 
-      await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+      await pluginFactory.createPluginForExistingPool(wallet.address, other.address,'0x');
       const pluginAddress = await pluginFactory.pluginByPool(other.address);
       expect(pluginAddress).to.not.be.eq(ZERO_ADDRESS);
       const pluginMock = (await ethers.getContractFactory('AlgebraDefaultPlugin')).attach(pluginAddress) as any as AlgebraDefaultPlugin;
@@ -69,14 +100,66 @@ describe('AlgebraDefaultPluginFactory', () => {
     it('cannot create twice for existing pool', async () => {
       await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
 
-      await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+      await pluginFactory.createPluginForExistingPool(wallet.address, other.address, '0x');
 
-      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWith('Already created');
+      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address, '0x')).to.be.revertedWith('Already created');
     });
   });
 
   describe('#Default fee configuration', () => {
     describe('#setDefaultFeeConfiguration', () => {
+      const configuration = [
+        {
+        alpha1: 0,
+        alpha2: 0,
+        beta1: 1001,
+        beta2: 1006,
+        gamma1: 20,
+        gamma2: 22,
+        baseFee: 500,
+        },
+        {
+          alpha1: 0,
+          alpha2: 0,
+          beta1: 1001,
+          beta2: 1006,
+          gamma1: 20,
+          gamma2: 22,
+          baseFee: 1000,
+        },
+      ];
+      it('fails if caller is not owner', async () => {
+        await expect(pluginFactory.connect(other).setFeeConfiguration(0, configuration[0])).to.be.revertedWith('Only administrator');
+      });
+
+      it('updates feeConfiguration', async () => {
+        await pluginFactory.setFeeConfiguration(0, configuration[0]);
+
+        let newConfig = await pluginFactory.feeConfigurations(0);
+
+        expect(newConfig.alpha1).to.eq(configuration[0].alpha1);
+        expect(newConfig.alpha2).to.eq(configuration[0].alpha2);
+        expect(newConfig.beta1).to.eq(configuration[0].beta1);
+        expect(newConfig.beta2).to.eq(configuration[0].beta2);
+        expect(newConfig.gamma1).to.eq(configuration[0].gamma1);
+        expect(newConfig.gamma2).to.eq(configuration[0].gamma2);
+        expect(newConfig.baseFee).to.eq(configuration[0].baseFee);
+
+        await pluginFactory.setFeeConfiguration(1, configuration[1]);
+
+        newConfig = await pluginFactory.feeConfigurations(1);
+
+        expect(newConfig.alpha1).to.eq(configuration[1].alpha1);
+        expect(newConfig.alpha2).to.eq(configuration[1].alpha2);
+        expect(newConfig.beta1).to.eq(configuration[1].beta1);
+        expect(newConfig.beta2).to.eq(configuration[1].beta2);
+        expect(newConfig.gamma1).to.eq(configuration[1].gamma1);
+        expect(newConfig.gamma2).to.eq(configuration[1].gamma2);
+        expect(newConfig.baseFee).to.eq(configuration[1].baseFee);
+      });
+    });
+
+    describe('#setFeeConfiguration', () => {
       const configuration = {
         alpha1: 3002,
         alpha2: 10009,

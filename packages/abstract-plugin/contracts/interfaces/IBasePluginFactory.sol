@@ -18,6 +18,7 @@ interface IBasePluginFactory is IAlgebraPluginFactory {
   /// @notice Create plugin for already existing pool
   /// @param token0 The address of first token in pool
   /// @param token1 The address of second token in pool
+  /// @param data bytes
   /// @return The address of created plugin
-  function createPluginForExistingPool(address token0, address token1) external returns (address);
+  function createPluginForExistingPool(address token0, address token1, bytes calldata data) external returns (address);
 }

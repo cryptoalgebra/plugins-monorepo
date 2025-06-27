@@ -14,4 +14,11 @@ interface IAlgebraDefaultPluginFactory is IBasePluginFactory, IFarmingPluginFact
   /// @dev allows to change settings of AlgebraDefaultPluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);
 
+  function feeConfigurations(uint256 index) 
+    external
+    view 
+    returns(uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee);
+
+  function setFeeConfiguration(uint256 index, AlgebraFeeConfiguration calldata config) external;
+
 }

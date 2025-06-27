@@ -17,6 +17,8 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   /// @dev values of constants for sigmoids in fee calculation formula
   AlgebraFeeConfiguration public override defaultFeeConfiguration;
 
+  mapping(uint256 => AlgebraFeeConfiguration) public override feeConfigurations;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
@@ -29,8 +31,8 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
-    return _createPlugin(pool);
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata data) external override returns (address) {
+    return _createPlugin(pool, data);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -39,22 +41,28 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   }
 
   /// @inheritdoc IBasePluginFactory
-  function createPluginForExistingPool(address token0, address token1) external override returns (address) {
+  function createPluginForExistingPool(address token0, address token1, bytes calldata data) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);
     require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender));
 
     address pool = factory.poolByPair(token0, token1);
     require(pool != address(0), 'Pool not exist');
 
-    return _createPlugin(pool);
+    return _createPlugin(pool, data);
   }
 
   function setPluginForPool(address pool, address plugin) external {
     pluginByPool[pool] = plugin;
   }
 
-  function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
+  function _createPlugin(address pool, bytes calldata data) internal returns (address) {
+    AlgebraFeeConfiguration memory feeConfig;
+    if (data.length > 0){
+      feeConfig = feeConfigurations[abi.decode(data, (uint256))];
+    } else {
+      feeConfig = defaultFeeConfiguration;
+    }
+    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), feeConfig);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -71,5 +79,10 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
     require(farmingAddress != newFarmingAddress);
     farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
+  }
+
+  function setFeeConfiguration(uint256 index, AlgebraFeeConfiguration calldata config) external override  {
+    AdaptiveFee.validateFeeConfiguration(config);
+    feeConfigurations[index] = config;
   }
 }

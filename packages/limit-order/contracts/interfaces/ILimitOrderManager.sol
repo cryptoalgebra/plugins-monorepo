@@ -24,6 +24,8 @@ interface ILimitOrderManager is IAlgebraMintCallback {
 
   event Withdraw(address indexed owner, Epoch indexed epoch, uint128 liquidity);
 
+  event LimitOrderTickSpacing(address indexed pool, int24 tickSpacing);
+
   function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable;
 
   function kill(
@@ -38,8 +40,6 @@ interface ILimitOrderManager is IAlgebraMintCallback {
   function withdraw(Epoch epoch, address to) external returns (uint256 amount0, uint256 amount1);
 
   function afterSwap(address pool, bool zeroToOne, int24 tick) external;
-
-  function afterInitialize(address pool, int24 tick) external;
 
   function setTickSpacing(address pool, int24 tickSpacing) external;
 }

@@ -79,6 +79,8 @@ contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugi
 
     _updateLimitOrderManagerState(_pool, zeroToOne);
 
+    _updateVirtualPoolTick(zeroToOne);
+
     return IAlgebraPlugin.afterSwap.selector;
   }
 

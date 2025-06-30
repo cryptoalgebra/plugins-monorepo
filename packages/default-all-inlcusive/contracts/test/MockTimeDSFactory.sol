@@ -3,7 +3,8 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
-
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderManager.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol';
 import './MockTimeAlgebraDefaultPlugin.sol';
 import '../interfaces/IAlgebraDefaultAllInclusivePluginFactory.sol';
 

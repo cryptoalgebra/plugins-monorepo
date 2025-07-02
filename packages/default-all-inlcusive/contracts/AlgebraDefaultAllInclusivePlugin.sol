@@ -19,7 +19,7 @@ contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugi
 
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
-    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
+    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.DYNAMIC_FEE);
 
   constructor(
     address _pool,

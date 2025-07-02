@@ -16,7 +16,7 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, IDef
 
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
-    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
+    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   uint24 public defaultFee;
 

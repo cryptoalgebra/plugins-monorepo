@@ -1,20 +1,13 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-const pool = "0xabff72aee1ba72fc459acd5222dd84a3182411bb";
-const factory = "0x51a744E9FEdb15842c3080d0937C99A365C6c358";
-const pluginFactory = "0x05f3bd357D47D159ac7d33f9DBaaCFc65d31976d";
-const feeConfig = {
-	alpha1:  2900,
-	alpha2:  12000,
-	beta1:  360,
-	beta2:  60000,
-	gamma1:  59,
-	gamma2:  8500,
-	baseFee:  100
-};
+const factoryAddress = "0x904Af47469B13b341B41c552c952370b76B69DFA";
 
-export default buildModule("DefaultAlmPlugin", (m) => {
-	const defaultAlmPlugin = m.contract("DefaultAlmPlugin", [pool, factory, pluginFactory, feeConfig]);
+export default buildModule("DefaultAlmPluginFactory", (m) => {
+	const DefaultAlmPluginFactory = m.contract("DefaultAlmPluginFactory", [factoryAddress]);
+
+	const factory = m.contractAt("IAlgebraFactory", factoryAddress)
 	
-	return { defaultAlmPlugin };
+	m.call(factory, "setDefaultPluginFactory", [DefaultAlmPluginFactory]);
+	
+	return { DefaultAlmPluginFactory };
 });

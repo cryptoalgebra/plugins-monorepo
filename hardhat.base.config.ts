@@ -113,6 +113,11 @@ export default {
       url: `https://mainnet.base.org`,
       chainId: 8453,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
+    baseTestnet: {
+      url: `https://sepolia.base.org`,
+      chainId: 84532,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     }
   },
   etherscan: {
@@ -134,6 +139,14 @@ export default {
         urls: {
           apiURL: 'https://explorer.mode.network/api',
           browserURL: 'https://explorer.mode.network/',
+        },
+      },
+      {
+        network: 'baseTestnet',
+        chainId: 84532,
+        urls: {
+          apiURL: 'https://api-sepolia.basescan.org/api',
+          browserURL: 'https://sepolia.basescan.org/',
         },
       },
       {

@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { MockFactory, MockPool, MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, AlgebraDefaultPluginFactory, MockVault, MockDefaultAlmPlugin, MockDefaultAlmPluginFactory} from '../../typechain';
+import { MockFactory, MockPool, MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, DefaultAlmPluginFactory, MockVault, MockDefaultAlmPlugin, MockDefaultAlmPluginFactory} from '../../typechain';
 
 type Fixture<T> = () => Promise<T>;
 interface MockFactoryFixture {
@@ -45,14 +45,14 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
 };
 
 interface PluginFactoryFixture extends MockFactoryFixture {
-  pluginFactory: AlgebraDefaultPluginFactory;
+  pluginFactory: DefaultAlmPluginFactory;
 }
 
 export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async function (): Promise<PluginFactoryFixture> {
   const { mockFactory } = await mockFactoryFixture();
 
-  const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
-  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as AlgebraDefaultPluginFactory;
+  const pluginFactoryFactory = await ethers.getContractFactory('DefaultAlmPluginFactory');
+  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as DefaultAlmPluginFactory;
 
   return {
     pluginFactory,

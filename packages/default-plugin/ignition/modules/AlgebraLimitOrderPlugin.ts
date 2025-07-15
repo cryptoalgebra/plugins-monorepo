@@ -3,6 +3,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 const wnative = "0x4200000000000000000000000000000000000006"
 const poolDeployer = "0x19652b0d7ccddD35E9CC4aCF418556C3Dd0fd31f"
 const factory = "0xAC900f12fB25d514e3ccFE8572B153A9991cA4e7"
+const farming = ""
 
 const AlgebraLimitOrderPluginModule = buildModule("AlgebraLimitOrderPlugin", (m) => {
   // Deploy AlgebraLimitOrderPluginFactory
@@ -20,8 +21,8 @@ const AlgebraLimitOrderPluginModule = buildModule("AlgebraLimitOrderPlugin", (m)
   // Set SecurityRegistry in factory
   m.call(pluginFactory, "setSecurityRegistry", [securityRegistry]);
 
-  // Set SecurityRegistry in factory
-  m.call(pluginFactory, "setFarming", [securityRegistry]);
+  // Set FarmingCenter in factory
+  m.call(pluginFactory, "setFarming", [farming]);
 
   return {
     pluginFactory,

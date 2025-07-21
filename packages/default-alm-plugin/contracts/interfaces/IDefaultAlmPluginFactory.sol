@@ -2,11 +2,13 @@
 pragma solidity >=0.5.0;
 pragma abicoder v2;
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
+import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
 
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 /// @title The interface for the DefaultAlmPluginFactory
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
-interface IDefaultAlmPluginFactory is IBasePluginFactory, IDynamicFeePluginFactory {
+interface IDefaultAlmPluginFactory is IBasePluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory {
 
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of DefaultAlmPluginFactory

@@ -11,6 +11,8 @@
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@cryptoalgebra/dynamic-fee-plugin": "workspace:^",
+    "@cryptoalgebra/farming-proxy-plugin": "1.0.2",
+    "@cryptoalgebra/safety-switch-plugin": "1.0.1",
     "@cryptoalgebra/alm-plugin": "workspace:^",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.2.5",

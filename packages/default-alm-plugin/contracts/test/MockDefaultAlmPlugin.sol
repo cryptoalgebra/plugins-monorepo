@@ -12,8 +12,9 @@ contract MockDefaultAlmPlugin is DefaultAlmPlugin {
     address _pool,
     address _factory,
     address _pluginFactory,
-    AlgebraFeeConfiguration memory _config
-  ) DefaultAlmPlugin(_pool, _factory, _pluginFactory, _config) {}
+    AlgebraFeeConfiguration memory _config,
+    address _securityRegistry
+  ) DefaultAlmPlugin(_pool, _factory, _pluginFactory, _config, _securityRegistry) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

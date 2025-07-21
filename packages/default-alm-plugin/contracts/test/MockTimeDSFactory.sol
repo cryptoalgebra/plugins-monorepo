@@ -17,6 +17,12 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
   /// @dev values of constants for sigmoids in fee calculation formula
   AlgebraFeeConfiguration public override defaultFeeConfiguration;
 
+  /// @inheritdoc IFarmingPluginFactory
+  address public override farmingAddress;
+
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
@@ -51,7 +57,7 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
+    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -61,6 +67,20 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
     AdaptiveFee.validateFeeConfiguration(newConfig);
     defaultFeeConfiguration = newConfig;
     emit DefaultFeeConfiguration(newConfig);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override {
+    require(farmingAddress != newFarmingAddress);
+    farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override {
+    require(securityRegistry != newSecurityRegistry);
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 
 }

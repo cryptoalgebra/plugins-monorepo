@@ -15,6 +15,12 @@ contract MockDefaultAlmPluginFactory is IDefaultAlmPluginFactory {
   /// @dev values of constants for sigmoids in fee calculation formula
   AlgebraFeeConfiguration public override defaultFeeConfiguration;
 
+  /// @inheritdoc IFarmingPluginFactory
+  address public override farmingAddress;
+
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   mapping(address => address) public override pluginByPool;
 
   constructor(address _algebraFactory) {
@@ -47,7 +53,7 @@ contract MockDefaultAlmPluginFactory is IDefaultAlmPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockDefaultAlmPlugin  plugin = new MockDefaultAlmPlugin (pool, algebraFactory, address(this), defaultFeeConfiguration);
+    MockDefaultAlmPlugin  plugin = new MockDefaultAlmPlugin (pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
     pluginByPool[pool] = address(plugin);
     return address(plugin);
   }
@@ -56,5 +62,19 @@ contract MockDefaultAlmPluginFactory is IDefaultAlmPluginFactory {
     AdaptiveFee.validateFeeConfiguration(newConfig);
     defaultFeeConfiguration = newConfig;
     emit DefaultFeeConfiguration(newConfig);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override {
+    require(farmingAddress != newFarmingAddress);
+    farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override {
+    require(securityRegistry != newSecurityRegistry);
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 }

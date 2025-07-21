@@ -21,6 +21,12 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
   /// @inheritdoc IDynamicFeePluginFactory
   AlgebraFeeConfiguration public override defaultFeeConfiguration; // values of constants for sigmoids in fee calculation formula
 
+  /// @inheritdoc IFarmingPluginFactory
+  address public override farmingAddress;
+
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   /// @inheritdoc IDefaultAlmCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -48,7 +54,7 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration));
+    address plugin = address(new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -63,6 +69,20 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
     AdaptiveFee.validateFeeConfiguration(newConfig);
     defaultFeeConfiguration = newConfig;
     emit DefaultFeeConfiguration(newConfig);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {
+    require(farmingAddress != newFarmingAddress);
+    farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
+    require(securityRegistry != newSecurityRegistry);
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 
 }

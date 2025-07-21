@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/safety-switch-plugin",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "",
   "publishConfig": {
     "access": "public"

@@ -4,13 +4,13 @@ async function main() {
 
   const [deployer] = await hre.ethers.getSigners();
 
-  const almFactoryAddress = "0xe66533a6030DCF609e5aBC1F61EEe9C697BCC24d";
-  const poolAddress = "0x2f99C425EB7219E2A8C8545684D38F13eC5E46cB";
+  const almFactoryAddress = "0x6Cd7DCd88f3994e57557690D20D20105B72c1CBA";
+  const poolAddress = "0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29";
   const allowedTokenA = false;
   const allowedTokenB = true;
-  const minTimeBetweenRebalances = 600;
+  const minTimeBetweenRebalances = 3600;
   const slowTwapPeriod = 3600;
-  const fastTwapPeriod = 600;
+  const fastTwapPeriod = 300;
 
   // struct Thresholds {
   //     uint16 depositTokenUnusedThreshold;
@@ -27,20 +27,21 @@ async function main() {
   //     uint16 baseHighPct;
   //     uint16 limitReservePct;
   //   }
+  
   const midVolatilitythresholds = [
     100,
-    9400,
+    8800,
     8100,
-    7800,
-    9100,
-    100,
+    7500,
+    8500,
+    60,
     2500,
-    900,
-    200,
-    300,
-    3000,
+    1000,
+    120,
+    2000,
     1500,
-    500
+    1200,
+    200
   ];
 
   const pool = await hre.ethers.getContractAt('IAlgebraPool', poolAddress);

@@ -27,7 +27,7 @@ async function main() {
   //     uint16 baseHighPct;
   //     uint16 limitReservePct;
   //   }
-  
+
   const midVolatilitythresholds = [
     100,
     8800,
@@ -81,7 +81,7 @@ async function main() {
   
   if (pluginAddress !== hre.ethers.ZeroAddress) {
     const plugin = await hre.ethers.getContractAt('IAlmPlugin', pluginAddress);
-    plugin.initializeALM(rebalanceManagerAddress, slowTwapPeriod, fastTwapPeriod)
+    await plugin.initializeALM(rebalanceManagerAddress, slowTwapPeriod, fastTwapPeriod)
     console.log('Rebalance Manager set in plugin');
   } else {
     console.log('No plugin attached to pool');

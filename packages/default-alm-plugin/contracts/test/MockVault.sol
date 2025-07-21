@@ -102,6 +102,14 @@ contract MockVault is IAlgebraVault, ERC20 {
   }
 
   function resetAllowances() external {}
+  
+  function rebalanceManager() external view returns (address) {}
+
+  function setAuxTwapPeriod(uint32 newAuxTwapPeriod) external {}
+
+  function setRebalanceManager(address _rebalanceManager) external {}
+  
+  function setTwapPeriod(uint32 newTwapPeriod) external {}
 
   function setHysteresis(uint256 _hysteresis) external {}
 

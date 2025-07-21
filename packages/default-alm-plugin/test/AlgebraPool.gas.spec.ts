@@ -45,6 +45,11 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const mockPluginFactory = (await mockPluginFactoryFactory.deploy(fix.factory)) as any as MockTimeDSFactory;
 
+    // Deploy and set MockSecurityRegistry
+    const mockSecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
+    const mockSecurityRegistry = await mockSecurityRegistryFactory.deploy(fix.factory);
+    await mockPluginFactory.setSecurityRegistry(mockSecurityRegistry);
+
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
     const pluginAddress = await mockPluginFactory.pluginByPool(pool);
 

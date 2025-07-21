@@ -80,8 +80,8 @@ importers:
         specifier: workspace:^
         version: link:../alm
       '@cryptoalgebra/alm-vault':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: 1.2.1-patch2
+        version: 1.2.1-patch2
       '@cryptoalgebra/dynamic-fee-plugin':
         specifier: workspace:^
         version: link:../dynamic-fee
@@ -438,9 +438,6 @@ packages:
 
   '@cryptoalgebra/abstract-plugin@1.0.1':
     resolution: {integrity: sha512-bQ6kQ0b/9kLesZb21srzjDKdT1khcIGRB1qAxZnQEych5E5j5b2HcB3dLP+b7r6mhZpB7hFHJHygQP5gpFtXIA==}
-
-  '@cryptoalgebra/alm-vault@1.2.1':
-    resolution: {integrity: sha512-7FsfLlAczra4sRNsggTjbZnJYl6bae401NjZYlU0NDn6WZupMMHDhqo1m8nL72aX0X5YSgzZomC/9qL2UlUXHg==}
 
   '@cryptoalgebra/alm-vault@1.2.1-patch2':
     resolution: {integrity: sha512-TyPcVO1NrL9zvu4nbdxIH2BgnMopTf4wc+eVzJFBBNUxGrbe72LWFraKUfYMX6ykHH12B5G55+6/nu8n0uOkhQ==}
@@ -4512,14 +4509,6 @@ snapshots:
     dependencies:
       '@cryptoalgebra/integral-core': 1.2.5
       '@cryptoalgebra/integral-periphery': 1.2.1
-
-  '@cryptoalgebra/alm-vault@1.2.1':
-    dependencies:
-      '@cryptoalgebra/integral-base-plugin': 1.2.1
-      '@cryptoalgebra/integral-core': 1.2.5
-      '@cryptoalgebra/integral-periphery': 1.2.1
-      '@openzeppelin/contracts': 4.9.3
-      bignumber.js: 9.2.1
 
   '@cryptoalgebra/alm-vault@1.2.1-patch2':
     dependencies:

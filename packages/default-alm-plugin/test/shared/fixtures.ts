@@ -83,6 +83,11 @@ export const pluginFixtureALM: Fixture<ALMPluginFixture> = async function (): Pr
   const mockPluginFactoryFactory = await ethers.getContractFactory('MockDefaultAlmPluginFactory');
   const mockPluginFactory = (await mockPluginFactoryFactory.deploy(mockFactory)) as any as MockDefaultAlmPluginFactory;
 
+  // Deploy and set MockSecurityRegistry
+  const mockSecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
+  const mockSecurityRegistry = await mockSecurityRegistryFactory.deploy(mockFactory);
+  await mockPluginFactory.setSecurityRegistry(mockSecurityRegistry);
+
   const mockVaultFactory = await ethers.getContractFactory('MockVault');
   const mockVault = await mockVaultFactory.deploy(await mockPool.getAddress(), true, false) as any as MockVault;
 

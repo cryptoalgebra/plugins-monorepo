@@ -138,12 +138,14 @@ describe('DefaultAlmPlugin', () => {
         await mockPool.setPlugin(plugin);
       });
 
-      it('resets config after beforeModifyPosition', async () => {
+      it('beforeModifyPosition hook is implemented (security check)', async () => {
         await mockPool.initialize(encodePriceSqrt(1, 1));
         await mockPool.setPluginConfig(PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG);
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG);
+        // Should not revert since security registry allows all by default
         await mockPool.mint(wallet.address, wallet.address, 0, 60, 100, '0x');
-        expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
+        // Plugin config should remain the same since the hook is implemented
+        expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG);
       });
 
       it('resets config after afterModifyPosition', async () => {
@@ -154,11 +156,13 @@ describe('DefaultAlmPlugin', () => {
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
       });
 
-      it('resets config after beforeFlash', async () => {
+      it('beforeFlash hook is implemented (security check)', async () => {
         await mockPool.setPluginConfig(PLUGIN_FLAGS.BEFORE_FLASH_FLAG);
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_FLASH_FLAG);
+        // Should not revert since security registry allows all by default  
         await mockPool.flash(wallet.address, 100, 100, '0x');
-        expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
+        // Plugin config should remain the same since the hook is implemented
+        expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_FLASH_FLAG);
       });
 
       it('resets config after afterFlash', async () => {

@@ -10,7 +10,7 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 plugin that combines dynamic fee, farming proxy, volatility oracle and limit order plugins
+/// @title Algebra Integral 1.2.2 plugin that combines dynamic fee, farming proxy, volatility oracle and limit order plugins
 contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, LimitOrderPlugin {
   using Plugins for uint8;
 
@@ -35,7 +35,6 @@ contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volati
 
   function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
     _initialize_TWAP(tick);
-    _initialize_LO();
     return IAlgebraPlugin.afterInitialize.selector;
   }
 

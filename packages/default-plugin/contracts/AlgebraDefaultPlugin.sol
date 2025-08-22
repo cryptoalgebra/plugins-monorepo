@@ -8,9 +8,10 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePlugin.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
+import '@cryptoalgebra/lotus-plugin/contracts/ReflexAfterSwap.sol';
 
 /// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin {
+contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, ReflexAfterSwap {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin
@@ -21,8 +22,9 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     address _pool,
     address _factory,
     address _pluginFactory,
-    AlgebraFeeConfiguration memory _config
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) {}
+    AlgebraFeeConfiguration memory _config,
+    address _reflexRouter
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) ReflexAfterSwap(_reflexRouter) {}
 
   // ###### HOOKS ######
 
@@ -55,8 +57,19 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+  function afterSwap(
+    address,
+    address recipient,
+    bool zeroToOne, 
+    int256, 
+    uint160, 
+    int256 amount0Out,
+    int256 amount1Out,
+    bytes calldata
+  ) external override onlyPool returns (bytes4) {
     _updateVirtualPoolTick(zeroToOne);
+    bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
+    reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

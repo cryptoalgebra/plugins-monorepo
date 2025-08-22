@@ -1,7 +1,10 @@
 {
   "name": "@cryptoalgebra/alm-plugin",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "description": "",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
@@ -10,11 +13,10 @@
   },
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "workspace:^",
-    "@cryptoalgebra/integral-core": "1.2.5",
-    "@cryptoalgebra/integral-periphery": "^1.2.1",
     "@cryptoalgebra/alm-vault": "1.2.1-patch2",
-    "@openzeppelin/contracts": "^4.9.3",
-    "hardhat-dependency-compiler": "^1.2.1"
+    "@cryptoalgebra/integral-core": "1.2.9",
+    "@cryptoalgebra/integral-periphery": "1.2.4",
+    "@openzeppelin/contracts": "^4.9.3"
   },
   "devDependencies": {
     "test-utils": "workspace:^"

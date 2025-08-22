@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -31,6 +31,10 @@ abstract contract LimitOrderPayments {
       // pull payment
       TransferHelper.safeTransferFrom(token, payer, recipient, value);
     }
+  }
+
+  function _refundNativeToken(address payer) internal {
+    if (address(this).balance > 0) TransferHelper.safeTransferNative(payer, address(this).balance);
   }
 
   function claimTo(PoolAddress.PoolKey memory poolkey, address to) internal {

@@ -10,8 +10,20 @@ import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.s
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
 interface IDefaultAlmPluginFactory is IBasePluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory {
 
+  /// @notice Emitted when the default router address is changed
+  /// @param newRouter The new default router address
+  event DefaultRouter(address newRouter);
+
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of DefaultAlmPluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);
+
+  /// @notice Returns the default router address used for new plugins
+  /// @return The default router contract address
+  function defaultRouter() external view returns (address);
+
+  /// @notice Sets the default router address for new plugins
+  /// @param newRouter The new router address to set
+  function setRouter(address newRouter) external;
 
 }

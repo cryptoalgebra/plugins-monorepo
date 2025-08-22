@@ -23,6 +23,8 @@ contract DefaultAlmPluginFactory is IDefaultAlmPluginFactory {
 
   /// @inheritdoc ISecurityPluginFactory
   address public override securityRegistry;
+  /// @notice Default router address used for new plugins
+  address public override defaultRouter;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
@@ -62,7 +64,7 @@ contract DefaultAlmPluginFactory is IDefaultAlmPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
+    IDynamicFeeManager volatilityOracle = new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, defaultRouter);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -88,4 +90,11 @@ contract DefaultAlmPluginFactory is IDefaultAlmPluginFactory {
     emit SecurityRegistry(newSecurityRegistry);
   }
 
+  /// @notice Sets the default router address for new plugins
+  /// @param newRouter The new router address to set
+  function setRouter(address newRouter) external onlyAdministrator {
+    require(defaultRouter != newRouter, 'Same router address');
+    defaultRouter = newRouter;
+    emit DefaultRouter(newRouter);
+  }
 }

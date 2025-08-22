@@ -9,9 +9,10 @@ import '@cryptoalgebra/alm-plugin/contracts/AlmPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
+import '@cryptoalgebra/lotus-plugin/contracts/ReflexAfterSwap.sol';
 
 /// @title Algebra Integral 1.2.1 ALM plugin
-contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin, SecurityPlugin, FarmingProxyPlugin {
+contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin, SecurityPlugin, FarmingProxyPlugin, ReflexAfterSwap {
   using Plugins for uint8;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
   /// @inheritdoc IAlgebraPlugin
@@ -24,8 +25,9 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
-    address _securityRegistry
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) {}
+    address _securityRegistry,
+    address _reflexRouter
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) ReflexAfterSwap(_reflexRouter) {}
 
   // ###### HOOKS ######
 
@@ -65,7 +67,16 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+  function afterSwap(
+    address,
+    address recipient,
+    bool zeroToOne, 
+    int256, 
+    uint160, 
+    int256 amount0Out,
+    int256 amount1Out,
+    bytes calldata
+  ) external override onlyPool returns (bytes4) {
     // ALM 
     if (rebalanceManager != address(0) && _ableToGetTimepoints(slowTwapPeriod)) {
       ( , int24 currentTick, , ) = _getPoolState();
@@ -79,7 +90,8 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
 
     // farming
     _updateVirtualPoolTick(zeroToOne);
-
+    bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
+    reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

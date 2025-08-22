@@ -10,7 +10,7 @@ const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
     evmVersion: 'paris',
     optimizer: {
       enabled: true,
-      runs: 0,
+      runs: 1_000_000,
     },
     metadata: {
       bytecodeHash: 'none',

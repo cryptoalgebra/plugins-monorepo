@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "./interfaces/IReflexRouter.sol";
 import "./base/FundsSplitter.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @title ReflexAfterSwap
 /// @notice Abstract contract that integrates with Reflex Router for post-swap profit extraction and distribution

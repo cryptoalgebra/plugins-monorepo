@@ -31,3 +31,7 @@ npx lerna publish --no-private from-git/from-package
 ```
 with `from-git` flag will publish a new version if there are now such tag in the origin   
 with `from-pacakge` flag will publish a new version if it has not been published to npm
+
+## License
+
+Algebra and Algebra Integral smart-contracts is licensed under the Business Source License 1.1 [(BUSL-1.1)](https://github.com/cryptoalgebra/plugins-monorepo/blob/1.2.2-master/LICENSE) and the MIT License (MIT). Licenses for smart contracts are specified in SPDX headers.

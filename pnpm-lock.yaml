@@ -91,6 +91,9 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.4
         version: 1.2.4
+      '@cryptoalgebra/lotus-plugin':
+        specifier: workspace:^
+        version: link:../lotus
       '@cryptoalgebra/safety-switch-plugin':
         specifier: 1.0.1
         version: 1.0.1

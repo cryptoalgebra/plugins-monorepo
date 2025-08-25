@@ -12,6 +12,9 @@ contract MockDefaultAlmPluginFactory is IDefaultAlmPluginFactory {
 
   address public immutable override algebraFactory;
 
+  /// @notice Default router address used for new plugins
+  address public override defaultRouter;
+
   /// @dev values of constants for sigmoids in fee calculation formula
   AlgebraFeeConfiguration public override defaultFeeConfiguration;
 
@@ -53,7 +56,7 @@ contract MockDefaultAlmPluginFactory is IDefaultAlmPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockDefaultAlmPlugin  plugin = new MockDefaultAlmPlugin (pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
+    MockDefaultAlmPlugin  plugin = new MockDefaultAlmPlugin (pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, defaultRouter);
     pluginByPool[pool] = address(plugin);
     return address(plugin);
   }
@@ -76,5 +79,12 @@ contract MockDefaultAlmPluginFactory is IDefaultAlmPluginFactory {
     require(securityRegistry != newSecurityRegistry);
     securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc IDefaultAlmPluginFactory
+  function setRouter(address newRouter) external override {
+    require(defaultRouter != newRouter, 'Same router address');
+    defaultRouter = newRouter;
+    emit DefaultRouter(newRouter);
   }
 }

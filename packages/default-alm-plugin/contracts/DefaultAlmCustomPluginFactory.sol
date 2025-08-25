@@ -27,6 +27,9 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
   /// @inheritdoc ISecurityPluginFactory
   address public override securityRegistry;
 
+  /// @notice Default router address used for new plugins
+  address public override defaultRouter;
+
   /// @inheritdoc IDefaultAlmCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -54,7 +57,7 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry));
+    address plugin = address(new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, defaultRouter));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -83,6 +86,14 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
     require(securityRegistry != newSecurityRegistry);
     securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @notice Sets the default router address for new plugins
+  /// @param newRouter The new router address to set
+  function setRouter(address newRouter) external onlyAdministrator {
+    require(defaultRouter != newRouter, 'Same router address');
+    defaultRouter = newRouter;
+    emit DefaultRouter(newRouter);
   }
 
 }

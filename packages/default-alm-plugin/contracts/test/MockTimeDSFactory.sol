@@ -20,9 +20,6 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
   /// @notice Default router address used for new plugins
   address public override defaultRouter;
 
-  /// @inheritdoc IBasePluginFactory
-  mapping(address => address) public override pluginByPool;
-
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
@@ -89,7 +86,7 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
     emit SecurityRegistry(newSecurityRegistry);
   }
 
-  /// @inheritdoc IAlgebraDefaultPluginFactory
+  /// @inheritdoc IDefaultAlmPluginFactory
   function setRouter(address newRouter) external override {
     require(defaultRouter != newRouter, 'Same router address');
     defaultRouter = newRouter;

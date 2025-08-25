@@ -10,6 +10,10 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPlugin
 /// @title The interface for the IDefaultAlmCustomPluginFactory
 interface IDefaultAlmCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory {
 
+  /// @notice Emitted when the default router address is changed
+  /// @param newRouter The new default router address
+  event DefaultRouter(address newRouter);
+
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraALMCustomPluginFactory
   function ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR() external pure returns (bytes32);
@@ -30,4 +34,11 @@ interface IDefaultAlmCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePl
   /// @notice Create custom pool
   function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
 
+  /// @notice Returns the default router address used for new plugins
+  /// @return The default router contract address
+  function defaultRouter() external view returns (address);
+
+  /// @notice Sets the default router address for new plugins
+  /// @param newRouter The new router address to set
+  function setRouter(address newRouter) external;
 }

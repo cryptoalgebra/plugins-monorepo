@@ -47,7 +47,7 @@ abstract contract ReflexAfterSwap is FundsSplitter, ReentrancyGuard {
 
     /// @notice Returns the current router address
     /// @return The address of the current Reflex router contract
-    function getRouter() external view returns (address) {
+    function getRouter() public view returns (address) {
         return router;
     }
 

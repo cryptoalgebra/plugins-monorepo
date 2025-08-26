@@ -52,11 +52,12 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
 
   function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {
     _writeTimepoint();
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee = _getCurrentFee(volatilityAverage);
-
+    uint24 fee;
     if(sender == getRouter()){
       fee = 1;
+    } else {
+      uint88 volatilityAverage = _getAverageVolatilityLast();
+      fee = _getCurrentFee(volatilityAverage);
     }
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }

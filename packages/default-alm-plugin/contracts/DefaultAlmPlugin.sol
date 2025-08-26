@@ -58,12 +58,19 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {   
+  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {   
     _checkStatus(); // safety switch
     // TWAP & dynamic fee
     _writeTimepoint();
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee = _getCurrentFee(volatilityAverage);
+
+    uint24 fee;
+    if(sender == getRouter()){
+      fee = 1;
+    } else {
+      uint88 volatilityAverage = _getAverageVolatilityLast();
+      fee = _getCurrentFee(volatilityAverage);
+    }
+
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
@@ -90,6 +97,7 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
 
     // farming
     _updateVirtualPoolTick(zeroToOne);
+    // lotus  
     bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
     reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
     return IAlgebraPlugin.afterSwap.selector;

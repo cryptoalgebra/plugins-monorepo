@@ -5,7 +5,7 @@ import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoo
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 
 import './interfaces/IDefaultAlmCustomPluginFactory.sol';
-import './DefaultAlmPlugin.sol';
+import './libraries/PluginDeployer.sol';
 
 /// @title Algebra Integral 1.2.1 ALM custom plugin deployer
 contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
@@ -57,9 +57,16 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultAlmPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, defaultRouter));
+    address plugin = PluginDeployer.deployPlugin(
+      pool, 
+      algebraFactory, 
+      address(this), 
+      defaultFeeConfiguration, 
+      securityRegistry, 
+      defaultRouter
+    );
     pluginByPool[pool] = plugin;
-    return address(plugin);
+    return plugin;
   }
   
   /// @inheritdoc IDefaultAlmCustomPluginFactory

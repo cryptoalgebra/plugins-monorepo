@@ -18,12 +18,12 @@ contract LimitOrderTestPlugin is LimitOrderPlugin {
 
   // ###### HOOKS ######
 
-  function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
+  function beforeInitialize(address, uint160) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _updateLimitOrderManagerState(msg.sender, zeroToOne);
     return IAlgebraPlugin.afterSwap.selector;
   }

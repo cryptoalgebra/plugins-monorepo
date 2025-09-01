@@ -12,12 +12,13 @@
     "clean": "rm -rf node_modules artifacts cache typechain"
   },
   "dependencies": {
-    "@cryptoalgebra/abstract-plugin": "workspace:^",
+    "@cryptoalgebra/abstract-plugin": "^2.0.0",
     "@cryptoalgebra/integral-core": "1.2.9",
     "@cryptoalgebra/integral-periphery": "1.2.4",
     "@openzeppelin/contracts": "^4.9.3"
   },
   "devDependencies": {
-    "test-utils": "workspace:^"
-  }
+    "test-utils": "^1.0.0"
+  },
+  "gitHead": "b91671c85a52178597f323b4f9bde5e9827b80a4"
 }

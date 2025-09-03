@@ -60,7 +60,6 @@ contract AlgebraLimitOrderPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volati
   function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
     _updateVirtualPoolTick(zeroToOne);
     _updateLimitOrderManagerState(pool, zeroToOne);
-    _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

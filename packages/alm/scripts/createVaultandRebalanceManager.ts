@@ -11,6 +11,7 @@ async function main() {
   const minTimeBetweenRebalances = 3600;
   const slowTwapPeriod = 3600;
   const fastTwapPeriod = 300;
+  const feeRecipient = "0x19652b0d7ccddD35E9CC4aCF418556C3Dd0fd31f"; // partner's fee recipient address
 
   // struct Thresholds {
   //     uint16 depositTokenUnusedThreshold;
@@ -63,6 +64,9 @@ async function main() {
   console.log('ALM Vault deployed at:', vaultAddress);
   
   const vault = await hre.ethers.getContractAt('IAlgebraVault', vaultAddress);
+
+  console.log("Set fee recipient address");
+  await vault.setAmmFeeRecipient(feeRecipient);
   
   const RebalanceManagerFactory = await hre.ethers.getContractFactory('RebalanceManager');
   const rebalanceManager = await RebalanceManagerFactory.deploy(

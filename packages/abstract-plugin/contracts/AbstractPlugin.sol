@@ -48,13 +48,13 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   }
 
   /// @inheritdoc IAbstractPlugin
-  function collectPluginFee(address token, uint256 amount, address recipient) external override {
+  function collectPluginFee(address token, uint256 amount, address recipient) external virtual override {
     _authorize();
     SafeTransfer.safeTransfer(token, recipient, amount);
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external view override onlyPool returns (bytes4) {
+  function handlePluginFee(uint256, uint256) external virtual view override onlyPool returns (bytes4) {
     return IAlgebraPlugin.handlePluginFee.selector;
   }
 

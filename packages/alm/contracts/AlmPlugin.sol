@@ -5,7 +5,6 @@ import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 import './interfaces/IAlmPlugin.sol';
 import './interfaces/IRebalanceManager.sol';
 
-
 abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
   /// @inheritdoc	IAlmPlugin
   address public rebalanceManager;
@@ -15,6 +14,10 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
   
   /// @inheritdoc	IAlmPlugin
   uint32 public fastTwapPeriod;
+
+  constructor(){
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+  }
 
   /// @inheritdoc	IAlmPlugin
   function initializeALM(address _rebalanceManager, uint32 _slowTwapPeriod, uint32 _fastTwapPeriod) external {

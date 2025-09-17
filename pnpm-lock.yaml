@@ -131,8 +131,8 @@ importers:
   packages/limit-order:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: workspace:^
+        version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.9
         version: 1.2.9
@@ -169,8 +169,8 @@ importers:
   packages/safety-switch:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: workspace:^
+        version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.9
         version: 1.2.9
@@ -420,9 +420,6 @@ packages:
   '@babel/types@7.27.0':
     resolution: {integrity: sha512-H45s8fVLYjbhFH62dIJ3WtmJ6RSPt/3DRO0ZcT2SUiYiQyz3BLVb9ADEnLl91m74aQPS3AzzeajZHYOalWe3bg==}
     engines: {node: '>=6.9.0'}
-
-  '@cryptoalgebra/abstract-plugin@2.0.0':
-    resolution: {integrity: sha512-9uwHt/bYmxLvjDM4f13zT8F0GdCqzioM8iQb52cum7/04y0ABKDiAgK7rqUQ+4d1J1qJ5RazsgIhVpEQVttqvw==}
 
   '@cryptoalgebra/alm-vault@1.2.1':
     resolution: {integrity: sha512-7FsfLlAczra4sRNsggTjbZnJYl6bae401NjZYlU0NDn6WZupMMHDhqo1m8nL72aX0X5YSgzZomC/9qL2UlUXHg==}
@@ -4692,11 +4689,6 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
-
-  '@cryptoalgebra/abstract-plugin@2.0.0':
-    dependencies:
-      '@cryptoalgebra/integral-core': 1.2.9
-      '@cryptoalgebra/integral-periphery': 1.2.4
 
   '@cryptoalgebra/alm-vault@1.2.1':
     dependencies:

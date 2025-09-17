@@ -19,7 +19,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
-  uint8 private constant defaultPluginConfig = 0;
+  uint8 public defaultPluginConfig = 0;
 
   address public immutable pool;
   address internal immutable pluginFactory;

@@ -11,12 +11,11 @@ import './interfaces/ISecurityRegistry.sol';
 abstract contract SecurityPlugin is BaseAbstractPlugin, ISecurityPlugin {
   using Plugins for uint8;
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
-
   address internal securityRegistry;
 
   constructor(address _securityRegistry) {
     securityRegistry = _securityRegistry;
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
   }
 
   function _checkStatus() internal {

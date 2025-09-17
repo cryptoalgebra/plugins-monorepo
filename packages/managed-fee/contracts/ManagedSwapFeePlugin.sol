@@ -15,10 +15,12 @@ abstract contract ManagedSwapFeePlugin is BaseAbstractPlugin, IManagedSwapFeePlu
   using Plugins for uint8;
   using ECDSA for bytes32;
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
-
   mapping(address => bool) public override whitelistedAddresses;
   mapping(bytes32 => bool) private usedNonces;
+
+  constructor() {
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+  }
 
   function setWhitelistStatus(address _address, bool status) external override{
     _authorize();

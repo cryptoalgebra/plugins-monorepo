@@ -13,10 +13,6 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin
 contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin {
   using Plugins for uint8;
 
-  /// @inheritdoc IAlgebraPlugin
-  uint8 public constant override defaultPluginConfig =
-    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.DYNAMIC_FEE);
-
   constructor(
     address _pool,
     address _factory,

@@ -11,12 +11,11 @@ import './interfaces/ILimitOrderManager.sol';
 abstract contract LimitOrderPlugin is BaseAbstractPlugin, ILimitOrderPlugin {
   using Plugins for uint8;
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.AFTER_SWAP_FLAG);
-
   address public override limitOrderManager;
 
   constructor(address _limitOrderManager) {
     limitOrderManager = _limitOrderManager;
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
   }
 
   function setLimitOrderManager(address module) external override {

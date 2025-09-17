@@ -11,8 +11,6 @@ contract TestFeeDiscountPlugin is FeeDiscountPlugin {
   using Plugins for uint8;
 
   uint24 fee;
-  /// @inheritdoc IAlgebraPlugin
-  uint8 public constant override defaultPluginConfig = uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
 
   constructor(address _pool, address _factory, address _pluginFactory, address registry) BaseAbstractPlugin(_pool, _factory, _pluginFactory) FeeDiscountPlugin(registry){}
 

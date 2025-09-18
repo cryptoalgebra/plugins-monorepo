@@ -14,6 +14,7 @@
     "@cryptoalgebra/dynamic-fee-plugin": "workspace:^",
     "@cryptoalgebra/farming-proxy-plugin": "workspace:^",
     "@cryptoalgebra/safety-switch-plugin": "workspace:^",
+    "@cryptoalgebra/whitelist-fee-discount-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.2.0",
     "@cryptoalgebra/integral-periphery": "1.2.0",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",

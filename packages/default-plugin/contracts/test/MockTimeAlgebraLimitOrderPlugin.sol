@@ -18,8 +18,9 @@ contract MockTimeAlgebraLimitOrderPlugin is AlgebraLimitOrderPlugin {
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
     address _LOmanager,
-    address _securityRegistry
-  ) AlgebraLimitOrderPlugin(_pool, _factory, _pluginFactory, _config, _LOmanager, _securityRegistry) {}
+    address _securityRegistry,
+    address _feeDiscountRegistry
+  ) AlgebraLimitOrderPlugin(_pool, _factory, _pluginFactory, _config, _LOmanager, _securityRegistry, _feeDiscountRegistry) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

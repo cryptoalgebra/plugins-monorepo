@@ -3,6 +3,7 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountRegistry.sol';
 
 import './MockTimeAlgebraLimitOrderPlugin.sol';
 import '../interfaces/IAlgebraLimitOrderPluginFactory.sol';
@@ -28,6 +29,9 @@ contract MockTimeDSFactory is IAlgebraLimitOrderPluginFactory {
 
   /// @notice The address of the limit order manager
   address public limitOrderManager;
+
+  /// @notice The address of the fee discount registry
+  address public feeDiscountRegistry;
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
@@ -60,7 +64,7 @@ contract MockTimeDSFactory is IAlgebraLimitOrderPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraLimitOrderPlugin volatilityOracle = new MockTimeAlgebraLimitOrderPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, limitOrderManager, securityRegistry);
+    MockTimeAlgebraLimitOrderPlugin volatilityOracle = new MockTimeAlgebraLimitOrderPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, limitOrderManager, securityRegistry, feeDiscountRegistry);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -91,5 +95,12 @@ contract MockTimeDSFactory is IAlgebraLimitOrderPluginFactory {
     require(securityRegistry != _securityRegistry);
     securityRegistry = _securityRegistry;
     emit SecurityRegistry(_securityRegistry);
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function setFeeDiscountRegistry(address _feeDiscountRegistry) external override {
+    require(feeDiscountRegistry != _feeDiscountRegistry);
+    feeDiscountRegistry = _feeDiscountRegistry;
+    emit FeeDiscountRegistry(_feeDiscountRegistry);
   }
 }

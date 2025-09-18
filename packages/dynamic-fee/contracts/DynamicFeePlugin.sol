@@ -26,6 +26,8 @@ abstract contract DynamicFeePlugin is BaseAbstractPlugin, IDynamicFeeManager {
     AdaptiveFee.validateFeeConfiguration(_config);
 
     _feeConfig = _config.pack(); // pack struct to uint144 and write in storage
+
+    activeModules.push("Dynamic Fee Plugin");
   }
 
   /// @inheritdoc IDynamicFeeManager

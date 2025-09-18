@@ -777,4 +777,90 @@ describe('AlgebraDefaultPlugin', () => {
       });
     });
   });
+
+  describe('#ModuleIdentification', () => {
+    beforeEach('connect plugin to pool', async () => {
+      await mockPool.setPlugin(plugin);
+    });
+
+    describe('#getActiveModulesCount', () => {
+      it('returns correct count of active modules', async () => {
+        const moduleCount = await plugin.getActiveModulesCount();
+        expect(moduleCount).to.eq(3); // DynamicFee, FarmingProxy, VolatilityOracle
+      });
+    });
+
+    describe('#getModuleName', () => {
+      it('returns correct module names by index', async () => {
+        const moduleCount = await plugin.getActiveModulesCount();
+        
+        for (let i = 0; i < Number(moduleCount); i++) {
+          const moduleName = await plugin.getModuleName(i);
+          expect(moduleName).to.be.a('string');
+          expect(moduleName.length).to.be.gt(0);
+        }
+      });
+
+      it('returns specific expected module names', async () => {
+        const moduleCount = await plugin.getActiveModulesCount();
+        const moduleNames = [];
+        
+        for (let i = 0; i < Number(moduleCount); i++) {
+          const moduleName = await plugin.getModuleName(i);
+          moduleNames.push(moduleName);
+        }
+
+        // Check that expected modules are present
+        expect(moduleNames).to.include('Dynamic Fee Plugin');
+        expect(moduleNames).to.include('Farming Proxy Plugin');
+        expect(moduleNames).to.include('Volatility Oracle Plugin');
+      });
+
+      it('reverts when index is out of bounds', async () => {
+        const moduleCount = await plugin.getActiveModulesCount();
+        await expect(plugin.getModuleName(moduleCount)).to.be.revertedWith('Index out of bounds');
+        await expect(plugin.getModuleName(Number(moduleCount) + 1)).to.be.revertedWith('Index out of bounds');
+      });
+    });
+
+    describe('#getActiveModuleNames', () => {
+      it('returns array with all module names', async () => {
+        const moduleNames = await plugin.getActiveModuleNames();
+        
+        expect(moduleNames).to.be.an('array');
+        expect(moduleNames.length).to.eq(3);
+        
+        // Check each module name is a non-empty string
+        for (const moduleName of moduleNames) {
+          expect(moduleName).to.be.a('string');
+          expect(moduleName.length).to.be.gt(0);
+        }
+      });
+
+      it('returns expected module names in correct order', async () => {
+        const moduleNames = await plugin.getActiveModuleNames();
+        
+        // Verify all expected modules are present
+        expect(moduleNames).to.include('Dynamic Fee Plugin');
+        expect(moduleNames).to.include('Farming Proxy Plugin');  
+        expect(moduleNames).to.include('Volatility Oracle Plugin');
+        
+        // Verify no unexpected modules
+        expect(moduleNames).to.have.lengthOf(3);
+      });
+
+      it('returns consistent results with individual getModuleName calls', async () => {
+        const moduleNamesArray = await plugin.getActiveModuleNames();
+        const moduleCount = await plugin.getActiveModulesCount();
+        
+        expect(moduleNamesArray.length).to.eq(Number(moduleCount));
+        
+        for (let i = 0; i < Number(moduleCount); i++) {
+          const individualName = await plugin.getModuleName(i);
+          expect(moduleNamesArray[i]).to.eq(individualName);
+        }
+      });
+    });
+
+  });
 });

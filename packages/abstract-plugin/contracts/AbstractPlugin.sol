@@ -20,6 +20,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
   uint8 public defaultPluginConfig = 0;
+  string[] public activeModules;
 
   address public immutable pool;
   address internal immutable pluginFactory;
@@ -38,6 +39,22 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   }
 
   function _authorize() internal view virtual;
+
+  function getActiveModulesCount() external view override returns (uint256) {
+    return activeModules.length;
+  }
+
+  function getModuleName(uint256 index) external view override returns (string memory) {
+    require(index < activeModules.length, "Index out of bounds");
+    return activeModules[index];
+  }
+
+  function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
+    moduleNames = new string[](activeModules.length);
+    for (uint256 i = 0; i < activeModules.length; i++) {
+      moduleNames[i] = activeModules[i];
+    }
+  }
 
   function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();

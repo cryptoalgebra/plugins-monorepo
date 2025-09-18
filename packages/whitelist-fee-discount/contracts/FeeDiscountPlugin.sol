@@ -22,6 +22,7 @@ abstract contract FeeDiscountPlugin is BaseAbstractPlugin, IFeeDiscountPlugin {
   constructor(address _feeDiscountRegistry) {
     feeDiscountRegistry = _feeDiscountRegistry;
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG);
+    activeModules.push("Fee Discount Plugin");
   }
 
   function _applyFeeDiscount(address user, address pool, uint24 fee) internal returns (uint24 updatedFee) {

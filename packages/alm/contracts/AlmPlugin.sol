@@ -17,6 +17,7 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
 
   constructor(){
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+    activeModules.push("ALM Plugin");
   }
 
   /// @inheritdoc	IAlmPlugin

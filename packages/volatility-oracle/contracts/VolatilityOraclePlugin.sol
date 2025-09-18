@@ -31,6 +31,8 @@ abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracl
 
   constructor() {
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
+    
+    activeModules.push("Volatility Oracle Plugin");
   }
 
   /// @inheritdoc IVolatilityOracle

@@ -20,6 +20,7 @@ abstract contract ManagedSwapFeePlugin is BaseAbstractPlugin, IManagedSwapFeePlu
 
   constructor() {
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+    activeModules.push("Managed Swap Fee Plugin");
   }
 
   function setWhitelistStatus(address _address, bool status) external override{

@@ -16,6 +16,7 @@ abstract contract LimitOrderPlugin is BaseAbstractPlugin, ILimitOrderPlugin {
   constructor(address _limitOrderManager) {
     limitOrderManager = _limitOrderManager;
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+    activeModules.push("Limit Order Plugin");
   }
 
   function setLimitOrderManager(address module) external override {

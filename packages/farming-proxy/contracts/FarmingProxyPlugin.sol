@@ -24,6 +24,8 @@ abstract contract FarmingProxyPlugin is BaseAbstractPlugin, IFarmingPlugin {
 
   constructor() {
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+    
+    activeModules.push("Farming Proxy Plugin");
   }
 
   /// @inheritdoc IFarmingPlugin

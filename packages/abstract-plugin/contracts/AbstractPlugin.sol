@@ -40,15 +40,6 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
 
   function _authorize() internal view virtual;
 
-  function getActiveModulesCount() external view override returns (uint256) {
-    return activeModules.length;
-  }
-
-  function getModuleName(uint256 index) external view override returns (string memory) {
-    require(index < activeModules.length, "Index out of bounds");
-    return activeModules[index];
-  }
-
   function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
     moduleNames = new string[](activeModules.length);
     for (uint256 i = 0; i < activeModules.length; i++) {

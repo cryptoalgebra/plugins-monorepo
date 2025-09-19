@@ -71,32 +71,35 @@ importers:
   packages/default-all-inlcusive:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
-        version: link:../abstract-plugin
+        specifier: ^2.1.0
+        version: 2.1.0
       '@cryptoalgebra/alm-plugin':
-        specifier: workspace:^
-        version: link:../alm
+        specifier: ^2.1.0
+        version: 2.1.0
       '@cryptoalgebra/dynamic-fee-plugin':
-        specifier: workspace:^
-        version: link:../dynamic-fee
+        specifier: ^2.1.0
+        version: 2.1.0
       '@cryptoalgebra/farming-proxy-plugin':
-        specifier: workspace:^
-        version: link:../farming-proxy
+        specifier: ^2.1.0
+        version: 2.1.0
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.2.9
+        version: 1.2.9
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.4
+        version: 1.2.4
       '@cryptoalgebra/limit-order-plugin':
-        specifier: workspace:^
-        version: link:../limit-order
+        specifier: ^2.1.0
+        version: 2.1.0
       '@cryptoalgebra/safety-switch-plugin':
-        specifier: workspace:^
-        version: link:../safety-switch
+        specifier: ^2.1.0
+        version: 2.1.0
       '@cryptoalgebra/volatility-oracle-plugin':
-        specifier: workspace:^
-        version: link:../volatility-oracle
+        specifier: ^2.1.0
+        version: 2.1.0
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
     devDependencies:
       decimal.js:
         specifier: ^10.5.0
@@ -458,8 +461,20 @@ packages:
     resolution: {integrity: sha512-H45s8fVLYjbhFH62dIJ3WtmJ6RSPt/3DRO0ZcT2SUiYiQyz3BLVb9ADEnLl91m74aQPS3AzzeajZHYOalWe3bg==}
     engines: {node: '>=6.9.0'}
 
+  '@cryptoalgebra/abstract-plugin@2.1.0':
+    resolution: {integrity: sha512-H7m6P6Dlr/yyUJnY3LOeKXVHBZsaN7r77cCT5w8ofqWlE8ieWA1qecYeNE0D4DmGwvUp3HFN76XOciaHqdn3TA==}
+
+  '@cryptoalgebra/alm-plugin@2.1.0':
+    resolution: {integrity: sha512-QTEzmeV8AqOw+HaJlsJOIoeecMnqxvboRGBsZXM/DVK1ZeFPAkKIVjjcIklwaIzaHZhvc0vP+24IvtfXy5BNZw==}
+
   '@cryptoalgebra/alm-vault@1.2.1':
     resolution: {integrity: sha512-7FsfLlAczra4sRNsggTjbZnJYl6bae401NjZYlU0NDn6WZupMMHDhqo1m8nL72aX0X5YSgzZomC/9qL2UlUXHg==}
+
+  '@cryptoalgebra/dynamic-fee-plugin@2.1.0':
+    resolution: {integrity: sha512-bEccG04WAMcWlzuWg3JehMwWA/2VZ5Frofycj9J7NHRPAvRBfxru2qiEB7HUrrj1/snzlZ9kvt0Y3OXX4C5dSw==}
+
+  '@cryptoalgebra/farming-proxy-plugin@2.1.0':
+    resolution: {integrity: sha512-3+clCkak0pg2O2HLMu3YO4ako/2ZJW4+az/5XdAPlUMcemSMrZaVotC+nhpl7IN3NHUdYaPe5UuU/noluEQ+Zg==}
 
   '@cryptoalgebra/integral-base-plugin@1.2.1':
     resolution: {integrity: sha512-BgeLkSbuaTGs1LwBh4XDHAN9YUuKmjx13rdGeM0uKQrEndP1uay3rSA6WGlZEUHIKnXAcjrj5aGqyK+4MwgM9w==}
@@ -473,9 +488,26 @@ packages:
     resolution: {integrity: sha512-t7pjjsp1Jyql3HRxzBkStrY33ujIj84DnVaAj5BLBdhr6W92uxgUk1MHpYve0I0nqguczRoupjo6TwFPmRVoXg==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
+  '@cryptoalgebra/integral-core@1.2.9':
+    resolution: {integrity: sha512-8a2/W/3BDWThJpMORIjfN7eN3KCKDQ7i2unCB3YBsnT7kXrUN6ntpJgl3clSe1o/nG/9SjpXHyLz75J4r2YGEw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
   '@cryptoalgebra/integral-periphery@1.2.1':
     resolution: {integrity: sha512-yEBd7IxewEGDanECgTcD3o/wKlSxgLtc1l9PV3CHhWBOG7larKUa/DuHgkqS9fNysBnt4eyzuXC83rtNRmazuA==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/integral-periphery@1.2.4':
+    resolution: {integrity: sha512-gaVKaZ7EWMkbzS6z7tzTB3C2r9vdupfGbAscWNEXB57A47b3uWo7hElfsxg/gfb0FmBFpfaamqVW+Q8FHZatLg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/limit-order-plugin@2.1.0':
+    resolution: {integrity: sha512-QIfU0vWhtqQxNVaQ2k/zKp2qQvKi+/qHRgta8ZIBQCHLtfWbeny7p2HYHh5hzgnJ2UYyyCCkKjMHEdDtZcGj5w==}
+
+  '@cryptoalgebra/safety-switch-plugin@2.1.0':
+    resolution: {integrity: sha512-RmfBrAmYjq49opNpM1S3z5ZbEFlf/jtpTDlQnTchZX4RwwMcEn3bLmxd6Wmb2iA5JWULzCeQXfyEXxEISLG3Tg==}
+
+  '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
+    resolution: {integrity: sha512-iE2CL8is1ra6WKyW79u75haw12/iAHjuIWdSkxfUTlbRMAb7XuDTAyiWT+x370zQiXJZeCmxoQmVqlT7+US3UA==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -4512,6 +4544,19 @@ snapshots:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
 
+  '@cryptoalgebra/abstract-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
+
+  '@cryptoalgebra/alm-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/alm-vault': 1.2.1
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
+      '@openzeppelin/contracts': 4.9.3
+
   '@cryptoalgebra/alm-vault@1.2.1':
     dependencies:
       '@cryptoalgebra/integral-base-plugin': 1.2.1
@@ -4519,6 +4564,18 @@ snapshots:
       '@cryptoalgebra/integral-periphery': 1.2.1
       '@openzeppelin/contracts': 4.9.3
       bignumber.js: 9.2.1
+
+  '@cryptoalgebra/dynamic-fee-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
+
+  '@cryptoalgebra/farming-proxy-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
 
   '@cryptoalgebra/integral-base-plugin@1.2.1':
     dependencies:
@@ -4533,11 +4590,41 @@ snapshots:
     dependencies:
       '@openzeppelin/contracts': 4.9.3
 
+  '@cryptoalgebra/integral-core@1.2.9':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.3
+
   '@cryptoalgebra/integral-periphery@1.2.1':
     dependencies:
       '@cryptoalgebra/integral-core': 1.2.1
       '@openzeppelin/contracts': 4.9.3
       '@uniswap/v2-core': 1.0.1
+
+  '@cryptoalgebra/integral-periphery@1.2.4':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@openzeppelin/contracts': 4.9.3
+      '@uniswap/v2-core': 1.0.1
+
+  '@cryptoalgebra/limit-order-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
+      '@openzeppelin/contracts': 4.9.3
+
+  '@cryptoalgebra/safety-switch-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
+      '@openzeppelin/contracts': 4.9.3
+
+  '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:

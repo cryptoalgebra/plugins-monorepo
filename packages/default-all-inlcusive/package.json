@@ -9,15 +9,15 @@
     "clean": "rm -rf node_modules artifacts cache typechain"
   },
   "dependencies": {
-    "@cryptoalgebra/abstract-plugin": "workspace:^",
-    "@cryptoalgebra/dynamic-fee-plugin": "workspace:^",
-    "@cryptoalgebra/limit-order-plugin": "1.0.5",
-    "@cryptoalgebra/alm-plugin": "workspace:^",
-    "@cryptoalgebra/safety-switch-plugin": "workspace:^",
-    "@cryptoalgebra/farming-proxy-plugin": "1.0.2",
-    "@cryptoalgebra/integral-core": "1.2.5",
-    "@cryptoalgebra/integral-periphery": "^1.2.1",
-    "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
+    "@cryptoalgebra/abstract-plugin": "^2.1.0",
+    "@cryptoalgebra/dynamic-fee-plugin": "^2.1.0",
+    "@cryptoalgebra/limit-order-plugin": "^2.1.0",
+    "@cryptoalgebra/alm-plugin": "^2.1.0",
+    "@cryptoalgebra/safety-switch-plugin": "^2.1.0",
+    "@cryptoalgebra/farming-proxy-plugin": "^2.1.0",
+    "@cryptoalgebra/integral-core": "1.2.9",
+    "@cryptoalgebra/integral-periphery": "^1.2.4",
+    "@cryptoalgebra/volatility-oracle-plugin": "^2.1.0",
     "@openzeppelin/contracts": "^4.9.3"
   },
   "devDependencies": {

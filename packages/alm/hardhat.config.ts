@@ -3,7 +3,6 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition-ethers";
 import { SolcUserConfig } from 'hardhat/types';
 import baseConfig from '../../hardhat.base.config';
-import "hardhat-dependency-compiler";
 
 const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
   version: '0.8.20',
@@ -23,12 +22,7 @@ const config: HardhatUserConfig = {
   networks: baseConfig.networks,
   etherscan: baseConfig.etherscan,
   typechain: baseConfig.typechain,
-  solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,
-  dependencyCompiler: {
-    paths: [
-      '@cryptoalgebra/alm-vault/contracts/interfaces/IAlgebraVaultFactory.sol',
-    ],
-  }
+  solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS
 };
 
 export default config;

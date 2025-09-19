@@ -5,6 +5,7 @@ import {IAlgebraVault} from '@cryptoalgebra/alm-vault/contracts/interfaces/IAlge
 import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IAlgebraPool} from '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/alm-vault/contracts/interfaces/IAlgebraVaultFactory.sol';
 
 contract MockVault is IAlgebraVault, ERC20 {
   event MockRebalance(int24 baseLower, int24 baseUpper, int24 limitLower, int24 limitUpper);

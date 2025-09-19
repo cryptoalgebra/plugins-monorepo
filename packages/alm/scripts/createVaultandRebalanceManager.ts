@@ -4,14 +4,14 @@ async function main() {
 
   const [deployer] = await hre.ethers.getSigners();
 
-  const almFactoryAddress = "0x6Cd7DCd88f3994e57557690D20D20105B72c1CBA";
-  const poolAddress = "0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29";
+  const almFactoryAddress = "0x711F45548648dbf82C23CfB63E334EF375aCCD26";
+  const poolAddress = "0x5500c2FfEBB0B0D03C39F6F39F31000C5ADA3bCA";
   const allowedTokenA = false;
   const allowedTokenB = true;
   const minTimeBetweenRebalances = 3600;
   const slowTwapPeriod = 3600;
   const fastTwapPeriod = 300;
-  const feeRecipient = "0x19652b0d7ccddD35E9CC4aCF418556C3Dd0fd31f"; // partner's fee recipient address
+  const feeRecipient = "0xDeaD1F5aF792afc125812E875A891b038f888258"; // partner's fee recipient address
 
   // struct Thresholds {
   //     uint16 depositTokenUnusedThreshold;
@@ -66,7 +66,7 @@ async function main() {
   const vault = await hre.ethers.getContractAt('IAlgebraVault', vaultAddress);
 
   console.log("Set fee recipient address");
-  await vault.setAmmFeeRecipient(feeRecipient);
+  await (await vault.setAmmFeeRecipient(feeRecipient)).wait();
   
   const RebalanceManagerFactory = await hre.ethers.getContractFactory('RebalanceManager');
   const rebalanceManager = await RebalanceManagerFactory.deploy(

@@ -18,15 +18,16 @@ abstract contract DynamicFeePlugin is BaseAbstractPlugin, IDynamicFeeManager {
   using Plugins for uint8;
   using AlgebraFeeConfigurationU144Lib for AlgebraFeeConfiguration;
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
-
   /// @dev AlgebraFeeConfiguration struct packed in uint144
   AlgebraFeeConfigurationU144 internal _feeConfig;
 
   constructor(AlgebraFeeConfiguration memory _config) {
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
     AdaptiveFee.validateFeeConfiguration(_config);
 
     _feeConfig = _config.pack(); // pack struct to uint144 and write in storage
+
+    activeModules.push("Dynamic Fee Plugin");
   }
 
   /// @inheritdoc IDynamicFeeManager

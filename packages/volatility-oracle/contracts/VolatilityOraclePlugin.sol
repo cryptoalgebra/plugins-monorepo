@@ -17,8 +17,6 @@ abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracl
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
-
   /// @inheritdoc IVolatilityOracle
   VolatilityOracle.Timepoint[UINT16_MODULO] public override timepoints;
 
@@ -30,6 +28,12 @@ abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracl
 
   /// @inheritdoc IVolatilityOracle
   bool public override isInitialized;
+
+  constructor() {
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
+    
+    activeModules.push("Volatility Oracle Plugin");
+  }
 
   /// @inheritdoc IVolatilityOracle
   function initialize() external override {

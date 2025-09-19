@@ -19,7 +19,8 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
-  uint8 private constant defaultPluginConfig = 0;
+  uint8 public defaultPluginConfig = 0;
+  string[] public activeModules;
 
   address public immutable pool;
   address internal immutable pluginFactory;
@@ -39,6 +40,13 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
 
   function _authorize() internal view virtual;
 
+  function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
+    moduleNames = new string[](activeModules.length);
+    for (uint256 i = 0; i < activeModules.length; i++) {
+      moduleNames[i] = activeModules[i];
+    }
+  }
+
   function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
   }
@@ -48,13 +56,13 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   }
 
   /// @inheritdoc IAbstractPlugin
-  function collectPluginFee(address token, uint256 amount, address recipient) external override {
+  function collectPluginFee(address token, uint256 amount, address recipient) external virtual override {
     _authorize();
     SafeTransfer.safeTransfer(token, recipient, amount);
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external view override onlyPool returns (bytes4) {
+  function handlePluginFee(uint256, uint256) external virtual view override onlyPool returns (bytes4) {
     return IAlgebraPlugin.handlePluginFee.selector;
   }
 

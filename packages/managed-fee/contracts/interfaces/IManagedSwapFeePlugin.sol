@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
+import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
+
 /// @title Managed Swap Fee Plugin Interface
 /// @notice Interface for interacting with the Managed Swap Fee Plugin
-interface IManagedSwapFeePlugin {
+interface IManagedSwapFeePlugin is IAbstractPlugin{
     
     error InvalidNonce();
     error FeeExceedsLimit();

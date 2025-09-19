@@ -4,10 +4,12 @@ pragma solidity =0.8.20;
 import {TickMath} from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import {FullMath} from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 
+import {Plugins} from '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import {ISlidingFeePlugin} from './interfaces/ISlidingFeePlugin.sol';
 import {BaseAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
+  using Plugins for uint8;
   struct FeeFactors {
     uint128 zeroToOneFeeFactor;
     uint128 oneToZeroFeeFactor;
@@ -23,7 +25,8 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
 
   constructor(uint16 _baseFee) {
     FeeFactors memory feeFactors = FeeFactors(uint128(1 << FEE_FACTOR_SHIFT), uint128(1 << FEE_FACTOR_SHIFT));
-
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+    activeModules.push("Sliding Fee Plugin"); 
     s_feeFactors = feeFactors;
     s_baseFee = _baseFee;
   }

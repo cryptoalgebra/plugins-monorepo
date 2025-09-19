@@ -11,19 +11,16 @@ import '../LimitOrderPlugin.sol';
 contract LimitOrderTestPlugin is LimitOrderPlugin {
   using Plugins for uint8;
 
-  /// @inheritdoc IAlgebraPlugin
-  uint8 public constant override defaultPluginConfig = uint8(Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG);
-
   constructor(address _pool, address _factory, address _pluginFactory, address limitOrderManager) BaseAbstractPlugin(_pool, _factory, _pluginFactory) LimitOrderPlugin(limitOrderManager){}
 
   // ###### HOOKS ######
 
-  function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
+  function beforeInitialize(address, uint160) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _updateLimitOrderManagerState(msg.sender, zeroToOne);
     return IAlgebraPlugin.afterSwap.selector;
   }

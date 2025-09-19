@@ -16,13 +16,17 @@ import {BaseAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/BaseA
 abstract contract FarmingProxyPlugin is BaseAbstractPlugin, IFarmingPlugin {
   using Plugins for uint8;
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.AFTER_SWAP_FLAG);
-
   /// @inheritdoc IFarmingPlugin
   address public override incentive;
 
   /// @dev the address which connected the last incentive. Needed so that he can disconnect it
   address private _lastIncentiveOwner;
+
+  constructor() {
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+    
+    activeModules.push("Farming Proxy Plugin");
+  }
 
   /// @inheritdoc IFarmingPlugin
   function setIncentive(address newIncentive) external override {

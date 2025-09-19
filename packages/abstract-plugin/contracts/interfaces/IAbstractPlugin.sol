@@ -11,4 +11,8 @@ interface IAbstractPlugin is IAlgebraPlugin {
   /// @param amount Amount of tokens
   /// @param recipient Recipient address
   function collectPluginFee(address token, uint256 amount, address recipient) external;
+
+  /// @notice Get all active module names
+  /// @return moduleNames Array of active module names
+  function getActiveModuleNames() external view returns (string[] memory moduleNames);
 }

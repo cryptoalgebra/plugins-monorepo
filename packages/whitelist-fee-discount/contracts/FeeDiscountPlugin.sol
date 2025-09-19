@@ -14,13 +14,15 @@ import './interfaces/IFeeDiscountRegistry.sol';
 abstract contract FeeDiscountPlugin is BaseAbstractPlugin, IFeeDiscountPlugin {
   using Plugins for uint8;
 
-  uint8 private constant defaultPluginConfig = uint8(Plugins.BEFORE_SWAP_FLAG);
+
   uint16 private constant FEE_DISCOUNT_DENOMINATOR = 1000;
 
   address public override feeDiscountRegistry;
 
   constructor(address _feeDiscountRegistry) {
     feeDiscountRegistry = _feeDiscountRegistry;
+    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG);
+    activeModules.push("Fee Discount Plugin");
   }
 
   function _applyFeeDiscount(address user, address pool, uint24 fee) internal returns (uint24 updatedFee) {

@@ -22,8 +22,15 @@ interface IAlgebraDefaultPluginFactory is IBasePluginFactory, IFarmingPluginFact
   /// @return The default router contract address
   function defaultRouter() external view returns (address);
 
+  /// @notice Returns the default configID used for new plugins
+  /// @return The default configID
+  function reflexConfigId() external view returns (bytes32);
+
   /// @notice Sets the default router address for new plugins
   /// @param newRouter The new router address to set
   function setRouter(address newRouter) external;
 
+  /// @notice Sets the configID for new plugins
+  /// @param _configId The new configID to set
+  function setConfigId(bytes32 _configId) external;
 }

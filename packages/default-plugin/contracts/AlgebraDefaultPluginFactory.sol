@@ -24,6 +24,9 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   /// @notice Default router address used for new plugins
   address public defaultRouter;
 
+  /// @notice Configuration ID for profit distribution used by plugins created by this factory
+  bytes32 public reflexConfigId;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -32,9 +35,10 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
     _;
   }
 
-  constructor(address _algebraFactory) {
+  constructor(address _algebraFactory, bytes32 _configId) {
     algebraFactory = _algebraFactory;
     defaultFeeConfiguration = AdaptiveFee.initialFeeConfiguration();
+    reflexConfigId = _configId;
     emit DefaultFeeConfiguration(defaultFeeConfiguration);
   }
 
@@ -62,7 +66,7 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, defaultRouter);
+    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, defaultRouter, reflexConfigId);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -87,5 +91,11 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
     require(defaultRouter != newRouter, 'Same router address');
     defaultRouter = newRouter;
     emit DefaultRouter(newRouter);
+  }
+
+  /// @notice Set the configuration ID for profit distribution
+  /// @param _configId New configuration ID to use for plugins created by this factory
+  function setConfigId(bytes32 _configId) external onlyAdministrator {
+    reflexConfigId = _configId;
   }
 }

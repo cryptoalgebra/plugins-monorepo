@@ -6,12 +6,13 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePlugin.sol';
+import '@cryptoalgebra/sliding-fee-plugin/contracts/SlidingFeePlugin.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 import '@cryptoalgebra/lotus-plugin/contracts/ReflexAfterSwap.sol';
 
 /// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, ReflexAfterSwap {
+contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, ReflexAfterSwap {
   using Plugins for uint8;
 
   /// @inheritdoc IAlgebraPlugin
@@ -23,8 +24,9 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
-    address _reflexRouter
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) ReflexAfterSwap(_reflexRouter) {}
+    address _reflexRouter,
+    bytes32 _configId
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SlidingFeePlugin(3000) ReflexAfterSwap(_reflexRouter, _configId) {}
 
   // ###### HOOKS ######
 
@@ -74,7 +76,7 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
   ) external override onlyPool returns (bytes4) {
     _updateVirtualPoolTick(zeroToOne);
     bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
-    reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
+    _reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
     return IAlgebraPlugin.afterSwap.selector;
   }
 
@@ -93,5 +95,10 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
   function getCurrentFee() external view override returns (uint16 fee) {
     uint88 volatilityAverage = _getAverageVolatilityLast();
     fee = _getCurrentFee(volatilityAverage);
+  }
+
+  /// @inheritdoc ReflexAfterSwap
+  function _onlyReflexAdmin() internal view override {
+    _authorize();
   }
 }

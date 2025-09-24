@@ -104,11 +104,6 @@ export default {
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
       gasPrice: 50_000_000_000,
     },
-    hyper: {
-      url: `https://rpc.hypurrscan.io`,
-      chainId: 999,
-      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    },
     artheraTestnet: {
       url: `https://rpc-test.arthera.net`,
       chainId: 10243,
@@ -124,7 +119,7 @@ export default {
         network: 'seiTestnet',
         chainId: 713715,
         urls: {
-          apiURL: 'https://seitrace.com/api/v2',
+          apiURL: 'https://seitrace.com/api',
           browserURL: 'https://seitrace.com/',
         },
       },
@@ -134,14 +129,6 @@ export default {
         urls: {
           apiURL: 'https://explorer.mode.network/api',
           browserURL: 'https://explorer.mode.network/',
-        },
-      },
-      {
-        network: 'hyper',
-        chainId: 999,
-        urls: {
-          apiURL: 'https://www.hyperscan.com/api',
-          browserURL: 'https://hyperevmscan.io/',
         },
       },
       {

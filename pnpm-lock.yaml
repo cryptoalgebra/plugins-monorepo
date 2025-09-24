@@ -85,15 +85,9 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.1
         version: 1.2.1
-      '@cryptoalgebra/lotus-plugin':
-        specifier: workspace:^
-        version: link:../lotus
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
         version: link:../volatility-oracle
-      '@openzeppelin/contracts':
-        specifier: 4.9.3
-        version: 4.9.3
     devDependencies:
       decimal.js:
         specifier: ^10.5.0
@@ -147,16 +141,6 @@ importers:
         version: 1.2.1
       '@openzeppelin/contracts':
         specifier: ^4.9.3
-        version: 4.9.3
-    devDependencies:
-      test-utils:
-        specifier: workspace:^
-        version: link:../test-utils
-
-  packages/lotus:
-    dependencies:
-      '@openzeppelin/contracts':
-        specifier: 4.9.3
         version: 4.9.3
     devDependencies:
       test-utils:

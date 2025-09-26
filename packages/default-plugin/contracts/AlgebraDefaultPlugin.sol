@@ -58,8 +58,12 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProx
     if(sender == getRouter()){
       fee = 1;
     } else {
+      /// calculate volatility and dynamic fee
       uint88 volatilityAverage = _getAverageVolatilityLast();
       fee = _getCurrentFee(volatilityAverage);
+      
+      /// calcucalate sliding fee based on dynamic fee
+      fee = _getFeeAndUpdateFactors(zeroToOne, currentTick, lastTick, true, newFee);
     }
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }

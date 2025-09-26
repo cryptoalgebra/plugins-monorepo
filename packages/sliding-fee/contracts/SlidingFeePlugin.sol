@@ -20,7 +20,6 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
 
   uint16 public s_priceChangeFactor = 1000;
   uint16 public s_baseFee = 3000;
-  bool public slidingFeeEnabled;
 
   constructor(uint16 _baseFee) {
     FeeFactors memory feeFactors = FeeFactors(uint128(1 << FEE_FACTOR_SHIFT), uint128(1 << FEE_FACTOR_SHIFT));
@@ -68,13 +67,6 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
 
     s_baseFee = newBaseFee;
     emit BaseFee(newBaseFee);
-  }
-
-  function changeSlidingFeeStatus(bool _isEnabled) external override {
-    _authorize();
-
-    slidingFeeEnabled = _isEnabled;
-    emit SlidingFeeStatus(_isEnabled);
   }
 
   function _calculateFeeFactors(int24 currentTick, int24 lastTick, uint16 priceChangeFactor) internal view returns (FeeFactors memory feeFactors) {

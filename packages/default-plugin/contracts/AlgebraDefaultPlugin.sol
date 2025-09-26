@@ -52,9 +52,13 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProx
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {
+  function beforeSwap(address sender, address, bool zeroToOne, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4, uint24, uint24) {
+    /// get ticks for slidiing fee calculation
+    (, int24 currentTick, , ) = _getPoolState();
+    int24 lastTick = _getLastTick();
+
     _writeTimepoint();
-    uint24 fee;
+    uint16 fee;
     if(sender == getRouter()){
       fee = 1;
     } else {
@@ -62,8 +66,10 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProx
       uint88 volatilityAverage = _getAverageVolatilityLast();
       fee = _getCurrentFee(volatilityAverage);
       
-      /// calcucalate sliding fee based on dynamic fee
-      fee = _getFeeAndUpdateFactors(zeroToOne, currentTick, lastTick, true, newFee);
+      if (slidingFeeEnabled) {
+        /// calcucalate sliding fee based on dynamic fee
+        fee = _getFeeAndUpdateFactors(zeroToOne, currentTick, lastTick, true, fee);
+      }
     }
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }

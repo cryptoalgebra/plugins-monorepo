@@ -20,6 +20,7 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
 
   uint16 public s_priceChangeFactor = 1000;
   uint16 public s_baseFee = 3000;
+  bool public slidingFeeEnabled;
 
   constructor(uint16 _baseFee) {
     FeeFactors memory feeFactors = FeeFactors(uint128(1 << FEE_FACTOR_SHIFT), uint128(1 << FEE_FACTOR_SHIFT));
@@ -28,11 +29,11 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
     s_baseFee = _baseFee;
   }
 
-  function _getFeeAndUpdateFactors(bool zeroToOne, int24 currenTick, int24 lastTick) internal returns (uint16) {
+  function _getFeeAndUpdateFactors(bool zeroToOne, int24 currenTick, int24 lastTick, bool overrideFee, uint16 fee) internal returns (uint16) {
     FeeFactors memory currentFeeFactors;
 
     uint16 priceChangeFactor = s_priceChangeFactor;
-    uint16 baseFee = s_baseFee;
+    uint16 baseFee = overrideFee ? fee : s_baseFee;
 
     if (currenTick != lastTick) {
       currentFeeFactors = _calculateFeeFactors(currenTick, lastTick, priceChangeFactor);
@@ -67,6 +68,13 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
 
     s_baseFee = newBaseFee;
     emit BaseFee(newBaseFee);
+  }
+
+  function changeSlidingFeeStatus(bool _isEnabled) external override {
+    _authorize();
+
+    slidingFeeEnabled = _isEnabled;
+    emit SlidingFeeStatus(_isEnabled);
   }
 
   function _calculateFeeFactors(int24 currentTick, int24 lastTick, uint16 priceChangeFactor) internal view returns (FeeFactors memory feeFactors) {

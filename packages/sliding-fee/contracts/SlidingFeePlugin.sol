@@ -28,11 +28,11 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
     s_baseFee = _baseFee;
   }
 
-  function _getFeeAndUpdateFactors(bool zeroToOne, int24 currenTick, int24 lastTick) internal returns (uint16) {
+  function _getFeeAndUpdateFactors(bool zeroToOne, int24 currenTick, int24 lastTick, bool overrideFee, uint16 fee) internal returns (uint16) {
     FeeFactors memory currentFeeFactors;
 
     uint16 priceChangeFactor = s_priceChangeFactor;
-    uint16 baseFee = s_baseFee;
+    uint16 baseFee = overrideFee ? fee : s_baseFee;
 
     if (currenTick != lastTick) {
       currentFeeFactors = _calculateFeeFactors(currenTick, lastTick, priceChangeFactor);

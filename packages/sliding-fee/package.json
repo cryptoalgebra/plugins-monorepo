@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/sliding-fee-plugin",
-  "version": "1.0.2",
+  "version": "1.0.1",
   "description": "",
   "publishConfig": {
     "access": "public"

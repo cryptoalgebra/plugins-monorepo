@@ -109,6 +109,11 @@ export default {
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    hyperevm: {
+      url: `https://rpc.hyperliquid.xyz/evm`,
+      chainId: 999,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
   },
   etherscan: {
     // Your API key for Etherscan

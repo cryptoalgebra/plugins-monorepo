@@ -15,6 +15,10 @@ import '@cryptoalgebra/lotus-plugin/contracts/ReflexAfterSwap.sol';
 contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, ReflexAfterSwap {
   using Plugins for uint8;
 
+  event SlidingFeeStatus(bool slidingFeeEnabled);
+
+  bool public slidingFeeEnabled = true;
+
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
     uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.DYNAMIC_FEE);
@@ -27,6 +31,13 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProx
     address _reflexRouter,
     bytes32 _configId
   ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SlidingFeePlugin(3000) ReflexAfterSwap(_reflexRouter, _configId) {}
+
+  function changeSlidingFeeStatus(bool _isEnabled) external {
+    _authorize();
+
+    slidingFeeEnabled = _isEnabled;
+    emit SlidingFeeStatus(_isEnabled);
+  }
 
   // ###### HOOKS ######
 

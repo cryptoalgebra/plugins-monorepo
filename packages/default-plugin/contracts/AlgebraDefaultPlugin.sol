@@ -87,7 +87,7 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProx
 
   function afterSwap(
     address,
-    address recipient,
+    address,
     bool zeroToOne, 
     int256, 
     uint160, 
@@ -97,7 +97,7 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, SlidingFeePlugin, FarmingProx
   ) external override onlyPool returns (bytes4) {
     _updateVirtualPoolTick(zeroToOne);
     bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
-    _reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
+    _reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, tx.origin);
     return IAlgebraPlugin.afterSwap.selector;
   }
 

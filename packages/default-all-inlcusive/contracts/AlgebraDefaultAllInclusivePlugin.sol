@@ -67,15 +67,16 @@ contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugi
   }
 
   function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
-    if (rebalanceManager == address(0) || !_ableToGetTimepoints(slowTwapPeriod)) return IAlgebraPlugin.afterSwap.selector;
+    if (rebalanceManager != address(0) && _ableToGetTimepoints(slowTwapPeriod)) {
 
-    ( , int24 currentTick, , ) = _getPoolState();
-    uint32 lastBlockTimestamp = _getLastBlockTimestamp();
+      ( , int24 currentTick, , ) = _getPoolState();
+      uint32 lastBlockTimestamp = _getLastBlockTimestamp();
 
-    int24 slowTwapTick = _getTwapTick(slowTwapPeriod);
-    int24 fastTwapTick = _getTwapTick(fastTwapPeriod);
+      int24 slowTwapTick = _getTwapTick(slowTwapPeriod);
+      int24 fastTwapTick = _getTwapTick(fastTwapPeriod);
 
-    _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+    }
 
     _updateLimitOrderManagerState(pool, zeroToOne);
 

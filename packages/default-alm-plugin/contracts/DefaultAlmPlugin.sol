@@ -26,8 +26,9 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
     address _securityRegistry,
-    address _reflexRouter
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) ReflexAfterSwap(_reflexRouter) {}
+    address _reflexRouter,
+    bytes32 _configId
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) ReflexAfterSwap(_reflexRouter, _configId) {}
 
   // ###### HOOKS ######
 
@@ -76,7 +77,7 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
 
   function afterSwap(
     address,
-    address recipient,
+    address,
     bool zeroToOne, 
     int256, 
     uint160, 
@@ -99,7 +100,7 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
     _updateVirtualPoolTick(zeroToOne);
     // lotus  
     bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
-    reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, recipient);
+    _reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, tx.origin);
     return IAlgebraPlugin.afterSwap.selector;
   }
 
@@ -149,6 +150,11 @@ contract DefaultAlmPlugin is AlmPlugin, DynamicFeePlugin, VolatilityOraclePlugin
     uint32 oldestTimestamp = timepoints[lastIndex].blockTimestamp;
 
     return VolatilityOracle._lteConsideringOverflow(oldestTimestamp, _blockTimestamp() - period, _blockTimestamp());
+  }
+
+  /// @inheritdoc ReflexAfterSwap
+  function _onlyReflexAdmin() internal view override {
+    _authorize();
   }
 
 }

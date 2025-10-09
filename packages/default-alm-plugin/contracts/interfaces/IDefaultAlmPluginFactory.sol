@@ -14,6 +14,10 @@ interface IDefaultAlmPluginFactory is IBasePluginFactory, IDynamicFeePluginFacto
   /// @param newRouter The new default router address
   event DefaultRouter(address newRouter);
 
+  /// @notice Emitted when the default config ID is changed
+  /// @param newConfigId The new default config ID
+  event DefaultConfigId(bytes32 newConfigId);
+
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of DefaultAlmPluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);
@@ -22,8 +26,16 @@ interface IDefaultAlmPluginFactory is IBasePluginFactory, IDynamicFeePluginFacto
   /// @return The default router contract address
   function defaultRouter() external view returns (address);
 
+  /// @notice Returns the default config ID used for new plugins
+  /// @return The default config ID
+  function defaultConfigId() external view returns (bytes32);
+
   /// @notice Sets the default router address for new plugins
   /// @param newRouter The new router address to set
   function setRouter(address newRouter) external;
+
+  /// @notice Sets the default config ID for new plugins
+  /// @param newConfigId The new config ID to set
+  function setConfigId(bytes32 newConfigId) external;
 
 }

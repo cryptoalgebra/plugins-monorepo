@@ -30,6 +30,9 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
   /// @notice Default router address used for new plugins
   address public override defaultRouter;
 
+  /// @notice Default config ID used for new plugins
+  bytes32 public override defaultConfigId;
+
   /// @inheritdoc IDefaultAlmCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -63,7 +66,8 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
       address(this), 
       defaultFeeConfiguration, 
       securityRegistry, 
-      defaultRouter
+      defaultRouter,
+      defaultConfigId
     );
     pluginByPool[pool] = plugin;
     return plugin;
@@ -101,6 +105,14 @@ contract DefaultAlmCustomPluginFactory is IDefaultAlmCustomPluginFactory {
     require(defaultRouter != newRouter, 'Same router address');
     defaultRouter = newRouter;
     emit DefaultRouter(newRouter);
+  }
+
+  /// @notice Sets the default config ID for new plugins
+  /// @param newConfigId The new config ID to set
+  function setConfigId(bytes32 newConfigId) external onlyAdministrator {
+    require(defaultConfigId != newConfigId, 'Same config ID');
+    defaultConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
   }
 
 }

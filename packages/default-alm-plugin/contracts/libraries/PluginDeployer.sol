@@ -14,6 +14,7 @@ library PluginDeployer {
     /// @param feeConfiguration The fee configuration
     /// @param securityRegistry The security registry address
     /// @param defaultRouter The default router address
+    /// @param configId The config ID for the reflex router
     /// @return plugin The address of the deployed plugin
     function deployPlugin(
         address pool,
@@ -21,7 +22,8 @@ library PluginDeployer {
         address pluginFactory,
         AlgebraFeeConfiguration memory feeConfiguration,
         address securityRegistry,
-        address defaultRouter
+        address defaultRouter,
+        bytes32 configId
     ) external returns (address plugin) {
         address volatilityOracle = address(new DefaultAlmPlugin(
             pool,
@@ -29,7 +31,8 @@ library PluginDeployer {
             pluginFactory,
             feeConfiguration,
             securityRegistry,
-            defaultRouter
+            defaultRouter,
+            configId
         ));
         return volatilityOracle;
     }

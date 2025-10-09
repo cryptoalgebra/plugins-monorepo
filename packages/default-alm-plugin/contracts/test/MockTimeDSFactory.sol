@@ -20,6 +20,9 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
   /// @notice Default router address used for new plugins
   address public override defaultRouter;
 
+  /// @notice Default config ID used for new plugins
+  bytes32 public override defaultConfigId;
+
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
@@ -60,7 +63,7 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, defaultRouter);
+    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, defaultRouter, defaultConfigId);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -91,5 +94,12 @@ contract MockTimeDSFactory is IDefaultAlmPluginFactory {
     require(defaultRouter != newRouter, 'Same router address');
     defaultRouter = newRouter;
     emit DefaultRouter(newRouter);
+  }
+
+  /// @inheritdoc IDefaultAlmPluginFactory
+  function setConfigId(bytes32 newConfigId) external override {
+    require(defaultConfigId != newConfigId, 'Same config ID');
+    defaultConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
   }
 }

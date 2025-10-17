@@ -109,9 +109,9 @@ export default {
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
-    base: {
-      url: `https://mainnet.base.org`,
-      chainId: 8453,
+    baseTestnet: {
+      url: `https://base-sepolia-rpc.publicnode.com`,
+      chainId: 84532,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     }
   },
@@ -166,8 +166,16 @@ export default {
         urls: {
           apiURL: 'https://api.basescan.org/api',
           browserURL: 'https://basescan.org/',
-        },
-      }
+        }
+      },
+      {
+        network: 'baseTestnet',
+        chainId: 84532,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api?chainid=84532',
+          browserURL: 'https://basescan.org/',
+        }
+      },
     ],
   },
 };

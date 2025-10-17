@@ -12,6 +12,12 @@ contract MockTimeDSFactory is IDefaultMainPluginFactory {
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
 
+  /// @inheritdoc IFarmingPluginFactory
+  address public override farmingAddress;
+
+  /// @notice Address of the limit order manager contract
+  address public limitOrderManager;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
@@ -45,8 +51,22 @@ contract MockTimeDSFactory is IDefaultMainPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeDefaultMainPlugin volatilityOracle = new MockTimeDefaultMainPlugin(pool, algebraFactory, address(this));
+    MockTimeDefaultMainPlugin volatilityOracle = new MockTimeDefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override {
+    require(farmingAddress != newFarmingAddress);
+    farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override {
+    require(limitOrderManager != newLimitOrderManager);
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 }

@@ -6,7 +6,7 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import './interfaces/IDefaultMainPluginFactory.sol';
 import './DefaultMainPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 default plugin factory
+/// @title Algebra Integral 1.2.2 default plugin factory
 /// @notice This contract creates Algebra adaptive fee plugins for Algebra liquidity pools
 /// @dev This plugin factory can only be used for Algebra default pools
 contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
@@ -15,6 +15,12 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
 
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
+
+  /// @inheritdoc IFarmingPluginFactory
+  address public override farmingAddress;
+
+  /// @notice Address of the limit order manager contract
+  address public limitOrderManager;
 
   address public router;
 
@@ -54,9 +60,23 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this));
+    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {
+    require(farmingAddress != newFarmingAddress);
+    farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    require(limitOrderManager != newLimitOrderManager);
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
   function setRouter(address _router) external onlyAdministrator {

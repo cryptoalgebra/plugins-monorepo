@@ -7,7 +7,7 @@ import './interfaces/IDefaultMainCustomPluginFactory.sol';
 
 import './DefaultMainPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 main custom plugin deployer
+/// @title Algebra Integral 1.2.2 main custom plugin deployer
 contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   bytes32 public constant override ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR = keccak256('ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR');
@@ -17,6 +17,12 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
 
   /// @inheritdoc IDefaultMainCustomPluginFactory
   address public immutable entryPoint;
+
+  /// @inheritdoc IFarmingPluginFactory
+  address public override farmingAddress;
+
+  /// @notice Address of the limit order manager contract
+  address public limitOrderManager;
 
   /// @inheritdoc IDefaultMainCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
@@ -44,7 +50,7 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this)));
+    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -52,5 +58,19 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool) {
     return IAlgebraCustomPoolEntryPoint(entryPoint).createCustomPool(address(this), creator, tokenA, tokenB, data);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {
+    require(farmingAddress != newFarmingAddress);
+    farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    require(limitOrderManager != newLimitOrderManager);
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 }

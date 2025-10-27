@@ -814,19 +814,30 @@ describe('DefaultAlmPlugin', () => {
       {defaultSwapToTick: 1}
     ]
 
+    const decimalsCombos = [
+      { decimals0: 18, decimals1: 18 },
+      { decimals0: 18, decimals1: 6 },
+      { decimals0: 6, decimals1: 18 },
+      { decimals0: 18, decimals1: 3 },
+      { decimals0: 3, decimals1: 18 },
+      // { decimals0: 18, decimals1: 0 },
+      // { decimals0: 0, decimals1: 18 },
+    ]
+
     defaultSwapToTickCombos.forEach(({ defaultSwapToTick }) => {
       allowTokenCombos.forEach(({allowToken1 }) => {
-        describe(`rebalances (allowToken1=${allowToken1})`, () => {
-          beforeEach(async () => {
-            await rebalanceManager.setAllowToken1(allowToken1);
-          });
+        decimalsCombos.forEach(({ decimals0, decimals1 }) => {
+          describe(`rebalances (allowToken1=${allowToken1}, decimals=${decimals0}/${decimals1})`, () => {
+            beforeEach(async () => {
+              await rebalanceManager.setAllowToken1(allowToken1);
+              await rebalanceManager.setDecimals(decimals0, decimals1);
+            });
 
           it('rebalance could call only plugin', async () => {
             await expect(rebalanceManager.obtainTWAPAndRebalance(0n, 0n, 0n, 0n)).to.be.revertedWith('Should only called by plugin');
           });
 
           it('first rebalance over -> over, pairedToken >= depositToken', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -837,7 +848,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('first rebalance with low percentageOfDepositToken', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -852,7 +862,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('first rebalance over -> over, pairedToken < depositToken', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -864,7 +873,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over state no rebalance - some volatility', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -875,7 +883,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over state no rebalance - some volatility, pairedToken < depositToken', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -887,7 +894,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('under -> under', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(0n);
@@ -899,7 +905,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('under state no rebalance - some volatility', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(0n);
@@ -911,7 +916,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> normal', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -922,7 +926,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> normal -> over', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -937,7 +940,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> special, high volatility', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -948,7 +950,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> special, high volatility, rounded tick', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -959,7 +960,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance - extreme volatility', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -970,7 +970,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance - too soon', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -984,7 +983,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance - volatility too low', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -995,7 +993,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance - percentageOfDepositTokenUnused too low', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             // await rebalanceManager.setDepositTokenBalance(0n);
@@ -1013,7 +1010,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance - high volatility in the same block', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1031,7 +1027,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('rebalance not triggered for low volatility', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1042,7 +1037,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('rebalance triggered for high volatility after time threshold', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1057,7 +1051,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> over -> normal', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1076,7 +1069,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> normal -> normal', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1094,7 +1086,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> under -> over', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1113,7 +1104,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> under -> normal', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1132,7 +1122,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> under -> under', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1151,7 +1140,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> under -> special', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1168,7 +1156,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> over -> under', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1187,7 +1174,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> over -> current, priceChange < priceChangeThreshold', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1206,7 +1192,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> normal -> under', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1225,7 +1210,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> normal -> special', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1242,7 +1226,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> special -> over', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1259,7 +1242,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> special -> normal', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1281,7 +1263,6 @@ describe('DefaultAlmPlugin', () => {
               tick = -tick;
             }
 
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1298,7 +1279,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('over -> special -> special', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1314,7 +1294,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance - no vault, should pause', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await mockVault.setShouldRevertOnRebalance(true);
@@ -1333,7 +1312,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance without rebalance manager', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await plugin.setRebalanceManager(ZERO_ADDRESS);
@@ -1342,7 +1320,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('no rebalance without vault', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setVault(ZERO_ADDRESS);
@@ -1352,7 +1329,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('should revert with insufficient gas limit', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1362,7 +1338,6 @@ describe('DefaultAlmPlugin', () => {
           });
 
           it('should not rebalance with narrow positions', async () => {
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setPercentages(100n, 100n, 100n);
@@ -1377,7 +1352,6 @@ describe('DefaultAlmPlugin', () => {
           it('no rebalance on extreme ticks', async () => {
             initTick = 500_000;
 
-            await rebalanceManager.setDecimals(18, 18);
             await plugin.initializeALM(rebalanceManager, 3600, 300);
 
             await rebalanceManager.setDepositTokenBalance(10000n);
@@ -1387,6 +1361,7 @@ describe('DefaultAlmPlugin', () => {
             await checkState(State.OverInventory);
 
             initTick = 0;
+          });
           });
         });
       });

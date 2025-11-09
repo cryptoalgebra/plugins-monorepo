@@ -5,7 +5,7 @@ import './interfaces/IAlgebraDefaultPluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import './AlgebraDefaultPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 default plugin factory
+/// @title Algebra Integral 1.2.2 default plugin factory
 /// @notice This contract creates Algebra adaptive fee plugins for Algebra liquidity pools
 /// @dev This plugin factory can only be used for Algebra default pools
 contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
@@ -20,6 +20,9 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
+
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
@@ -59,7 +62,7 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration);
+    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -76,5 +79,11 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
     require(farmingAddress != newFarmingAddress);
     farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 }

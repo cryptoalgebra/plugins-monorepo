@@ -24,6 +24,9 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   /// @inheritdoc IAlgebraCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -51,7 +54,7 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration));
+    address plugin = address(new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -73,6 +76,12 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
     require(farmingAddress != newFarmingAddress);
     farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 
 }

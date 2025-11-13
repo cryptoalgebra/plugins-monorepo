@@ -26,6 +26,8 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc ISecurityPluginFactory
   address public override securityRegistry;
 
+  address public limitOrderManager;
+
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
     defaultFeeConfiguration = AdaptiveFee.initialFeeConfiguration();
@@ -57,7 +59,7 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
+    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, limitOrderManager);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -80,5 +82,11 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   function setSecurityRegistry(address newSecurityRegistry) external override {
     securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override {
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 }

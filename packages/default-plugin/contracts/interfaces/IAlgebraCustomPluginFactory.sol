@@ -6,9 +6,10 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginF
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 
 /// @title The interface for the IAlgebraCustomPluginFactory
-interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory {
+interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory, ILimitOrderPluginFactory {
 
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraALMCustomPluginFactory

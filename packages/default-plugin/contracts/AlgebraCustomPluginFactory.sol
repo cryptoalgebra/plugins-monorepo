@@ -27,6 +27,8 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
   /// @inheritdoc ISecurityPluginFactory
   address public override securityRegistry;
 
+  address public limitOrderManager;
+
   /// @inheritdoc IAlgebraCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -54,7 +56,7 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry));
+    address plugin = address(new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry, limitOrderManager));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -82,6 +84,12 @@ contract AlgebraCustomPluginFactory is IAlgebraCustomPluginFactory {
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
 }

@@ -6,8 +6,11 @@ const entryPoint = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 
 export default buildModule("AlgebraCustomPluginFactory", (m) => {
 	const algebraCustomPluginFactory = m.contract("AlgebraCustomPluginFactory", [factoryAddress, entryPoint]);
+
+	const securityRegistry = m.contract("SecurityRegistry", [factoryAddress]);
 	
 	m.call(algebraCustomPluginFactory, "setFarmingAddress", [farmingCenter]);
+	m.call(algebraCustomPluginFactory, "setSecurityRegistry", [securityRegistry]);
 
-	return { algebraCustomPluginFactory };
+	return { algebraCustomPluginFactory, securityRegistry };
 });

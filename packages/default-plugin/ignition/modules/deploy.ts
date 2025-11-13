@@ -5,8 +5,11 @@ const farmingCenter = "0xB781A7afCf46dEC1Fa16a722eFD25433D1B9F261";
 
 export default buildModule("AlgebraDefaultPluginFactory", (m) => {
 	const algebraDefaultPluginFactory = m.contract("AlgebraDefaultPluginFactory", [factoryAddress]);
+
+	const securityRegistry = m.contract("SecurityRegistry", [factoryAddress]);
 	
 	m.call(algebraDefaultPluginFactory, "setFarmingAddress", [farmingCenter]);
+	m.call(algebraDefaultPluginFactory, "setSecurityRegistry", [securityRegistry]);
 
-	return { algebraDefaultPluginFactory };
+	return { algebraDefaultPluginFactory, securityRegistry };
 });

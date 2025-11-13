@@ -1,8 +1,13 @@
 {
   "name": "@cryptoalgebra/default-plugin",
   "version": "1.2.2",
-  "private": "true",
   "description": "",
+  "files": [
+    "contracts/",
+    "artifacts/**/*.json",
+    "typechain",
+    "dist"
+  ],
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
@@ -17,6 +22,7 @@
     "@cryptoalgebra/integral-periphery": "1.2.4",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
     "@cryptoalgebra/alm-plugin": "workspace:^",
+    "@cryptoalgebra/limit-order-plugin": "workspace:^",
     "@cryptoalgebra/safety-switch-plugin": "workspace:^"
   },
   "devDependencies": {

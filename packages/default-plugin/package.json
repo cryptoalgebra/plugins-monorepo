@@ -23,7 +23,9 @@
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
     "@cryptoalgebra/alm-plugin": "workspace:^",
     "@cryptoalgebra/limit-order-plugin": "workspace:^",
-    "@cryptoalgebra/safety-switch-plugin": "workspace:^"
+    "@cryptoalgebra/safety-switch-plugin": "workspace:^",
+    "@openzeppelin/contracts": "^4.9.3"
+
   },
   "devDependencies": {
     "decimal.js": "^10.5.0",

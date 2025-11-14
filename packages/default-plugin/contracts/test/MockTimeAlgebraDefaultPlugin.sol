@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import '../AlgebraDefaultPlugin.sol';
+import "@cryptoalgebra/limit-order-plugin/contracts/LimitOrderManager.sol";
 
 // used for testing time dependent behavior
 contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {

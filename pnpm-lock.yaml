@@ -22,7 +22,7 @@ importers:
         specifier: ^0.15.15
         version: 0.15.15(@nomicfoundation/hardhat-verify@2.1.3(hardhat@2.26.5(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(hardhat@2.26.5(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3))
       '@nomicfoundation/hardhat-ignition-ethers':
-        specifier: ^0.15.15
+        specifier: ^0.15.16
         version: 0.15.16(@nomicfoundation/hardhat-ethers@3.1.2(ethers@6.15.0)(hardhat@2.26.5(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(@nomicfoundation/hardhat-ignition@0.15.15(@nomicfoundation/hardhat-verify@2.1.3(hardhat@2.26.5(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(hardhat@2.26.5(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)))(@nomicfoundation/ignition-core@0.15.14)(ethers@6.15.0)(hardhat@2.26.5(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3))
       '@nomicfoundation/hardhat-toolbox':
         specifier: ^6.1.1
@@ -158,6 +158,16 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.4
         version: 1.2.4
+      '@openzeppelin/contracts':
+        specifier: 4.9.3
+        version: 4.9.3
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
+  packages/reflex:
+    dependencies:
       '@openzeppelin/contracts':
         specifier: 4.9.3
         version: 4.9.3

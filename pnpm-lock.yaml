@@ -40,11 +40,11 @@ importers:
   packages/abstract-plugin:
     dependencies:
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.9
-        version: 1.2.9
+        specifier: 1.0.0
+        version: 1.0.0
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.4
-        version: 1.2.4
+        specifier: 1.0.0
+        version: 1.0.0
 
   packages/alm:
     dependencies:
@@ -73,9 +73,6 @@ importers:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^
         version: link:../abstract-plugin
-      '@cryptoalgebra/alm-plugin':
-        specifier: workspace:^
-        version: link:../alm
       '@cryptoalgebra/dynamic-fee-plugin':
         specifier: workspace:^
         version: link:../dynamic-fee
@@ -83,11 +80,11 @@ importers:
         specifier: workspace:^
         version: link:../farming-proxy
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.9
-        version: 1.2.9
+        specifier: 1.0.0
+        version: 1.0.0
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.4
-        version: 1.2.4
+        specifier: 1.0.0
+        version: 1.0.0
       '@cryptoalgebra/reflex-plugin':
         specifier: 1.0.0
         version: 1.0.0
@@ -213,11 +210,11 @@ importers:
   packages/test-utils:
     devDependencies:
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.9
-        version: 1.2.9
+        specifier: 1.0.0
+        version: 1.0.0
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.4
-        version: 1.2.4
+        specifier: 1.0.0
+        version: 1.0.0
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
         version: 5.8.0
@@ -444,6 +441,10 @@ packages:
     resolution: {integrity: sha512-BgeLkSbuaTGs1LwBh4XDHAN9YUuKmjx13rdGeM0uKQrEndP1uay3rSA6WGlZEUHIKnXAcjrj5aGqyK+4MwgM9w==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
+  '@cryptoalgebra/integral-core@1.0.0':
+    resolution: {integrity: sha512-1cUooKmmeNDdubiTcosXQ0vQ7qszgBiFxkJFue4rqSzNQs47wrCHnyA0tC86D+mOQFssZ1DDaK7ghNFb5+OPzA==}
+    engines: {node: '>=14.0.0', npm: '>=8.0.0'}
+
   '@cryptoalgebra/integral-core@1.2.1':
     resolution: {integrity: sha512-+Lj7y2ZqpJ58fNtqTRvrMv/HPcyqNkMpINu9LQK6/iMDePmzNoywogLLiGU34MlxAaGEwO6XNWM7ENq/YzzZzA==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -451,6 +452,10 @@ packages:
   '@cryptoalgebra/integral-core@1.2.9':
     resolution: {integrity: sha512-8a2/W/3BDWThJpMORIjfN7eN3KCKDQ7i2unCB3YBsnT7kXrUN6ntpJgl3clSe1o/nG/9SjpXHyLz75J4r2YGEw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/integral-periphery@1.0.0':
+    resolution: {integrity: sha512-nYez6ISd2/MGKK2FMKH6RCBNjtX6naVjk1PCs90amcyheb4ngkK0QdYa/+feC0aXxTK/iSjww7ZjgqBhbX9/6g==}
+    engines: {node: '>=14.0.0', npm: '>=8.0.0'}
 
   '@cryptoalgebra/integral-periphery@1.2.1':
     resolution: {integrity: sha512-yEBd7IxewEGDanECgTcD3o/wKlSxgLtc1l9PV3CHhWBOG7larKUa/DuHgkqS9fNysBnt4eyzuXC83rtNRmazuA==}
@@ -4719,6 +4724,10 @@ snapshots:
       '@cryptoalgebra/integral-core': 1.2.1
       '@cryptoalgebra/integral-periphery': 1.2.1
 
+  '@cryptoalgebra/integral-core@1.0.0':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.3
+
   '@cryptoalgebra/integral-core@1.2.1':
     dependencies:
       '@openzeppelin/contracts': 4.9.3
@@ -4726,6 +4735,12 @@ snapshots:
   '@cryptoalgebra/integral-core@1.2.9':
     dependencies:
       '@openzeppelin/contracts': 4.9.3
+
+  '@cryptoalgebra/integral-periphery@1.0.0':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.0.0
+      '@openzeppelin/contracts': 4.9.3
+      '@uniswap/v2-core': 1.0.1
 
   '@cryptoalgebra/integral-periphery@1.2.1':
     dependencies:

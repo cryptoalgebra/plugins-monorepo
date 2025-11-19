@@ -55,17 +55,6 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     return IAlgebraPool(pool).plugin();
   }
 
-  /// @inheritdoc IAbstractPlugin
-  function collectPluginFee(address token, uint256 amount, address recipient) external virtual override {
-    _authorize();
-    SafeTransfer.safeTransfer(token, recipient, amount);
-  }
-
-  /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external virtual view override onlyPool returns (bytes4) {
-    return IAlgebraPlugin.handlePluginFee.selector;
-  }
-
   // ###### HOOKS ######
 
   function beforeInitialize(address, uint160) external virtual override onlyPool returns (bytes4) {
@@ -76,8 +65,8 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
-  function beforeModifyPosition(address, address, int24, int24, int128, bytes calldata) external virtual override onlyPool returns (bytes4, uint24) {
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+  function beforeModifyPosition(address, address, int24, int24, int128, bytes calldata) external virtual override onlyPool returns (bytes4) {
+    return (IAlgebraPlugin.beforeModifyPosition.selector);
   }
 
   function afterModifyPosition(
@@ -101,8 +90,8 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     uint160,
     bool,
     bytes calldata
-  ) external virtual override onlyPool returns (bytes4, uint24, uint24) {
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+  ) external virtual override onlyPool returns (bytes4) {
+    return (IAlgebraPlugin.beforeSwap.selector);
   }
 
   function afterSwap(address, address, bool, int256, uint160, int256, int256, bytes calldata) external virtual override onlyPool returns (bytes4) {

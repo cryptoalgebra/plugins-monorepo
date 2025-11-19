@@ -45,14 +45,9 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
+  function createPlugin(address pool, address, address) external override returns (address) {
     require(msg.sender == algebraFactory);
     return _createPlugin(pool);
-  }
-
-  /// @inheritdoc IAlgebraPluginFactory
-  function afterCreatePoolHook(address, address, address) external view override {
-    require(msg.sender == algebraFactory);
   }
 
   /// @inheritdoc IBasePluginFactory

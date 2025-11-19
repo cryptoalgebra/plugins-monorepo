@@ -41,7 +41,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   /// @inheritdoc IAlgebraPoolState
   int24 public override tickSpacing;
   /// @inheritdoc IAlgebraPoolState
-  uint32 public override lastFeeTransferTimestamp;
+  uint32 public override communityFeeLastTimestamp;
 
   /// @inheritdoc IAlgebraPoolState
   uint32 public override tickTreeRoot; // The root bitmap of search tree
@@ -80,13 +80,8 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolState
-  function getPluginFeePending() external pure override returns (uint128, uint128) {
-    revert('not implemented');
-  }
-
-  /// @inheritdoc IAlgebraPoolState
-  function fee() external pure returns (uint16) {
-    revert('not implemented');
+  function fee() external view returns (uint16) {
+    return globalState.fee;
   }
 
   /// @inheritdoc IAlgebraPoolState
@@ -113,15 +108,11 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   /// @inheritdoc IAlgebraPoolActions
   function initialize(uint160 initialPrice) external override {
     int24 tick = TickMath.getTickAtSqrtRatio(initialPrice); // getTickAtSqrtRatio checks validity of initialPrice inside
-
     if (plugin != address(0)) {
       IAlgebraPlugin(plugin).beforeInitialize(msg.sender, initialPrice);
     }
-
     tickSpacing = 60;
-
     uint8 pluginConfig = globalState.pluginConfig;
-
     globalState.price = initialPrice;
     globalState.tick = tick;
 
@@ -174,7 +165,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   function swapToTick(int24 targetTick) external {
     IAlgebraPlugin _plugin = IAlgebraPlugin(plugin);
     if (globalState.pluginConfig & Plugins.BEFORE_SWAP_FLAG != 0) {
-      (, overrideFee, pluginFee) = _plugin.beforeSwap(msg.sender, msg.sender, true, 0, 0, false, '');
+      _plugin.beforeSwap(msg.sender, msg.sender, true, 0, 0, false, '');
     }
 
     globalState.price = TickMath.getSqrtRatioAtTick(targetTick);
@@ -231,9 +222,6 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   /// @inheritdoc IAlgebraPoolPermissionedActions
   function setFee(uint16 newFee) external override {
     require(msg.sender == owner || msg.sender == plugin);
-    bool isDynamicFeeEnabled = globalState.pluginConfig & uint8(Plugins.DYNAMIC_FEE) != 0;
-    require(!isDynamicFeeEnabled && msg.sender == owner);
-
     globalState.fee = newFee;
   }
 
@@ -241,13 +229,4 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
     communityVault = newCommunityVault;
   }
 
-  /// @inheritdoc IAlgebraPoolPermissionedActions
-  function sync() external pure override {
-    revert('Not implemented');
-  }
-
-  /// @inheritdoc IAlgebraPoolPermissionedActions
-  function skim() external pure override {
-    revert('Not implemented');
-  }
 }

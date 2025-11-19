@@ -39,13 +39,13 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
   }
 
   /// @dev unused
-  function beforeModifyPosition(address, address, int24, int24, int128 liquidity, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
+  function beforeModifyPosition(address, address, int24, int24, int128 liquidity, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     if (liquidity < 0) {
       _checkStatusOnBurn();
     } else {
       _checkStatus();
     }
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+    return (IAlgebraPlugin.beforeModifyPosition.selector);
   }
 
   /// @dev unused
@@ -54,16 +54,11 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _writeTimepoint();
     _checkStatus();
     uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee;
-    if(sender == getRouter()){
-      fee = 0;
-    } else {
-      fee = _getCurrentFee(volatilityAverage);
-    }
+    uint16 fee = _getCurrentFee(volatilityAverage);
     IAlgebraPool(pool).setFee(fee);
     return (IAlgebraPlugin.beforeSwap.selector);
   }

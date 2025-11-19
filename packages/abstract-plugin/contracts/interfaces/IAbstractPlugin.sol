@@ -6,11 +6,6 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 
 /// @title The interface for the BasePlugin
 interface IAbstractPlugin is IAlgebraPlugin {
-  /// @notice Claim plugin fee
-  /// @param token The token address
-  /// @param amount Amount of tokens
-  /// @param recipient Recipient address
-  function collectPluginFee(address token, uint256 amount, address recipient) external;
 
   /// @notice Get all active module names
   /// @return moduleNames Array of active module names

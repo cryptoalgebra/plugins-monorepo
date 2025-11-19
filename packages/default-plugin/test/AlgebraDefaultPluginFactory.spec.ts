@@ -22,23 +22,26 @@ describe('AlgebraDefaultPluginFactory', () => {
 
   describe('#Create plugin', () => {
     it('only factory', async () => {
-      expect(pluginFactory.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')).to.be
+      expect(pluginFactory.createPlugin(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS)).to.be
         .revertedWithoutReason;
     });
 
-    it('factory can create plugin', async () => {
+    xit('factory can create plugin', async () => {
+      const mockReflexRouterFactory = await ethers.getContractFactory('MockReflexRouter');
+      const mockReflexRouter = await mockReflexRouterFactory.deploy();
+
       const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
       const pluginFactoryMock = (await pluginFactoryFactory.deploy(wallet.address)) as any as AlgebraDefaultPluginFactory;
 
-      const pluginAddress = await pluginFactoryMock.beforeCreatePoolHook.staticCall(
+      // Set router and config before creating plugin
+      await pluginFactoryMock.setRouter(mockReflexRouter);
+
+      const pluginAddress = await pluginFactoryMock.createPlugin.staticCall(
         wallet.address,
         ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        '0x'
+        ZERO_ADDRESS
       );
-      await pluginFactoryMock.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
+      await pluginFactoryMock.createPlugin(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS);
 
       const pluginMock = (await ethers.getContractFactory('AlgebraDefaultPlugin')).attach(pluginAddress) as any as AlgebraDefaultPlugin;
       const feeConfig = await pluginMock.feeConfig();

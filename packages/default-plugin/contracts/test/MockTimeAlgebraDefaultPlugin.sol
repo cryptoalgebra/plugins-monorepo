@@ -15,8 +15,10 @@ contract MockTimeAlgebraDefaultPlugin is AlgebraDefaultPlugin {
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
-    address _securityRegistry
-  ) AlgebraDefaultPlugin(_pool, _factory, _pluginFactory, _config, _securityRegistry) {}
+    address _securityRegistry,
+    address _reflexRouter,
+    bytes32 _configId
+  ) AlgebraDefaultPlugin(_pool, _factory, _pluginFactory, _config, _securityRegistry, _reflexRouter, _configId) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

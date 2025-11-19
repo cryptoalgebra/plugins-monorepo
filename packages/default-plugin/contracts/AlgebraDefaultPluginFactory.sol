@@ -24,6 +24,12 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc ISecurityPluginFactory
   address public override securityRegistry;
 
+  /// @notice Default router address used for new plugins
+  address public override defaultRouter;
+
+  /// @notice Default config ID used for new plugins
+  bytes32 public override defaultConfigId;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -62,7 +68,15 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(pool, algebraFactory, address(this), defaultFeeConfiguration, securityRegistry);
+    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(
+      pool,
+      algebraFactory,
+      address(this),
+      defaultFeeConfiguration,
+      securityRegistry,
+      defaultRouter,
+      defaultConfigId
+    );
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -85,5 +99,19 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @notice Sets the default router address for new plugins
+  /// @param newRouter The new router address to set
+  function setRouter(address newRouter) external onlyAdministrator {
+    defaultRouter = newRouter;
+  }
+
+  /// @notice Sets the default config ID for new plugins
+  /// @param newConfigId The new config ID to set
+  function setConfigId(bytes32 newConfigId) external onlyAdministrator {
+    require(defaultConfigId != newConfigId, 'Same config ID');
+    defaultConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
   }
 }

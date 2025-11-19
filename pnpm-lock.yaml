@@ -88,6 +88,9 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.4
         version: 1.2.4
+      '@cryptoalgebra/reflex-plugin':
+        specifier: 1.0.0
+        version: 1.0.0
       '@cryptoalgebra/safety-switch-plugin':
         specifier: workspace:^
         version: link:../safety-switch
@@ -456,6 +459,9 @@ packages:
   '@cryptoalgebra/integral-periphery@1.2.4':
     resolution: {integrity: sha512-gaVKaZ7EWMkbzS6z7tzTB3C2r9vdupfGbAscWNEXB57A47b3uWo7hElfsxg/gfb0FmBFpfaamqVW+Q8FHZatLg==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+
+  '@cryptoalgebra/reflex-plugin@1.0.0':
+    resolution: {integrity: sha512-wMOgrEwU9MmhcAelFC0CwFYs1PWI6I9avFGaZi9ksw0dHWhsCIZ9VGgL93tmd2fwIypX3LArs6Q98lPzvgZhLg==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -4732,6 +4738,10 @@ snapshots:
       '@cryptoalgebra/integral-core': 1.2.9
       '@openzeppelin/contracts': 4.9.3
       '@uniswap/v2-core': 1.0.1
+
+  '@cryptoalgebra/reflex-plugin@1.0.0':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.3
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:

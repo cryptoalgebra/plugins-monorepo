@@ -10,9 +10,10 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmPlugin.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
+import '@cryptoalgebra/reflex-plugin/contracts/ReflexAfterSwap.sol';
 
 /// @title Algebra Integral 1.2.2 adaptive fee, security and alm plugin
-contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, AlmPlugin, SecurityPlugin {
+contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, AlmPlugin, SecurityPlugin, ReflexAfterSwap {
   using Plugins for uint8;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
@@ -21,8 +22,10 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     address _factory,
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
-    address _securityRegistry
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) {}
+    address _securityRegistry,
+    address _reflexRouter,
+    bytes32 _configId
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) ReflexAfterSwap(_reflexRouter, _configId) {}
 
   // ###### HOOKS ######
 
@@ -52,15 +55,29 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
     _writeTimepoint();
     _checkStatus();
     uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee = _getCurrentFee(volatilityAverage);
+    uint24 fee;
+    if(sender == getRouter()){
+      fee = 1;
+    } else {
+      fee = _getCurrentFee(volatilityAverage);
+    }
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  function afterSwap(
+    address,
+    address,
+    bool zeroToOne,
+    int256,
+    uint160,
+    int256 amount0Out,
+    int256 amount1Out,
+    bytes calldata
+  ) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     if (rebalanceManager != address(0) && _ableToGetTimepoints(slowTwapPeriod)){
       ( , int24 currentTick, , ) = _getPoolState();
       uint32 lastBlockTimestamp = _getLastBlockTimestamp();
@@ -72,6 +89,11 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     }
     
     _updateVirtualPoolTick(zeroToOne);
+
+    // reflex
+    bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
+    _reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, tx.origin);
+
     return IAlgebraPlugin.afterSwap.selector;
   }
 
@@ -120,5 +142,10 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
   function getCurrentFee() external view override returns (uint16 fee) {
     uint88 volatilityAverage = _getAverageVolatilityLast();
     fee = _getCurrentFee(volatilityAverage);
+  }
+
+  /// @inheritdoc ReflexAfterSwap
+  function _onlyReflexAdmin() internal view override {
+    _authorize();
   }
 }

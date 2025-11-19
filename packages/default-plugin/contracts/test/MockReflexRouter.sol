@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/reflex-plugin/contracts/interfaces/IReflexRouter.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol';
 
 /// @title Mock Reflex Router for testing
 contract MockReflexRouter is IReflexRouter {
@@ -54,13 +55,13 @@ contract MockReflexRouter is IReflexRouter {
 
     /// @inheritdoc IReflexRouter
     function backrunedExecute(
-        ExecuteParams calldata executeParams,
-        BackrunParams[] calldata backrunParams
+        ExecuteParams calldata /* executeParams */,
+        BackrunParams[] calldata /* backrunParams */
     ) external payable override returns (
-        bool success,
-        bytes memory returnData,
-        uint256[] memory profits,
-        address[] memory profitTokens
+        bool /* success */,
+        bytes memory /* returnData */,
+        uint256[] memory /* profits */,
+        address[] memory /* profitTokens */
     ) {
         // Not implemented for mock
         revert("Not implemented");

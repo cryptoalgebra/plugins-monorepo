@@ -2,17 +2,17 @@ import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
-import { pluginFixture } from './shared/fixtures';
+import { upgradeablePluginFixture } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
 
-import { MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
 
 describe('AlgebraUpgradeablePlugin', () => {
   let wallet: Wallet, other: Wallet;
 
   let plugin: MockTimeAlgebraUpgradeablePlugin;
   let mockPool: MockPool;
-  let mockPluginFactory: MockTimeDSFactory;
+  let mockPluginFactory: MockTimeUpgradeablePluginFactory;
 
   let minTick = getMinTick(60);
   let maxTick = getMaxTick(60);
@@ -26,7 +26,7 @@ describe('AlgebraUpgradeablePlugin', () => {
   });
 
   beforeEach('deploy test AlgebraUpgradeablePlugin', async () => {
-    ({ plugin, mockPool, mockPluginFactory } = await loadFixture(pluginFixture));
+    ({ plugin, mockPool, mockPluginFactory } = await loadFixture(upgradeablePluginFixture));
   });
 
   // plain tests for hooks functionality
@@ -317,7 +317,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
         expect(moduleNames).to.be.an('array');
-        expect(moduleNames.length).to.eq(1); // Only FarmingProxy
+        expect(moduleNames.length).to.eq(1);
         
         // Check each module name is a non-empty string
         for (const moduleName of moduleNames) {
@@ -326,13 +326,13 @@ describe('AlgebraUpgradeablePlugin', () => {
         }
       });
 
-      it('returns expected module names', async () => {
+      it('returns expected module names in correct order', async () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
-        // Verify FarmingProxy module is present
-        expect(moduleNames).to.include('Farming Proxy Plugin');
+        // Verify all expected modules are present
+        expect(moduleNames).to.include('Farming Proxy Plugin');  
         
-        // Verify only one module
+        // Verify no unexpected modules
         expect(moduleNames).to.have.lengthOf(1);
       });
 

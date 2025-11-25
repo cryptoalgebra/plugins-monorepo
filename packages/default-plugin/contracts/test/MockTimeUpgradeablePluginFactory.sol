@@ -6,17 +6,17 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginF
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 
 import './MockTimeAlgebraUpgradeablePlugin.sol';
-import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPluginImplementation.sol';
+import '../AlgebraPluginBeacon.sol';
 
 /// @title Mock Factory for testing upgradeable plugins
-/// @notice Adapted for upgradeable plugin with only FarmingProxy
-contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
+/// @notice Creates MockTimeAlgebraUpgradeablePlugin instances for testing
+contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
-
+  
   /// @notice Address of FarmingProxy implementation
   address public immutable farmingProxyImplementation;
 
@@ -32,7 +32,14 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
+  function beforeCreatePoolHook(
+    address pool, 
+    address, 
+    address, 
+    address, 
+    address, 
+    bytes calldata
+  ) external override returns (address) {
     return _createPlugin(pool);
   }
 

@@ -9,12 +9,14 @@ import './AlgebraUpgradeablePlugin.sol';
 /// @notice Factory for deploying upgradeable plugins using Beacon Proxy pattern
 /// @dev Simplified version with only FarmingProxy plugin for testing
 contract AlgebraUpgradeablePluginFactory {
+  address public immutable algebraFactory;
   address public immutable beacon;
   
   event PluginCreated(address indexed pool, address plugin);
 
-  constructor(address pluginImplementation) {
-    beacon = address(new AlgebraPluginBeacon(pluginImplementation));
+  constructor(address _algebraFactory, address pluginImplementation) {
+    algebraFactory = _algebraFactory;
+    beacon = address(new AlgebraPluginBeacon(_algebraFactory, pluginImplementation));
   }
 
   /// @notice Deploy a new plugin proxy for a pool

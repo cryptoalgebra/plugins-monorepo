@@ -16,8 +16,6 @@ contract AlgebraUpgradeablePlugin is
 {
   using Plugins for uint8;
 
-  event FarmingProxyImplementationChanged(address indexed newImplementation);
-
   constructor(
     address _pool,
     address _factory,
@@ -25,29 +23,12 @@ contract AlgebraUpgradeablePlugin is
     address _farmingProxyImpl
   ) 
     BaseAbstractPlugin(_pool, _factory, _pluginFactory)
+    FarmingProxyConnector(_farmingProxyImpl)
   {
-    // Set FarmingProxy implementation
-    _setFarmingProxyImplementation(_farmingProxyImpl);
-
     // Initialize FarmingProxy plugin and get its config
     uint8 farmingProxyConfig = _initializeFarmingProxy();
     defaultPluginConfig = defaultPluginConfig | farmingProxyConfig;
     activeModules.push("Farming Proxy Plugin");
-  }
-
-  // ###### Plugin Implementation Management ######
-
-  /// @notice Update FarmingProxy plugin implementation
-  function setFarmingProxyImplementation(address newImplementation) external {
-    _authorize();
-    require(newImplementation != address(0), 'Invalid implementation');
-    _setFarmingProxyImplementation(newImplementation);
-    emit FarmingProxyImplementationChanged(newImplementation);
-  }
-
-  /// @notice Get FarmingProxy implementation address
-  function getFarmingProxyImplementation() external view returns (address) {
-    return _getFarmingProxyImplementation();
   }
 
   // ###### Required by FarmingProxyConnector ######
@@ -60,21 +41,6 @@ contract AlgebraUpgradeablePlugin is
   /// @dev Provide pool address for FarmingProxyConnector
   function _getPool() internal view override returns (address) {
     return pool;
-  }
-
-  /// @dev Already implemented in BaseAbstractPlugin, just expose for override
-  function _getPoolState() internal view override(BaseAbstractPlugin, FarmingProxyConnector) returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
-    return BaseAbstractPlugin._getPoolState();
-  }
-
-  /// @dev Already implemented in BaseAbstractPlugin, just expose for override
-  function _getPluginInPool() internal view override(BaseAbstractPlugin, FarmingProxyConnector) returns (address) {
-    return BaseAbstractPlugin._getPluginInPool();
-  }
-
-  /// @dev Already implemented in BaseAbstractPlugin, just expose for override
-  function _enablePluginFlags(uint8 config) internal override(BaseAbstractPlugin, FarmingProxyConnector) {
-    BaseAbstractPlugin._enablePluginFlags(config);
   }
 
   // ###### HOOKS ######

@@ -16,7 +16,6 @@ contract FarmingProxyPluginImplementation {
   bytes32 internal constant FARMING_PROXY_NAMESPACE = keccak256('algebra.storage.farmingproxy');
 
   struct FarmingProxyLayout {
-    address implementation;
     address incentive;
     address lastIncentiveOwner;
   }
@@ -29,46 +28,6 @@ contract FarmingProxyPluginImplementation {
     }
   }
 
-  /// @dev Get plugin address from pool (via delegatecall context)
-  /// @dev When called via delegatecall, address(this) returns the calling contract's address
-  function _getPluginInPool() internal view returns (address plugin) {
-    // In delegatecall context, we need to read from pool's storage
-    // pool is an immutable variable in the calling contract
-    address pool;
-    assembly {
-      // Assuming pool is stored in a specific slot (need to match BaseAbstractPlugin)
-      pool := sload(0x00) // This is simplified, actual slot depends on inheritance
-    }
-    
-    // Fallback: try to call pool.plugin()
-    try IAlgebraPool(pool).plugin() returns (address _plugin) {
-      plugin = _plugin;
-    } catch {
-      plugin = address(0);
-    }
-  }
-
-  /// @dev Get pool state (via delegatecall context)
-  function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
-    address pool;
-    assembly {
-      pool := sload(0x00) // Simplified
-    }
-    
-    try IAlgebraPool(pool).globalState() returns (uint160 _price, int24 _tick, uint16 _fee, uint8 _pluginConfig, uint16, uint16) {
-      (price, tick, fee, pluginConfig) = (_price, _tick, _fee, _pluginConfig);
-    } catch {}
-  }
-
-  /// @dev Enable plugin flags (via delegatecall context)
-  function _enablePluginFlags(uint8 config, address pool) internal {
-    (, , , uint8 currentPluginConfig) = _getPoolState();
-    uint8 newPluginConfig = currentPluginConfig | config;
-    if (currentPluginConfig != newPluginConfig) {
-      IAlgebraPool(pool).setPluginConfig(newPluginConfig);
-    }
-  }
-
   /// @notice Initialize FarmingProxy plugin
   /// @dev Called via delegatecall from connector
   function initializeFarmingProxy() external {
@@ -77,7 +36,10 @@ contract FarmingProxyPluginImplementation {
 
   /// @notice Set incentive address - COMPLETE LOGIC HERE
   /// @dev Called via delegatecall from connector
-  function setIncentive(address newIncentive, address pluginFactory) external {
+  /// @param newIncentive The new incentive address
+  /// @param pluginFactory The plugin factory address
+  /// @param pool The pool address
+  function setIncentive(address newIncentive, address pluginFactory, address pool) external {
     FarmingProxyLayout storage layout = _getFarmingProxyLayout();
     
     bool toConnect = newIncentive != address(0);
@@ -91,7 +53,7 @@ contract FarmingProxyPluginImplementation {
     }
     require(accessAllowed, 'Not allowed to set incentive');
 
-    address currentPlugin = _getPluginInPool();
+    address currentPlugin = IAlgebraPool(pool).plugin();
     bool isPluginConnected = currentPlugin == address(this);
     
     if (toConnect) require(isPluginConnected, 'Plugin not attached');
@@ -110,25 +72,27 @@ contract FarmingProxyPluginImplementation {
 
     // Enable plugin flags if connected
     if (isPluginConnected) {
-      address pool;
-      assembly {
-        pool := sload(0x00)
+      (, , , uint8 currentPluginConfig, , ) = IAlgebraPool(pool).globalState();
+      uint8 newPluginConfig = currentPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+      if (currentPluginConfig != newPluginConfig) {
+        IAlgebraPool(pool).setPluginConfig(newPluginConfig);
       }
-      _enablePluginFlags(uint8(Plugins.AFTER_SWAP_FLAG), pool);
     }
   }
 
   /// @notice Check if incentive is connected - COMPLETE LOGIC HERE
   /// @dev Called via delegatecall from connector
-  function isIncentiveConnected(address targetIncentive) external view returns (bool) {
+  /// @param targetIncentive The incentive address to check
+  /// @param pool The pool address
+  function isIncentiveConnected(address targetIncentive, address pool) external view returns (bool) {
     FarmingProxyLayout storage layout = _getFarmingProxyLayout();
     
     if (layout.incentive != targetIncentive) return false;
     
-    address currentPlugin = _getPluginInPool();
+    address currentPlugin = IAlgebraPool(pool).plugin();
     if (currentPlugin != address(this)) return false;
     
-    (, , , uint8 pluginConfig) = _getPoolState();
+    (, , , uint8 pluginConfig, ,) = IAlgebraPool(pool).globalState();
     if (!pluginConfig.hasFlag(Plugins.AFTER_SWAP_FLAG)) return false;
 
     return true;

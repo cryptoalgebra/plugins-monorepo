@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { MockFactory, MockPool, MockTimeAlgebraDefaultPlugin, MockTimeDSFactory, AlgebraDefaultPluginFactory } from '../../typechain';
+import { MockFactory, MockPool, MockTimeDSFactory, MockTimeAlgebraUpgradeablePlugin } from '../../typechain';
 
 type Fixture<T> = () => Promise<T>;
 interface MockFactoryFixture {
@@ -14,48 +14,40 @@ async function mockFactoryFixture(): Promise<MockFactoryFixture> {
   return { mockFactory };
 }
 
+// Upgradeable plugin fixture
 interface PluginFixture extends MockFactoryFixture {
-  plugin: MockTimeAlgebraDefaultPlugin
-  mockPluginFactory: MockTimeDSFactory
+  plugin: MockTimeAlgebraUpgradeablePlugin;
+  mockPluginFactory: MockTimeDSFactory;
   mockPool: MockPool;
 }
 
 export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<PluginFixture> {
   const { mockFactory } = await mockFactoryFixture();
-  //const { token0, token1, token2 } = await tokensFixture()
 
+  // Deploy FarmingProxyPluginImplementation
+  const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
+  const farmingProxyImpl = await farmingProxyImplFactory.deploy();
+
+  // Deploy MockTimeDSFactory (adapted for upgradeable plugin)
   const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
-  const mockPluginFactory = (await mockPluginFactoryFactory.deploy(mockFactory)) as any as MockTimeDSFactory;
+  const mockPluginFactory = (await mockPluginFactoryFactory.deploy(mockFactory, farmingProxyImpl)) as any as MockTimeDSFactory;
 
+  // Deploy MockPool
   const mockPoolFactory = await ethers.getContractFactory('MockPool');
   const mockPool = (await mockPoolFactory.deploy()) as any as MockPool;
 
+  // Create plugin via beforeCreatePoolHook
   await mockPluginFactory.beforeCreatePoolHook(mockPool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
   const pluginAddress = await mockPluginFactory.pluginByPool(mockPool);
 
-  const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraDefaultPlugin');
-  const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraDefaultPlugin;
+  // Attach to plugin
+  const pluginContractFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
+  const plugin = pluginContractFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
 
   return {
     plugin,
     mockPluginFactory,
     mockPool,
-    mockFactory,
-  };
-};
-
-interface PluginFactoryFixture extends MockFactoryFixture {
-  pluginFactory: AlgebraDefaultPluginFactory;
-}
-
-export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async function (): Promise<PluginFactoryFixture> {
-  const { mockFactory } = await mockFactoryFixture();
-
-  const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
-  const pluginFactory = (await pluginFactoryFactory.deploy(mockFactory)) as any as AlgebraDefaultPluginFactory;
-
-  return {
-    pluginFactory,
     mockFactory,
   };
 };

@@ -6,7 +6,7 @@ import { AlgebraFeeConfigurationU144, AlgebraFeeConfigurationU144Lib } from './t
 import './libraries/AdaptiveFee.sol';
 
 /// @title DynamicFee Plugin Implementation
-/// @notice This contract contains the logic for DynamicFee plugin that works with namespaced storage
+/// @notice This contract contains ALL logic for DynamicFee plugin that works with namespaced storage
 /// @dev Called via delegatecall from DynamicFeeConnector to reduce main contract size
 contract DynamicFeePluginImplementation {
   using AlgebraFeeConfigurationU144Lib for AlgebraFeeConfiguration;
@@ -15,7 +15,6 @@ contract DynamicFeePluginImplementation {
   bytes32 internal constant DYNAMIC_FEE_NAMESPACE = keccak256('algebra.storage.dynamicfee');
 
   struct DynamicFeeLayout {
-    address implementation;
     AlgebraFeeConfigurationU144 feeConfig;
   }
 
@@ -54,8 +53,11 @@ contract DynamicFeePluginImplementation {
   }
 
   /// @notice Get fee configuration
-  /// @dev Called via delegatecall from connector
-  function feeConfig() external view returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee) {
+  /// @dev Called via staticcall from connector
+  function getFeeConfig() external view returns (
+    uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, 
+    uint16 gamma1, uint16 gamma2, uint16 baseFee
+  ) {
     DynamicFeeLayout storage layout = _getDynamicFeeLayout();
     AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
     

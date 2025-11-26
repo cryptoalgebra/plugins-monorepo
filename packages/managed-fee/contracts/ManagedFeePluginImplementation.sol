@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity =0.8.20;
+
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import './interfaces/IManagedSwapFeePlugin.sol';
+
+/// @title ManagedFee Plugin Implementation
+/// @notice This contract contains ALL logic for ManagedFee plugin that works with namespaced storage
+/// @dev Called via delegatecall from ManagedFeeConnector to reduce main contract size
+contract ManagedFeePluginImplementation {
+  using ECDSA for bytes32;
+
+  /// @dev Storage namespace for ManagedFee plugin using ERC-7201
+  bytes32 internal constant MANAGED_FEE_NAMESPACE = keccak256('algebra.storage.managedfee');
+
+  struct ManagedFeeLayout {
+    mapping(address => bool) whitelistedAddresses;
+    mapping(bytes32 => bool) usedNonces;
+  }
+
+  /// @dev Fetch pointer of ManagedFee plugin's storage
+  function _getManagedFeeLayout() internal pure returns (ManagedFeeLayout storage layout) {
+    bytes32 position = MANAGED_FEE_NAMESPACE;
+    assembly {
+      layout.slot := position
+    }
+  }
+
+  /// @notice Initialize ManagedFee plugin
+  /// @dev Called via delegatecall from connector
+  function initializeManagedFee() external {
+    // Nothing to initialize for ManagedFee
+  }
+
+  /// @notice Set whitelist status for an address
+  /// @dev Called via delegatecall from connector
+  /// @param _address Address to set whitelist status for
+  /// @param status True to whitelist, false to remove from whitelist
+  function setWhitelistStatus(address _address, bool status) external {
+    ManagedFeeLayout storage layout = _getManagedFeeLayout();
+    layout.whitelistedAddresses[_address] = status;
+  }
+
+  /// @notice Check if address is whitelisted
+  /// @dev Called via staticcall from connector
+  /// @param _address Address to check
+  /// @return True if whitelisted
+  function isWhitelisted(address _address) external view returns (bool) {
+    ManagedFeeLayout storage layout = _getManagedFeeLayout();
+    return layout.whitelistedAddresses[_address];
+  }
+
+  /// @notice Get managed fee from plugin data
+  /// @dev Called via delegatecall from connector, validates signature and returns fee
+  /// @param pluginData Encoded PluginData struct
+  /// @return fee The fee to apply
+  function getManagedFee(bytes memory pluginData) external returns (uint24 fee) {
+    ManagedFeeLayout storage layout = _getManagedFeeLayout();
+    
+    (bytes32 nonce, uint24 _fee, address user, uint32 expireTime, bytes memory signature) = _parsePluginData(pluginData);
+    
+    if (_fee >= 1000000) revert IManagedSwapFeePlugin.FeeExceedsLimit();
+    if (layout.usedNonces[nonce]) revert IManagedSwapFeePlugin.InvalidNonce();
+    if (expireTime < block.timestamp) revert IManagedSwapFeePlugin.Expired();
+    if (user != tx.origin) revert IManagedSwapFeePlugin.NotAllowed();
+
+    _verifySignature(layout, ECDSA.toEthSignedMessageHash(_getParamsHash(nonce, _fee, user, expireTime)), signature);
+    layout.usedNonces[nonce] = true;
+    
+    return _fee;
+  }
+
+  function _parsePluginData(bytes memory pluginData) private pure returns(bytes32, uint24, address, uint32, bytes memory) {
+    IManagedSwapFeePlugin.PluginData memory data = abi.decode(pluginData, (IManagedSwapFeePlugin.PluginData));
+    return (data.nonce, data.fee, data.user, data.expire, data.signature);
+  }
+
+  function _verifySignature(ManagedFeeLayout storage layout, bytes32 hash, bytes memory signature) private view {
+    address recoveredSigner = hash.recover(signature);
+    if (!layout.whitelistedAddresses[recoveredSigner]) revert IManagedSwapFeePlugin.NotWhitelisted();
+  }
+
+  function _getParamsHash(bytes32 nonce, uint24 fee, address user, uint32 expire) private pure returns (bytes32) {
+    return keccak256(abi.encode(nonce, fee, user, expire));
+  }
+}

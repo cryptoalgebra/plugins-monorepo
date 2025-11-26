@@ -11,7 +11,6 @@ contract LimitOrderPluginImplementation {
   bytes32 internal constant LIMIT_ORDER_NAMESPACE = keccak256('algebra.storage.limitorder');
 
   struct LimitOrderLayout {
-    address implementation;
     address limitOrderManager;
   }
 
@@ -35,6 +34,13 @@ contract LimitOrderPluginImplementation {
   function setLimitOrderManager(address manager) external {
     LimitOrderLayout storage layout = _getLimitOrderLayout();
     layout.limitOrderManager = manager;
+  }
+
+  /// @notice Get the limitOrderManager address
+  /// @dev Called via staticcall from connector
+  function getLimitOrderManager() external view returns (address) {
+    LimitOrderLayout storage layout = _getLimitOrderLayout();
+    return layout.limitOrderManager;
   }
 
   /// @notice Update limit order manager state after swap

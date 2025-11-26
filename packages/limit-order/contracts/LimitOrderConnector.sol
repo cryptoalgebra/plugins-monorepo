@@ -9,68 +9,55 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 abstract contract LimitOrderConnector {
   using Plugins for uint8;
 
-  /// @dev Storage namespace for LimitOrder plugin using ERC-7201
-  bytes32 internal constant LIMIT_ORDER_NAMESPACE = keccak256('algebra.storage.limitorder');
-
   uint8 internal constant LIMIT_ORDER_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
-  struct LimitOrderLayout {
-    address implementation;
-    address limitOrderManager;
+  /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
+  address internal immutable limitOrderImplementation;
+
+  constructor(address _limitOrderImplementation) {
+    limitOrderImplementation = _limitOrderImplementation;
   }
 
-  /// @dev Fetch pointer of LimitOrder plugin's storage
-  function _getLimitOrderLayout() internal pure returns (LimitOrderLayout storage layout) {
-    bytes32 position = LIMIT_ORDER_NAMESPACE;
-    assembly {
-      layout.slot := position
+  /// @dev Propagate revert reason from delegatecall
+  function _propagateLimitOrderRevert(bytes memory returnData) internal pure {
+    if (returnData.length > 0) {
+      assembly {
+        revert(add(32, returnData), mload(returnData))
+      }
     }
+    revert('LimitOrder: delegatecall failed');
   }
 
-  /// @notice Get LimitOrder implementation address
-  function _getLimitOrderImplementation() internal view returns (address) {
-    return _getLimitOrderLayout().implementation;
-  }
-
-  /// @notice Set LimitOrder implementation address
-  function _setLimitOrderImplementation(address newImplementation) internal {
-    _getLimitOrderLayout().implementation = newImplementation;
-  }
-
-  /// @notice Get the limitOrderManager address
+  /// @notice Get the limitOrderManager address via staticcall
   function _getLimitOrderManager() internal view returns (address) {
-    return _getLimitOrderLayout().limitOrderManager;
+    bytes memory data = abi.encodeWithSignature('getLimitOrderManager()');
+    
+    (bool success, bytes memory returnData) = limitOrderImplementation.staticcall(data);
+    if (!success) _propagateLimitOrderRevert(returnData);
+    
+    return abi.decode(returnData, (address));
   }
 
   /// @notice Set the limitOrderManager address via delegatecall
   function _setLimitOrderManager(address manager) internal {
-    address impl = _getLimitOrderImplementation();
-    require(impl != address(0), 'LimitOrder: implementation not set');
-    
     bytes memory data = abi.encodeWithSignature('setLimitOrderManager(address)', manager);
     
-    (bool success, ) = impl.delegatecall(data);
-    require(success, 'LimitOrder: setLimitOrderManager failed');
+    (bool success, bytes memory returnData) = limitOrderImplementation.delegatecall(data);
+    if (!success) _propagateLimitOrderRevert(returnData);
   }
 
   /// @notice Initialize LimitOrder plugin with manager address via delegatecall
   function _initializeLimitOrder(address limitOrderManager) internal returns (uint8) {
-    address impl = _getLimitOrderImplementation();
-    require(impl != address(0), 'LimitOrder: implementation not set');
-    
     bytes memory data = abi.encodeWithSignature('initializeLimitOrder(address)', limitOrderManager);
     
-    (bool success, ) = impl.delegatecall(data);
-    require(success, 'LimitOrder: initialization failed');
+    (bool success, bytes memory returnData) = limitOrderImplementation.delegatecall(data);
+    if (!success) _propagateLimitOrderRevert(returnData);
     
     return LIMIT_ORDER_PLUGIN_CONFIG;
   }
 
   /// @notice Update limit order manager state after swap via delegatecall
   function _updateLimitOrderManagerState(address pool, bool zeroToOne, int24 tick) internal {
-    address impl = _getLimitOrderImplementation();
-    require(impl != address(0), 'LimitOrder: implementation not set');
-    
     bytes memory data = abi.encodeWithSignature(
       'updateLimitOrderManagerState(address,bool,int24)',
       pool,
@@ -78,7 +65,7 @@ abstract contract LimitOrderConnector {
       tick
     );
     
-    (bool success, ) = impl.delegatecall(data);
-    require(success, 'LimitOrder: updateLimitOrderManagerState failed');
+    (bool success, bytes memory returnData) = limitOrderImplementation.delegatecall(data);
+    if (!success) _propagateLimitOrderRevert(returnData);
   }
 }

@@ -68,7 +68,7 @@ importers:
         specifier: workspace:^
         version: link:../test-utils
 
-  packages/default-all-inlcusive:
+  packages/default-all-inclusive:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
         specifier: ^2.1.0
@@ -97,6 +97,9 @@ importers:
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: ^2.1.0
         version: 2.1.0
+      '@cryptoalgebra/whitelist-fee-discount-plugin':
+        specifier: ^2.1.1
+        version: 2.1.1
       '@openzeppelin/contracts':
         specifier: ^4.9.3
         version: 4.9.3
@@ -508,6 +511,9 @@ packages:
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
     resolution: {integrity: sha512-iE2CL8is1ra6WKyW79u75haw12/iAHjuIWdSkxfUTlbRMAb7XuDTAyiWT+x370zQiXJZeCmxoQmVqlT7+US3UA==}
+
+  '@cryptoalgebra/whitelist-fee-discount-plugin@2.1.1':
+    resolution: {integrity: sha512-czcyanTsYxEWez6d8YTwyMsqJ/tmE2mfZedORYVd78sE7Uj/GbJXtpZSh5c+9IaF6ZloQhlcGoA5a7uSomVZgA==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -4560,8 +4566,8 @@ snapshots:
   '@cryptoalgebra/alm-vault@1.2.1':
     dependencies:
       '@cryptoalgebra/integral-base-plugin': 1.2.1
-      '@cryptoalgebra/integral-core': 1.2.5
-      '@cryptoalgebra/integral-periphery': 1.2.1
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
       '@openzeppelin/contracts': 4.9.3
       bignumber.js: 9.2.1
 
@@ -4621,6 +4627,12 @@ snapshots:
       '@openzeppelin/contracts': 4.9.3
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
+    dependencies:
+      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/integral-core': 1.2.9
+      '@cryptoalgebra/integral-periphery': 1.2.4
+
+  '@cryptoalgebra/whitelist-fee-discount-plugin@2.1.1':
     dependencies:
       '@cryptoalgebra/abstract-plugin': 2.1.0
       '@cryptoalgebra/integral-core': 1.2.9

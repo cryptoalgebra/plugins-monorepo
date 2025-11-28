@@ -6,11 +6,12 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginF
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/interfaces/IFeeDiscountPluginFactory.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
 /// @title The interface for the AlgebraCustomPluginFactory
 /// @notice This contract creates Algebra custom plugins for Algebra liquidity pools
-interface IAlgebraCustomAllInclusivePluginFactory is IAlgebraPluginFactory , IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory, ILimitOrderPluginFactory {
+interface IAlgebraCustomAllInclusivePluginFactory is IAlgebraPluginFactory , IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory, ILimitOrderPluginFactory, IFeeDiscountPluginFactory {
 
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraALMCustomPluginFactory

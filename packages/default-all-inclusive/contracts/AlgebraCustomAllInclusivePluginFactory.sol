@@ -29,6 +29,9 @@ contract AlgebraCustomAllInclusivePluginFactory is IAlgebraCustomAllInclusivePlu
   
   address public limitOrderManager;
 
+  /// @notice The address of the fee discount registry
+  address public feeDiscountRegistry;
+
   /// @inheritdoc IAlgebraCustomAllInclusivePluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
 
@@ -61,7 +64,7 @@ function createCustomPool(address creator, address tokenA, address tokenB, bytes
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new AlgebraDefaultAllInclusivePlugin(pool, algebraFactory, address(this), securityRegistry, limitOrderManager, defaultFeeConfiguration));
+    address plugin = address(new AlgebraDefaultAllInclusivePlugin(pool, algebraFactory, address(this), securityRegistry, limitOrderManager, feeDiscountRegistry, defaultFeeConfiguration));
     pluginByPool[pool] = plugin;
     return plugin;
   }
@@ -91,5 +94,12 @@ function createCustomPool(address creator, address tokenA, address tokenB, bytes
     require(securityRegistry != newSecurityRegistry);
     securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function setFeeDiscountRegistry(address _feeDiscountRegistry) external override onlyAdministrator {
+    require(feeDiscountRegistry != _feeDiscountRegistry);
+    feeDiscountRegistry = _feeDiscountRegistry;
+    emit FeeDiscountRegistry(_feeDiscountRegistry);
   }
 }

@@ -11,9 +11,10 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin
 import '@cryptoalgebra/alm-plugin/contracts/AlmPlugin.sol';
 import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPlugin.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 adaptive fee plugin
-contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, AlmPlugin, LimitOrderPlugin, SecurityPlugin {
+contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, AlmPlugin, LimitOrderPlugin, SecurityPlugin, FeeDiscountPlugin {
   using Plugins for uint8;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
@@ -23,8 +24,9 @@ contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugi
     address _pluginFactory,
     address _securityRegistry,
     address _limitOrderManager,
+    address _feeDiscountRegistry,
     AlgebraFeeConfiguration memory _config
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) SecurityPlugin(_securityRegistry) LimitOrderPlugin(_limitOrderManager) DynamicFeePlugin(_config) {}
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) SecurityPlugin(_securityRegistry) LimitOrderPlugin(_limitOrderManager) DynamicFeePlugin(_config) FeeDiscountPlugin(_feeDiscountRegistry) {}
 
   // ###### HOOKS ######
 
@@ -59,6 +61,7 @@ contract AlgebraDefaultAllInclusivePlugin is DynamicFeePlugin, FarmingProxyPlugi
     _checkStatus();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint24 fee = _getCurrentFee(volatilityAverage);
+    fee = _applyFeeDiscount(tx.origin, msg.sender, fee);
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 

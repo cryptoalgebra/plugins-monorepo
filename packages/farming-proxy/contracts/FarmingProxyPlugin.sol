@@ -9,7 +9,7 @@ import './interfaces/IFarmingPluginFactory.sol';
 import './interfaces/IAlgebraVirtualPool.sol';
 import './interfaces/IFarmingPlugin.sol';
 
-import {BaseAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
+import { BaseAbstractPlugin } from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 /// @title Algebra Integral 1.2.1 default plugin
 /// @notice This contract stores timepoints and calculates adaptive fee and statistical averages
@@ -24,8 +24,8 @@ abstract contract FarmingProxyPlugin is BaseAbstractPlugin, IFarmingPlugin {
 
   constructor() {
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
-    
-    activeModules.push("Farming Proxy Plugin");
+
+    activeModules.push('Farming Proxy Plugin');
   }
 
   /// @inheritdoc IFarmingPlugin

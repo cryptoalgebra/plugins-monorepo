@@ -41,10 +41,10 @@ contract FarmingProxyPluginImplementation {
   /// @param pool The pool address
   function setIncentive(address newIncentive, address pluginFactory, address pool) external {
     FarmingProxyLayout storage layout = _getFarmingProxyLayout();
-    
+
     bool toConnect = newIncentive != address(0);
     bool accessAllowed;
-    
+
     if (toConnect) {
       accessAllowed = msg.sender == IFarmingPluginFactory(pluginFactory).farmingAddress();
     } else {
@@ -55,7 +55,7 @@ contract FarmingProxyPluginImplementation {
 
     address currentPlugin = IAlgebraPool(pool).plugin();
     bool isPluginConnected = currentPlugin == address(this);
-    
+
     if (toConnect) require(isPluginConnected, 'Plugin not attached');
 
     address currentIncentive = layout.incentive;
@@ -63,7 +63,7 @@ contract FarmingProxyPluginImplementation {
     if (toConnect) require(currentIncentive == address(0), 'Has active incentive');
 
     layout.incentive = newIncentive;
-    
+
     if (toConnect) {
       layout.lastIncentiveOwner = msg.sender;
     } else {
@@ -86,13 +86,13 @@ contract FarmingProxyPluginImplementation {
   /// @param pool The pool address
   function isIncentiveConnected(address targetIncentive, address pool) external view returns (bool) {
     FarmingProxyLayout storage layout = _getFarmingProxyLayout();
-    
+
     if (layout.incentive != targetIncentive) return false;
-    
+
     address currentPlugin = IAlgebraPool(pool).plugin();
     if (currentPlugin != address(this)) return false;
-    
-    (, , , uint8 pluginConfig, ,) = IAlgebraPool(pool).globalState();
+
+    (, , , uint8 pluginConfig, , ) = IAlgebraPool(pool).globalState();
     if (!pluginConfig.hasFlag(Plugins.AFTER_SWAP_FLAG)) return false;
 
     return true;
@@ -103,10 +103,9 @@ contract FarmingProxyPluginImplementation {
   function updateVirtualPoolTick(bool zeroToOne, int24 tick) external {
     FarmingProxyLayout storage layout = _getFarmingProxyLayout();
     address _incentive = layout.incentive;
-    
+
     if (_incentive != address(0)) {
       IAlgebraVirtualPool(_incentive).crossTo(tick, zeroToOne);
     }
   }
 }
-

@@ -2,12 +2,14 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/IFarmingPlugin.sol';
+import './interfaces/IFarmingProxyPluginImplementation.sol';
 
 /// @title FarmingProxy Connector
 /// @notice This contract provides delegatecall interface to FarmingProxy plugin implementation
-/// @dev Inherits from IFarmingPlugin and provides all public methods as thin wrappers
-abstract contract FarmingProxyConnector is IFarmingPlugin {
+/// @dev Inherits from BaseConnector for common delegatecall utilities
+abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   using Plugins for uint8;
 
   /// @dev Storage namespace for FarmingProxy plugin using ERC-7201
@@ -27,16 +29,6 @@ abstract contract FarmingProxyConnector is IFarmingPlugin {
     farmingProxyImplementation = _farmingProxyImplementation;
   }
 
-  /// @dev Propagate revert reason from delegatecall
-  function _propagateRevert(bytes memory returnData) internal pure {
-    if (returnData.length > 0) {
-      assembly {
-        revert(add(32, returnData), mload(returnData))
-      }
-    }
-    revert('FarmingProxy: delegatecall failed');
-  }
-
   /// @dev Fetch pointer of FarmingProxy plugin's storage
   function _getFarmingProxyLayout() internal pure returns (FarmingProxyLayout storage layout) {
     bytes32 position = FARMING_PROXY_NAMESPACE;
@@ -52,49 +44,38 @@ abstract contract FarmingProxyConnector is IFarmingPlugin {
 
   /// @notice Initialize FarmingProxy plugin via delegatecall
   function _initializeFarmingProxy() internal returns (uint8) {
-    bytes memory data = abi.encodeWithSignature('initializeFarmingProxy()');
-    
-    (bool success, bytes memory returnData) = farmingProxyImplementation.delegatecall(data);
-    if (!success) _propagateRevert(returnData);
-    
+    _delegateCall(
+      farmingProxyImplementation,
+      abi.encodeCall(IFarmingProxyPluginImplementation.initializeFarmingProxy, ())
+    );
     return FARMING_PROXY_PLUGIN_CONFIG;
   }
 
   /// @notice Set incentive via delegatecall
   /// @dev All logic is in implementation, including access checks and plugin state management
   function _setIncentive(address newIncentive, address pluginFactory, address pool) internal {
-    bytes memory data = abi.encodeWithSignature(
-      'setIncentive(address,address,address)',
-      newIncentive,
-      pluginFactory,
-      pool
+    _delegateCall(
+      farmingProxyImplementation,
+      abi.encodeCall(IFarmingProxyPluginImplementation.setIncentive, (newIncentive, pluginFactory, pool))
     );
-    
-    (bool success, bytes memory returnData) = farmingProxyImplementation.delegatecall(data);
-    if (!success) _propagateRevert(returnData);
   }
 
   /// @notice Check if incentive is connected via delegatecall
   /// @dev All logic is in implementation
-  function _isIncentiveConnected(address targetIncentive, address pool) internal view returns (bool) {
-    bytes memory data = abi.encodeWithSignature(
-      'isIncentiveConnected(address,address)',
-      targetIncentive,
-      pool
+  function _isIncentiveConnected(address targetIncentive, address pool) internal returns (bool) {
+    bytes memory returnData = _delegateCall(
+      farmingProxyImplementation,
+      abi.encodeCall(IFarmingProxyPluginImplementation.isIncentiveConnected, (targetIncentive, pool))
     );
-    
-    (bool success, bytes memory returnData) = farmingProxyImplementation.staticcall(data);
-    if (!success) _propagateRevert(returnData);
-    
     return abi.decode(returnData, (bool));
   }
 
   /// @notice Update virtual pool tick via delegatecall
   function _updateVirtualPoolTick(bool zeroToOne, int24 tick) internal {
-    bytes memory data = abi.encodeWithSignature('updateVirtualPoolTick(bool,int24)', zeroToOne, tick);
-    
-    (bool success, bytes memory returnData) = farmingProxyImplementation.delegatecall(data);
-    if (!success) _propagateRevert(returnData);
+    _delegateCall(
+      farmingProxyImplementation,
+      abi.encodeCall(IFarmingProxyPluginImplementation.updateVirtualPoolTick, (zeroToOne, tick))
+    );
   }
 
   // ###### Public Interface (IFarmingPlugin) ######
@@ -113,7 +94,7 @@ abstract contract FarmingProxyConnector is IFarmingPlugin {
   }
 
   /// @inheritdoc IFarmingPlugin
-  function isIncentiveConnected(address targetIncentive) external view override returns (bool) {
+  function isIncentiveConnected(address targetIncentive) external override returns (bool) {
     address pool = _getPool();
     return _isIncentiveConnected(targetIncentive, pool);
   }

@@ -14,14 +14,15 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolError
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 
 /// @title Mock of Algebra concentrated liquidity pool for plugins testing
+/// @dev Shared test contract - import from @cryptoalgebra/test-utils
 contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlgebraPoolState {
   struct GlobalState {
-    uint160 price; // The square root of the current price in Q64.96 format
-    int24 tick; // The current tick
-    uint16 fee; // The current fee in hundredths of a bip, i.e. 1e-6
+    uint160 price;
+    int24 tick;
+    uint16 fee;
     uint8 pluginConfig;
-    uint16 communityFee; // The community fee represented as a percent of all collected fee in thousandths (1e-3)
-    bool unlocked; // True if the contract is unlocked, otherwise - false
+    uint16 communityFee;
+    bool unlocked;
   }
 
   /// @inheritdoc IAlgebraPoolState
@@ -44,9 +45,9 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   uint32 public override lastFeeTransferTimestamp;
 
   /// @inheritdoc IAlgebraPoolState
-  uint32 public override tickTreeRoot; // The root bitmap of search tree
+  uint32 public override tickTreeRoot;
   /// @inheritdoc IAlgebraPoolState
-  mapping(int16 => uint256) public override tickTreeSecondLayer; // The second layer of search tree
+  mapping(int16 => uint256) public override tickTreeSecondLayer;
 
   /// @inheritdoc IAlgebraPoolState
   address public override plugin;
@@ -60,11 +61,11 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   mapping(int16 => uint256) public override tickTable;
 
   struct Position {
-    uint256 liquidity; // The amount of liquidity concentrated in the range
-    uint256 innerFeeGrowth0Token; // The last updated fee growth per unit of liquidity
+    uint256 liquidity;
+    uint256 innerFeeGrowth0Token;
     uint256 innerFeeGrowth1Token;
-    uint128 fees0; // The amount of token0 owed to a LP
-    uint128 fees1; // The amount of token1 owed to a LP
+    uint128 fees0;
+    uint128 fees1;
   }
 
   /// @inheritdoc IAlgebraPoolState
@@ -90,7 +91,12 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolState
-  function safelyGetStateOfAMM() external pure override returns (uint160, int24, uint16, uint8, uint128, int24, int24) {
+  function safelyGetStateOfAMM()
+    external
+    pure
+    override
+    returns (uint160, int24, uint16, uint8, uint128, int24, int24)
+  {
     revert('not implemented');
   }
 
@@ -112,7 +118,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
 
   /// @inheritdoc IAlgebraPoolActions
   function initialize(uint160 initialPrice) external override {
-    int24 tick = TickMath.getTickAtSqrtRatio(initialPrice); // getTickAtSqrtRatio checks validity of initialPrice inside
+    int24 tick = TickMath.getTickAtSqrtRatio(initialPrice);
 
     if (plugin != address(0)) {
       IAlgebraPlugin(plugin).beforeInitialize(msg.sender, initialPrice);

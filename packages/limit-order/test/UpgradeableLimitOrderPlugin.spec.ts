@@ -35,11 +35,11 @@ describe('UpgradeableLimitOrderPlugin', function () {
     );
 
     // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('contracts/test/UpgradeableBeacon.sol:UpgradeableBeacon');
+    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     // Deploy BeaconProxy for first plugin
-    const BeaconProxy = await ethers.getContractFactory('contracts/test/BeaconProxy.sol:BeaconProxy');
+    const BeaconProxy = await ethers.getContractFactory('BeaconProxy');
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
       mockPool.target,
       mockLimitOrderManager.target,

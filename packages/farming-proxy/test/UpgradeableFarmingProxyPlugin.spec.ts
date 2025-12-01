@@ -4,7 +4,7 @@ import {
   UpgradeableFarmingProxyPluginTest, 
   FarmingProxyPluginImplementation, 
   MockFactory, 
-  MockPluginFactory,
+  MockFarmingPluginFactory,
   MockPool 
 } from '../typechain';
 import { Wallet } from 'ethers';
@@ -14,7 +14,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
   let pluginLogic: UpgradeableFarmingProxyPluginTest;
   let pluginProxy: UpgradeableFarmingProxyPluginTest;
   let mockFactory: MockFactory;
-  let mockPluginFactory: MockPluginFactory;
+  let mockPluginFactory: MockFarmingPluginFactory;
   let mockPool: MockPool;
   let wallet: Wallet;
   let other: Wallet;
@@ -30,8 +30,8 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
     mockFactory = await MockFactoryFactory.deploy() as any as MockFactory;
 
     // Deploy MockPluginFactory with farmingAddress
-    const MockPluginFactoryFactory = await ethers.getContractFactory('MockPluginFactory');
-    mockPluginFactory = await MockPluginFactoryFactory.deploy(farmingAddress.address) as any as MockPluginFactory;
+    const MockPluginFactoryFactory = await ethers.getContractFactory('MockFarmingPluginFactory');
+    mockPluginFactory = await MockPluginFactoryFactory.deploy(farmingAddress.address) as any as MockFarmingPluginFactory;
 
     // Deploy MockPool
     const MockPoolFactory = await ethers.getContractFactory('MockPool');

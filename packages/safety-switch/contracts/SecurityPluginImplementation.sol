@@ -50,10 +50,10 @@ contract SecurityPluginImplementation {
   /// @notice Check pool status
   /// @dev Called via delegatecall from connector
   /// @param poolAddress Address of pool to check
-  function checkStatus(address poolAddress) external view {
+  function checkStatus(address poolAddress) external {
     SecurityLayout storage layout = _getSecurityLayout();
     address securityRegistry = layout.securityRegistry;
-    
+
     if (securityRegistry != address(0)) {
       ISecurityRegistry.Status status = ISecurityRegistry(securityRegistry).getPoolStatus(poolAddress);
       if (status != ISecurityRegistry.Status.ENABLED) {
@@ -69,10 +69,10 @@ contract SecurityPluginImplementation {
   /// @notice Check pool status on burn
   /// @dev Called via delegatecall from connector
   /// @param poolAddress Address of pool to check
-  function checkStatusOnBurn(address poolAddress) external view {
+  function checkStatusOnBurn(address poolAddress) external {
     SecurityLayout storage layout = _getSecurityLayout();
     address securityRegistry = layout.securityRegistry;
-    
+
     if (securityRegistry != address(0)) {
       ISecurityRegistry.Status status = ISecurityRegistry(securityRegistry).getPoolStatus(poolAddress);
       if (status == ISecurityRegistry.Status.DISABLED) {

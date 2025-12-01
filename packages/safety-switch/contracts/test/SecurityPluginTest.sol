@@ -5,8 +5,10 @@ import '../SecurityPlugin.sol';
 import '../SecurityRegistry.sol';
 
 contract SecurityPluginTest is SecurityPlugin {
-
-  constructor(address factory, address securityRegistry) BaseAbstractPlugin(msg.sender, factory, msg.sender) SecurityPlugin(securityRegistry) {}
+  constructor(
+    address factory,
+    address securityRegistry
+  ) BaseAbstractPlugin(msg.sender, factory, msg.sender) SecurityPlugin(securityRegistry) {}
 
   function swap() external {
     _checkStatus();
@@ -19,5 +21,4 @@ contract SecurityPluginTest is SecurityPlugin {
   function burn() external {
     _checkStatusOnBurn();
   }
-
 }

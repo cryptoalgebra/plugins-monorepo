@@ -3,10 +3,10 @@ pragma solidity >=0.5.0;
 
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
 
-interface ISecurityPlugin is IAbstractPlugin{
+interface ISecurityPlugin is IAbstractPlugin {
   function setSecurityRegistry(address registry) external;
 
-  function getSecurityRegistry() external view returns (address);
+  function getSecurityRegistry() external returns (address);
 
   event SecurityRegistry(address registry);
 

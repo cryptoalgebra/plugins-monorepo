@@ -4,6 +4,7 @@ pragma solidity =0.8.20;
 /// @title Mock of Algebra factory for plugins testing
 contract MockFactory {
   bytes32 public constant POOLS_ADMINISTRATOR_ROLE = keccak256('POOLS_ADMINISTRATOR');
+  bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
   address public owner;
 

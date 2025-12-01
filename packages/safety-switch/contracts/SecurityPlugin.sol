@@ -15,12 +15,14 @@ abstract contract SecurityPlugin is BaseAbstractPlugin, ISecurityPlugin {
 
   constructor(address _securityRegistry) {
     securityRegistry = _securityRegistry;
-    defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
-    activeModules.push("Security Plugin");
+    defaultPluginConfig =
+      defaultPluginConfig |
+      uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
+    activeModules.push('Security Plugin');
   }
 
   function _checkStatus() internal {
-    if(securityRegistry != address(0)){
+    if (securityRegistry != address(0)) {
       ISecurityRegistry.Status status = ISecurityRegistry(securityRegistry).getPoolStatus(msg.sender);
       if (status != ISecurityRegistry.Status.ENABLED) {
         if (status == ISecurityRegistry.Status.DISABLED) {
@@ -33,7 +35,7 @@ abstract contract SecurityPlugin is BaseAbstractPlugin, ISecurityPlugin {
   }
 
   function _checkStatusOnBurn() internal {
-    if(securityRegistry != address(0)){
+    if (securityRegistry != address(0)) {
       ISecurityRegistry.Status status = ISecurityRegistry(securityRegistry).getPoolStatus(msg.sender);
       if (status == ISecurityRegistry.Status.DISABLED) {
         revert PoolDisabled();

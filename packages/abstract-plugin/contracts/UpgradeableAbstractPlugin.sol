@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/base/common/Timestamp.sol';
@@ -8,37 +8,68 @@ import '@cryptoalgebra/integral-core/contracts/libraries/SafeTransfer.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
+
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import './interfaces/IAbstractPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 plugin base
-/// @notice This contract simplifies development process of plugins by providing base functionality
-abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
+/// @title Algebra Integral 1.2.2 Upgradeable Abstract Plugin
+/// @notice Base contract for upgradeable plugins using Beacon Proxy pattern
+/// @dev Uses storage for per-proxy data (pool) and immutables for shared data (factory, pluginFactory)
+abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, Timestamp {
   using Plugins for uint8;
 
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
-  uint8 public defaultPluginConfig = 0;
-  string[] public activeModules;
+  /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
+  address public immutable factory;
+  
+  /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
+  address public immutable pluginFactory;
 
-  address public immutable pool;
-  address internal immutable pluginFactory;
+  /// @dev Storage: unique per proxy (stored in proxy's storage)
+  address public pool;
+
+  /// @dev Storage: plugin configuration flags
+  uint8 public defaultPluginConfig;
+
+  /// @dev Storage: active module names
+  string[] public activeModules;
 
   modifier onlyPool() {
     _checkIfFromPool();
     _;
   }
 
-  constructor(address _pool, address _pluginFactory) {
-    (pool, pluginFactory) = (_pool, _pluginFactory);
+  modifier onlyPluginFactory() {
+    require(msg.sender == pluginFactory, 'Only plugin factory');
+    _;
+  }
+
+  /// @notice Constructor sets immutable values that are shared across ALL proxies
+  /// @param _factory The Algebra factory address
+  /// @param _pluginFactory The plugin factory address
+  constructor(address _factory, address _pluginFactory) {
+    factory = _factory;
+    pluginFactory = _pluginFactory;
+    _disableInitializers();
+  }
+
+  /// @notice Initialize proxy-specific storage
+  /// @param _pool The pool address for this proxy
+  function __UpgradeableAbstractPlugin_init(address _pool) internal onlyInitializing {
+    pool = _pool;
   }
 
   function _checkIfFromPool() internal view {
     require(msg.sender == pool, 'Only pool can call this');
   }
 
-  function _authorize() internal view virtual;
+  function _authorize() internal view virtual {
+    require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender), 'Only administrator');
+  }
 
   function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
     moduleNames = new string[](activeModules.length);
@@ -58,7 +89,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     return activeModules[index];
   }
 
-  function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
+  function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
   }
 

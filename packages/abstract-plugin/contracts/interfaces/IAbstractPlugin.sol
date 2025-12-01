@@ -15,4 +15,13 @@ interface IAbstractPlugin is IAlgebraPlugin {
   /// @notice Get all active module names
   /// @return moduleNames Array of active module names
   function getActiveModuleNames() external view returns (string[] memory moduleNames);
+
+  /// @notice Get count of active modules
+  /// @return Number of active modules
+  function getActiveModulesCount() external view returns (uint256);
+
+  /// @notice Get module name by index
+  /// @param index Index of module
+  /// @return Module name
+  function getModuleName(uint256 index) external view returns (string memory);
 }

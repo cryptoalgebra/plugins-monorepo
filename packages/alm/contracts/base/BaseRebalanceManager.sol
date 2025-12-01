@@ -99,14 +99,22 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     _authorize();
     require(_baseLowPct >= 100 && _baseLowPct <= 10000, 'Invalid base low percent');
     require(_baseHighPct >= 100 && _baseHighPct <= 10000, 'Invalid base high percent');
-    require(_limitReservePct >= 100 && _limitReservePct <= 10000 - thresholds.simulate, 'Invalid limit reserve percent');
+    require(
+      _limitReservePct >= 100 && _limitReservePct <= 10000 - thresholds.simulate,
+      'Invalid limit reserve percent'
+    );
     thresholds.baseLowPct = _baseLowPct;
     thresholds.baseHighPct = _baseHighPct;
     thresholds.limitReservePct = _limitReservePct;
     emit SetPercentages(_baseLowPct, _baseHighPct, _limitReservePct);
   }
 
-  function setTriggers(uint16 _simulate, uint16 _normalThreshold, uint16 _underInventoryThreshold, uint16 _overInventoryThreshold) external {
+  function setTriggers(
+    uint16 _simulate,
+    uint16 _normalThreshold,
+    uint16 _underInventoryThreshold,
+    uint16 _overInventoryThreshold
+  ) external {
     _authorize();
     require(_underInventoryThreshold > 6000, '_underInventoryThreshold must be > 6000');
     require(_normalThreshold > _underInventoryThreshold, '_normalThreshold must be > _underInventoryThreshold');
@@ -177,7 +185,12 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     emit Unpaused();
   }
 
-  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
+  function obtainTWAPAndRebalance(
+    int24 currentTick,
+    int24 slowTwapTick,
+    int24 fastTwapTick,
+    uint32 lastBlockTimestamp
+  ) external {
     require(msg.sender == IAlgebraPool(pool).plugin(), 'Should only called by plugin');
     if (vault == address(0)) return;
     TwapResult memory twapResult = _obtainTWAPs(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
@@ -206,7 +219,10 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
             obtainTWAPsResult.totalDepositToken == 0 ||
             (newState == State.Normal &&
               obtainTWAPsResult.totalPairedInDeposit <=
-              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
+                _calcPart(
+                  obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit,
+                  thresholds.limitReservePct
+                ))
           ) return;
           ranges = _getRangesWithState(newState, obtainTWAPsResult);
         } else {
@@ -216,7 +232,9 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
         if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
         require(gasleft() >= 1600000, 'Not enough gas left');
-        try IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
+        try
+          IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0)
+        {
           lastRebalanceTimestamp = _blockTimestamp();
           lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
           state = newState;
@@ -280,7 +298,9 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       twapResult.percentageOfDepositToken = 10000;
     } else {
       uint256 totalTokensAmount = twapResult.totalDepositToken + twapResult.totalPairedInDeposit;
-      uint16 percentageOfDepositToken = totalTokensAmount == 0 ? 0 : uint16((twapResult.totalDepositToken * 10000) / totalTokensAmount);
+      uint16 percentageOfDepositToken = totalTokensAmount == 0
+        ? 0
+        : uint16((twapResult.totalDepositToken * 10000) / totalTokensAmount);
       twapResult.percentageOfDepositToken = percentageOfDepositToken;
     }
 
@@ -295,10 +315,17 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   }
 
   function _decideRebalance(TwapResult memory twapResult) internal virtual returns (DecideStatus, State) {
-    uint256 fastSlowDiff = _calcPercentageDiff(twapResult.fastAvgPriceAccountingDecimals, twapResult.slowAvgPriceAccountingDecimals);
-    uint256 fastCurrentDiff = _calcPercentageDiff(twapResult.fastAvgPriceAccountingDecimals, twapResult.currentPriceAccountingDecimals);
+    uint256 fastSlowDiff = _calcPercentageDiff(
+      twapResult.fastAvgPriceAccountingDecimals,
+      twapResult.slowAvgPriceAccountingDecimals
+    );
+    uint256 fastCurrentDiff = _calcPercentageDiff(
+      twapResult.fastAvgPriceAccountingDecimals,
+      twapResult.currentPriceAccountingDecimals
+    );
 
-    bool isExtremeVolatility = fastSlowDiff >= thresholds.extremeVolatility || fastCurrentDiff >= thresholds.extremeVolatility;
+    bool isExtremeVolatility = fastSlowDiff >= thresholds.extremeVolatility ||
+      fastCurrentDiff >= thresholds.extremeVolatility;
     if (!isExtremeVolatility) {
       bool isHighVolatility = fastSlowDiff >= thresholds.highVolatility || fastCurrentDiff >= thresholds.highVolatility;
       if (!isHighVolatility) {
@@ -390,14 +417,21 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     }
   }
 
-  function _getRangesWithState(State newState, TwapResult memory twapResult) internal view returns (Ranges memory ranges) {
+  function _getRangesWithState(
+    State newState,
+    TwapResult memory twapResult
+  ) internal view returns (Ranges memory ranges) {
     // scope to prevent stack too deep
     {
       bool _allowToken1 = allowToken1;
       int24 _tickSpacing = tickSpacing;
       uint8 _tokenDecimals = tokenDecimals;
 
-      (uint256 upperPriceBound, uint256 targetPrice, uint256 lowerPriceBound) = _getPriceBounds(newState, twapResult, _allowToken1);
+      (uint256 upperPriceBound, uint256 targetPrice, uint256 lowerPriceBound) = _getPriceBounds(
+        newState,
+        twapResult,
+        _allowToken1
+      );
       int24 roundedTick = roundTickToTickSpacing(_tickSpacing, twapResult.currentTick);
       bool currentTickIsRound = roundedTick == twapResult.currentTick;
 
@@ -436,7 +470,9 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
         if (newState == State.OverInventory) {
           ranges.limitUpper = currentTickIsRound ? twapResult.currentTick : _tickSpacing + ranges.limitUpper;
-          ranges.baseLower = currentTickIsRound ? _tickSpacing + twapResult.currentTick : _tickSpacing + ranges.baseLower;
+          ranges.baseLower = currentTickIsRound
+            ? _tickSpacing + twapResult.currentTick
+            : _tickSpacing + ranges.baseLower;
           ranges.baseUpper = int24(ranges.baseUpper + _tickSpacing);
         }
       } else {
@@ -460,7 +496,9 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
         if (newState == State.UnderInventory) {
           ranges.baseUpper = currentTickIsRound ? twapResult.currentTick : _tickSpacing + ranges.baseUpper;
-          ranges.limitLower = currentTickIsRound ? _tickSpacing + twapResult.currentTick : _tickSpacing + ranges.limitLower;
+          ranges.limitLower = currentTickIsRound
+            ? _tickSpacing + twapResult.currentTick
+            : _tickSpacing + ranges.limitLower;
         }
 
         if (newState == State.OverInventory) {
@@ -537,8 +575,16 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     } else {
       return
         token1 < token0
-          ? FullMath.mulDiv(uint256(sqrtPriceX96) * uint256(sqrtPriceX96), _pairedTokenDecimals, uint256(type(uint192).max) + 1)
-          : FullMath.mulDiv(uint256(type(uint192).max) + 1, _pairedTokenDecimals, uint256(sqrtPriceX96) * uint256(sqrtPriceX96));
+          ? FullMath.mulDiv(
+            uint256(sqrtPriceX96) * uint256(sqrtPriceX96),
+            _pairedTokenDecimals,
+            uint256(type(uint192).max) + 1
+          )
+          : FullMath.mulDiv(
+            uint256(type(uint192).max) + 1,
+            _pairedTokenDecimals,
+            uint256(sqrtPriceX96) * uint256(sqrtPriceX96)
+          );
     }
   }
 
@@ -590,7 +636,11 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     }
   }
 
-  function _getPriceBounds(State _state, TwapResult memory twapResult, bool _allowToken1) private view returns (uint256, uint256, uint256) {
+  function _getPriceBounds(
+    State _state,
+    TwapResult memory twapResult,
+    bool _allowToken1
+  ) private view returns (uint256, uint256, uint256) {
     uint256 targetPrice = twapResult.currentPriceAccountingDecimals;
 
     uint256 lowerPriceBound = 0;
@@ -648,24 +698,39 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     return uint160((Math.sqrt(_price) << 96) / Math.sqrt(10 ** _tokenDecimals));
   }
 
-  function getSqrtPriceX96FromPriceWithoutDecimals(uint8 _tokenDecimals, uint256 _price) private pure returns (uint160) {
+  function getSqrtPriceX96FromPriceWithoutDecimals(
+    uint8 _tokenDecimals,
+    uint256 _price
+  ) private pure returns (uint160) {
     return uint160(Math.sqrt((_price << 192) / 10 ** _tokenDecimals));
   }
 
   function _validateThresholds(Thresholds memory _thresholds) internal pure {
     require(_thresholds.priceChangeThreshold < 10000, 'Invalid price change threshold');
     require(_thresholds.underInventoryThreshold > 6000, '_underInventoryThreshold must be > 6000');
-    require(_thresholds.normalThreshold > _thresholds.underInventoryThreshold, '_normalThreshold must be > _underInventoryThreshold');
-    require(_thresholds.overInventoryThreshold > _thresholds.normalThreshold, '_overInventoryThreshold must be > _normalThreshold');
+    require(
+      _thresholds.normalThreshold > _thresholds.underInventoryThreshold,
+      '_normalThreshold must be > _underInventoryThreshold'
+    );
+    require(
+      _thresholds.overInventoryThreshold > _thresholds.normalThreshold,
+      '_overInventoryThreshold must be > _normalThreshold'
+    );
     require(_thresholds.simulate > _thresholds.overInventoryThreshold, 'Simulate must be > _overInventoryThreshold');
     require(_thresholds.simulate < 9500, 'Simulate must be < 9500');
     require(_thresholds.baseLowPct >= 100 && _thresholds.baseLowPct <= 10000, 'Invalid base low percent');
     require(_thresholds.baseHighPct >= 100 && _thresholds.baseHighPct <= 10000, 'Invalid base high percent');
-    require(_thresholds.limitReservePct >= 100 && _thresholds.limitReservePct <= 10000 - _thresholds.simulate, 'Invalid limit reserve percent');
+    require(
+      _thresholds.limitReservePct >= 100 && _thresholds.limitReservePct <= 10000 - _thresholds.simulate,
+      'Invalid limit reserve percent'
+    );
     require(_thresholds.dtrDelta <= 10000, '_dtrDelta must be <= 10000');
     require(_thresholds.highVolatility >= _thresholds.someVolatility, '_highVolatility must be >= someVolatility');
     require(_thresholds.someVolatility <= 300, '_someVolatility must be <= 300');
-    require(_thresholds.extremeVolatility >= _thresholds.highVolatility, '_extremeVolatility must be >= highVolatility');
+    require(
+      _thresholds.extremeVolatility >= _thresholds.highVolatility,
+      '_extremeVolatility must be >= highVolatility'
+    );
     require(
       _thresholds.depositTokenUnusedThreshold >= 100 && _thresholds.depositTokenUnusedThreshold <= 10000,
       '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000'

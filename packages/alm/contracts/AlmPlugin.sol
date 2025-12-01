@@ -11,13 +11,13 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
 
   /// @inheritdoc	IAlmPlugin
   uint32 public slowTwapPeriod;
-  
+
   /// @inheritdoc	IAlmPlugin
   uint32 public fastTwapPeriod;
 
-  constructor(){
+  constructor() {
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
-    activeModules.push("ALM Plugin");
+    activeModules.push('ALM Plugin');
   }
 
   /// @inheritdoc	IAlmPlugin
@@ -56,6 +56,11 @@ abstract contract AlmPlugin is BaseAbstractPlugin, IAlmPlugin {
     int24 fastTwapTick,
     uint32 lastBlockTimestamp
   ) internal {
-    IRebalanceManager(rebalanceManager).obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+    IRebalanceManager(rebalanceManager).obtainTWAPAndRebalance(
+      currentTick,
+      slowTwapTick,
+      fastTwapTick,
+      lastBlockTimestamp
+    );
   }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import './interfaces/IManagedSwapFeePlugin.sol';
 
 /// @title ManagedFee Plugin Implementation
@@ -56,9 +56,11 @@ contract ManagedFeePluginImplementation {
   /// @return fee The fee to apply
   function getManagedFee(bytes memory pluginData) external returns (uint24 fee) {
     ManagedFeeLayout storage layout = _getManagedFeeLayout();
-    
-    (bytes32 nonce, uint24 _fee, address user, uint32 expireTime, bytes memory signature) = _parsePluginData(pluginData);
-    
+
+    (bytes32 nonce, uint24 _fee, address user, uint32 expireTime, bytes memory signature) = _parsePluginData(
+      pluginData
+    );
+
     if (_fee >= 1000000) revert IManagedSwapFeePlugin.FeeExceedsLimit();
     if (layout.usedNonces[nonce]) revert IManagedSwapFeePlugin.InvalidNonce();
     if (expireTime < block.timestamp) revert IManagedSwapFeePlugin.Expired();
@@ -66,11 +68,13 @@ contract ManagedFeePluginImplementation {
 
     _verifySignature(layout, ECDSA.toEthSignedMessageHash(_getParamsHash(nonce, _fee, user, expireTime)), signature);
     layout.usedNonces[nonce] = true;
-    
+
     return _fee;
   }
 
-  function _parsePluginData(bytes memory pluginData) private pure returns(bytes32, uint24, address, uint32, bytes memory) {
+  function _parsePluginData(
+    bytes memory pluginData
+  ) private pure returns (bytes32, uint24, address, uint32, bytes memory) {
     IManagedSwapFeePlugin.PluginData memory data = abi.decode(pluginData, (IManagedSwapFeePlugin.PluginData));
     return (data.nonce, data.fee, data.user, data.expire, data.signature);
   }

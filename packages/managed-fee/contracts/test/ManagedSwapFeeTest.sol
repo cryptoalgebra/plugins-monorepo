@@ -21,7 +21,5 @@ contract ManagedSwapFeeTest is ManagedSwapFeePlugin {
     }
   }
 
-  function _authorize() internal view override {
-
-  }
+  function _authorize() internal view override {}
 }

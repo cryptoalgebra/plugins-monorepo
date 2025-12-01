@@ -3,11 +3,11 @@ pragma solidity >=0.5.0;
 pragma abicoder v2;
 
 /// @title The interface for the IManagedSwapFeePluginFactory
-interface IManagedSwapFeePluginFactory{
+interface IManagedSwapFeePluginFactory {
   /// @notice Emitted when the router address is changed
   /// @param newRouter The router address after the address was changed
   event DefaultRouter(address newRouter);
-  
+
   /// @notice Returns the address of AlgebraFactory
   /// @return The AlgebraFactory contract address
   function defaultRouter() external view returns (address);

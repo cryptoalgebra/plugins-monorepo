@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./interfaces/IReflexRouter.sol";
+import './interfaces/IReflexRouter.sol';
 
 /// @title Reflex Plugin Implementation
 /// @notice This contract contains ALL logic for Reflex plugin that works with namespaced storage
@@ -28,7 +28,7 @@ contract ReflexPluginImplementation {
   /// @param _router Address of reflex router
   /// @param _configId Configuration ID for profit distribution
   function initializeReflex(address _router, bytes32 _configId) external {
-    require(_router != address(0), "Invalid router address");
+    require(_router != address(0), 'Invalid router address');
     ReflexLayout storage layout = _getReflexLayout();
     layout.reflexRouter = _router;
     layout.reflexConfigId = _configId;
@@ -38,7 +38,7 @@ contract ReflexPluginImplementation {
   /// @dev Called via delegatecall from connector
   /// @param _router New router address
   function setReflexRouter(address _router) external {
-    require(_router != address(0), "Invalid router address");
+    require(_router != address(0), 'Invalid router address');
     ReflexLayout storage layout = _getReflexLayout();
     layout.reflexRouter = _router;
   }
@@ -84,13 +84,19 @@ contract ReflexPluginImplementation {
     address recipient
   ) external returns (uint256 profit, address profitToken) {
     ReflexLayout storage layout = _getReflexLayout();
-    
+
     uint256 swapAmountIn = uint256(amount0Delta > 0 ? amount0Delta : amount1Delta);
 
     // Failsafe: Use try-catch to prevent router failures from breaking the main swap
-    try IReflexRouter(layout.reflexRouter).triggerBackrun(
-      triggerPoolId, uint112(swapAmountIn), zeroForOne, recipient, layout.reflexConfigId
-    ) returns (uint256 backrunProfit, address backrunProfitToken) {
+    try
+      IReflexRouter(layout.reflexRouter).triggerBackrun(
+        triggerPoolId,
+        uint112(swapAmountIn),
+        zeroForOne,
+        recipient,
+        layout.reflexConfigId
+      )
+    returns (uint256 backrunProfit, address backrunProfitToken) {
       return (backrunProfit, backrunProfitToken);
     } catch {
       // Router call failed, but don't revert the main transaction

@@ -4,13 +4,14 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './libraries/VolatilityOracle.sol';
+import './interfaces/IVolatilityOracle.sol';
 import './interfaces/IVolatilityOraclePluginImplementation.sol';
 
 /// @title VolatilityOracle Connector
 /// @notice This contract provides delegatecall interface to VolatilityOracle plugin implementation
 /// @dev All state including the timepoints array is managed via delegatecall to the implementation contract
 /// @dev The implementation uses ERC-7201 namespaced storage for collision-free storage access
-abstract contract VolatilityOracleConnector is BaseConnector {
+abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle {
   using Plugins for uint8;
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
@@ -258,5 +259,67 @@ abstract contract VolatilityOracleConnector is BaseConnector {
     uint16 lastIndex = layout.timepointIndex;
 
     return layout.timepoints.getTimepoints(_blockTimestamp(), secondsAgos, tick, lastIndex);
+  }
+
+  // ============ IVolatilityOracle Public Interface ============
+
+  /// @inheritdoc IVolatilityOracle
+  function timepoints(
+    uint256 index
+  )
+    external
+    view
+    override
+    returns (
+      bool initialized,
+      uint32 blockTimestamp,
+      int56 tickCumulative,
+      uint88 volatilityCumulative,
+      int24 tick,
+      int24 averageTick,
+      uint16 windowStartIndex
+    )
+  {
+    return _getTimepointView(uint16(index));
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function timepointIndex() external view override returns (uint16) {
+    return _getTimepointIndexView();
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function initialize() external pure override {
+    revert('Use plugin initialize');
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function lastTimepointTimestamp() external view override returns (uint32) {
+    return _getLastTimepointTimestampView();
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function isInitialized() external view override returns (bool) {
+    return _getIsInitializedView();
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function getSingleTimepoint(
+    uint32 secondsAgo
+  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
+    return _getSingleTimepointView(secondsAgo);
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function getTimepoints(
+    uint32[] memory secondsAgos
+  ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
+    return _getTimepointsView(secondsAgos);
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
+    _authorize();
+    _prepayTimepointsSlots(startIndex, amount);
   }
 }

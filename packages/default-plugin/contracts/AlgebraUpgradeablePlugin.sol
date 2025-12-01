@@ -261,69 +261,6 @@ contract AlgebraUpgradeablePlugin is
     fee = _getCurrentFeeView(volatilityAverage);
   }
 
-  // ========== IVolatilityOracle Implementation ==========
-
-  /// @inheritdoc IVolatilityOracle
-  function timepoints(
-    uint256 index
-  )
-    external
-    view
-    override
-    returns (
-      bool initialized,
-      uint32 blockTimestamp,
-      int56 tickCumulative,
-      uint88 volatilityCumulative,
-      int24 tick,
-      int24 averageTick,
-      uint16 windowStartIndex
-    )
-  {
-    return _getTimepointView(uint16(index));
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function timepointIndex() external view override returns (uint16) {
-    return _getTimepointIndexView();
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function initialize() external pure override {
-    // Already initialized via plugin initialize
-    revert('Use plugin initialize');
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function lastTimepointTimestamp() external view override returns (uint32) {
-    return _getLastTimepointTimestampView();
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function isInitialized() external view override returns (bool) {
-    return _getIsInitializedView();
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function getSingleTimepoint(
-    uint32 secondsAgo
-  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
-    return _getSingleTimepointView(secondsAgo);
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function getTimepoints(
-    uint32[] memory secondsAgos
-  ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    return _getTimepointsView(secondsAgos);
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
-    _authorize();
-    _prepayTimepointsSlots(startIndex, amount);
-  }
-
   // ========== ALM Helper Functions ==========
 
   /// @dev Trigger ALM rebalance with TWAP data

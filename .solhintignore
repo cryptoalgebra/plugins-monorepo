@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build artifacts
+**/artifacts/
+**/cache/
+**/typechain/
+
+# External contracts (from dependencies)
+**/test/*.sol
+
+# OpenZeppelin contracts
+**/openzeppelin/**
+**/openzeppelin-solidity/**

@@ -4,6 +4,9 @@
   "scripts": {
     "test": "pnpm -r test",
     "compile": "pnpm -r compile",
+    "lint": "solhint 'packages/*/contracts/**/*.sol'",
+    "format": "prettier --write 'packages/*/contracts/**/*.sol'",
+    "format:check": "prettier --check 'packages/*/contracts/**/*.sol'",
     "remove-node-modules": "rm -rf node_modules && pnpm -r remove-node-modules",
     "clean": "pnpm -r clean"
   },
@@ -13,7 +16,10 @@
     "@nomicfoundation/hardhat-toolbox": "^6.1.1",
     "ethers": "^6.15.0",
     "hardhat": "^2.26.5",
-    "lerna": "^9.0.0"
+    "lerna": "^9.0.0",
+    "prettier": "^3.4.2",
+    "prettier-plugin-solidity": "^1.4.1",
+    "solhint": "^5.0.3"
   },
   "dependencies": {
     "@cryptoalgebra/integral-core": "1.2.9",

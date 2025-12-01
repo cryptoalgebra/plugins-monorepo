@@ -118,6 +118,11 @@ export default {
       url: `https://sepolia.base.org`,
       chainId: 84532,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
+    sophonOsTestnet: {
+      url: `https://zksync-os-testnet-sophon.zksync.dev`,
+      chainId: 531050204,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     }
   },
   etherscan: {

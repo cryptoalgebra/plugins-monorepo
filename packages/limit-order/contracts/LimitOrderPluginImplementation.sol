@@ -48,7 +48,7 @@ contract LimitOrderPluginImplementation {
   function updateLimitOrderManagerState(address pool, bool zeroToOne, int24 tick) external {
     LimitOrderLayout storage layout = _getLimitOrderLayout();
     address manager = layout.limitOrderManager;
-    
+
     if (manager != address(0)) {
       ILimitOrderManager(manager).afterSwap(pool, zeroToOne, tick);
     }

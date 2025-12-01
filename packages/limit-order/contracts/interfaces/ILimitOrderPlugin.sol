@@ -5,9 +5,8 @@ pragma abicoder v2;
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
 
 /// @title The interface for the AlgebraLimitOrderPlugin
-interface ILimitOrderPlugin is IAbstractPlugin{
-
-  function limitOrderManager() external view returns (address);
+interface ILimitOrderPlugin is IAbstractPlugin {
+  function limitOrderManager() external returns (address);
 
   function setLimitOrderManager(address newModule) external;
 

@@ -16,7 +16,15 @@ interface ILimitOrderManager is IAlgebraMintCallback {
   error NotPlugin();
   error InsufficientLiquidity();
 
-  event Place(address indexed owner, Epoch indexed epoch, address pool, int24 tickLower, int24 tickUpper, bool zeroForOne, uint128 liquidity);
+  event Place(
+    address indexed owner,
+    Epoch indexed epoch,
+    address pool,
+    int24 tickLower,
+    int24 tickUpper,
+    bool zeroForOne,
+    uint128 liquidity
+  );
 
   event Fill(Epoch indexed epoch, int24 tickLower, bool zeroForOne);
 
@@ -26,7 +34,12 @@ interface ILimitOrderManager is IAlgebraMintCallback {
 
   event LimitOrderTickSpacing(address indexed pool, int24 tickSpacing);
 
-  function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable;
+  function place(
+    PoolAddress.PoolKey memory poolKey,
+    int24 tickLower,
+    bool zeroForOne,
+    uint128 liquidity
+  ) external payable;
 
   function kill(
     PoolAddress.PoolKey memory poolKey,

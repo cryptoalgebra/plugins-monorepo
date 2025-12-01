@@ -25,7 +25,7 @@ abstract contract LimitOrderPayments {
   function _pay(address token, address payer, address recipient, uint256 value) internal {
     if (token == wNativeToken && address(this).balance >= value) {
       // pay with WNativeToken
-      IWNativeToken(wNativeToken).deposit{value: value}(); // wrap only what is needed to pay
+      IWNativeToken(wNativeToken).deposit{ value: value }(); // wrap only what is needed to pay
       IWNativeToken(wNativeToken).transfer(recipient, value);
     } else {
       // pull payment

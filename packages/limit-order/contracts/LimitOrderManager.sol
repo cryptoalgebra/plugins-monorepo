@@ -12,7 +12,12 @@ import './interfaces/ILimitOrderManager.sol';
 import './base/LimitOrderPayments.sol';
 
 contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
-  constructor(address _wNativeToken, address _poolDeployer, address _basePluginFactory, address _factory) LimitOrderPayments(_wNativeToken) {
+  constructor(
+    address _wNativeToken,
+    address _poolDeployer,
+    address _basePluginFactory,
+    address _factory
+  ) LimitOrderPayments(_wNativeToken) {
     poolDeployer = _poolDeployer;
     basePluginFactory = _basePluginFactory;
     factory = _factory;
@@ -98,7 +103,11 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     return compressed * tickSpacing;
   }
 
-  function _getCrossedTicks(address pool, int24 tick, int24 tickSpacing) internal view returns (int24 tickLower, int24 lower, int24 upper) {
+  function _getCrossedTicks(
+    address pool,
+    int24 tick,
+    int24 tickSpacing
+  ) internal view returns (int24 tickLower, int24 lower, int24 upper) {
     tickLower = getTickLower(tick, tickSpacing);
     int24 tickLowerLast = tickLowerLasts[pool];
 
@@ -146,12 +155,17 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     _refundNativeToken(decoded.payer);
   }
 
-  function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable override {
+  function place(
+    PoolAddress.PoolKey memory poolKey,
+    int24 tickLower,
+    bool zeroForOne,
+    uint128 liquidity
+  ) external payable override {
     if (liquidity == 0) revert ZeroLiquidity();
 
     address pool = PoolAddress.computeAddress(poolDeployer, poolKey);
 
-    bytes memory data = abi.encode(MintCallbackData({poolKey: poolKey, payer: msg.sender}));
+    bytes memory data = abi.encode(MintCallbackData({ poolKey: poolKey, payer: msg.sender }));
     int24 tickUpper = tickLower + getTickSpacing(pool);
 
     if (initialized[pool] == false) {
@@ -177,7 +191,6 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     EpochInfo storage epochInfo;
     Epoch epoch = getEpoch(pool, tickLower, tickUpper, zeroForOne);
     if (epoch.equals(EPOCH_DEFAULT)) {
-
       setEpoch(pool, tickLower, tickUpper, zeroForOne, epoch = epochNext);
       // since epoch was just assigned the current value of epochNext,
       // this is equivalent to epochNext++, which is what's intended,
@@ -253,7 +266,11 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     EpochInfo storage epochInfo = epochInfos[epoch];
     if (!epochInfo.filled) revert NotFilled();
 
-    PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({deployer: epochInfo.deployer, token0: epochInfo.token0, token1: epochInfo.token1});
+    PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
+      deployer: epochInfo.deployer,
+      token0: epochInfo.token0,
+      token1: epochInfo.token1
+    });
     address pool = PoolAddress.computeAddress(poolDeployer, poolKey);
 
     uint128 liquidity = epochInfo.liquidity[msg.sender];
@@ -271,7 +288,13 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     epochInfo.token1Total = uint128(token1Total - amount1);
     epochInfo.liquidityTotal = liquidityTotal - liquidity;
 
-    IAlgebraPool(pool).collect(address(this), epochInfo.tickLower, epochInfo.tickUpper, uint128(amount0), uint128(amount1));
+    IAlgebraPool(pool).collect(
+      address(this),
+      epochInfo.tickLower,
+      epochInfo.tickUpper,
+      uint128(amount0),
+      uint128(amount1)
+    );
 
     claimTo(poolKey, to);
 

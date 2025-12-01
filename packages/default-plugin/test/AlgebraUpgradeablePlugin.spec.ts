@@ -51,12 +51,13 @@ describe('AlgebraUpgradeablePlugin', () => {
         await mockPool.setPlugin(plugin);
       });
 
-      it('resets config after beforeModifyPosition', async () => {
+      // Note: beforeModifyPosition is used by Security plugin, so it keeps its config
+      it('keeps config after beforeModifyPosition (used by Security)', async () => {
         await mockPool.initialize(encodePriceSqrt(1, 1));
         await mockPool.setPluginConfig(PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG);
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG);
         await mockPool.mint(wallet.address, wallet.address, 0, 60, 100, '0x');
-        expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
+        expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG);
       });
 
       it('resets config after afterModifyPosition', async () => {
@@ -67,11 +68,12 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
       });
 
-      it('resets config after beforeFlash', async () => {
+      // Note: beforeFlash is used by Security plugin, so it keeps its config
+      it('keeps config after beforeFlash (used by Security)', async () => {
         await mockPool.setPluginConfig(PLUGIN_FLAGS.BEFORE_FLASH_FLAG);
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_FLASH_FLAG);
         await mockPool.flash(wallet.address, 100, 100, '0x');
-        expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
+        expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.BEFORE_FLASH_FLAG);
       });
 
       it('resets config after afterFlash', async () => {

@@ -114,12 +114,9 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
 
   const mockFactoryAddress = await (mockFactory as any).getAddress();
 
-  // Get signers - use a DIFFERENT account for ProxyAdmin owner
-  // This is important because TransparentProxy blocks calls from admin to implementation
   const signers = await ethers.getSigners();
   const proxyAdminOwner = signers[signers.length - 1]; // Use last signer as ProxyAdmin owner
 
-  // Deploy ProxyAdmin contract (OZ 4.x doesn't auto-create it)
   const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
   const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
 
@@ -127,12 +124,12 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
   const pluginFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
   const pluginFactoryImpl = await pluginFactoryImplFactory.deploy();
 
-  // Deploy TransparentUpgradeableProxy with ProxyAdmin as admin
+  // Deploy TransparentUpgradeableProxy with ProxyAdmin
   const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
   const proxy = await TransparentProxyFactory.deploy(
     await pluginFactoryImpl.getAddress(),
-    await proxyAdmin.getAddress(), // ProxyAdmin contract address
-    '0x' // No init data - we'll initialize later
+    await proxyAdmin.getAddress(),
+    '0x'
   );
 
   const proxyAddress = await proxy.getAddress();
@@ -149,7 +146,6 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.securityImpl
   );
 
-  // Attach factory interface to proxy
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
 
   // Now initialize the factory with the correct plugin implementation

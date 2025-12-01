@@ -25,7 +25,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
 
   /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
   address public immutable factory;
-  
+
   /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
   address public immutable pluginFactory;
 
@@ -104,7 +104,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external virtual view override onlyPool returns (bytes4) {
+  function handlePluginFee(uint256, uint256) external view virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.handlePluginFee.selector;
   }
 
@@ -118,7 +118,14 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
-  function beforeModifyPosition(address, address, int24, int24, int128, bytes calldata) external virtual override onlyPool returns (bytes4, uint24) {
+  function beforeModifyPosition(
+    address,
+    address,
+    int24,
+    int24,
+    int128,
+    bytes calldata
+  ) external virtual override onlyPool returns (bytes4, uint24) {
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
   }
 
@@ -147,15 +154,38 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
   }
 
-  function afterSwap(address, address, bool, int256, uint160, int256, int256, bytes calldata) external virtual override onlyPool returns (bytes4) {
+  function afterSwap(
+    address,
+    address,
+    bool,
+    int256,
+    uint160,
+    int256,
+    int256,
+    bytes calldata
+  ) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.afterSwap.selector;
   }
 
-  function beforeFlash(address, address, uint256, uint256, bytes calldata) external virtual override onlyPool returns (bytes4) {
+  function beforeFlash(
+    address,
+    address,
+    uint256,
+    uint256,
+    bytes calldata
+  ) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.beforeFlash.selector;
   }
 
-  function afterFlash(address, address, uint256, uint256, uint256, uint256, bytes calldata) external virtual override onlyPool returns (bytes4) {
+  function afterFlash(
+    address,
+    address,
+    uint256,
+    uint256,
+    uint256,
+    uint256,
+    bytes calldata
+  ) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.afterFlash.selector;
   }
 

@@ -5,7 +5,6 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginF
 
 /// @title The interface for the BasePluginFactory
 interface IBasePluginFactory is IAlgebraPluginFactory {
-
   /// @notice Returns the address of AlgebraFactory
   /// @return The AlgebraFactory contract address
   function algebraFactory() external view returns (address);

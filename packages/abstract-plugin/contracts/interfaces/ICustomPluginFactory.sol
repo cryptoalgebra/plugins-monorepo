@@ -17,7 +17,12 @@ interface ICustomPluginFactory is IAlgebraPluginFactory {
   /// @param tokenB The address of second token in pool
   /// @param data The data to be passed to beforeCreatePoolHook
   /// @return customPool The address of created plugin
-  function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
+  function createCustomPool(
+    address creator,
+    address tokenA,
+    address tokenB,
+    bytes calldata data
+  ) external returns (address customPool);
 
   /// @notice Sets tick spacing in a deployed custom pool
   /// @param pool The address of custom pool

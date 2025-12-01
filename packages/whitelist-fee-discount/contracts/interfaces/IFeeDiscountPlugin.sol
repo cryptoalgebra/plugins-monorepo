@@ -6,7 +6,7 @@ import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol'
 interface IFeeDiscountPlugin is IAbstractPlugin {
   function setFeeDiscountRegistry(address registry) external;
 
-  function feeDiscountRegistry() external view returns (address);
+  function feeDiscountRegistry() external returns (address);
 
   event FeeDiscountRegistry(address registry);
 }

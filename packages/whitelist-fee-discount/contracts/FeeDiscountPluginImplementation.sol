@@ -54,9 +54,9 @@ contract FeeDiscountPluginImplementation {
   /// @param pool Pool address
   /// @param fee Original fee
   /// @return updatedFee Fee after discount
-  function applyFeeDiscount(address user, address pool, uint24 fee) external view returns (uint24 updatedFee) {
+  function applyFeeDiscount(address user, address pool, uint24 fee) external returns (uint24 updatedFee) {
     FeeDiscountLayout storage layout = _getFeeDiscountLayout();
-    uint24 feeDiscount = IFeeDiscountRegistry(layout.feeDiscountRegistry).feeDiscounts(user, pool);
+    uint16 feeDiscount = IFeeDiscountRegistry(layout.feeDiscountRegistry).feeDiscounts(user, pool);
     updatedFee = uint24((uint256(fee) * (FEE_DISCOUNT_DENOMINATOR - feeDiscount)) / FEE_DISCOUNT_DENOMINATOR);
   }
 }

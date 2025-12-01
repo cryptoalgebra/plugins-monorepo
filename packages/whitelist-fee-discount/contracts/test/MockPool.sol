@@ -140,23 +140,60 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
     bytes calldata data
   ) external override returns (uint256, uint256, uint128) {
     if (globalState.pluginConfig & Plugins.BEFORE_POSITION_MODIFY_FLAG != 0) {
-      IAlgebraPlugin(plugin).beforeModifyPosition(msg.sender, recipient, bottomTick, topTick, int128(liquidityDesired), data);
+      IAlgebraPlugin(plugin).beforeModifyPosition(
+        msg.sender,
+        recipient,
+        bottomTick,
+        topTick,
+        int128(liquidityDesired),
+        data
+      );
     }
 
     if (globalState.pluginConfig & Plugins.AFTER_POSITION_MODIFY_FLAG != 0) {
-      IAlgebraPlugin(plugin).afterModifyPosition(msg.sender, recipient, bottomTick, topTick, int128(liquidityDesired), 0, 0, data);
+      IAlgebraPlugin(plugin).afterModifyPosition(
+        msg.sender,
+        recipient,
+        bottomTick,
+        topTick,
+        int128(liquidityDesired),
+        0,
+        0,
+        data
+      );
     }
     return (0, 0, 0);
   }
 
   /// @inheritdoc IAlgebraPoolActions
-  function burn(int24 bottomTick, int24 topTick, uint128 liquidityDesired, bytes calldata data) external override returns (uint256, uint256) {
+  function burn(
+    int24 bottomTick,
+    int24 topTick,
+    uint128 liquidityDesired,
+    bytes calldata data
+  ) external override returns (uint256, uint256) {
     if (globalState.pluginConfig & Plugins.BEFORE_POSITION_MODIFY_FLAG != 0) {
-      IAlgebraPlugin(plugin).beforeModifyPosition(msg.sender, msg.sender, bottomTick, topTick, -int128(liquidityDesired), data);
+      IAlgebraPlugin(plugin).beforeModifyPosition(
+        msg.sender,
+        msg.sender,
+        bottomTick,
+        topTick,
+        -int128(liquidityDesired),
+        data
+      );
     }
 
     if (globalState.pluginConfig & Plugins.AFTER_POSITION_MODIFY_FLAG != 0) {
-      IAlgebraPlugin(plugin).afterModifyPosition(msg.sender, msg.sender, bottomTick, topTick, -int128(liquidityDesired), 0, 0, data);
+      IAlgebraPlugin(plugin).afterModifyPosition(
+        msg.sender,
+        msg.sender,
+        bottomTick,
+        topTick,
+        -int128(liquidityDesired),
+        0,
+        0,
+        data
+      );
     }
     return (0, 0);
   }
@@ -186,7 +223,14 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolActions
-  function swapWithPaymentInAdvance(address, address, bool, int256, uint160, bytes calldata) external pure override returns (int256, int256) {
+  function swapWithPaymentInAdvance(
+    address,
+    address,
+    bool,
+    int256,
+    uint160,
+    bytes calldata
+  ) external pure override returns (int256, int256) {
     revert('Not implemented');
   }
 

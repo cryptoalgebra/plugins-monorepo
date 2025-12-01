@@ -2,11 +2,14 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
+import './interfaces/IFeeDiscountPlugin.sol';
+import './interfaces/IFeeDiscountPluginImplementation.sol';
 
 /// @title FeeDiscount Connector
 /// @notice This contract provides delegatecall interface to FeeDiscount plugin implementation
-/// @dev Provides thin wrappers that delegate to implementation via delegatecall
-abstract contract FeeDiscountConnector {
+/// @dev Inherits from IFeeDiscountPlugin and provides all public methods as thin wrappers
+abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   using Plugins for uint8;
 
   uint8 internal constant FEE_DISCOUNT_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG);
@@ -18,51 +21,52 @@ abstract contract FeeDiscountConnector {
     feeDiscountImplementation = _feeDiscountImplementation;
   }
 
-  /// @dev Propagate revert reason from delegatecall
-  function _propagateFeeDiscountRevert(bytes memory returnData) internal pure {
-    if (returnData.length > 0) {
-      assembly {
-        revert(add(32, returnData), mload(returnData))
-      }
-    }
-    revert('FeeDiscount: delegatecall failed');
-  }
-
   /// @notice Initialize FeeDiscount plugin via delegatecall
   function _initializeFeeDiscount(address _feeDiscountRegistry) internal returns (uint8) {
-    bytes memory data = abi.encodeWithSignature('initializeFeeDiscount(address)', _feeDiscountRegistry);
-    
-    (bool success, bytes memory returnData) = feeDiscountImplementation.delegatecall(data);
-    if (!success) _propagateFeeDiscountRevert(returnData);
-    
+    _delegateCall(
+      feeDiscountImplementation,
+      abi.encodeCall(IFeeDiscountPluginImplementation.initializeFeeDiscount, (_feeDiscountRegistry))
+    );
     return FEE_DISCOUNT_PLUGIN_CONFIG;
   }
 
   /// @notice Set fee discount registry via delegatecall
   function _setFeeDiscountRegistry(address _feeDiscountRegistry) internal {
-    bytes memory data = abi.encodeWithSignature('setFeeDiscountRegistry(address)', _feeDiscountRegistry);
-    
-    (bool success, bytes memory returnData) = feeDiscountImplementation.delegatecall(data);
-    if (!success) _propagateFeeDiscountRevert(returnData);
+    _delegateCall(
+      feeDiscountImplementation,
+      abi.encodeCall(IFeeDiscountPluginImplementation.setFeeDiscountRegistry, (_feeDiscountRegistry))
+    );
   }
 
-  /// @notice Get fee discount registry via staticcall
-  function _getFeeDiscountRegistry() internal view returns (address) {
-    bytes memory data = abi.encodeWithSignature('getFeeDiscountRegistry()');
-    
-    (bool success, bytes memory returnData) = feeDiscountImplementation.staticcall(data);
-    if (!success) _propagateFeeDiscountRevert(returnData);
-    
+  /// @notice Get fee discount registry via delegatecall
+  function _getFeeDiscountRegistry() internal returns (address) {
+    bytes memory returnData = _delegateCall(
+      feeDiscountImplementation,
+      abi.encodeCall(IFeeDiscountPluginImplementation.getFeeDiscountRegistry, ())
+    );
     return abi.decode(returnData, (address));
   }
 
   /// @notice Apply fee discount via delegatecall
   function _applyFeeDiscount(address user, address pool, uint24 fee) internal returns (uint24) {
-    bytes memory data = abi.encodeWithSignature('applyFeeDiscount(address,address,uint24)', user, pool, fee);
-    
-    (bool success, bytes memory returnData) = feeDiscountImplementation.delegatecall(data);
-    if (!success) _propagateFeeDiscountRevert(returnData);
-    
+    bytes memory returnData = _delegateCall(
+      feeDiscountImplementation,
+      abi.encodeCall(IFeeDiscountPluginImplementation.applyFeeDiscount, (user, pool, fee))
+    );
     return abi.decode(returnData, (uint24));
+  }
+
+  // ###### Public Interface (IFeeDiscountPlugin) ######
+
+  /// @inheritdoc IFeeDiscountPlugin
+  function setFeeDiscountRegistry(address registry) external override {
+    _authorize();
+    _setFeeDiscountRegistry(registry);
+    emit FeeDiscountRegistry(registry);
+  }
+
+  /// @inheritdoc IFeeDiscountPlugin
+  function feeDiscountRegistry() external override returns (address) {
+    return _getFeeDiscountRegistry();
   }
 }

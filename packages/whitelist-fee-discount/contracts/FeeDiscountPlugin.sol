@@ -9,11 +9,9 @@ import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 import './interfaces/IFeeDiscountPlugin.sol';
 import './interfaces/IFeeDiscountRegistry.sol';
 
-
 /// @title Algebra Integral 1.2 fee discount plugin
 abstract contract FeeDiscountPlugin is BaseAbstractPlugin, IFeeDiscountPlugin {
   using Plugins for uint8;
-
 
   uint16 private constant FEE_DISCOUNT_DENOMINATOR = 1000;
 
@@ -22,7 +20,7 @@ abstract contract FeeDiscountPlugin is BaseAbstractPlugin, IFeeDiscountPlugin {
   constructor(address _feeDiscountRegistry) {
     feeDiscountRegistry = _feeDiscountRegistry;
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG);
-    activeModules.push("Fee Discount Plugin");
+    activeModules.push('Fee Discount Plugin');
   }
 
   function _applyFeeDiscount(address user, address pool, uint24 fee) internal returns (uint24 updatedFee) {

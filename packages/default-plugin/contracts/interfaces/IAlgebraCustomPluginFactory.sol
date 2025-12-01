@@ -8,7 +8,6 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginF
 
 /// @title The interface for the IAlgebraCustomPluginFactory
 interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory {
-
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraALMCustomPluginFactory
   function ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR() external pure returns (bytes32);
@@ -27,6 +26,10 @@ interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePlugi
   function pluginByPool(address pool) external view returns (address);
 
   /// @notice Create custom pool
-  function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
-
+  function createCustomPool(
+    address creator,
+    address tokenA,
+    address tokenB,
+    bytes calldata data
+  ) external returns (address customPool);
 }

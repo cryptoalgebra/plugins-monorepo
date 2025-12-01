@@ -4,21 +4,43 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
+import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 
 import './MockTimeAlgebraUpgradeablePlugin.sol';
 import '../AlgebraPluginBeacon.sol';
+import '../AlgebraPluginProxy.sol';
+import '../interfaces/IAlgebraUpgradeablePlugin.sol';
 
-/// @title Mock Factory for testing upgradeable plugins
-/// @notice Creates MockTimeAlgebraUpgradeablePlugin instances for testing
+/// @title Mock Factory for testing upgradeable plugins with Beacon Proxy pattern
+/// @notice Creates MockTimeAlgebraUpgradeablePlugin instances using Beacon Proxy for testing
 contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @dev The role can be granted in AlgebraFactory
-  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
+  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
+    keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
-  
+
+  /// @notice The beacon that stores implementation address
+  address public immutable beacon;
+
+  /// @notice Address of VolatilityOracle implementation
+  address public immutable volatilityOracleImplementation;
+
+  /// @notice Address of DynamicFee implementation
+  address public immutable dynamicFeeImplementation;
+
   /// @notice Address of FarmingProxy implementation
   address public immutable farmingProxyImplementation;
+
+  /// @notice Address of ALM implementation
+  address public immutable almImplementation;
+
+  /// @notice Address of Security implementation
+  address public immutable securityImplementation;
+
+  /// @notice Default fee configuration
+  AlgebraFeeConfiguration public defaultFeeConfiguration;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
@@ -26,18 +48,46 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
   /// @inheritdoc IFarmingPluginFactory
   address public override farmingAddress;
 
-  constructor(address _algebraFactory, address _farmingProxyImplementation) {
+  /// @notice Security registry address
+  address public securityRegistry;
+
+  constructor(
+    address _algebraFactory,
+    address _volatilityOracleImpl,
+    address _dynamicFeeImpl,
+    address _farmingProxyImpl,
+    address _almImpl,
+    address _securityImpl,
+    AlgebraFeeConfiguration memory _defaultFeeConfig
+  ) {
     algebraFactory = _algebraFactory;
-    farmingProxyImplementation = _farmingProxyImplementation;
+    volatilityOracleImplementation = _volatilityOracleImpl;
+    dynamicFeeImplementation = _dynamicFeeImpl;
+    farmingProxyImplementation = _farmingProxyImpl;
+    almImplementation = _almImpl;
+    securityImplementation = _securityImpl;
+    defaultFeeConfiguration = _defaultFeeConfig;
+
+    // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
+    MockTimeAlgebraUpgradeablePlugin impl = new MockTimeAlgebraUpgradeablePlugin(
+      _algebraFactory,
+      address(this),
+      _volatilityOracleImpl,
+      _dynamicFeeImpl,
+      _farmingProxyImpl,
+      _almImpl,
+      _securityImpl
+    );
+    beacon = address(new AlgebraPluginBeacon(_algebraFactory, address(impl)));
   }
 
   /// @inheritdoc IAlgebraPluginFactory
   function beforeCreatePoolHook(
-    address pool, 
-    address, 
-    address, 
-    address, 
-    address, 
+    address pool,
+    address,
+    address,
+    address,
+    address,
     bytes calldata
   ) external override returns (address) {
     return _createPlugin(pool);
@@ -63,15 +113,22 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     pluginByPool[pool] = plugin;
   }
 
-  function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraUpgradeablePlugin plugin = new MockTimeAlgebraUpgradeablePlugin(
-      pool, 
-      algebraFactory, 
-      address(this), 
-      farmingProxyImplementation
+  function _createPlugin(address pool) internal returns (address plugin) {
+    // Create proxy pointing to beacon
+    plugin = address(new AlgebraPluginProxy(beacon, ''));
+
+    // Initialize plugin
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      pool,
+      defaultFeeConfiguration,
+      securityRegistry,
+      address(0), // rebalanceManager
+      0, // slowTwapPeriod
+      0 // fastTwapPeriod
     );
-    pluginByPool[pool] = address(plugin);
-    return address(plugin);
+
+    pluginByPool[pool] = plugin;
+    return plugin;
   }
 
   /// @inheritdoc IFarmingPluginFactory
@@ -79,5 +136,23 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     require(farmingAddress != newFarmingAddress);
     farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
+  }
+
+  function setSecurityRegistry(address _securityRegistry) external {
+    securityRegistry = _securityRegistry;
+  }
+
+  // ========== Upgrade Management ==========
+
+  /// @notice Upgrade all plugins to new implementation
+  /// @param newImplementation Address of the new implementation
+  function upgradePlugins(address newImplementation) external {
+    AlgebraPluginBeacon(beacon).upgradeTo(newImplementation);
+  }
+
+  /// @notice Get current implementation address
+  /// @return The current plugin implementation address
+  function implementation() external view returns (address) {
+    return AlgebraPluginBeacon(beacon).implementation();
   }
 }

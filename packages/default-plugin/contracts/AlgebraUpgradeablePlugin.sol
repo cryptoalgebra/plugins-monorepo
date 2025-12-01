@@ -3,93 +3,351 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
-import '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
+import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
+import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeeConnector.sol';
+import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
+import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnector.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
-import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPlugin.sol';
+import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 
-/// @title Algebra Integral 1.2.2 upgradeable plugin (simplified with FarmingProxy only)
-/// @notice This is a simplified version for testing with only FarmingProxy plugin
-contract AlgebraUpgradeablePlugin is 
-  BaseAbstractPlugin, 
-  FarmingProxyConnector
+import './interfaces/IAlgebraUpgradeablePlugin.sol';
+
+/// @title Algebra Integral 1.2.2 Upgradeable Plugin
+/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
+contract AlgebraUpgradeablePlugin is
+  UpgradeableAbstractPlugin,
+  IAlgebraUpgradeablePlugin,
+  VolatilityOracleConnector,
+  DynamicFeeConnector,
+  FarmingProxyConnector,
+  AlmConnector,
+  SecurityConnector
 {
   using Plugins for uint8;
 
+  /// @notice Constructor sets immutable values shared across ALL proxies
+  /// @param _factory The Algebra factory address
+  /// @param _pluginFactory The plugin factory address
+  /// @param _volatilityOracleImpl VolatilityOracle implementation address
+  /// @param _dynamicFeeImpl DynamicFee implementation address
+  /// @param _farmingProxyImpl FarmingProxy implementation address
+  /// @param _almImpl ALM implementation address
+  /// @param _securityImpl Security implementation address
   constructor(
-    address _pool,
     address _factory,
     address _pluginFactory,
-    address _farmingProxyImpl
-  ) 
-    BaseAbstractPlugin(_pool, _factory, _pluginFactory)
+    address _volatilityOracleImpl,
+    address _dynamicFeeImpl,
+    address _farmingProxyImpl,
+    address _almImpl,
+    address _securityImpl
+  )
+    UpgradeableAbstractPlugin(_factory, _pluginFactory)
+    VolatilityOracleConnector(_volatilityOracleImpl)
+    DynamicFeeConnector(_dynamicFeeImpl)
     FarmingProxyConnector(_farmingProxyImpl)
-  {
-    // Initialize FarmingProxy plugin and get its config
-    uint8 farmingProxyConfig = _initializeFarmingProxy();
-    defaultPluginConfig = defaultPluginConfig | farmingProxyConfig;
-    activeModules.push("Farming Proxy Plugin");
+    AlmConnector(_almImpl)
+    SecurityConnector(_securityImpl)
+  {}
+
+  /// @inheritdoc IAlgebraUpgradeablePlugin
+  function initialize(
+    address _pool,
+    AlgebraFeeConfiguration calldata feeConfig,
+    address securityRegistry,
+    address rebalanceManager,
+    uint32 slowTwapPeriod,
+    uint32 fastTwapPeriod
+  ) external override initializer onlyPluginFactory {
+    __UpgradeableAbstractPlugin_init(_pool);
+
+    // Build plugin config from all modules
+    uint8 config = 0;
+
+    // 1. Initialize VolatilityOracle
+    config = config | _initializeVolatilityOracleState();
+    activeModules.push('Volatility Oracle');
+
+    // 2. Initialize DynamicFee with provided config
+    config = config | _initializeDynamicFee(feeConfig);
+    activeModules.push('Dynamic Fee');
+
+    // 3. Initialize FarmingProxy
+    config = config | _initializeFarmingProxy();
+    activeModules.push('Farming Proxy');
+
+    // 4. Initialize ALM if rebalance manager is provided
+    if (rebalanceManager != address(0)) {
+      config = config | _initializeAlm(rebalanceManager, slowTwapPeriod, fastTwapPeriod);
+      activeModules.push('ALM');
+    }
+
+    // 5. Initialize Security if registry is provided
+    if (securityRegistry != address(0)) {
+      config = config | _initializeSecurity(securityRegistry);
+      activeModules.push('Security');
+    }
+
+    defaultPluginConfig = config;
+
+    emit PluginInitialized(_pool);
   }
 
-  // ###### Required by FarmingProxyConnector ######
+  // ========== Connector Implementations ==========
 
-  /// @dev Provide pluginFactory address for FarmingProxyConnector
+  /// @dev Required by FarmingProxyConnector
   function _getPluginFactory() internal view override returns (address) {
     return pluginFactory;
   }
 
-  /// @dev Provide pool address for FarmingProxyConnector
+  /// @dev Required by FarmingProxyConnector
   function _getPool() internal view override returns (address) {
     return pool;
   }
 
-  // ###### HOOKS ######
+  /// @dev Required by DynamicFeeConnector, AlmConnector, SecurityConnector - use base class implementation
+  function _authorize() internal view override(UpgradeableAbstractPlugin, BaseConnector) {
+    UpgradeableAbstractPlugin._authorize();
+  }
 
-  function beforeInitialize(address, uint160) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  /// @dev Override _getPoolState from UpgradeableAbstractPlugin for VolatilityOracleConnector
+  function _getPoolState()
+    internal
+    view
+    override(UpgradeableAbstractPlugin, VolatilityOracleConnector)
+    returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig)
+  {
+    return UpgradeableAbstractPlugin._getPoolState();
+  }
+
+  /// @dev Override _blockTimestamp from Timestamp for VolatilityOracleConnector
+  function _blockTimestamp() internal view virtual override(Timestamp, VolatilityOracleConnector) returns (uint32) {
+    return Timestamp._blockTimestamp();
+  }
+
+  // ========== HOOKS ==========
+
+  /// @inheritdoc IAlgebraPlugin
+  function beforeInitialize(
+    address ,
+    uint160
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterInitialize(address, uint160, int24) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  /// @inheritdoc IAlgebraPlugin
+  function afterInitialize(
+    address ,
+    uint160 ,
+    int24 tick
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+    _initialize_TWAP(_blockTimestamp(), tick);
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
-  /// @dev unused
-  function beforeModifyPosition(address, address, int24, int24, int128, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+  /// @inheritdoc IAlgebraPlugin
+  function beforeModifyPosition(
+    address ,
+    address ,
+    int24 ,
+    int24 ,
+    int128 desiredLiquidityDelta,
+    bytes calldata 
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
+    // Security check - different logic for burns (negative liquidity) vs mints
+    if (desiredLiquidityDelta < 0) {
+      _checkStatusOnBurn(pool);
+    } else {
+      _checkStatus(pool);
+    }
+
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
   }
 
-  /// @dev unused
-  function afterModifyPosition(address, address, int24, int24, int128, uint256, uint256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+  /// @inheritdoc IAlgebraPlugin
+  function afterModifyPosition(
+    address,
+    address,
+    int24,
+    int24,
+    int128,
+    uint256,
+    uint256,
+    bytes calldata
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+    _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+  /// @inheritdoc IAlgebraPlugin
+  function beforeSwap(
+    address,
+    address,
+    bool,
+    int256,
+    uint160,
+    bool,
+    bytes calldata
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
+    // Security check
+    _checkStatus(pool);
+
+    _writeTimepoint();
+    uint88 volatilityAverage = _getAverageVolatilityLast();
+    uint24 fee = _getCurrentFee(volatilityAverage);
+    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
-    // Get current tick
+  /// @inheritdoc IAlgebraPlugin
+  function afterSwap(
+    address,
+    address,
+    bool zeroToOne,
+    int256,
+    uint160,
+    int256,
+    int256,
+    bytes calldata
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();
-    
-    // Update FarmingProxy virtual pool
+
+    // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
-    
+
+    // ALM: Obtain TWAP and trigger rebalance
+    _triggerAlmRebalance(tick);
+
     return IAlgebraPlugin.afterSwap.selector;
   }
 
-  /// @dev unused
-  function beforeFlash(address, address, uint256, uint256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+  /// @inheritdoc IAlgebraPlugin
+  function beforeFlash(
+    address,
+    address,
+    uint256,
+    uint256,
+    bytes calldata
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+    // Security check
+    _checkStatus(pool);
+
     return IAlgebraPlugin.beforeFlash.selector;
   }
 
-  /// @dev unused
-  function afterFlash(address, address, uint256, uint256, uint256, uint256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+  /// @inheritdoc IAlgebraPlugin
+  function afterFlash(
+    address,
+    address,
+    uint256,
+    uint256,
+    uint256,
+    uint256,
+    bytes calldata
+  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+    _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterFlash.selector;
   }
 
+  // ========== Fee Getter ==========
+
+  /// @notice Returns current fee based on current volatility
+  /// @return fee The current fee value
+  function getCurrentFee() external view override returns (uint16 fee) {
+    uint88 volatilityAverage = _getAverageVolatilityLastView();
+    fee = _getCurrentFeeView(volatilityAverage);
+  }
+
+  // ========== IVolatilityOracle Implementation ==========
+
+  /// @inheritdoc IVolatilityOracle
+  function timepoints(
+    uint256 index
+  )
+    external
+    view
+    override
+    returns (
+      bool initialized,
+      uint32 blockTimestamp,
+      int56 tickCumulative,
+      uint88 volatilityCumulative,
+      int24 tick,
+      int24 averageTick,
+      uint16 windowStartIndex
+    )
+  {
+    return _getTimepointView(uint16(index));
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function timepointIndex() external view override returns (uint16) {
+    return _getTimepointIndexView();
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function initialize() external pure override {
+    // Already initialized via plugin initialize
+    revert('Use plugin initialize');
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function lastTimepointTimestamp() external view override returns (uint32) {
+    return _getLastTimepointTimestampView();
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function isInitialized() external view override returns (bool) {
+    return _getIsInitializedView();
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function getSingleTimepoint(
+    uint32 secondsAgo
+  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
+    return _getSingleTimepointView(secondsAgo);
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function getTimepoints(
+    uint32[] memory secondsAgos
+  ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
+    return _getTimepointsView(secondsAgos);
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
+    _authorize();
+    _prepayTimepointsSlots(startIndex, amount);
+  }
+
+  // ========== ALM Helper Functions ==========
+
+  /// @dev Trigger ALM rebalance with TWAP data
+  function _triggerAlmRebalance(int24 currentTick) internal {
+    // Get TWAP periods from ALM
+    uint32 slowPeriod = _getSlowTwapPeriod();
+    uint32 fastPeriod = _getFastTwapPeriod();
+
+    // Skip if ALM is not initialized (both periods are 0)
+    if (slowPeriod == 0 && fastPeriod == 0) return;
+
+    // Get TWAP ticks if we have enough history
+    int24 slowTwapTick = currentTick;
+    int24 fastTwapTick = currentTick;
+
+    if (_canGetTwap(slowPeriod)) {
+      slowTwapTick = _getTwapTick(slowPeriod);
+    }
+
+    if (_canGetTwap(fastPeriod)) {
+      fastTwapTick = _getTwapTick(fastPeriod);
+    }
+
+    // Call ALM rebalance with TWAP data
+    _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, _getOracleLastTimestamp());
+  }
 }

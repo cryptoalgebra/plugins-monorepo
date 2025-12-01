@@ -1,42 +1,277 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
+import '@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
+import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
+import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
+import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
+import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+
 import './AlgebraPluginBeacon.sol';
 import './AlgebraPluginProxy.sol';
-import './AlgebraUpgradeablePlugin.sol';
+import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
-/// @title Algebra Upgradeable Plugin Factory (Simplified)
+/// @title Algebra Upgradeable Plugin Factory
 /// @notice Factory for deploying upgradeable plugins using Beacon Proxy pattern
-/// @dev Simplified version with only FarmingProxy plugin for testing
-contract AlgebraUpgradeablePluginFactory {
-  address public immutable algebraFactory;
-  address public immutable beacon;
-  
-  event PluginCreated(address indexed pool, address plugin);
+/// @dev UUPS upgradeable with ERC-7201 namespaced storage for safe upgrades
+contract AlgebraUpgradeablePluginFactory is
+  Initializable,
+  UUPSUpgradeable,
+  IBasePluginFactory,
+  IFarmingPluginFactory,
+  IDynamicFeePluginFactory,
+  ISecurityPluginFactory
+{
+  /// @dev The role can be granted in AlgebraFactory
+  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
+    keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
-  constructor(address _algebraFactory, address pluginImplementation) {
-    algebraFactory = _algebraFactory;
-    beacon = address(new AlgebraPluginBeacon(_algebraFactory, pluginImplementation));
+  // ========== ERC-7201 Namespaced Storage ==========
+
+  /// @custom:storage-location erc7201:algebra.pluginfactory.storage
+  struct PluginFactoryStorage {
+    // Core
+    address algebraFactory;
+    address beacon;
+    mapping(address pool => address plugin) pluginByPool;
+    // Dynamic Fee
+    AlgebraFeeConfiguration defaultFeeConfiguration;
+    // Farming
+    address farmingAddress;
+    // Security
+    address securityRegistry;
+    // ALM
+    address defaultRebalanceManager;
+    uint32 defaultSlowTwapPeriod;
+    uint32 defaultFastTwapPeriod;
   }
 
-  /// @notice Deploy a new plugin proxy for a pool
-  function createPlugin(
+  bytes32 private constant STORAGE_LOCATION = keccak256('algebra.pluginfactory.storage');
+
+  function _getStorage() private pure returns (PluginFactoryStorage storage s) {
+    bytes32 loc = STORAGE_LOCATION;
+    assembly {
+      s.slot := loc
+    }
+  }
+
+  // ========== Events ==========
+
+  event PluginCreated(address indexed pool, address plugin);
+  event RebalanceManager(address newRebalanceManager);
+  event AlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod);
+
+  // ========== Modifiers ==========
+
+  modifier onlyAdministrator() {
+    require(
+      IAlgebraFactory(_getStorage().algebraFactory).hasRoleOrOwner(
+        ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR,
+        msg.sender
+      ),
+      'Only administrator'
+    );
+    _;
+  }
+
+  // ========== Constructor & Initializer ==========
+
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  /// @notice Initialize the factory
+  /// @param _algebraFactory The Algebra factory address
+  /// @param pluginImplementation The initial plugin implementation address
+  /// @param initialFeeConfig The initial fee configuration
+  function initialize(
+    address _algebraFactory,
+    address pluginImplementation,
+    AlgebraFeeConfiguration memory initialFeeConfig
+  ) external initializer {
+    __UUPSUpgradeable_init();
+
+    PluginFactoryStorage storage s = _getStorage();
+    s.algebraFactory = _algebraFactory;
+    s.beacon = address(new AlgebraPluginBeacon(_algebraFactory, pluginImplementation));
+
+    // Validate and set initial fee configuration
+    AdaptiveFee.validateFeeConfiguration(initialFeeConfig);
+    s.defaultFeeConfiguration = initialFeeConfig;
+    emit DefaultFeeConfiguration(initialFeeConfig);
+  }
+
+  // ========== IBasePluginFactory Implementation ==========
+
+  /// @inheritdoc IBasePluginFactory
+  function algebraFactory() external view override returns (address) {
+    return _getStorage().algebraFactory;
+  }
+
+  /// @inheritdoc IBasePluginFactory
+  function pluginByPool(address pool) external view override returns (address) {
+    return _getStorage().pluginByPool[pool];
+  }
+
+  /// @notice The beacon that stores implementation address
+  function beacon() external view returns (address) {
+    return _getStorage().beacon;
+  }
+
+  // ========== UUPS Upgrade Authorization ==========
+
+  /// @dev Only administrator can authorize factory upgrades
+  function _authorizeUpgrade(address) internal override onlyAdministrator {}
+
+  // ========== Plugin Creation ==========
+
+  /// @inheritdoc IAlgebraPluginFactory
+  function beforeCreatePoolHook(
     address pool,
-    address factory
-  ) external returns (address plugin) {
-    // For BeaconProxy, initialization happens in constructor of implementation
-    plugin = address(new AlgebraPluginProxy(beacon, ''));
-    
+    address,
+    address,
+    address,
+    address,
+    bytes calldata
+  ) external override returns (address) {
+    require(msg.sender == _getStorage().algebraFactory);
+    return _createPlugin(pool);
+  }
+
+  /// @inheritdoc IAlgebraPluginFactory
+  function afterCreatePoolHook(address, address, address) external view override {
+    require(msg.sender == _getStorage().algebraFactory);
+  }
+
+  /// @inheritdoc IBasePluginFactory
+  function createPluginForExistingPool(address token0, address token1) external override returns (address) {
+    PluginFactoryStorage storage s = _getStorage();
+    IAlgebraFactory factory = IAlgebraFactory(s.algebraFactory);
+    require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender));
+
+    address pool = factory.poolByPair(token0, token1);
+    require(pool != address(0), 'Pool not exist');
+
+    return _createPlugin(pool);
+  }
+
+  function _createPlugin(address pool) internal returns (address plugin) {
+    PluginFactoryStorage storage s = _getStorage();
+    require(s.pluginByPool[pool] == address(0), 'Already created');
+
+    // Create proxy with empty init data (initialization happens separately)
+    plugin = address(new AlgebraPluginProxy(s.beacon, ''));
+
+    // Initialize plugin with pool address and all configurations
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      pool,
+      s.defaultFeeConfiguration,
+      s.securityRegistry,
+      s.defaultRebalanceManager,
+      s.defaultSlowTwapPeriod,
+      s.defaultFastTwapPeriod
+    );
+
+    s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
   }
 
+  // ========== Configuration Getters ==========
+
+  /// @inheritdoc IFarmingPluginFactory
+  function farmingAddress() external view override returns (address) {
+    return _getStorage().farmingAddress;
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function securityRegistry() external view override returns (address) {
+    return _getStorage().securityRegistry;
+  }
+
+  /// @notice Default ALM rebalance manager address
+  function defaultRebalanceManager() external view returns (address) {
+    return _getStorage().defaultRebalanceManager;
+  }
+
+  /// @notice Default slow TWAP period for ALM (in seconds)
+  function defaultSlowTwapPeriod() external view returns (uint32) {
+    return _getStorage().defaultSlowTwapPeriod;
+  }
+
+  /// @notice Default fast TWAP period for ALM (in seconds)
+  function defaultFastTwapPeriod() external view returns (uint32) {
+    return _getStorage().defaultFastTwapPeriod;
+  }
+
+  /// @inheritdoc IDynamicFeePluginFactory
+  function defaultFeeConfiguration()
+    external
+    view
+    override
+    returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
+  {
+    AlgebraFeeConfiguration memory config = _getStorage().defaultFeeConfiguration;
+    return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
+  }
+
+  // ========== Configuration Setters ==========
+
+  /// @inheritdoc IDynamicFeePluginFactory
+  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override onlyAdministrator {
+    AdaptiveFee.validateFeeConfiguration(newConfig);
+    _getStorage().defaultFeeConfiguration = newConfig;
+    emit DefaultFeeConfiguration(newConfig);
+  }
+
+  /// @inheritdoc IFarmingPluginFactory
+  function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {
+    PluginFactoryStorage storage s = _getStorage();
+    require(s.farmingAddress != newFarmingAddress);
+    s.farmingAddress = newFarmingAddress;
+    emit FarmingAddress(newFarmingAddress);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
+    _getStorage().securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @notice Set the default ALM rebalance manager
+  /// @param newRebalanceManager The new rebalance manager address
+  function setDefaultRebalanceManager(address newRebalanceManager) external onlyAdministrator {
+    _getStorage().defaultRebalanceManager = newRebalanceManager;
+    emit RebalanceManager(newRebalanceManager);
+  }
+
+  /// @notice Set the default ALM TWAP periods
+  /// @param slowPeriod Slow TWAP period in seconds
+  /// @param fastPeriod Fast TWAP period in seconds
+  function setDefaultAlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod) external onlyAdministrator {
+    require(slowPeriod >= fastPeriod, 'slowPeriod must be >= fastPeriod');
+    PluginFactoryStorage storage s = _getStorage();
+    s.defaultSlowTwapPeriod = slowPeriod;
+    s.defaultFastTwapPeriod = fastPeriod;
+    emit AlmTwapPeriods(slowPeriod, fastPeriod);
+  }
+
+  // ========== Upgrade Management ==========
+
   /// @notice Upgrade all plugins to new implementation
-  function upgradePlugins(address newImplementation) external {
-    AlgebraPluginBeacon(beacon).upgradeTo(newImplementation);
+  /// @param newImplementation Address of the new implementation
+  function upgradePlugins(address newImplementation) external onlyAdministrator {
+    AlgebraPluginBeacon(_getStorage().beacon).upgradeTo(newImplementation);
   }
 
   /// @notice Get current implementation address
+  /// @return The current plugin implementation address
   function implementation() external view returns (address) {
-    return AlgebraPluginBeacon(beacon).implementation();
+    return AlgebraPluginBeacon(_getStorage().beacon).implementation();
   }
 }

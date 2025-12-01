@@ -13,19 +13,24 @@ contract AlgebraPluginBeacon is UpgradeableBeacon {
 
   address public immutable algebraFactory;
 
+  /// @notice The plugin factory that created this beacon (authorized for upgrades)
+  address public immutable pluginFactory;
+
   error Unauthorized();
 
-  constructor(
-    address _algebraFactory, 
-    address implementation_
-  ) UpgradeableBeacon(implementation_) {
+  constructor(address _algebraFactory, address implementation_) UpgradeableBeacon(implementation_) {
     algebraFactory = _algebraFactory;
+    pluginFactory = msg.sender;
   }
 
   /// @notice Upgrades the beacon to a new implementation
   /// @param newImplementation Address of the new implementation
   function upgradeTo(address newImplementation) public override {
-    if (!IAlgebraFactory(algebraFactory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender)) {
+    // Allow upgrade from pluginFactory or from authorized accounts via AlgebraFactory
+    if (
+      msg.sender != pluginFactory &&
+      !IAlgebraFactory(algebraFactory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender)
+    ) {
       revert Unauthorized();
     }
     super.upgradeTo(newImplementation);

@@ -187,7 +187,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         await mockPool.swapToTick(-130);
 
         expect(await plugin.incentive()).to.be.eq(await virtualPoolMock.getAddress());
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.true;
+        expect(await plugin.isIncentiveConnected.staticCall(virtualPoolMock)).to.be.true;
 
         const tick = (await mockPool.globalState()).tick;
         expect(await virtualPoolMock.currentTick()).to.be.eq(tick);
@@ -205,7 +205,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         await mockPool.swapToTick(-130);
 
         expect(await plugin.incentive()).to.be.eq(await virtualPoolMock.getAddress());
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.true;
+        expect(await plugin.isIncentiveConnected.staticCall(virtualPoolMock)).to.be.true;
 
         const tick = (await mockPool.globalState()).tick;
         expect(await virtualPoolMock.currentTick()).to.be.eq(tick);
@@ -225,27 +225,27 @@ describe('AlgebraUpgradeablePlugin', () => {
       it('true with active incentive', async () => {
         await mockPool.setPlugin(plugin);
         await plugin.setIncentive(virtualPoolMock);
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.true;
+        expect(await plugin.isIncentiveConnected.staticCall(virtualPoolMock)).to.be.true;
       });
 
       it('false with invalid address', async () => {
         await mockPool.setPlugin(plugin);
         await plugin.setIncentive(virtualPoolMock);
-        expect(await plugin.isIncentiveConnected(wallet.address)).to.be.false;
+        expect(await plugin.isIncentiveConnected.staticCall(wallet.address)).to.be.false;
       });
 
       it('false if plugin detached', async () => {
         await mockPool.setPlugin(plugin);
         await plugin.setIncentive(virtualPoolMock);
         await mockPool.setPlugin(ZeroAddress);
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.false;
+        expect(await plugin.isIncentiveConnected.staticCall(virtualPoolMock)).to.be.false;
       });
 
       it('false if hook deactivated', async () => {
         await mockPool.setPlugin(plugin);
         await plugin.setIncentive(virtualPoolMock);
         await mockPool.setPluginConfig(0);
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.false;
+        expect(await plugin.isIncentiveConnected.staticCall(virtualPoolMock)).to.be.false;
       });
     });
 
@@ -277,7 +277,7 @@ describe('AlgebraUpgradeablePlugin', () => {
     describe('#getActiveModulesCount', () => {
       it('returns correct count of active modules', async () => {
         const moduleCount = await plugin.getActiveModulesCount();
-        expect(moduleCount).to.eq(1); // Only FarmingProxy in upgradeable version
+        expect(moduleCount).to.eq(3); // VolatilityOracle, DynamicFee, FarmingProxy by default
       });
     });
 
@@ -302,7 +302,9 @@ describe('AlgebraUpgradeablePlugin', () => {
         }
 
         // Check that expected modules are present
-        expect(moduleNames).to.include('Farming Proxy Plugin');
+        expect(moduleNames).to.include('Volatility Oracle');
+        expect(moduleNames).to.include('Dynamic Fee');
+        expect(moduleNames).to.include('Farming Proxy');
       });
 
       it('reverts when index is out of bounds', async () => {
@@ -317,7 +319,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
         expect(moduleNames).to.be.an('array');
-        expect(moduleNames.length).to.eq(1);
+        expect(moduleNames.length).to.eq(3);
         
         // Check each module name is a non-empty string
         for (const moduleName of moduleNames) {
@@ -330,10 +332,12 @@ describe('AlgebraUpgradeablePlugin', () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
         // Verify all expected modules are present
-        expect(moduleNames).to.include('Farming Proxy Plugin');  
+        expect(moduleNames).to.include('Volatility Oracle');
+        expect(moduleNames).to.include('Dynamic Fee');
+        expect(moduleNames).to.include('Farming Proxy');
         
-        // Verify no unexpected modules
-        expect(moduleNames).to.have.lengthOf(1);
+        // Verify module count
+        expect(moduleNames).to.have.lengthOf(3);
       });
 
       it('returns consistent results with individual getModuleName calls', async () => {

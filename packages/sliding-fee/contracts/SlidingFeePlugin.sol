@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.20;
 
-import {TickMath} from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
-import {FullMath} from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
+import { TickMath } from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
+import { FullMath } from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 
-import {Plugins} from '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
-import {ISlidingFeePlugin} from './interfaces/ISlidingFeePlugin.sol';
-import {BaseAbstractPlugin} from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
+import { Plugins } from '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import { ISlidingFeePlugin } from './interfaces/ISlidingFeePlugin.sol';
+import { BaseAbstractPlugin } from '@cryptoalgebra/abstract-plugin/contracts/BaseAbstractPlugin.sol';
 
 abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
   using Plugins for uint8;
@@ -26,7 +26,7 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
   constructor(uint16 _baseFee) {
     FeeFactors memory feeFactors = FeeFactors(uint128(1 << FEE_FACTOR_SHIFT), uint128(1 << FEE_FACTOR_SHIFT));
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
-    activeModules.push("Sliding Fee Plugin"); 
+    activeModules.push('Sliding Fee Plugin');
     s_feeFactors = feeFactors;
     s_baseFee = _baseFee;
   }
@@ -72,7 +72,11 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
     emit BaseFee(newBaseFee);
   }
 
-  function _calculateFeeFactors(int24 currentTick, int24 lastTick, uint16 priceChangeFactor) internal view returns (FeeFactors memory feeFactors) {
+  function _calculateFeeFactors(
+    int24 currentTick,
+    int24 lastTick,
+    uint16 priceChangeFactor
+  ) internal view returns (FeeFactors memory feeFactors) {
     int256 tickDelta = int256(currentTick) - int256(lastTick);
     if (tickDelta > TickMath.MAX_TICK) {
       tickDelta = TickMath.MAX_TICK;
@@ -82,7 +86,8 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
     uint256 sqrtPriceDelta = uint256(TickMath.getSqrtRatioAtTick(int24(tickDelta)));
 
     // price change is positive after oneToZero prevalence
-    int256 priceChangeRatio = int256(FullMath.mulDiv(sqrtPriceDelta, sqrtPriceDelta, 2 ** 96)) - int256(1 << FEE_FACTOR_SHIFT); // (currentPrice - lastPrice) / lastPrice
+    int256 priceChangeRatio = int256(FullMath.mulDiv(sqrtPriceDelta, sqrtPriceDelta, 2 ** 96)) -
+      int256(1 << FEE_FACTOR_SHIFT); // (currentPrice - lastPrice) / lastPrice
     int256 feeFactorImpact = (priceChangeRatio * int256(uint256(priceChangeFactor))) / FACTOR_DENOMINATOR;
 
     feeFactors = s_feeFactors;
@@ -94,7 +99,10 @@ abstract contract SlidingFeePlugin is BaseAbstractPlugin, ISlidingFeePlugin {
     int256 newZeroToOneFeeFactor = int128(feeFactors.zeroToOneFeeFactor) - feeFactorImpact;
 
     if (0 < newZeroToOneFeeFactor && newZeroToOneFeeFactor < (int128(2) << FEE_FACTOR_SHIFT)) {
-      feeFactors = FeeFactors(uint128(int128(newZeroToOneFeeFactor)), uint128(int128(feeFactors.oneToZeroFeeFactor) + int128(feeFactorImpact)));
+      feeFactors = FeeFactors(
+        uint128(int128(newZeroToOneFeeFactor)),
+        uint128(int128(feeFactors.oneToZeroFeeFactor) + int128(feeFactorImpact))
+      );
     } else if (newZeroToOneFeeFactor <= 0) {
       // In this case price has decreased that much so newZeroToOneFeeFactor is less than 0
       // So we set it to the minimal value == 0

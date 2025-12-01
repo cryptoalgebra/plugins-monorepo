@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.20;
 
-import {TickMath} from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
-import {FullMath} from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
+import { TickMath } from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
+import { FullMath } from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 
 /// @title SlidingFee Plugin Implementation
 /// @notice This contract contains ALL logic for SlidingFee plugin that works with namespaced storage
@@ -119,8 +119,8 @@ contract SlidingFeePluginImplementation {
 
   function _calculateFeeFactors(
     SlidingFeeLayout storage layout,
-    int24 currentTick, 
-    int24 lastTick, 
+    int24 currentTick,
+    int24 lastTick,
     uint16 priceChangeFactor
   ) internal view returns (FeeFactors memory feeFactors) {
     int256 tickDelta = int256(currentTick) - int256(lastTick);
@@ -132,7 +132,8 @@ contract SlidingFeePluginImplementation {
     uint256 sqrtPriceDelta = uint256(TickMath.getSqrtRatioAtTick(int24(tickDelta)));
 
     // price change is positive after oneToZero prevalence
-    int256 priceChangeRatio = int256(FullMath.mulDiv(sqrtPriceDelta, sqrtPriceDelta, 2 ** 96)) - int256(1 << FEE_FACTOR_SHIFT);
+    int256 priceChangeRatio = int256(FullMath.mulDiv(sqrtPriceDelta, sqrtPriceDelta, 2 ** 96)) -
+      int256(1 << FEE_FACTOR_SHIFT);
     int256 feeFactorImpact = (priceChangeRatio * int256(uint256(priceChangeFactor))) / FACTOR_DENOMINATOR;
 
     feeFactors = layout.feeFactors;
@@ -140,7 +141,10 @@ contract SlidingFeePluginImplementation {
     int256 newZeroToOneFeeFactor = int128(feeFactors.zeroToOneFeeFactor) - feeFactorImpact;
 
     if (0 < newZeroToOneFeeFactor && newZeroToOneFeeFactor < (int128(2) << FEE_FACTOR_SHIFT)) {
-      feeFactors = FeeFactors(uint128(int128(newZeroToOneFeeFactor)), uint128(int128(feeFactors.oneToZeroFeeFactor) + int128(feeFactorImpact)));
+      feeFactors = FeeFactors(
+        uint128(int128(newZeroToOneFeeFactor)),
+        uint128(int128(feeFactors.oneToZeroFeeFactor) + int128(feeFactorImpact))
+      );
     } else if (newZeroToOneFeeFactor <= 0) {
       feeFactors = FeeFactors(0, uint128(2 << FEE_FACTOR_SHIFT));
     } else {

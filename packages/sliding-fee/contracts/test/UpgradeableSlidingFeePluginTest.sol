@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity =0.8.20;
+
+import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
+
+import '../SlidingFeeConnector.sol';
+
+/// @title Upgradeable SlidingFee Plugin for Testing
+/// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with SlidingFee connector
+contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFeeConnector {
+  using Plugins for uint8;
+
+  /// @dev Last tick storage for fee calculation
+  int24 public lastTick;
+
+  /// @dev Constructor sets immutable implementation address
+  /// @param _factory The Algebra factory address
+  /// @param _pluginFactory The plugin factory address
+  /// @param _slidingFeeImplementation The SlidingFee implementation address
+  constructor(
+    address _factory,
+    address _pluginFactory,
+    address _slidingFeeImplementation
+  ) UpgradeableAbstractPlugin(_factory, _pluginFactory) SlidingFeeConnector(_slidingFeeImplementation) {}
+
+  /// @notice Initialize the plugin for a specific pool
+  /// @param _pool The pool address this plugin is attached to
+  /// @param _baseFee The base fee for sliding fee calculation
+  function initialize(address _pool, uint16 _baseFee) external initializer {
+    __UpgradeableAbstractPlugin_init(_pool);
+
+    uint8 slidingFeeConfig = _initializeSlidingFee(_baseFee);
+    defaultPluginConfig = defaultPluginConfig | slidingFeeConfig;
+
+    activeModules.push('Sliding Fee Plugin');
+  }
+
+  // ###### HOOKS ######
+
+  function beforeInitialize(
+    address,
+    uint160
+  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+    _updatePluginConfigInPool(defaultPluginConfig);
+    return IAlgebraPlugin.beforeInitialize.selector;
+  }
+
+  function afterInitialize(
+    address,
+    uint160,
+    int24 tick
+  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+    lastTick = tick;
+    return IAlgebraPlugin.afterInitialize.selector;
+  }
+
+  function beforeSwap(
+    address,
+    address,
+    bool zeroToOne,
+    int256,
+    uint160,
+    bool,
+    bytes calldata
+  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4, uint24, uint24) {
+    (, int24 tick, , ) = _getPoolState();
+    uint16 fee = _getFeeAndUpdateFactors(zeroToOne, tick, lastTick);
+    lastTick = tick;
+    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
+  }
+
+  // ###### Public getters ######
+
+  /// @notice Get the current price change factor
+  function priceChangeFactor() external returns (uint16) {
+    return _getPriceChangeFactor();
+  }
+
+  /// @notice Get the current base fee
+  function baseFee() external returns (uint16) {
+    return _getBaseFee();
+  }
+
+  /// @notice Get the current fee factors
+  function feeFactors() external returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
+    return _getFeeFactors();
+  }
+
+  // ###### Authorization ######
+
+  /// @dev Authorization check for SlidingFeeConnector - only ALGEBRA_BASE_PLUGIN_MANAGER
+  function _authorize() internal view override(UpgradeableAbstractPlugin, BaseConnector) {
+    require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender), 'Not authorized');
+  }
+}

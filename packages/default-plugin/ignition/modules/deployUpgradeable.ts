@@ -108,10 +108,10 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
 });
 
 // ============= FACTORY IMPLEMENTATION =============
-// Deploy the UUPS upgradeable factory implementation
+// Deploy the Transparent Upgradeable Proxy factory implementation
 
 const FactoryImplementationModule = buildModule("FactoryImplementation", (m) => {
-  // Deploy factory implementation (for UUPS proxy)
+  // Deploy factory implementation (for Transparent Proxy)
   const factoryImpl = m.contract("AlgebraUpgradeablePluginFactory", [], {
     id: "FactoryImplementation"
   });
@@ -126,6 +126,9 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   const { pluginImpl } = m.useModule(PluginImplementationModule);
   const { factoryImpl } = m.useModule(FactoryImplementationModule);
 
+  // Get deployer address for ProxyAdmin
+  const proxyAdminOwner = m.getParameter("proxyAdminOwner", m.getAccount(0));
+
   // Encode initialize call data for the factory proxy
   const initializeCalldata = m.encodeFunctionCall(factoryImpl, "initialize", [
     config.algebraFactory,
@@ -133,9 +136,10 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     config.defaultFeeConfig
   ]);
 
-  // Deploy ERC1967Proxy pointing to factory implementation
-  const factoryProxy = m.contract("ERC1967Proxy", [
+  // Deploy TransparentUpgradeableProxy pointing to factory implementation
+  const factoryProxy = m.contract("TransparentUpgradeableProxy", [
     factoryImpl,
+    proxyAdminOwner,
     initializeCalldata
   ], {
     id: "FactoryProxy"
@@ -186,28 +190,30 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
 });
 
 // ============= UPGRADE MODULE =============
-// Use this module to upgrade the factory to a new implementation
+// Use this module to upgrade the factory via ProxyAdmin
+// Note: You need to call ProxyAdmin.upgradeAndCall() directly
 
 export const UpgradeFactoryModule = buildModule("UpgradeFactory", (m) => {
   // Get existing factory proxy address (update this after initial deployment)
   const existingFactoryProxy = m.getParameter("factoryProxyAddress", "0x0000000000000000000000000000000000000000");
+  const proxyAdminAddress = m.getParameter("proxyAdminAddress", "0x0000000000000000000000000000000000000000");
   
   // Deploy new factory implementation
   const newFactoryImpl = m.contract("AlgebraUpgradeablePluginFactory", [], {
     id: "NewFactoryImplementation"
   });
 
-  // Get factory instance at proxy address
-  const factory = m.contractAt("AlgebraUpgradeablePluginFactory", existingFactoryProxy, {
-    id: "ExistingFactory"
+  // Get ProxyAdmin instance
+  const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress, {
+    id: "ProxyAdmin"
   });
 
-  // Upgrade to new implementation
-  m.call(factory, "upgradeTo", [newFactoryImpl], {
+  // Upgrade to new implementation via ProxyAdmin
+  m.call(proxyAdmin, "upgradeAndCall", [existingFactoryProxy, newFactoryImpl, "0x"], {
     id: "UpgradeFactory"
   });
 
-  return { newFactoryImpl, factory };
+  return { newFactoryImpl, proxyAdmin };
 });
 
 // ============= PLUGIN UPGRADE MODULE =============

@@ -34,6 +34,8 @@ const config: HardhatUserConfig = {
       '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol',
       '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol',
       '@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol',
+      '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol',
+      '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol',
       '@cryptoalgebra/test-utils/contracts/TestERC20.sol',
     ],
   },

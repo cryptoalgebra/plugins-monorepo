@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import '@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
@@ -18,10 +17,10 @@ import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Upgradeable Plugin Factory
 /// @notice Factory for deploying upgradeable plugins using Beacon Proxy pattern
-/// @dev UUPS upgradeable with ERC-7201 namespaced storage for safe upgrades
+/// @dev Uses Transparent Upgradeable Proxy pattern with ERC-7201 namespaced storage
+/// @dev Deploy behind TransparentUpgradeableProxy from OpenZeppelin
 contract AlgebraUpgradeablePluginFactory is
   Initializable,
-  UUPSUpgradeable,
   IBasePluginFactory,
   IFarmingPluginFactory,
   IDynamicFeePluginFactory,
@@ -95,8 +94,6 @@ contract AlgebraUpgradeablePluginFactory is
     address pluginImplementation,
     AlgebraFeeConfiguration memory initialFeeConfig
   ) external initializer {
-    __UUPSUpgradeable_init();
-
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
     s.beacon = address(new AlgebraPluginBeacon(_algebraFactory, pluginImplementation));
@@ -123,11 +120,6 @@ contract AlgebraUpgradeablePluginFactory is
   function beacon() external view returns (address) {
     return _getStorage().beacon;
   }
-
-  // ========== UUPS Upgrade Authorization ==========
-
-  /// @dev Only administrator can authorize factory upgrades
-  function _authorizeUpgrade(address) internal override onlyAdministrator {}
 
   // ========== Plugin Creation ==========
 

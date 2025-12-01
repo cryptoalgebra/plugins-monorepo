@@ -11,6 +11,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
   let pluginFactory: any;
   let pluginFactoryImpl: any;
+  let proxyAdmin: any;
+  let proxyAdminOwner: any;
   let mockAlgebraFactory: MockFactory;
 
   before('prepare signers', async () => {
@@ -18,10 +20,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
   });
 
   beforeEach('deploy test pluginFactory', async () => {
-    ({ pluginFactory, pluginFactoryImpl, mockFactory: mockAlgebraFactory } = await loadFixture(pluginFactoryFixture));
+    ({ pluginFactory, pluginFactoryImpl, proxyAdmin, proxyAdminOwner, mockFactory: mockAlgebraFactory } = await loadFixture(pluginFactoryFixture));
   });
 
-  describe('#UUPS Proxy', () => {
+  describe('#Transparent Proxy', () => {
     it('is deployed as proxy', async () => {
       const factoryAddress = await pluginFactory.getAddress();
       const implAddress = await pluginFactoryImpl.getAddress();
@@ -47,26 +49,36 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         )
       ).to.be.revertedWith('Initializable: contract is already initialized');
     });
+
+    it('has ProxyAdmin deployed', async () => {
+      const proxyAdminAddress = await proxyAdmin.getAddress();
+      expect(proxyAdminAddress).to.not.eq(ZERO_ADDRESS);
+    });
   });
 
-  describe('#Factory UUPS Upgrade', () => {
-    it('only administrator can upgrade factory', async () => {
+  describe('#Factory Upgrade via ProxyAdmin', () => {
+    it('only ProxyAdmin owner can upgrade factory', async () => {
       // Deploy a new factory implementation
       const newFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
+      const proxyAddress = await pluginFactory.getAddress();
+
+      // Other user (not proxyAdminOwner) cannot upgrade via ProxyAdmin
       await expect(
-        pluginFactory.connect(other).upgradeTo(await newFactoryImpl.getAddress())
-      ).to.be.revertedWith('Only administrator');
+        proxyAdmin.connect(other).upgrade(proxyAddress, await newFactoryImpl.getAddress())
+      ).to.be.reverted;
     });
 
-    it('administrator can upgrade factory', async () => {
+    it('ProxyAdmin owner can upgrade factory', async () => {
       // Deploy a new factory implementation
       const newFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      // Upgrade should succeed for admin (owner)
-      await pluginFactory.upgradeTo(await newFactoryImpl.getAddress());
+      const proxyAddress = await pluginFactory.getAddress();
+
+      // Upgrade should succeed for ProxyAdmin owner (use upgrade, not upgradeAndCall)
+      await proxyAdmin.connect(proxyAdminOwner).upgrade(proxyAddress, await newFactoryImpl.getAddress());
 
       // Verify factory still works after upgrade
       const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
@@ -92,8 +104,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      // Upgrade
-      await pluginFactory.upgradeTo(await newFactoryImpl.getAddress());
+      const proxyAddress = await pluginFactory.getAddress();
+
+      // Upgrade via ProxyAdmin (use upgrade, not upgradeAndCall)
+      await proxyAdmin.connect(proxyAdminOwner).upgrade(proxyAddress, await newFactoryImpl.getAddress());
 
       // Verify storage is preserved
       const newConfig = await pluginFactory.defaultFeeConfiguration();

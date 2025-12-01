@@ -100,10 +100,12 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   };
 };
 
-// AlgebraUpgradeablePluginFactory fixture (UUPS upgradeable)
+// AlgebraUpgradeablePluginFactory fixture (Transparent Upgradeable Proxy)
 interface PluginFactoryFixture extends MockFactoryFixture {
   pluginFactory: any;
   pluginFactoryImpl: any;
+  proxyAdmin: any;
+  proxyAdminOwner: any;
 }
 
 export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async function (): Promise<PluginFactoryFixture> {
@@ -112,11 +114,34 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
 
   const mockFactoryAddress = await (mockFactory as any).getAddress();
 
-  // Deploy plugin implementation for beacon
+  // Get signers - use a DIFFERENT account for ProxyAdmin owner
+  // This is important because TransparentProxy blocks calls from admin to implementation
+  const signers = await ethers.getSigners();
+  const proxyAdminOwner = signers[signers.length - 1]; // Use last signer as ProxyAdmin owner
+
+  // Deploy ProxyAdmin contract (OZ 4.x doesn't auto-create it)
+  const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
+  const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
+
+  // Deploy AlgebraUpgradeablePluginFactory implementation
+  const pluginFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
+  const pluginFactoryImpl = await pluginFactoryImplFactory.deploy();
+
+  // Deploy TransparentUpgradeableProxy with ProxyAdmin as admin
+  const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+  const proxy = await TransparentProxyFactory.deploy(
+    await pluginFactoryImpl.getAddress(),
+    await proxyAdmin.getAddress(), // ProxyAdmin contract address
+    '0x' // No init data - we'll initialize later
+  );
+
+  const proxyAddress = await proxy.getAddress();
+
+  // Now deploy plugin implementation with the REAL proxy address as pluginFactory
   const pluginImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
   const pluginImpl = await pluginImplFactory.deploy(
     mockFactoryAddress,
-    '0x0000000000000000000000000000000000000001', // placeholder for pluginFactory
+    proxyAddress, // Use real proxy address as pluginFactory
     implementations.volatilityOracleImpl,
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
@@ -124,30 +149,21 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.securityImpl
   );
 
-  // Deploy AlgebraUpgradeablePluginFactory implementation (for UUPS)
-  const pluginFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
-  const pluginFactoryImpl = await pluginFactoryImplFactory.deploy();
+  // Attach factory interface to proxy
+  const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
 
-  // Encode initialize call data
-  const initData = pluginFactoryImpl.interface.encodeFunctionData('initialize', [
+  // Now initialize the factory with the correct plugin implementation
+  await pluginFactory.initialize(
     mockFactoryAddress,
     await pluginImpl.getAddress(),
     DEFAULT_FEE_CONFIGURATION
-  ]);
-
-  // Deploy ERC1967Proxy pointing to the implementation
-  const ERC1967ProxyFactory = await ethers.getContractFactory('ERC1967Proxy');
-  const proxy = await ERC1967ProxyFactory.deploy(
-    await pluginFactoryImpl.getAddress(),
-    initData
   );
-
-  // Attach factory interface to proxy
-  const pluginFactory = pluginFactoryImplFactory.attach(await proxy.getAddress());
 
   return {
     pluginFactory,
     pluginFactoryImpl,
+    proxyAdmin,
+    proxyAdminOwner,
     mockFactory,
   };
 };

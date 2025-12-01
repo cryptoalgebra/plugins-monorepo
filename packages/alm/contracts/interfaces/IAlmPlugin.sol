@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
-
-interface IAlmPlugin is IAbstractPlugin {
+interface IAlmPlugin {
   /// @notice Initializing ALM plugin
   /// @param _rebalanceManager address of rebalance manager
   /// @param _slowTwapPeriod period in seconds to get slow TWAP

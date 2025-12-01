@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
-
 /// @title The interface for the Algebra farming plugin
 /// @dev This contract used for virtual pools in farms
-interface IFarmingPlugin is IAbstractPlugin {
+interface IFarmingPlugin {
   /// @notice Emitted when new activeIncentive is set
   /// @param newIncentive The address of the new incentive
   event Incentive(address newIncentive);

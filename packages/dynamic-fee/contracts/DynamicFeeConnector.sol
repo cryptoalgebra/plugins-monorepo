@@ -57,17 +57,12 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
     return abi.decode(returnData, (uint16));
   }
 
-  /// @notice Change fee configuration via delegatecall
-  function _changeFeeConfiguration(AlgebraFeeConfiguration calldata config) internal {
-    _delegateCall(
-      dynamicFeeImplementation,
-      abi.encodeCall(IDynamicFeePluginImplementation.changeFeeConfiguration, (config))
-    );
-  }
+  // ###### Public Interface (IDynamicFeeManager) ######
 
-  /// @notice Get fee configuration via delegatecall
-  function _getFeeConfig()
-    internal
+  /// @inheritdoc IDynamicFeeManager
+  function feeConfig()
+    external
+    override
     returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
   {
     bytes memory returnData = _delegateCall(
@@ -77,21 +72,13 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
     return abi.decode(returnData, (uint16, uint16, uint32, uint32, uint16, uint16, uint16));
   }
 
-  // ###### Public Interface (IDynamicFeeManager) ######
-
-  /// @inheritdoc IDynamicFeeManager
-  function feeConfig()
-    external
-    override
-    returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
-  {
-    return _getFeeConfig();
-  }
-
   /// @inheritdoc IDynamicFeeManager
   function changeFeeConfiguration(AlgebraFeeConfiguration calldata config) external override {
     _authorize();
-    _changeFeeConfiguration(config);
+    _delegateCall(
+      dynamicFeeImplementation,
+      abi.encodeCall(IDynamicFeePluginImplementation.changeFeeConfiguration, (config))
+    );
     emit FeeConfiguration(config);
   }
 

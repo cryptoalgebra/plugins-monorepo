@@ -52,30 +52,6 @@ abstract contract VolatilityOracleConnector is BaseConnector {
     return VOLATILITY_ORACLE_PLUGIN_CONFIG;
   }
 
-  /// @notice Set initialized state via delegatecall
-  function _setInitialized(bool initialized) internal {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.setInitialized, (initialized))
-    );
-  }
-
-  /// @notice Set timepoint index via delegatecall
-  function _setTimepointIndex(uint16 index) internal {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.setTimepointIndex, (index))
-    );
-  }
-
-  /// @notice Set last timepoint timestamp via delegatecall
-  function _setLastTimepointTimestamp(uint32 timestamp) internal {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.setLastTimepointTimestamp, (timestamp))
-    );
-  }
-
   /// @notice Get initialized state via delegatecall
   function _getIsInitialized() internal returns (bool) {
     bytes memory returnData = _delegateCall(
@@ -114,22 +90,6 @@ abstract contract VolatilityOracleConnector is BaseConnector {
     return abi.decode(returnData, (VolatilityOracle.Timepoint));
   }
 
-  /// @notice Set a single timepoint by index via delegatecall
-  function _setTimepoint(uint16 index, VolatilityOracle.Timepoint memory timepoint) internal {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.setTimepoint, (index, timepoint))
-    );
-  }
-
-  /// @notice Initialize timepoints array via delegatecall
-  function _initializeTimepoints(uint32 time, int24 tick) internal {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.initializeTimepoints, (time, tick))
-    );
-  }
-
   /// @notice Initialize TWAP oracle - single call that initializes timepoints and sets state
   /// @dev Equivalent to the original _initialize_TWAP in VolatilityOraclePlugin
   function _initialize_TWAP(uint32 time, int24 tick) internal {
@@ -162,80 +122,6 @@ abstract contract VolatilityOracleConnector is BaseConnector {
     bytes memory returnData = _delegateCall(
       volatilityOracleImplementation,
       abi.encodeCall(IVolatilityOraclePluginImplementation.getAverageVolatilityLast, (_blockTimestamp(), tick))
-    );
-    return abi.decode(returnData, (uint88));
-  }
-
-  /// @notice Write new timepoint via delegatecall (explicit parameters version)
-  function _writeTimepoint(
-    uint16 lastIndex,
-    uint32 blockTimestamp,
-    int24 tick
-  ) internal returns (uint16 indexUpdated, uint16 oldestIndex) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.writeTimepoint, (lastIndex, blockTimestamp, tick))
-    );
-    return abi.decode(returnData, (uint16, uint16));
-  }
-
-  /// @notice Get oldest timepoint index via delegatecall
-  function _getOldestTimepointIndex(uint16 lastIndex) internal returns (uint16) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getOldestTimepointIndex, (lastIndex))
-    );
-    return abi.decode(returnData, (uint16));
-  }
-
-  /// @notice Get single timepoint data via delegatecall
-  function _getSingleTimepointData(
-    uint32 time,
-    uint32 secondsAgo,
-    int24 tick,
-    uint16 lastIndex,
-    uint16 oldestIndex
-  ) internal returns (VolatilityOracle.Timepoint memory) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(
-        IVolatilityOraclePluginImplementation.getSingleTimepointData,
-        (time, secondsAgo, tick, lastIndex, oldestIndex)
-      )
-    );
-    return abi.decode(returnData, (VolatilityOracle.Timepoint));
-  }
-
-  /// @notice Get multiple timepoints data via delegatecall
-  function _getTimepointsData(
-    uint32 currentTime,
-    uint32[] memory secondsAgos,
-    int24 tick,
-    uint16 lastIndex
-  ) internal returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(
-        IVolatilityOraclePluginImplementation.getTimepointsData,
-        (currentTime, secondsAgos, tick, lastIndex)
-      )
-    );
-    return abi.decode(returnData, (int56[], uint88[]));
-  }
-
-  /// @notice Get average volatility via delegatecall
-  function _getAverageVolatilityData(
-    uint32 currentTime,
-    int24 tick,
-    uint16 lastIndex,
-    uint16 oldestIndex
-  ) internal returns (uint88) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(
-        IVolatilityOraclePluginImplementation.getAverageVolatilityData,
-        (currentTime, tick, lastIndex, oldestIndex)
-      )
     );
     return abi.decode(returnData, (uint88));
   }

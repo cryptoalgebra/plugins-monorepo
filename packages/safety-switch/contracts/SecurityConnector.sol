@@ -31,23 +31,6 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
     return SECURITY_PLUGIN_CONFIG;
   }
 
-  /// @notice Set security registry via delegatecall
-  function _setSecurityRegistry(address _securityRegistry) internal {
-    _delegateCall(
-      securityImplementation,
-      abi.encodeCall(ISecurityPluginImplementation.setSecurityRegistry, (_securityRegistry))
-    );
-  }
-
-  /// @notice Get security registry via delegatecall
-  function _getSecurityRegistry() internal returns (address) {
-    bytes memory returnData = _delegateCall(
-      securityImplementation,
-      abi.encodeCall(ISecurityPluginImplementation.getSecurityRegistry, ())
-    );
-    return abi.decode(returnData, (address));
-  }
-
   /// @notice Check status via delegatecall
   function _checkStatus(address poolAddress) internal {
     _delegateCall(securityImplementation, abi.encodeCall(ISecurityPluginImplementation.checkStatus, (poolAddress)));
@@ -66,12 +49,19 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   /// @inheritdoc ISecurityPlugin
   function setSecurityRegistry(address registry) external override {
     _authorize();
-    _setSecurityRegistry(registry);
+    _delegateCall(
+      securityImplementation,
+      abi.encodeCall(ISecurityPluginImplementation.setSecurityRegistry, (registry))
+    );
     emit SecurityRegistry(registry);
   }
 
   /// @inheritdoc ISecurityPlugin
   function getSecurityRegistry() external override returns (address) {
-    return _getSecurityRegistry();
+    bytes memory returnData = _delegateCall(
+      securityImplementation,
+      abi.encodeCall(ISecurityPluginImplementation.getSecurityRegistry, ())
+    );
+    return abi.decode(returnData, (address));
   }
 }

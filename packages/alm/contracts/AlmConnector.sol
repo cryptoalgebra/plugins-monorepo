@@ -30,26 +30,6 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
     return ALM_PLUGIN_CONFIG;
   }
 
-  function _setSlowTwapPeriod(uint32 _slowTwapPeriod) internal {
-    _delegateCall(almImplementation, abi.encodeCall(IAlmPluginImplementation.setSlowTwapPeriod, (_slowTwapPeriod)));
-  }
-
-  function _setFastTwapPeriod(uint32 _fastTwapPeriod) internal {
-    _delegateCall(almImplementation, abi.encodeCall(IAlmPluginImplementation.setFastTwapPeriod, (_fastTwapPeriod)));
-  }
-
-  function _setRebalanceManager(address _rebalanceManager) internal {
-    _delegateCall(almImplementation, abi.encodeCall(IAlmPluginImplementation.setRebalanceManager, (_rebalanceManager)));
-  }
-
-  function _getRebalanceManager() internal returns (address) {
-    bytes memory returnData = _delegateCall(
-      almImplementation,
-      abi.encodeCall(IAlmPluginImplementation.getRebalanceManager, ())
-    );
-    return abi.decode(returnData, (address));
-  }
-
   function _getSlowTwapPeriod() internal returns (uint32) {
     bytes memory returnData = _delegateCall(
       almImplementation,
@@ -85,7 +65,11 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
 
   /// @inheritdoc IAlmPlugin
   function rebalanceManager() external override returns (address) {
-    return _getRebalanceManager();
+    bytes memory returnData = _delegateCall(
+      almImplementation,
+      abi.encodeCall(IAlmPluginImplementation.getRebalanceManager, ())
+    );
+    return abi.decode(returnData, (address));
   }
 
   /// @inheritdoc IAlmPlugin
@@ -107,18 +91,18 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
   /// @inheritdoc IAlmPlugin
   function setSlowTwapPeriod(uint32 _slowTwapPeriod) external override {
     _authorize();
-    _setSlowTwapPeriod(_slowTwapPeriod);
+    _delegateCall(almImplementation, abi.encodeCall(IAlmPluginImplementation.setSlowTwapPeriod, (_slowTwapPeriod)));
   }
 
   /// @inheritdoc IAlmPlugin
   function setFastTwapPeriod(uint32 _fastTwapPeriod) external override {
     _authorize();
-    _setFastTwapPeriod(_fastTwapPeriod);
+    _delegateCall(almImplementation, abi.encodeCall(IAlmPluginImplementation.setFastTwapPeriod, (_fastTwapPeriod)));
   }
 
   /// @inheritdoc IAlmPlugin
   function setRebalanceManager(address _rebalanceManager) external override {
     _authorize();
-    _setRebalanceManager(_rebalanceManager);
+    _delegateCall(almImplementation, abi.encodeCall(IAlmPluginImplementation.setRebalanceManager, (_rebalanceManager)));
   }
 }

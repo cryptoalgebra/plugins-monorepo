@@ -30,23 +30,6 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
     return FEE_DISCOUNT_PLUGIN_CONFIG;
   }
 
-  /// @notice Set fee discount registry via delegatecall
-  function _setFeeDiscountRegistry(address _feeDiscountRegistry) internal {
-    _delegateCall(
-      feeDiscountImplementation,
-      abi.encodeCall(IFeeDiscountPluginImplementation.setFeeDiscountRegistry, (_feeDiscountRegistry))
-    );
-  }
-
-  /// @notice Get fee discount registry via delegatecall
-  function _getFeeDiscountRegistry() internal returns (address) {
-    bytes memory returnData = _delegateCall(
-      feeDiscountImplementation,
-      abi.encodeCall(IFeeDiscountPluginImplementation.getFeeDiscountRegistry, ())
-    );
-    return abi.decode(returnData, (address));
-  }
-
   /// @notice Apply fee discount via delegatecall
   function _applyFeeDiscount(address user, address pool, uint24 fee) internal returns (uint24) {
     bytes memory returnData = _delegateCall(
@@ -61,12 +44,19 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   /// @inheritdoc IFeeDiscountPlugin
   function setFeeDiscountRegistry(address registry) external override {
     _authorize();
-    _setFeeDiscountRegistry(registry);
+    _delegateCall(
+      feeDiscountImplementation,
+      abi.encodeCall(IFeeDiscountPluginImplementation.setFeeDiscountRegistry, (registry))
+    );
     emit FeeDiscountRegistry(registry);
   }
 
   /// @inheritdoc IFeeDiscountPlugin
   function feeDiscountRegistry() external override returns (address) {
-    return _getFeeDiscountRegistry();
+    bytes memory returnData = _delegateCall(
+      feeDiscountImplementation,
+      abi.encodeCall(IFeeDiscountPluginImplementation.getFeeDiscountRegistry, ())
+    );
+    return abi.decode(returnData, (address));
   }
 }

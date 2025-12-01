@@ -51,25 +51,6 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
     return FARMING_PROXY_PLUGIN_CONFIG;
   }
 
-  /// @notice Set incentive via delegatecall
-  /// @dev All logic is in implementation, including access checks and plugin state management
-  function _setIncentive(address newIncentive, address pluginFactory, address pool) internal {
-    _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeCall(IFarmingProxyPluginImplementation.setIncentive, (newIncentive, pluginFactory, pool))
-    );
-  }
-
-  /// @notice Check if incentive is connected via delegatecall
-  /// @dev All logic is in implementation
-  function _isIncentiveConnected(address targetIncentive, address pool) internal returns (bool) {
-    bytes memory returnData = _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeCall(IFarmingProxyPluginImplementation.isIncentiveConnected, (targetIncentive, pool))
-    );
-    return abi.decode(returnData, (bool));
-  }
-
   /// @notice Update virtual pool tick via delegatecall
   function _updateVirtualPoolTick(bool zeroToOne, int24 tick) internal {
     _delegateCall(
@@ -87,16 +68,20 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
 
   /// @inheritdoc IFarmingPlugin
   function setIncentive(address newIncentive) external override {
-    address pluginFactory = _getPluginFactory();
-    address pool = _getPool();
-    _setIncentive(newIncentive, pluginFactory, pool);
+    _delegateCall(
+      farmingProxyImplementation,
+      abi.encodeCall(IFarmingProxyPluginImplementation.setIncentive, (newIncentive, _getPluginFactory(), _getPool()))
+    );
     emit Incentive(newIncentive);
   }
 
   /// @inheritdoc IFarmingPlugin
   function isIncentiveConnected(address targetIncentive) external override returns (bool) {
-    address pool = _getPool();
-    return _isIncentiveConnected(targetIncentive, pool);
+    bytes memory returnData = _delegateCall(
+      farmingProxyImplementation,
+      abi.encodeCall(IFarmingProxyPluginImplementation.isIncentiveConnected, (targetIncentive, _getPool()))
+    );
+    return abi.decode(returnData, (bool));
   }
 
   /// @inheritdoc IFarmingPlugin

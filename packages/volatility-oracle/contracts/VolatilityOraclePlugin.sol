@@ -31,8 +31,8 @@ abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracl
 
   constructor() {
     defaultPluginConfig = defaultPluginConfig | uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
-    
-    activeModules.push("Volatility Oracle Plugin");
+
+    activeModules.push('Volatility Oracle Plugin');
   }
 
   /// @inheritdoc IVolatilityOracle
@@ -55,12 +55,20 @@ abstract contract VolatilityOraclePlugin is BaseAbstractPlugin, IVolatilityOracl
   // ###### Volatility and TWAP oracle ######
 
   /// @inheritdoc IVolatilityOracle
-  function getSingleTimepoint(uint32 secondsAgo) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
+  function getSingleTimepoint(
+    uint32 secondsAgo
+  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
     // `volatilityCumulative` values for timestamps after the last timepoint _should not_ be compared: they may differ due to interpolation errors
     (, int24 tick, , ) = _getPoolState();
     uint16 lastTimepointIndex = timepointIndex;
     uint16 oldestIndex = timepoints.getOldestIndex(lastTimepointIndex);
-    VolatilityOracle.Timepoint memory result = timepoints.getSingleTimepoint(_blockTimestamp(), secondsAgo, tick, lastTimepointIndex, oldestIndex);
+    VolatilityOracle.Timepoint memory result = timepoints.getSingleTimepoint(
+      _blockTimestamp(),
+      secondsAgo,
+      tick,
+      lastTimepointIndex,
+      oldestIndex
+    );
     (tickCumulative, volatilityCumulative) = (result.tickCumulative, result.volatilityCumulative);
   }
 

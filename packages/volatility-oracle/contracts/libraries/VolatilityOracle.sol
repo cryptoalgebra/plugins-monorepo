@@ -101,7 +101,13 @@ library VolatilityOracle {
   ) internal view returns (Timepoint memory targetTimepoint) {
     unchecked {
       uint32 target = time - secondsAgo;
-      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(self, time, target, lastIndex, oldestIndex);
+      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(
+        self,
+        time,
+        target,
+        lastIndex,
+        oldestIndex
+      );
 
       targetTimepoint = beforeOrAt;
       if (target == targetTimepoint.blockTimestamp) return targetTimepoint; // we're at the left boundary
@@ -123,14 +129,16 @@ library VolatilityOracle {
       if (target == timestampAfter) return atOrAfter; // we're at the right boundary
 
       // we're in the middle
-      (uint32 timepointTimeDelta, uint32 targetDelta) = (timestampAfter - targetTimepoint.blockTimestamp, target - targetTimepoint.blockTimestamp);
+      (uint32 timepointTimeDelta, uint32 targetDelta) = (
+        timestampAfter - targetTimepoint.blockTimestamp,
+        target - targetTimepoint.blockTimestamp
+      );
 
       targetTimepoint.tickCumulative +=
         ((tickCumulativeAfter - targetTimepoint.tickCumulative) / int56(uint56(timepointTimeDelta))) *
         int56(uint56(targetDelta));
       targetTimepoint.volatilityCumulative +=
-        ((atOrAfter.volatilityCumulative - targetTimepoint.volatilityCumulative) / timepointTimeDelta) *
-        targetDelta;
+        ((atOrAfter.volatilityCumulative - targetTimepoint.volatilityCumulative) / timepointTimeDelta) * targetDelta;
     }
   }
 
@@ -169,7 +177,10 @@ library VolatilityOracle {
   /// @param self The stored timepoints array
   /// @param lastIndex The index of the timepoint that was most recently written to the timepoints array
   /// @return oldestIndex The index of the oldest timepoint
-  function getOldestIndex(Timepoint[UINT16_MODULO] storage self, uint16 lastIndex) internal view returns (uint16 oldestIndex) {
+  function getOldestIndex(
+    Timepoint[UINT16_MODULO] storage self,
+    uint16 lastIndex
+  ) internal view returns (uint16 oldestIndex) {
     unchecked {
       uint16 nextIndex = lastIndex + 1; // considering overflow
       if (self[nextIndex].initialized) oldestIndex = nextIndex; // check if we have overflow in the past
@@ -207,15 +218,25 @@ library VolatilityOracle {
         if (timeAtLastTimepoint) {
           // interpolate cumulative volatility to avoid search. Since the last timepoint has _just_ been written, we know for sure
           // that the start of the window is between windowStartIndex and windowStartIndex + 1
-          (oldestTimestamp, cumulativeVolatilityAtStart) = (self[windowStartIndex].blockTimestamp, self[windowStartIndex].volatilityCumulative);
+          (oldestTimestamp, cumulativeVolatilityAtStart) = (
+            self[windowStartIndex].blockTimestamp,
+            self[windowStartIndex].volatilityCumulative
+          );
 
           uint32 timeDeltaBetweenPoints = self[windowStartIndex + 1].blockTimestamp - oldestTimestamp;
 
           cumulativeVolatilityAtStart +=
-            ((self[windowStartIndex + 1].volatilityCumulative - cumulativeVolatilityAtStart) * (currentTime - WINDOW - oldestTimestamp)) /
-            timeDeltaBetweenPoints;
+            ((self[windowStartIndex + 1].volatilityCumulative - cumulativeVolatilityAtStart) *
+              (currentTime - WINDOW - oldestTimestamp)) / timeDeltaBetweenPoints;
         } else {
-          cumulativeVolatilityAtStart = _getVolatilityCumulativeAt(self, currentTime, WINDOW, tick, lastIndex, oldestIndex);
+          cumulativeVolatilityAtStart = _getVolatilityCumulativeAt(
+            self,
+            currentTime,
+            WINDOW,
+            tick,
+            lastIndex,
+            oldestIndex
+          );
         }
 
         return ((lastCumulativeVolatility - cumulativeVolatilityAtStart) / WINDOW); // sample is big enough to ignore bias of variance
@@ -253,7 +274,9 @@ library VolatilityOracle {
       last.initialized = true;
       last.blockTimestamp = blockTimestamp;
       last.tickCumulative += int56(tick) * int56(uint56(delta));
-      last.volatilityCumulative += uint88(_volatilityOnRange(int256(uint256(delta)), tick, tick, last.averageTick, averageTick)); // always fits 88 bits
+      last.volatilityCumulative += uint88(
+        _volatilityOnRange(int256(uint256(delta)), tick, tick, last.averageTick, averageTick)
+      ); // always fits 88 bits
       last.tick = tick;
       last.averageTick = averageTick;
       last.windowStartIndex = windowStartIndex;
@@ -269,7 +292,13 @@ library VolatilityOracle {
   /// @param avgTick1 The average tick at the right timepoint, must be within int24 range
   /// @return volatility The volatility between two sequential timepoints
   /// If the requirements for the parameters are met, it always fits 88 bits
-  function _volatilityOnRange(int256 dt, int256 tick0, int256 tick1, int256 avgTick0, int256 avgTick1) internal pure returns (uint256 volatility) {
+  function _volatilityOnRange(
+    int256 dt,
+    int256 tick0,
+    int256 tick1,
+    int256 avgTick0,
+    int256 avgTick1
+  ) internal pure returns (uint256 volatility) {
     // On the time interval from the previous timepoint to the current
     // we can represent tick and average tick change as two straight lines:
     // tick = k*t + b, where k and b are some constants
@@ -302,7 +331,15 @@ library VolatilityOracle {
     uint32 lastTimestamp,
     int56 lastTickCumulative
   ) internal view returns (int24 avgTick, uint16 windowStartIndex) {
-    (int256 _avgTick, uint256 _windowStartIndex) = _getAverageTick(self, time, tick, lastIndex, oldestIndex, lastTimestamp, lastTickCumulative);
+    (int256 _avgTick, uint256 _windowStartIndex) = _getAverageTick(
+      self,
+      time,
+      tick,
+      lastIndex,
+      oldestIndex,
+      lastTimestamp,
+      lastTickCumulative
+    );
     unchecked {
       (avgTick, windowStartIndex) = (int24(_avgTick), uint16(_windowStartIndex)); // overflow in uint16(_windowStartIndex) is desired
     }
@@ -321,14 +358,20 @@ library VolatilityOracle {
     uint32 lastTimestamp,
     int56 lastTickCumulative
   ) internal view returns (int256 avgTick, uint256 windowStartIndex) {
-    (uint32 oldestTimestamp, int56 oldestTickCumulative) = (self[oldestIndex].blockTimestamp, self[oldestIndex].tickCumulative);
+    (uint32 oldestTimestamp, int56 oldestTickCumulative) = (
+      self[oldestIndex].blockTimestamp,
+      self[oldestIndex].tickCumulative
+    );
 
     unchecked {
       int56 currentTickCumulative = lastTickCumulative + int56(tick) * int56(uint56(currentTime - lastTimestamp)); // update with new data
       if (!_lteConsideringOverflow(oldestTimestamp, currentTime - WINDOW, currentTime)) {
         // if oldest is newer than WINDOW ago
         if (currentTime == oldestTimestamp) return (tick, oldestIndex);
-        return ((currentTickCumulative - oldestTickCumulative) / int56(uint56(currentTime - oldestTimestamp)), oldestIndex);
+        return (
+          (currentTickCumulative - oldestTickCumulative) / int56(uint56(currentTime - oldestTimestamp)),
+          oldestIndex
+        );
       }
 
       if (_lteConsideringOverflow(lastTimestamp, currentTime - WINDOW, currentTime)) {
@@ -336,7 +379,14 @@ library VolatilityOracle {
         return (tick, lastIndex);
       } else {
         int56 tickCumulativeAtStart;
-        (tickCumulativeAtStart, windowStartIndex) = _getTickCumulativeAt(self, currentTime, WINDOW, tick, lastIndex, oldestIndex);
+        (tickCumulativeAtStart, windowStartIndex) = _getTickCumulativeAt(
+          self,
+          currentTime,
+          WINDOW,
+          tick,
+          lastIndex,
+          oldestIndex
+        );
 
         //    current-WINDOW  last   current
         // _________*____________*_______*_
@@ -370,24 +420,48 @@ library VolatilityOracle {
   ) internal view returns (uint88 volatilityCumulative) {
     unchecked {
       uint32 target = time - secondsAgo;
-      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(self, time, target, lastIndex, oldestIndex);
+      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(
+        self,
+        time,
+        target,
+        lastIndex,
+        oldestIndex
+      );
 
-      (uint32 timestampBefore, uint88 volatilityCumulativeBefore) = (beforeOrAt.blockTimestamp, beforeOrAt.volatilityCumulative);
+      (uint32 timestampBefore, uint88 volatilityCumulativeBefore) = (
+        beforeOrAt.blockTimestamp,
+        beforeOrAt.volatilityCumulative
+      );
       if (target == timestampBefore) return volatilityCumulativeBefore; // we're at the left boundary
       if (samePoint) {
         // since target != beforeOrAt.blockTimestamp, `samePoint` means that target is newer than last timepoint
-        (int24 avgTick, ) = _getAverageTickCasted(self, target, tick, lastIndex, oldestIndex, timestampBefore, beforeOrAt.tickCumulative);
+        (int24 avgTick, ) = _getAverageTickCasted(
+          self,
+          target,
+          tick,
+          lastIndex,
+          oldestIndex,
+          timestampBefore,
+          beforeOrAt.tickCumulative
+        );
 
         return (volatilityCumulativeBefore +
-          uint88(_volatilityOnRange(int256(uint256(target - timestampBefore)), tick, tick, beforeOrAt.averageTick, avgTick)));
+          uint88(
+            _volatilityOnRange(int256(uint256(target - timestampBefore)), tick, tick, beforeOrAt.averageTick, avgTick)
+          ));
       }
 
-      (uint32 timestampAfter, uint88 volatilityCumulativeAfter) = (atOrAfter.blockTimestamp, atOrAfter.volatilityCumulative);
+      (uint32 timestampAfter, uint88 volatilityCumulativeAfter) = (
+        atOrAfter.blockTimestamp,
+        atOrAfter.volatilityCumulative
+      );
       if (target == timestampAfter) return volatilityCumulativeAfter; // we're at the right boundary
 
       // we're in the middle
       (uint32 timepointTimeDelta, uint32 targetDelta) = (timestampAfter - timestampBefore, target - timestampBefore);
-      return volatilityCumulativeBefore + ((volatilityCumulativeAfter - volatilityCumulativeBefore) / timepointTimeDelta) * targetDelta;
+      return
+        volatilityCumulativeBefore +
+        ((volatilityCumulativeAfter - volatilityCumulativeBefore) / timepointTimeDelta) * targetDelta;
     }
   }
 
@@ -405,18 +479,18 @@ library VolatilityOracle {
   ) internal view returns (int56 tickCumulative, uint256 indexBeforeOrAt) {
     unchecked {
       uint32 target = time - secondsAgo;
-      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, uint256 _indexBeforeOrAt) = _getTimepointsAt(
-        self,
-        time,
-        target,
-        lastIndex,
-        oldestIndex
-      );
+      (
+        Timepoint storage beforeOrAt,
+        Timepoint storage atOrAfter,
+        bool samePoint,
+        uint256 _indexBeforeOrAt
+      ) = _getTimepointsAt(self, time, target, lastIndex, oldestIndex);
 
       (uint32 timestampBefore, int56 tickCumulativeBefore) = (beforeOrAt.blockTimestamp, beforeOrAt.tickCumulative);
       if (target == timestampBefore) return (tickCumulativeBefore, _indexBeforeOrAt); // we're at the left boundary
       // since target != timestampBefore, `samePoint` means that target is newer than last timepoint
-      if (samePoint) return ((tickCumulativeBefore + int56(tick) * int56(uint56(target - timestampBefore))), _indexBeforeOrAt); // if target is newer than last timepoint
+      if (samePoint)
+        return ((tickCumulativeBefore + int56(tick) * int56(uint56(target - timestampBefore))), _indexBeforeOrAt); // if target is newer than last timepoint
 
       (uint32 timestampAfter, int56 tickCumulativeAfter) = (atOrAfter.blockTimestamp, atOrAfter.tickCumulative);
       if (target == timestampAfter) return (tickCumulativeAfter, uint16(_indexBeforeOrAt + 1)); // we're at the right boundary
@@ -424,7 +498,9 @@ library VolatilityOracle {
       // we're in the middle
       (uint32 timepointTimeDelta, uint32 targetDelta) = (timestampAfter - timestampBefore, target - timestampBefore);
       return (
-        tickCumulativeBefore + ((tickCumulativeAfter - tickCumulativeBefore) / int56(uint56(timepointTimeDelta))) * int56(uint56(targetDelta)),
+        tickCumulativeBefore +
+          ((tickCumulativeAfter - tickCumulativeBefore) / int56(uint56(timepointTimeDelta))) *
+            int56(uint56(targetDelta)),
         _indexBeforeOrAt
       );
     }
@@ -441,7 +517,11 @@ library VolatilityOracle {
     uint32 target,
     uint16 lastIndex,
     uint16 oldestIndex
-  ) private view returns (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, uint256 indexBeforeOrAt) {
+  )
+    private
+    view
+    returns (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, uint256 indexBeforeOrAt)
+  {
     Timepoint storage lastTimepoint = self[lastIndex];
     uint32 lastTimepointTimestamp = lastTimepoint.blockTimestamp;
     uint16 windowStartIndex = lastTimepoint.windowStartIndex;
@@ -468,7 +548,14 @@ library VolatilityOracle {
       if (lastIndex == oldestIndex + 1) return (self[oldestIndex], lastTimepoint, false, oldestIndex);
     }
 
-    (beforeOrAt, atOrAfter, indexBeforeOrAt) = _binarySearch(self, currentTime, target, lastIndex, oldestIndex, useHeuristic);
+    (beforeOrAt, atOrAfter, indexBeforeOrAt) = _binarySearch(
+      self,
+      currentTime,
+      target,
+      lastIndex,
+      oldestIndex,
+      useHeuristic
+    );
     return (beforeOrAt, atOrAfter, false, indexBeforeOrAt);
   }
 
@@ -494,7 +581,14 @@ library VolatilityOracle {
     unchecked {
       uint256 left = lowerIndex; // oldest timepoint
       uint256 right = upperIndex < lowerIndex ? upperIndex + UINT16_MODULO : upperIndex; // newest timepoint considering one index overflow
-      (beforeOrAt, atOrAfter, indexBeforeOrAt) = _binarySearchInternal(self, currentTime, target, left, right, withHeuristic);
+      (beforeOrAt, atOrAfter, indexBeforeOrAt) = _binarySearchInternal(
+        self,
+        currentTime,
+        target,
+        left,
+        right,
+        withHeuristic
+      );
     }
   }
 

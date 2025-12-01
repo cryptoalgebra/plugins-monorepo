@@ -8,7 +8,12 @@ contract VolatilityOracleInteractionsTest {
     timeWeightedAverageTick = VolatilityOracleInteractions.consult(oracleAddress, period);
   }
 
-  function getQuoteAtTick(int24 tick, uint128 baseAmount, address baseToken, address quoteToken) public pure returns (uint256 quoteAmount) {
+  function getQuoteAtTick(
+    int24 tick,
+    uint128 baseAmount,
+    address baseToken,
+    address quoteToken
+  ) public pure returns (uint256 quoteAmount) {
     quoteAmount = VolatilityOracleInteractions.getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
   }
 
@@ -31,7 +36,12 @@ contract VolatilityOracleInteractionsTest {
     return gasBefore - gasleft();
   }
 
-  function getGasCostOfGetQuoteAtTick(int24 tick, uint128 baseAmount, address baseToken, address quoteToken) public view returns (uint256) {
+  function getGasCostOfGetQuoteAtTick(
+    int24 tick,
+    uint128 baseAmount,
+    address baseToken,
+    address quoteToken
+  ) public view returns (uint256) {
     uint256 gasBefore = gasleft();
     VolatilityOracleInteractions.getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
     return gasBefore - gasleft();

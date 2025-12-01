@@ -39,7 +39,7 @@ contract DynamicFeePluginImplementation {
   function getCurrentFee(uint88 volatilityAverage) external view returns (uint16 fee) {
     DynamicFeeLayout storage layout = _getDynamicFeeLayout();
     AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
-    
+
     if (feeConfig_.alpha1() | feeConfig_.alpha2() == 0) return feeConfig_.baseFee();
     return AdaptiveFee.getFee(volatilityAverage, feeConfig_);
   }
@@ -54,13 +54,14 @@ contract DynamicFeePluginImplementation {
 
   /// @notice Get fee configuration
   /// @dev Called via staticcall from connector
-  function getFeeConfig() external view returns (
-    uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, 
-    uint16 gamma1, uint16 gamma2, uint16 baseFee
-  ) {
+  function getFeeConfig()
+    external
+    view
+    returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
+  {
     DynamicFeeLayout storage layout = _getDynamicFeeLayout();
     AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
-    
+
     (alpha1, alpha2) = (feeConfig_.alpha1(), feeConfig_.alpha2());
     (beta1, beta2) = (feeConfig_.beta1(), feeConfig_.beta2());
     (gamma1, gamma2) = (feeConfig_.gamma1(), feeConfig_.gamma2());

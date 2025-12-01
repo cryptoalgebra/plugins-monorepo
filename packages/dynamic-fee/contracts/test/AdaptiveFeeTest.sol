@@ -29,7 +29,9 @@ contract AdaptiveFeeTest {
     }
   }
 
-  function packAndUnpackFeeConfig(AlgebraFeeConfiguration calldata config) external pure returns (AlgebraFeeConfiguration memory unpacked) {
+  function packAndUnpackFeeConfig(
+    AlgebraFeeConfiguration calldata config
+  ) external pure returns (AlgebraFeeConfiguration memory unpacked) {
     AlgebraFeeConfigurationU144 _packed = AlgebraFeeConfigurationU144Lib.pack(config);
     unpacked.alpha1 = _packed.alpha1();
     unpacked.alpha2 = _packed.alpha2();

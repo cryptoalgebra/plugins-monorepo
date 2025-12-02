@@ -74,17 +74,17 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
   // ###### Public getters ######
 
   /// @notice Get the current price change factor
-  function priceChangeFactor() external returns (uint16) {
+  function priceChangeFactor() external view returns (uint16) {
     return _getPriceChangeFactor();
   }
 
   /// @notice Get the current base fee
-  function baseFee() external returns (uint16) {
+  function baseFee() external view returns (uint16) {
     return _getBaseFee();
   }
 
   /// @notice Get the current fee factors
-  function feeFactors() external returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
+  function feeFactors() external view returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
     return _getFeeFactors();
   }
 

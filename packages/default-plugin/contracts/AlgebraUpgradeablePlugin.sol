@@ -257,8 +257,8 @@ contract AlgebraUpgradeablePlugin is
   /// @notice Returns current fee based on current volatility
   /// @return fee The current fee value
   function getCurrentFee() external view override returns (uint16 fee) {
-    uint88 volatilityAverage = _getAverageVolatilityLastView();
-    fee = _getCurrentFeeView(volatilityAverage);
+    uint88 volatilityAverage = _getAverageVolatilityLast();
+    fee = _getCurrentFee(volatilityAverage);
   }
 
   // ========== ALM Helper Functions ==========

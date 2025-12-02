@@ -48,13 +48,13 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
     return DYNAMIC_FEE_PLUGIN_CONFIG;
   }
 
-  /// @notice Get current fee based on volatility via delegatecall
-  function _getCurrentFee(uint88 volatilityAverage) internal returns (uint16 fee) {
-    bytes memory returnData = _delegateCall(
-      dynamicFeeImplementation,
-      abi.encodeCall(IDynamicFeePluginImplementation.getCurrentFee, (volatilityAverage))
-    );
-    return abi.decode(returnData, (uint16));
+  /// @notice Get current fee based on volatility
+  function _getCurrentFee(uint88 volatilityAverage) internal view returns (uint16 fee) {
+    DynamicFeeLayout storage layout = _getDynamicFeeLayout();
+    AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
+
+    if (feeConfig_.alpha1() | feeConfig_.alpha2() == 0) return feeConfig_.baseFee();
+    return AdaptiveFee.getFee(volatilityAverage, feeConfig_);
   }
 
   // ###### Public Interface (IDynamicFeeManager) ######
@@ -62,14 +62,17 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
   /// @inheritdoc IDynamicFeeManager
   function feeConfig()
     external
+    view
     override
     returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
   {
-    bytes memory returnData = _delegateCall(
-      dynamicFeeImplementation,
-      abi.encodeCall(IDynamicFeePluginImplementation.getFeeConfig, ())
-    );
-    return abi.decode(returnData, (uint16, uint16, uint32, uint32, uint16, uint16, uint16));
+    DynamicFeeLayout storage layout = _getDynamicFeeLayout();
+    AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
+
+    (alpha1, alpha2) = (feeConfig_.alpha1(), feeConfig_.alpha2());
+    (beta1, beta2) = (feeConfig_.beta1(), feeConfig_.beta2());
+    (gamma1, gamma2) = (feeConfig_.gamma1(), feeConfig_.gamma2());
+    baseFee = feeConfig_.baseFee();
   }
 
   /// @inheritdoc IDynamicFeeManager
@@ -80,14 +83,5 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
       abi.encodeCall(IDynamicFeePluginImplementation.changeFeeConfiguration, (config))
     );
     emit FeeConfiguration(config);
-  }
-
-  /// @notice Get current fee based on volatility (view version)
-  function _getCurrentFeeView(uint88 volatilityAverage) internal view returns (uint16 fee) {
-    DynamicFeeLayout storage layout = _getDynamicFeeLayout();
-    AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
-
-    if (feeConfig_.alpha1() | feeConfig_.alpha2() == 0) return feeConfig_.baseFee();
-    return AdaptiveFee.getFee(volatilityAverage, feeConfig_);
   }
 }

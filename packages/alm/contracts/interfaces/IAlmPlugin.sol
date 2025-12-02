@@ -22,13 +22,13 @@ interface IAlmPlugin {
 
   /// @notice Returns address of rebalance manager
   /// @return Address of rebalance manager
-  function rebalanceManager() external returns (address);
+  function rebalanceManager() external view returns (address);
 
   /// @notice Returns time interval in seconds of slow TWAP period
   /// @return Time interval in seconds of slow TWAP period
-  function slowTwapPeriod() external returns (uint32);
+  function slowTwapPeriod() external view returns (uint32);
 
   /// @notice Returns time interval in seconds of fast TWAP period
   /// @return Time interval in seconds of fast TWAP period
-  function fastTwapPeriod() external returns (uint32);
+  function fastTwapPeriod() external view returns (uint32);
 }

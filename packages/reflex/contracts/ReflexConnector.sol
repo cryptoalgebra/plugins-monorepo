@@ -8,6 +8,22 @@ import './interfaces/IReflexPluginImplementation.sol';
 /// @notice This contract provides delegatecall interface to Reflex plugin implementation
 /// @dev Provides thin wrappers that delegate to implementation via delegatecall
 abstract contract ReflexConnector is BaseConnector {
+  /// @dev Storage namespace for Reflex plugin using ERC-7201
+  bytes32 internal constant REFLEX_NAMESPACE = keccak256('algebra.storage.reflex');
+
+  struct ReflexLayout {
+    address reflexRouter;
+    bytes32 reflexConfigId;
+  }
+
+  /// @dev Fetch pointer of Reflex plugin's storage for direct view access
+  function _getReflexLayout() internal pure returns (ReflexLayout storage layout) {
+    bytes32 position = REFLEX_NAMESPACE;
+    assembly {
+      layout.slot := position
+    }
+  }
+
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable reflexImplementation;
 
@@ -45,24 +61,6 @@ abstract contract ReflexConnector is BaseConnector {
     _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexConfigId, (_configId)));
   }
 
-  /// @notice Get reflex router via delegatecall
-  function _getReflexRouter() internal returns (address) {
-    bytes memory returnData = _delegateCall(
-      reflexImplementation,
-      abi.encodeCall(IReflexPluginImplementation.getReflexRouter, ())
-    );
-    return abi.decode(returnData, (address));
-  }
-
-  /// @notice Get reflex config ID via delegatecall
-  function _getReflexConfigId() internal returns (bytes32) {
-    bytes memory returnData = _delegateCall(
-      reflexImplementation,
-      abi.encodeCall(IReflexPluginImplementation.getReflexConfigId, ())
-    );
-    return abi.decode(returnData, (bytes32));
-  }
-
   /// @notice Execute reflex after swap via delegatecall
   function _reflexAfterSwapDelegate(
     bytes32 triggerPoolId,
@@ -81,6 +79,18 @@ abstract contract ReflexConnector is BaseConnector {
     return abi.decode(returnData, (uint256, address));
   }
 
+  // ###### View Methods (Direct Storage Access) ######
+
+  /// @notice Get reflex router
+  function _getReflexRouter() internal view returns (address) {
+    return _getReflexLayout().reflexRouter;
+  }
+
+  /// @notice Get reflex config ID
+  function _getReflexConfigId() internal view returns (bytes32) {
+    return _getReflexLayout().reflexConfigId;
+  }
+
   // ###### Public Interface ######
 
   /// @notice Updates the Reflex router address
@@ -94,13 +104,13 @@ abstract contract ReflexConnector is BaseConnector {
 
   /// @notice Returns the current router address
   /// @return The address of the current Reflex router contract
-  function getRouter() public returns (address) {
+  function getRouter() public view returns (address) {
     return _getReflexRouter();
   }
 
   /// @notice Get the current configuration ID for profit distribution
   /// @return The current configuration ID
-  function getConfigId() external returns (bytes32) {
+  function getConfigId() external view returns (bytes32) {
     return _getReflexConfigId();
   }
 

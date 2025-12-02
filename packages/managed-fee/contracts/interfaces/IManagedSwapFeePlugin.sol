@@ -24,7 +24,7 @@ interface IManagedSwapFeePlugin {
   /// @notice Checks if an address is whitelisted
   /// @param _address The address to check
   /// @return True if the address is whitelisted, false otherwise
-  function whitelistedAddresses(address _address) external returns (bool);
+  function whitelistedAddresses(address _address) external view returns (bool);
 
   /// @notice Whitelists an address
   /// @param _address The address to whitelist

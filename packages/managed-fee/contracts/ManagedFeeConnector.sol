@@ -14,6 +14,22 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
 
   uint8 internal constant MANAGED_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
+  /// @dev Storage namespace for ManagedFee plugin using ERC-7201
+  bytes32 internal constant MANAGED_FEE_NAMESPACE = keccak256('algebra.storage.managedfee');
+
+  struct ManagedFeeLayout {
+    mapping(address => bool) whitelistedAddresses;
+    mapping(bytes32 => bool) usedNonces;
+  }
+
+  /// @dev Fetch pointer of ManagedFee plugin's storage for direct view access
+  function _getManagedFeeLayout() internal pure returns (ManagedFeeLayout storage layout) {
+    bytes32 position = MANAGED_FEE_NAMESPACE;
+    assembly {
+      layout.slot := position
+    }
+  }
+
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable managedFeeImplementation;
 
@@ -35,15 +51,6 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
     );
   }
 
-  /// @notice Check if address is whitelisted via delegatecall
-  function _isWhitelisted(address _address) internal returns (bool) {
-    bytes memory returnData = _delegateCall(
-      managedFeeImplementation,
-      abi.encodeCall(IManagedFeePluginImplementation.isWhitelisted, (_address))
-    );
-    return abi.decode(returnData, (bool));
-  }
-
   /// @notice Get managed fee from plugin data via delegatecall
   function _getManagedFee(bytes memory pluginData) internal returns (uint24) {
     bytes memory returnData = _delegateCall(
@@ -56,8 +63,8 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
   // ###### Public Interface (IManagedSwapFeePlugin) ######
 
   /// @inheritdoc IManagedSwapFeePlugin
-  function whitelistedAddresses(address _address) external override returns (bool) {
-    return _isWhitelisted(_address);
+  function whitelistedAddresses(address _address) external view override returns (bool) {
+    return _getManagedFeeLayout().whitelistedAddresses[_address];
   }
 
   /// @inheritdoc IManagedSwapFeePlugin

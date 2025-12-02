@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 interface IFeeDiscountPlugin {
   function setFeeDiscountRegistry(address registry) external;
 
-  function feeDiscountRegistry() external returns (address);
+  function feeDiscountRegistry() external view returns (address);
 
   event FeeDiscountRegistry(address registry);
 }

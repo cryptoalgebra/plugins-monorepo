@@ -14,6 +14,21 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
 
   uint8 internal constant FEE_DISCOUNT_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG);
 
+  /// @dev Storage namespace for FeeDiscount plugin using ERC-7201
+  bytes32 internal constant FEE_DISCOUNT_NAMESPACE = keccak256('algebra.storage.feediscount');
+
+  struct FeeDiscountLayout {
+    address feeDiscountRegistry;
+  }
+
+  /// @dev Fetch pointer of FeeDiscount plugin's storage for direct view access
+  function _getFeeDiscountLayout() internal pure returns (FeeDiscountLayout storage layout) {
+    bytes32 position = FEE_DISCOUNT_NAMESPACE;
+    assembly {
+      layout.slot := position
+    }
+  }
+
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable feeDiscountImplementation;
 
@@ -52,11 +67,7 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   }
 
   /// @inheritdoc IFeeDiscountPlugin
-  function feeDiscountRegistry() external override returns (address) {
-    bytes memory returnData = _delegateCall(
-      feeDiscountImplementation,
-      abi.encodeCall(IFeeDiscountPluginImplementation.getFeeDiscountRegistry, ())
-    );
-    return abi.decode(returnData, (address));
+  function feeDiscountRegistry() external view override returns (address) {
+    return _getFeeDiscountLayout().feeDiscountRegistry;
   }
 }

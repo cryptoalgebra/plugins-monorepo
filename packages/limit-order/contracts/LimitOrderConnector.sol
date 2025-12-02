@@ -14,20 +14,26 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
 
   uint8 internal constant LIMIT_ORDER_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
+  /// @dev Storage namespace for LimitOrder plugin using ERC-7201
+  bytes32 internal constant LIMIT_ORDER_NAMESPACE = keccak256('algebra.storage.limitorder');
+
+  struct LimitOrderLayout {
+    address limitOrderManager;
+  }
+
+  /// @dev Fetch pointer of LimitOrder plugin's storage for direct view access
+  function _getLimitOrderLayout() internal pure returns (LimitOrderLayout storage layout) {
+    bytes32 position = LIMIT_ORDER_NAMESPACE;
+    assembly {
+      layout.slot := position
+    }
+  }
+
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable limitOrderImplementation;
 
   constructor(address _limitOrderImplementation) {
     limitOrderImplementation = _limitOrderImplementation;
-  }
-
-  /// @notice Get the limitOrderManager address via delegatecall
-  function _getLimitOrderManager() internal returns (address) {
-    bytes memory returnData = _delegateCall(
-      limitOrderImplementation,
-      abi.encodeCall(ILimitOrderPluginImplementation.getLimitOrderManager, ())
-    );
-    return abi.decode(returnData, (address));
   }
 
   /// @notice Set the limitOrderManager address via delegatecall
@@ -58,8 +64,8 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   // ###### Public Interface (ILimitOrderPlugin) ######
 
   /// @inheritdoc ILimitOrderPlugin
-  function limitOrderManager() external override returns (address) {
-    return _getLimitOrderManager();
+  function limitOrderManager() external view override returns (address) {
+    return _getLimitOrderLayout().limitOrderManager;
   }
 
   /// @inheritdoc ILimitOrderPlugin

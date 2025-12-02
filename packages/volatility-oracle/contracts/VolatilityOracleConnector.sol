@@ -116,17 +116,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     );
   }
 
-  /// @notice Get average volatility using current state (simplified version)
-  /// @dev Equivalent to the original _getAverageVolatilityLast in VolatilityOraclePlugin
-  function _getAverageVolatilityLast() internal returns (uint88 volatilityAverage) {
-    (, int24 tick, , ) = _getPoolState();
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getAverageVolatilityLast, (_blockTimestamp(), tick))
-    );
-    return abi.decode(returnData, (uint88));
-  }
-
   /// @notice Prepay storage slots for timepoints via delegatecall
   function _prepayTimepointsSlots(uint16 startIndex, uint16 amount) internal {
     _delegateCall(
@@ -173,30 +162,25 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   // ============ View Methods (Direct Storage Access) ============
   // These methods read directly from namespaced storage for view compatibility
 
-  /// @notice Get initialized state (view)
-  function _getIsInitializedView() internal view returns (bool) {
+  /// @notice Get average volatility (view version)
+  function _getAverageVolatilityLast() internal view returns (uint88 volatilityAverage) {
     VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.isInitialized;
+    (, int24 tick, , ) = _getPoolState();
+    uint16 lastIndex = layout.timepointIndex;
+    uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
+
+    return layout.timepoints.getAverageVolatility(_blockTimestamp(), tick, lastIndex, oldestIndex);
   }
 
-  /// @notice Get timepoint index (view)
-  function _getTimepointIndexView() internal view returns (uint16) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.timepointIndex;
-  }
+  // ============ IVolatilityOracle Public Interface ============
 
-  /// @notice Get last timepoint timestamp (view)
-  function _getLastTimepointTimestampView() internal view returns (uint32) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.lastTimepointTimestamp;
-  }
-
-  /// @notice Get a single timepoint by index (view)
-  function _getTimepointView(
-    uint16 index
+  /// @inheritdoc IVolatilityOracle
+  function timepoints(
+    uint256 index
   )
-    internal
+    external
     view
+    override
     returns (
       bool initialized,
       uint32 blockTimestamp,
@@ -220,20 +204,30 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     );
   }
 
-  /// @notice Get average volatility (view version)
-  function _getAverageVolatilityLastView() internal view returns (uint88 volatilityAverage) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    (, int24 tick, , ) = _getPoolState();
-    uint16 lastIndex = layout.timepointIndex;
-    uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
-
-    return layout.timepoints.getAverageVolatility(_blockTimestamp(), tick, lastIndex, oldestIndex);
+  /// @inheritdoc IVolatilityOracle
+  function timepointIndex() external view override returns (uint16) {
+    return _getVolatilityOracleLayout().timepointIndex;
   }
 
-  /// @notice Get single timepoint data (view version)
-  function _getSingleTimepointView(
+  /// @inheritdoc IVolatilityOracle
+  function initialize() external pure override {
+    revert('Use plugin initialize');
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function lastTimepointTimestamp() external view override returns (uint32) {
+    return _getVolatilityOracleLayout().lastTimepointTimestamp;
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function isInitialized() external view override returns (bool) {
+    return _getVolatilityOracleLayout().isInitialized;
+  }
+
+  /// @inheritdoc IVolatilityOracle
+  function getSingleTimepoint(
     uint32 secondsAgo
-  ) internal view returns (int56 tickCumulative, uint88 volatilityCumulative) {
+  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
     VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
     (, int24 tick, , ) = _getPoolState();
     uint16 lastIndex = layout.timepointIndex;
@@ -250,71 +244,15 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     return (result.tickCumulative, result.volatilityCumulative);
   }
 
-  /// @notice Get multiple timepoints (view version)
-  function _getTimepointsView(
+  /// @inheritdoc IVolatilityOracle
+  function getTimepoints(
     uint32[] memory secondsAgos
-  ) internal view returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
+  ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
     VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
     (, int24 tick, , ) = _getPoolState();
     uint16 lastIndex = layout.timepointIndex;
 
     return layout.timepoints.getTimepoints(_blockTimestamp(), secondsAgos, tick, lastIndex);
-  }
-
-  // ============ IVolatilityOracle Public Interface ============
-
-  /// @inheritdoc IVolatilityOracle
-  function timepoints(
-    uint256 index
-  )
-    external
-    view
-    override
-    returns (
-      bool initialized,
-      uint32 blockTimestamp,
-      int56 tickCumulative,
-      uint88 volatilityCumulative,
-      int24 tick,
-      int24 averageTick,
-      uint16 windowStartIndex
-    )
-  {
-    return _getTimepointView(uint16(index));
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function timepointIndex() external view override returns (uint16) {
-    return _getTimepointIndexView();
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function initialize() external pure override {
-    revert('Use plugin initialize');
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function lastTimepointTimestamp() external view override returns (uint32) {
-    return _getLastTimepointTimestampView();
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function isInitialized() external view override returns (bool) {
-    return _getIsInitializedView();
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function getSingleTimepoint(
-    uint32 secondsAgo
-  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
-    return _getSingleTimepointView(secondsAgo);
-  }
-
-  /// @inheritdoc IVolatilityOracle
-  function getTimepoints(
-    uint32[] memory secondsAgos
-  ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    return _getTimepointsView(secondsAgos);
   }
 
   /// @inheritdoc IVolatilityOracle

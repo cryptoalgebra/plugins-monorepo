@@ -39,7 +39,7 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
   function beforeInitialize(
     address,
     uint160
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -52,7 +52,7 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
     uint160,
     bool,
     bytes calldata
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (bytes4, uint24, uint24) {
     (, , uint16 fee, ) = _getPoolState();
     uint24 discountedFee = _applyFeeDiscount(sender, pool, fee);
     return (IAlgebraPlugin.beforeSwap.selector, discountedFee, 0);

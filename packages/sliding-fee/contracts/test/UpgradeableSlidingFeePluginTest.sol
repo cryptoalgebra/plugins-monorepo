@@ -42,7 +42,7 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
   function beforeInitialize(
     address,
     uint160
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -51,7 +51,7 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     address,
     uint160,
     int24 tick
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     lastTick = tick;
     return IAlgebraPlugin.afterInitialize.selector;
   }
@@ -64,7 +64,7 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     uint160,
     bool,
     bytes calldata
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (bytes4, uint24, uint24) {
     (, int24 tick, , ) = _getPoolState();
     uint16 fee = _getFeeAndUpdateFactors(zeroToOne, tick, lastTick);
     lastTick = tick;

@@ -39,7 +39,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
   function beforeInitialize(
     address,
     uint160
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -53,7 +53,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
     int256,
     int256,
     bytes calldata
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();
     _updateLimitOrderManagerState(pool, zeroToOne, tick);
     return IAlgebraPlugin.afterSwap.selector;

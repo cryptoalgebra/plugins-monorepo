@@ -24,7 +24,7 @@ contract TestFeeDiscountPlugin is FeeDiscountPlugin {
   function beforeInitialize(
     address,
     uint160
-  ) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -33,7 +33,7 @@ contract TestFeeDiscountPlugin is FeeDiscountPlugin {
     address,
     uint160,
     int24
-  ) external view override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external view override onlyPool returns (bytes4) {
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
@@ -45,7 +45,7 @@ contract TestFeeDiscountPlugin is FeeDiscountPlugin {
     uint160,
     bool,
     bytes calldata
-  ) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (bytes4, uint24, uint24) {
     fee = _applyFeeDiscount(tx.origin, msg.sender, fee);
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }

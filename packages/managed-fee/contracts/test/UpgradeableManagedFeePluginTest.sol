@@ -37,7 +37,7 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
   function beforeInitialize(
     address,
     uint160
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -50,7 +50,7 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
     uint160,
     bool,
     bytes calldata pluginData
-  ) external override(IAlgebraPlugin, UpgradeableAbstractPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (bytes4, uint24, uint24) {
     uint24 fee = 0;
     if (pluginData.length > 0) {
       fee = _getManagedFee(pluginData);

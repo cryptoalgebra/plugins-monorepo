@@ -16,7 +16,7 @@ abstract contract LimitOrderPlugin is BaseAbstractPlugin, ILimitOrderPlugin {
 
   address private _limitOrderManager;
 
-  function limitOrderManager() public override returns (address) {
+  function limitOrderManager() public view override returns (address) {
     return _limitOrderManager;
   }
 

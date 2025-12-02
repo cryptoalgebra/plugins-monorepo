@@ -82,8 +82,6 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
     emit FeeConfiguration(config);
   }
 
-  // ###### View Methods (Direct Storage Access) ######
-
   /// @notice Get current fee based on volatility (view version)
   function _getCurrentFeeView(uint88 volatilityAverage) internal view returns (uint16 fee) {
     DynamicFeeLayout storage layout = _getDynamicFeeLayout();

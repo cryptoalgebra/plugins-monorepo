@@ -36,7 +36,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
 
     // Deploy BeaconProxy for first plugin
     const BeaconProxy = await ethers.getContractFactory('BeaconProxy');
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
+    const initData = pluginImplementation.interface.encodeFunctionData('initializePlugin', [
       mockPool.target,
     ]);
     const proxy1 = await BeaconProxy.deploy(beacon.target, initData);
@@ -87,7 +87,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const { plugin1, mockPool } = await loadFixture(deployFixture);
 
       await expect(
-        plugin1.initialize(mockPool.target)
+        plugin1.initializePlugin(mockPool.target)
       ).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
@@ -120,7 +120,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
+      const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin', [
         mockPool2.target,
       ]);
       const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
@@ -149,7 +149,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
+      const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin', [
         mockPool2.target,
       ]);
       const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);

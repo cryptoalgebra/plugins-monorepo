@@ -26,7 +26,7 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
 
   /// @notice Initialize the plugin for a specific pool
   /// @param _pool The pool address this plugin is attached to
-  function initialize(address _pool) external initializer {
+  function initializePlugin(address _pool) external initializer {
     __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 volatilityOracleConfig = _initializeVolatilityOracleState();
@@ -58,33 +58,6 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
   ) external override onlyPool returns (bytes4, uint24, uint24) {
     _writeTimepoint();
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
-  }
-
-  // ###### Public getters ######
-
-  /// @notice Check if the oracle is initialized
-  function isInitialized() external returns (bool) {
-    return _getIsInitialized();
-  }
-
-  /// @notice Get the current timepoint index
-  function timepointIndex() external returns (uint16) {
-    return _getTimepointIndex();
-  }
-
-  /// @notice Get the last timepoint timestamp
-  function lastTimepointTimestamp() external returns (uint32) {
-    return _getLastTimepointTimestamp();
-  }
-
-  /// @notice Get a specific timepoint
-  function timepoints(uint16 index) external returns (VolatilityOracle.Timepoint memory) {
-    return _getTimepoint(index);
-  }
-
-  /// @notice Get average volatility
-  function getAverageVolatility() external returns (uint88) {
-    return _getAverageVolatilityLast();
   }
 
   // ###### Required overrides ######

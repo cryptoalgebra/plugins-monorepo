@@ -185,6 +185,14 @@ export default {
           apiURL: 'https://api.basescan.org/api',
           browserURL: 'https://basescan.org/',
         },
+      },
+      {
+        network: 'sophonOsTestnet',
+        chainId: 531050204,
+        urls: {
+          apiURL: 'https://block-explorer-api.zksync-os-testnet-sophon.zksync.dev/api/',
+          browserURL: 'https://block-explorer.zksync-os-testnet-sophon.zksync.dev/'
+        }
       }
     ],
   },

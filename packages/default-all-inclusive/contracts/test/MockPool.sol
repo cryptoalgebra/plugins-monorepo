@@ -12,6 +12,7 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolPermissionedActions.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolErrors.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountRegistry.sol';
 
 /// @title Mock of Algebra concentrated liquidity pool for plugins testing
 contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlgebraPoolState {

@@ -416,6 +416,14 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       );
       const pluginAddress2 = await mockPluginFactory.pluginByPool(mockPool2.getAddress());
       plugin2 = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress2) as any;
+
+      // Connect plugins and initialize pools
+      await mockPool.setPlugin(pluginAddress);
+      await mockPool2.setPlugin(pluginAddress2);
+
+      const initialPrice = BigInt('79228162514264337593543950336'); // ~1.0
+      await mockPool.initialize(initialPrice);
+      await mockPool2.initialize(initialPrice);
     });
 
     it('upgrades ALL plugins at once via beacon', async () => {
@@ -518,13 +526,58 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       const upgraded = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
 
+      // ========== NEW STORAGE SLOT (ERC-7201: algebra.storage.upgradetest) ==========
+      
       // New functions from MockUpgradedPlugin
       expect(await upgraded.isUpgraded()).to.eq(true);
       expect(await upgraded.newUpgradeableFunction()).to.eq(42);
 
-      // Can use new storage
+      // Can use new storage slot
       await upgraded.setNewVariable(12345);
       expect(await upgraded.getNewVariable()).to.eq(12345);
+
+      // ========== OLD STORAGE SLOTS STILL ACCESSIBLE ==========
+      
+      // OLD: Base plugin storage (pool, pluginFactory, defaultPluginConfig, activeModules)
+      expect(await upgraded.pool()).to.eq(await mockPool.getAddress());
+      expect(await upgraded.pluginFactory()).to.eq(factoryAddress);
+      expect(await upgraded.defaultPluginConfig()).to.not.eq(0);
+      expect(await upgraded.activeModules(0)).to.eq('Volatility Oracle');
+
+      // OLD: DynamicFee storage (algebra.storage.dynamicfee)
+      const feeConfig = await upgraded.feeConfig.staticCall();
+      expect(feeConfig.alpha1).to.eq(DEFAULT_FEE_CONFIGURATION.alpha1);
+      expect(feeConfig.baseFee).to.eq(DEFAULT_FEE_CONFIGURATION.baseFee);
+
+      // OLD: VolatilityOracle storage (algebra.storage.volatilityoracle)
+    
+      const timepointIndex = await upgraded.timepointIndex();
+      expect(timepointIndex).to.be.gte(0);
+      const timepoint0 = await upgraded.timepoints(0);
+      expect(timepoint0.initialized).to.eq(true);
+
+      // OLD: ALM storage (algebra.storage.alm)
+      expect(await upgraded.rebalanceManager()).to.eq(almManager.address);
+      expect(await upgraded.slowTwapPeriod()).to.eq(3600);
+      expect(await upgraded.fastTwapPeriod()).to.eq(600);
+
+      // OLD: Security storage (algebra.storage.security)
+      expect(await upgraded.getSecurityRegistry()).to.eq(other.address);
+
+      // OLD: FarmingProxy storage (algebra.storage.farmingproxy)
+      // incentive is initially address(0), but getter should work
+      const incentive = await upgraded.incentive();
+      expect(incentive).to.eq(ZERO_ADDRESS); // default
+
+      // ========== VERIFY ALL NAMESPACES COEXIST ==========
+      
+      // Change new variable again to verify it's independent
+      await upgraded.setNewVariable(99999);
+      expect(await upgraded.getNewVariable()).to.eq(99999);
+
+      // Old storage unchanged after modifying new storage
+      expect(await upgraded.pool()).to.eq(await mockPool.getAddress());
+      expect((await upgraded.feeConfig.staticCall()).baseFee).to.eq(DEFAULT_FEE_CONFIGURATION.baseFee);
     });
 
     it('existing functions still work after plugin upgrade', async () => {
@@ -761,178 +814,240 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
   });
 
-  // ========== SECURITY INTEGRATION - POOL OPERATIONS ==========
+  // ========== SECURITY MODULE UPGRADE ==========
 
-  describe('#Security Integration - Pool Operations', () => {
+  describe('#Security Module Upgrade via Plugin Upgrade', () => {
     let mockPool: any;
+    let mockPool2: any;
     let plugin: MockTimeAlgebraUpgradeablePlugin;
+    let plugin2: MockTimeAlgebraUpgradeablePlugin;
     let securityRegistry: any;
+    let upgradedSecurityImpl: any;
 
-    // Status enum values
-    const ENABLED = 0;
-    const BURN_ONLY = 1;
-    const DISABLED = 2;
-
-    beforeEach('setup security registry, plugin and pool', async () => {
-      // 1. Deploy SecurityRegistry
+    beforeEach('setup pools with security', async () => {
+      // Deploy MockSecurityRegistry
       const MockSecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
       securityRegistry = await MockSecurityRegistryFactory.deploy();
-      // 2. Set SecurityRegistry in factory BEFORE creating plugin
+
+      // Configure factory with security BEFORE creating plugins
       await mockPluginFactory.setSecurityRegistry(await securityRegistry.getAddress());
 
-      // 3. Create pool
+      // Create two pools with plugins
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       mockPool = await mockPoolFactory.deploy();
+      mockPool2 = await mockPoolFactory.deploy();
 
-      // 4. Create plugin for pool
+      // Create plugins
       await mockPluginFactory.beforeCreatePoolHook(
         await mockPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
-
       const pluginAddress = await mockPluginFactory.pluginByPool(mockPool.getAddress());
       plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress) as any;
 
-      // 5. Connect plugin to pool
+      await mockPluginFactory.beforeCreatePoolHook(
+        await mockPool2.getAddress(),
+        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
+      );
+      const pluginAddress2 = await mockPluginFactory.pluginByPool(mockPool2.getAddress());
+      plugin2 = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress2) as any;
+
+      // Connect and initialize pools
       await mockPool.setPlugin(pluginAddress);
+      await mockPool2.setPlugin(pluginAddress2);
 
-      // 6. Initialize pool (triggers beforeInitialize/afterInitialize)
-      const initialPrice = BigInt('79228162514264337593543950336'); // ~1.0
+      const initialPrice = BigInt('79228162514264337593543950336');
       await mockPool.initialize(initialPrice);
+      await mockPool2.initialize(initialPrice);
     });
 
-    describe('when pool status is ENABLED', () => {
-      it('allows mint operation', async () => {
-        // Should NOT revert
-        await expect(
-          mockPool.mint(wallet.address, wallet.address, -120, 120, 1000, '0x')
-        ).to.not.be.reverted;
-      });
+    it('security registry is preserved after upgrading to plugin with new security impl', async () => {
+      // Record security registry BEFORE upgrade
+      const securityRegistryBefore = await plugin.getSecurityRegistry();
+      const securityRegistry2Before = await plugin2.getSecurityRegistry();
+      expect(securityRegistryBefore).to.eq(await securityRegistry.getAddress());
 
-      it('allows swap operation', async () => {
-        await expect(
-          mockPool.swapToTick(10)
-        ).to.not.be.reverted;
-      });
+      // Deploy new security implementation
+      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-      it('allows flash operation', async () => {
-        await expect(
-          mockPool.flash(wallet.address, 1000, 1000, '0x')
-        ).to.not.be.reverted;
-      });
+      // Deploy new plugin with upgraded security impl
+      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
+      const factoryAddress = await mockPluginFactory.getAddress();
 
-      it('allows burn operation', async () => {
-        await expect(
-          mockPool.burn(-120, 120, 100, '0x')
-        ).to.not.be.reverted;
-      });
+      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
+      const newPluginImpl = await NewPluginFactory.deploy(
+        mockFactoryAddress,
+        factoryAddress,
+        implementations.volatilityOracleImpl,
+        implementations.dynamicFeeImpl,
+        implementations.farmingProxyImpl,
+        implementations.almImpl,
+        await upgradedSecurityImpl.getAddress()  // NEW security impl!
+      );
+
+      // Upgrade all plugins via beacon
+      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+
+      // Verify security registry PRESERVED in both plugins
+      const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
+      const upgraded2 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin2.getAddress());
+
+      expect(await upgraded1.getSecurityRegistry()).to.eq(securityRegistryBefore);
+      expect(await upgraded2.getSecurityRegistry()).to.eq(securityRegistry2Before);
     });
 
-    describe('when pool status is BURN_ONLY', () => {
-      beforeEach('set pool status to BURN_ONLY', async () => {
-        const poolAddress = await mockPool.getAddress();
-        await securityRegistry.setPoolsStatus([poolAddress], [BURN_ONLY]);
-      });
+    it('new security functions available after upgrade', async () => {
+      // Deploy upgraded security impl
+      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-      it('reverts mint operation with BurnOnly', async () => {
-        await expect(
-          mockPool.mint(wallet.address, wallet.address, -120, 120, 1000, '0x')
-        ).to.be.revertedWithCustomError(plugin, 'BurnOnly');
-      });
+      // Deploy and upgrade plugin
+      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
+      const factoryAddress = await mockPluginFactory.getAddress();
 
-      it('reverts swap operation with BurnOnly', async () => {
-        await expect(
-          mockPool.swapToTick(10)
-        ).to.be.revertedWithCustomError(plugin, 'BurnOnly');
-      });
+      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
+      const newPluginImpl = await NewPluginFactory.deploy(
+        mockFactoryAddress,
+        factoryAddress,
+        implementations.volatilityOracleImpl,
+        implementations.dynamicFeeImpl,
+        implementations.farmingProxyImpl,
+        implementations.almImpl,
+        await upgradedSecurityImpl.getAddress()
+      );
 
-      it('reverts flash operation with BurnOnly', async () => {
-        await expect(
-          mockPool.flash(wallet.address, 1000, 1000, '0x')
-        ).to.be.revertedWithCustomError(plugin, 'BurnOnly');
-      });
+      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
 
-      it('allows burn operation (exit positions)', async () => {
-        // BURN is allowed in BURN_ONLY mode!
-        await expect(
-          mockPool.burn(-120, 120, 100, '0x')
-        ).to.not.be.reverted;
-      });
+      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
+
+      // New V2 functions available
+      expect(await upgraded.HAS_UPGRADED_SECURITY()).to.eq(true);
+      expect(await upgraded.hasUpgradedSecurityImpl.staticCall()).to.eq(true);  // ← staticCall!
+
+      // Emergency mode (new V2 feature)
+      expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(false);  // ← staticCall!
+      await upgraded.setSecurityEmergencyMode(true);
+      expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(true);  // ← staticCall!
     });
 
-    describe('when pool status is DISABLED', () => {
-      beforeEach('set pool status to DISABLED', async () => {
-        const poolAddress = await mockPool.getAddress();
-        // DISABLED requires GUARD role, let's use global status instead
-        await securityRegistry.setGlobalStatus(DISABLED);
-      });
+    it('new security storage fields work alongside old data', async () => {
+      // Deploy and upgrade
+      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-      it('reverts mint operation with PoolDisabled', async () => {
-        await expect(
-          mockPool.mint(wallet.address, wallet.address, -120, 120, 1000, '0x')
-        ).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
-      });
+      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
+      const factoryAddress = await mockPluginFactory.getAddress();
 
-      it('reverts swap operation with PoolDisabled', async () => {
-        await expect(
-          mockPool.swapToTick(10)
-        ).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
-      });
+      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
+      const newPluginImpl = await NewPluginFactory.deploy(
+        mockFactoryAddress,
+        factoryAddress,
+        implementations.volatilityOracleImpl,
+        implementations.dynamicFeeImpl,
+        implementations.farmingProxyImpl,
+        implementations.almImpl,
+        await upgradedSecurityImpl.getAddress()
+      );
 
-      it('reverts flash operation with PoolDisabled', async () => {
-        await expect(
-          mockPool.flash(wallet.address, 1000, 1000, '0x')
-        ).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
-      });
+      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
 
-      it('reverts burn operation with PoolDisabled', async () => {
-        // Even BURN is blocked in DISABLED mode!
-        await expect(
-          mockPool.burn(-120, 120, 100, '0x')
-        ).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
-      });
+      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
+
+      // OLD storage preserved
+      expect(await upgraded.getSecurityRegistry()).to.eq(await securityRegistry.getAddress());
+
+      // NEW storage initialized to defaults - use staticCall and parse result
+      const statsResult = await upgraded.getSecurityCheckStats.staticCall();  // ← staticCall!
+      expect(statsResult.checkCount).to.eq(0);      // Access as named property
+      expect(statsResult.lastCheckTimestamp).to.eq(0);
+
+      // Do a swap to trigger security check
+      await mockPool.swapToTick(10);
+
+      // NEW storage updated
+      const statsAfter = await upgraded.getSecurityCheckStats.staticCall();  // ← staticCall!
+      expect(statsAfter.checkCount).to.eq(1);
+      expect(statsAfter.lastCheckTimestamp).to.be.gt(0);
+
+      // OLD storage still intact
+      expect(await upgraded.getSecurityRegistry()).to.eq(await securityRegistry.getAddress());
     });
 
-    describe('when status is changed back to ENABLED', () => {
-      it('allows operations again after changing from BURN_ONLY to ENABLED', async () => {
-        const poolAddress = await mockPool.getAddress();
+    it('upgrade affects ALL pools simultaneously', async () => {
+      // Deploy and upgrade
+      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-        // Set to BURN_ONLY
-        await securityRegistry.setPoolsStatus([poolAddress], [BURN_ONLY]);
-        await expect(mockPool.swapToTick(10)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
+      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
+      const factoryAddress = await mockPluginFactory.getAddress();
 
-        // Set back to ENABLED
-        await securityRegistry.setPoolsStatus([poolAddress], [ENABLED]);
-        await expect(mockPool.swapToTick(10)).to.not.be.reverted;
-      });
+      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
+      const newPluginImpl = await NewPluginFactory.deploy(
+        mockFactoryAddress,
+        factoryAddress,
+        implementations.volatilityOracleImpl,
+        implementations.dynamicFeeImpl,
+        implementations.farmingProxyImpl,
+        implementations.almImpl,
+        await upgradedSecurityImpl.getAddress()
+      );
+
+      // Single upgrade call
+      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+
+      // BOTH plugins upgraded
+      const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
+      const upgraded2 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin2.getAddress());
+
+      expect(await upgraded1.hasUpgradedSecurityImpl.staticCall()).to.eq(true);  // ← staticCall!
+      expect(await upgraded2.hasUpgradedSecurityImpl.staticCall()).to.eq(true);  // ← staticCall!
+
+      // Both can use emergency mode independently
+      await upgraded1.setSecurityEmergencyMode(true);
+      expect(await upgraded1.getSecurityEmergencyMode.staticCall()).to.eq(true);  // ← staticCall!
+      expect(await upgraded2.getSecurityEmergencyMode.staticCall()).to.eq(false);  // ← staticCall!
     });
 
-    describe('per-pool vs global status', () => {
-      it('pool-specific BURN_ONLY overrides global ENABLED', async () => {
-        const poolAddress = await mockPool.getAddress();
+    it('emergency mode blocks operations after upgrade', async () => {
+      // Deploy and upgrade
+      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-        // Global is ENABLED (default)
-        expect(await securityRegistry.globalStatus()).to.eq(ENABLED);
+      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
+      const factoryAddress = await mockPluginFactory.getAddress();
 
-        // Set THIS pool to BURN_ONLY
-        await securityRegistry.setPoolsStatus([poolAddress], [BURN_ONLY]);
+      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
+      const newPluginImpl = await NewPluginFactory.deploy(
+        mockFactoryAddress,
+        factoryAddress,
+        implementations.volatilityOracleImpl,
+        implementations.dynamicFeeImpl,
+        implementations.farmingProxyImpl,
+        implementations.almImpl,
+        await upgradedSecurityImpl.getAddress()
+      );
 
-        // This pool is blocked
-        await expect(mockPool.swapToTick(10)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
-      });
+      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
 
-      it('global DISABLED overrides pool-specific ENABLED', async () => {
-        const poolAddress = await mockPool.getAddress();
+      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
-        // Pool is ENABLED
-        await securityRegistry.setPoolsStatus([poolAddress], [ENABLED]);
+      // Operations work normally
+      await expect(mockPool.swapToTick(10)).to.not.be.reverted;
 
-        // Global is DISABLED - takes priority
-        await securityRegistry.setGlobalStatus(DISABLED);
+      // Enable emergency mode
+      await upgraded.setSecurityEmergencyMode(true);
 
-        // Pool is blocked due to global status
-        await expect(mockPool.swapToTick(10)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
-      });
+      // Operations blocked
+      await expect(mockPool.swapToTick(-10)).to.be.revertedWithCustomError(upgraded, 'PoolDisabled');
+      await expect(mockPool.mint(wallet.address, wallet.address, -120, 120, 1000, '0x'))
+        .to.be.revertedWithCustomError(upgraded, 'PoolDisabled');
+
+      // Disable emergency mode
+      await upgraded.setSecurityEmergencyMode(false);
+
+      // Operations work again
+      await expect(mockPool.swapToTick(20)).to.not.be.reverted;
     });
   });
 

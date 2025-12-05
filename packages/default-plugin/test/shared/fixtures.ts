@@ -270,7 +270,7 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
   );
 
   return {
-    mockPluginFactory: pluginFactory as any as NewMockTimeUpgradeablePluginFactory,  // ИЗМЕНИТЬ
+    mockPluginFactory: pluginFactory as any as NewMockTimeUpgradeablePluginFactory, 
     factoryImpl,
     proxyAdmin,
     proxyAdminOwner,

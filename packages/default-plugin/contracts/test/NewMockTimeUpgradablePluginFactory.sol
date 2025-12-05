@@ -83,13 +83,13 @@ contract NewMockTimeUpgradeablePluginFactory is
   /// @param initialFeeConfig The initial fee configuration
   function initialize(
     address _algebraFactory,
-    address pluginImplementation,    // ← Как в prod!
+    address pluginImplementation,   
     AlgebraFeeConfiguration memory initialFeeConfig
   ) external initializer {
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
     
-    // Create beacon with provided implementation - ТОЧНО КАК В PROD!
+    // Create beacon with provided implementation
     s.beacon = address(new AlgebraPluginBeacon(_algebraFactory, pluginImplementation));
 
     s.defaultFeeConfiguration = initialFeeConfig;
@@ -124,13 +124,11 @@ contract NewMockTimeUpgradeablePluginFactory is
     address,
     bytes calldata
   ) external override returns (address) {
-    // Note: In tests we don't check msg.sender == algebraFactory for flexibility
     return _createPlugin(pool);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
   function afterCreatePoolHook(address, address, address) external view override {
-    // Note: In tests we don't check msg.sender == algebraFactory for flexibility
   }
 
   /// @inheritdoc IBasePluginFactory

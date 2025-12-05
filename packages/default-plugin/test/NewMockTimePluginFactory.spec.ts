@@ -1127,7 +1127,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     it('volatility calculation uses preserved historical data after upgrade', async () => {
       // Build up oracle history
       for (let i = 0; i < 10; i++) {
-        await plugin.advanceTime(3600); // 1 hour
+        await plugin.advanceTime(3600); 
         await mockPool.swapToTick(i % 2 === 0 ? 100 : -100);
       }
 
@@ -1187,8 +1187,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
 
-      // TWAP should still work with historical data
-      // Do another swap to trigger afterSwap which uses TWAP
+     
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress()) as any;
       await upgradedPlugin.advanceTime(100);
       

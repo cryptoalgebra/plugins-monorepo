@@ -280,6 +280,7 @@ describe('AlgebraUpgradeablePlugin', () => {
       it('returns correct count of active modules', async () => {
         const moduleCount = await plugin.getActiveModulesCount();
         expect(moduleCount).to.eq(3); // VolatilityOracle, DynamicFee, FarmingProxy by default
+        console.log('moduleCount', moduleCount);
       });
     });
 

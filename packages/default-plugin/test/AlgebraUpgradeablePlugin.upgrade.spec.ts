@@ -142,6 +142,16 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Different prices should result in different ticks
       expect(state1.tick).to.not.eq(state2.tick);
     });
+
+    it('beacon has correct algebraFactory', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      expect(await fixture.beacon.algebraFactory()).to.eq(await fixture.mockFactory.getAddress());
+    });
+
+    it('beacon has correct pluginFactory', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      expect(await fixture.beacon.pluginFactory()).to.eq(await fixture.pluginFactory.getAddress());
+    });
   });
 
   describe('#Upgrade Process', () => {
@@ -187,6 +197,32 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
       expect(await upgradedPlugin1.isUpgraded()).to.eq(true);
       expect(await upgradedPlugin2.isUpgraded()).to.eq(true);
+    });
+
+    it('user with ALGEBRA_BASE_PLUGIN_MANAGER role can upgrade beacon directly', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      
+      // Grant role to 'other' user
+      const ALGEBRA_BASE_PLUGIN_MANAGER = await fixture.beacon.ALGEBRA_BASE_PLUGIN_MANAGER();
+      await fixture.mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, other.address);
+
+      // Other user can now upgrade directly via beacon (not through factory)
+      await fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation);
+
+      expect(await fixture.beacon.implementation()).to.eq(fixture.upgradedImplementation);
+    });
+
+    it('owner of algebraFactory can upgrade beacon directly', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      
+      // wallet is owner of mockFactory, so should be able to upgrade
+      // Need to call beacon.upgradeTo directly, not through factory
+      const beaconAddress = await fixture.beacon.getAddress();
+      const beacon = await ethers.getContractAt('AlgebraPluginBeacon', beaconAddress);
+      
+      await beacon.connect(wallet).upgradeTo(fixture.upgradedImplementation);
+      
+      expect(await beacon.implementation()).to.eq(fixture.upgradedImplementation);
     });
   });
 

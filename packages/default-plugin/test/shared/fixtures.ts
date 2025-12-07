@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { MockFactory, MockPool, MockTimeDSFactory, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory } from '../../typechain';
+import { MockFactory, MockPool, MockTimeDSFactory, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, NewMockTimeUpgradeablePluginFactory } from '../../typechain';
 
 type Fixture<T> = () => Promise<T>;
 interface MockFactoryFixture {
@@ -204,5 +204,77 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
     mockPluginFactory,
     mockPool,
     mockFactory,
+  };
+};
+
+
+interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture {
+  mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
+  factoryImpl: any;
+  proxyAdmin: any;
+  proxyAdminOwner: any;
+  implementations: {
+    volatilityOracleImpl: string;
+    dynamicFeeImpl: string;
+    farmingProxyImpl: string;
+    almImpl: string;
+    securityImpl: string;
+  };
+}
+
+export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgradeablePluginFactoryFixture> = async function (): Promise<NewMockTimeUpgradeablePluginFactoryFixture> {
+  const { mockFactory } = await mockFactoryFixture();
+  const implementations = await deployImplementations();
+  const mockFactoryAddress = await mockFactory.getAddress();
+
+  // Deploy ProxyAdmin
+  const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
+  const signers = await ethers.getSigners();
+  const proxyAdminOwner = signers[signers.length - 1];
+  const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
+
+  // Deploy factory implementation
+  const factoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+  const factoryImpl = await factoryImplFactory.deploy();
+
+  // Deploy TransparentUpgradeableProxy
+  const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+  const proxy = await TransparentProxyFactory.deploy(
+    await factoryImpl.getAddress(),
+    await proxyAdmin.getAddress(),
+    '0x'
+  );
+
+  const proxyAddress = await proxy.getAddress();
+
+  // Deploy MockTimeAlgebraUpgradeablePlugin 
+  const pluginImplFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
+  const pluginImpl = await pluginImplFactory.deploy(
+    mockFactoryAddress,
+    proxyAddress,  
+    implementations.volatilityOracleImpl,
+    implementations.dynamicFeeImpl,
+    implementations.farmingProxyImpl,
+    implementations.almImpl,
+    implementations.securityImpl
+  );
+
+  // Attach factory interface to proxy
+  const pluginFactory = factoryImplFactory.attach(proxyAddress);
+
+  // Initialize factory with plugin implementation
+  await pluginFactory.initialize(
+    mockFactoryAddress,
+    await pluginImpl.getAddress(),  
+    DEFAULT_FEE_CONFIGURATION
+  );
+
+  return {
+    mockPluginFactory: pluginFactory as any as NewMockTimeUpgradeablePluginFactory, 
+    factoryImpl,
+    proxyAdmin,
+    proxyAdminOwner,
+    mockFactory,
+    implementations
   };
 };

@@ -269,5 +269,94 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
       await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWith('Only administrator');
     });
+
+    it('administrator can upgrade plugins successfully', async () => {
+      // Create plugin first
+      await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
+      await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+      
+      const implBefore = await pluginFactory.implementation();
+
+      // Deploy new implementation
+      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
+      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
+      const pluginFactoryAddress = await pluginFactory.getAddress();
+      const newImpl = await newImplFactory.deploy(
+        mockFactoryAddress,
+        pluginFactoryAddress,
+        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
+      );
+
+      // Should succeed (wallet is owner)
+      await pluginFactory.upgradePlugins(await newImpl.getAddress());
+
+      const implAfter = await pluginFactory.implementation();
+      expect(implAfter).to.eq(await newImpl.getAddress());
+      expect(implAfter).to.not.eq(implBefore);
+    });
+
+    it('upgrade affects existing plugins', async () => {
+      await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
+      await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+      const pluginAddress = await pluginFactory.pluginByPool(other.address);
+
+      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
+      const newImpl = await newImplFactory.deploy(
+        await mockAlgebraFactory.getAddress(),
+        await pluginFactory.getAddress(),
+        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
+      );
+
+      await pluginFactory.upgradePlugins(await newImpl.getAddress());
+
+      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', pluginAddress);
+      expect(await upgradedPlugin.isUpgraded()).to.eq(true);
+    });
+  });
+
+  describe('#setSecurityRegistry', () => {
+    it('fails if caller is not administrator', async () => {
+      await expect(
+        pluginFactory.connect(other).setSecurityRegistry(wallet.address)
+      ).to.be.revertedWith('Only administrator');
+    });
+
+    it('updates securityRegistry', async () => {
+      await pluginFactory.setSecurityRegistry(other.address);
+      expect(await pluginFactory.securityRegistry()).to.eq(other.address);
+    });
+  });
+
+  describe('#setDefaultRebalanceManager', () => {
+    it('fails if caller is not administrator', async () => {
+      await expect(
+        pluginFactory.connect(other).setDefaultRebalanceManager(wallet.address)
+      ).to.be.revertedWith('Only administrator');
+    });
+
+    it('updates defaultRebalanceManager', async () => {
+      await pluginFactory.setDefaultRebalanceManager(other.address);
+      expect(await pluginFactory.defaultRebalanceManager()).to.eq(other.address);
+    });
+  });
+
+  describe('#setDefaultAlmTwapPeriods', () => {
+    it('fails if caller is not administrator', async () => {
+      await expect(
+        pluginFactory.connect(other).setDefaultAlmTwapPeriods(3600, 600)
+      ).to.be.revertedWith('Only administrator');
+    });
+
+    it('updates TWAP periods', async () => {
+      await pluginFactory.setDefaultAlmTwapPeriods(7200, 1200);
+      expect(await pluginFactory.defaultSlowTwapPeriod()).to.eq(7200);
+      expect(await pluginFactory.defaultFastTwapPeriod()).to.eq(1200);
+    });
+
+    it('reverts if slowPeriod < fastPeriod', async () => {
+      await expect(
+        pluginFactory.setDefaultAlmTwapPeriods(600, 3600)
+      ).to.be.revertedWith('slowPeriod must be >= fastPeriod');
+    });
   });
 });

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 // ============= CONFIGURATION =============
@@ -5,10 +6,10 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: "0x36077D39cdC65E1e3FB65810430E5b2c4D5fA29E",
+  algebraFactory: "0x51a744E9FEdb15842c3080d0937C99A365C6c358",
   
   // Farming center address (optional, can be set later)
-  farmingCenter: "0xB781A7afCf46dEC1Fa16a722eFD25433D1B9F261",
+  farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
   
   // Security registry address (optional, can be set later)
   securityRegistry: "0x0000000000000000000000000000000000000000",
@@ -16,9 +17,9 @@ const config = {
   // Default ALM rebalance manager (optional, can be set later)
   rebalanceManager: "0x0000000000000000000000000000000000000000",
   
-  // Default ALM TWAP periods (in seconds)
-  slowTwapPeriod: 3600,  // 1 hour
-  fastTwapPeriod: 60,    // 1 minute
+  // Default ALM TWAP periods
+  slowTwapPeriod: 3600,  
+  fastTwapPeriod: 60,   
   
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
@@ -33,30 +34,26 @@ const config = {
 };
 
 // ============= MODULE IMPLEMENTATIONS =============
-// Deploy all 5 module implementation contracts
+// Deploy all module implementation contracts
 
 const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => {
-  // 1. Volatility Oracle Implementation
   const volatilityOracleImpl = m.contract("VolatilityOraclePluginImplementation", [], {
     id: "VolatilityOracleImpl"
   });
 
-  // 2. Dynamic Fee Implementation
+
   const dynamicFeeImpl = m.contract("DynamicFeePluginImplementation", [], {
     id: "DynamicFeeImpl"
   });
 
-  // 3. Farming Proxy Implementation
   const farmingProxyImpl = m.contract("FarmingProxyPluginImplementation", [], {
     id: "FarmingProxyImpl"
   });
 
-  // 4. ALM Implementation
   const almImpl = m.contract("AlmPluginImplementation", [], {
     id: "AlmImpl"
   });
 
-  // 5. Security Implementation
   const securityImpl = m.contract("SecurityPluginImplementation", [], {
     id: "SecurityImpl"
   });
@@ -70,8 +67,46 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
   };
 });
 
+// ============= PROXY ADMIN =============
+
+const ProxyAdminModule = buildModule("ProxyAdmin", (m) => {
+  const proxyAdmin = m.contract("ProxyAdmin", [], {
+    id: "ProxyAdmin"
+  });
+
+  return { proxyAdmin };
+});
+
+// ============= FACTORY IMPLEMENTATION =============
+
+const FactoryImplementationModule = buildModule("FactoryImplementation", (m) => {
+  // Deploy factory implementation (for Transparent Proxy)
+  const factoryImpl = m.contract("AlgebraUpgradeablePluginFactory", [], {
+    id: "FactoryImplementation"
+  });
+
+  return { factoryImpl };
+});
+
+// ============= FACTORY PROXY (WITHOUT INITIALIZATION) =============
+
+const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
+  const { factoryImpl } = m.useModule(FactoryImplementationModule);
+  const { proxyAdmin } = m.useModule(ProxyAdminModule);
+
+  // Deploy TransparentUpgradeableProxy
+  const factoryProxy = m.contract("TransparentUpgradeableProxy", [
+    factoryImpl,
+    proxyAdmin,
+    "0x"
+  ], {
+    id: "FactoryProxy"
+  });
+
+  return { factoryProxy };
+});
+
 // ============= PLUGIN IMPLEMENTATION =============
-// Deploy the main plugin implementation that delegates to modules
 
 const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
   const { 
@@ -81,13 +116,11 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     almImpl, 
     securityImpl 
   } = m.useModule(ModuleImplementationsModule);
+  const { factoryProxy } = m.useModule(FactoryProxyModule);
 
-  // Deploy AlgebraUpgradeablePlugin implementation
-  // Note: pluginFactory address will be updated after factory deployment
-  // Using placeholder address for now (will be set in beacon)
   const pluginImpl = m.contract("AlgebraUpgradeablePlugin", [
     config.algebraFactory,
-    "0x0000000000000000000000000000000000000001", // Placeholder for pluginFactory
+    factoryProxy,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
@@ -107,160 +140,71 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
   };
 });
 
-// ============= FACTORY IMPLEMENTATION =============
-// Deploy the Transparent Upgradeable Proxy factory implementation
-
-const FactoryImplementationModule = buildModule("FactoryImplementation", (m) => {
-  // Deploy factory implementation (for Transparent Proxy)
-  const factoryImpl = m.contract("AlgebraUpgradeablePluginFactory", [], {
-    id: "FactoryImplementation"
-  });
-
-  return { factoryImpl };
-});
-
 // ============= MAIN DEPLOYMENT =============
-// Deploy everything: implementations, proxy, and configure
 
 export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
-  const { pluginImpl } = m.useModule(PluginImplementationModule);
+  // 1. Deploy all module implementations first
+  const moduleImpls = m.useModule(ModuleImplementationsModule);
+  
+  // 2. Deploy ProxyAdmin
+  const { proxyAdmin } = m.useModule(ProxyAdminModule);
+  
+  // 3. Deploy factory implementation
   const { factoryImpl } = m.useModule(FactoryImplementationModule);
+  
+  // 4. Deploy factory proxy
+  const { factoryProxy } = m.useModule(FactoryProxyModule);
+  
+  // 5. Deploy plugin implementation
+  const { pluginImpl } = m.useModule(PluginImplementationModule);
 
-  // Get deployer address for ProxyAdmin
-  const proxyAdminOwner = m.getParameter("proxyAdminOwner", m.getAccount(0));
-
-  // Encode initialize call data for the factory proxy
-  const initializeCalldata = m.encodeFunctionCall(factoryImpl, "initialize", [
-    config.algebraFactory,
-    pluginImpl,
-    config.defaultFeeConfig
-  ]);
-
-  // Deploy TransparentUpgradeableProxy pointing to factory implementation
-  const factoryProxy = m.contract("TransparentUpgradeableProxy", [
-    factoryImpl,
-    proxyAdminOwner,
-    initializeCalldata
-  ], {
-    id: "FactoryProxy"
-  });
-
-  // Create a contract instance for the proxy with factory ABI
-  // This allows us to call factory methods on the proxy
+  // 6. Initialize the factory proxy
   const factory = m.contractAt("AlgebraUpgradeablePluginFactory", factoryProxy, {
     id: "Factory"
   });
 
+  m.call(factory, "initialize", [
+    config.algebraFactory,
+    pluginImpl,
+    config.defaultFeeConfig
+  ], {
+    id: "InitializeFactory"
+  });
+
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
-  // Set farming address if provided
-  if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
-    m.call(factory, "setFarmingAddress", [config.farmingCenter], {
-      id: "SetFarmingAddress"
-    });
-  }
+  // // Set farming address if provided
+  // if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
+  //   m.call(factory, "setFarmingAddress", [config.farmingCenter], {
+  //     id: "SetFarmingAddress"
+  //   });
+  // }
 
-  // Set security registry if provided
-  if (config.securityRegistry !== "0x0000000000000000000000000000000000000000") {
-    m.call(factory, "setSecurityRegistry", [config.securityRegistry], {
-      id: "SetSecurityRegistry"
-    });
-  }
+  // // Set security registry if provided
+  // if (config.securityRegistry !== "0x0000000000000000000000000000000000000000") {
+  //   m.call(factory, "setSecurityRegistry", [config.securityRegistry], {
+  //     id: "SetSecurityRegistry"
+  //   });
+  // }
 
-  // Set rebalance manager if provided
-  if (config.rebalanceManager !== "0x0000000000000000000000000000000000000000") {
-    m.call(factory, "setDefaultRebalanceManager", [config.rebalanceManager], {
-      id: "SetRebalanceManager"
-    });
-  }
+  // // Set rebalance manager if provided
+  // if (config.rebalanceManager !== "0x0000000000000000000000000000000000000000") {
+  //   m.call(factory, "setDefaultRebalanceManager", [config.rebalanceManager], {
+  //     id: "SetRebalanceManager"
+  //   });
+  // }
 
-  // Set ALM TWAP periods if non-zero
-  if (config.slowTwapPeriod > 0 && config.fastTwapPeriod > 0) {
-    m.call(factory, "setDefaultAlmTwapPeriods", [config.slowTwapPeriod, config.fastTwapPeriod], {
-      id: "SetAlmTwapPeriods"
-    });
-  }
+  // // Set ALM TWAP periods if non-zero
+  // if (config.slowTwapPeriod > 0 && config.fastTwapPeriod > 0) {
+  //   m.call(factory, "setDefaultAlmTwapPeriods", [config.slowTwapPeriod, config.fastTwapPeriod], {
+  //     id: "SetAlmTwapPeriods"
+  //   });
+  // }
 
   return {
     factory,
     factoryImpl,
     factoryProxy,
     ...m.useModule(PluginImplementationModule)
-  };
-});
-
-// ============= UPGRADE MODULE =============
-// Use this module to upgrade the factory via ProxyAdmin
-// Note: You need to call ProxyAdmin.upgradeAndCall() directly
-
-export const UpgradeFactoryModule = buildModule("UpgradeFactory", (m) => {
-  // Get existing factory proxy address (update this after initial deployment)
-  const existingFactoryProxy = m.getParameter("factoryProxyAddress", "0x0000000000000000000000000000000000000000");
-  const proxyAdminAddress = m.getParameter("proxyAdminAddress", "0x0000000000000000000000000000000000000000");
-  
-  // Deploy new factory implementation
-  const newFactoryImpl = m.contract("AlgebraUpgradeablePluginFactory", [], {
-    id: "NewFactoryImplementation"
-  });
-
-  // Get ProxyAdmin instance
-  const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress, {
-    id: "ProxyAdmin"
-  });
-
-  // Upgrade to new implementation via ProxyAdmin
-  m.call(proxyAdmin, "upgradeAndCall", [existingFactoryProxy, newFactoryImpl, "0x"], {
-    id: "UpgradeFactory"
-  });
-
-  return { newFactoryImpl, proxyAdmin };
-});
-
-// ============= PLUGIN UPGRADE MODULE =============
-// Use this module to upgrade all plugins to a new implementation
-
-export const UpgradePluginsModule = buildModule("UpgradePlugins", (m) => {
-  // Get existing factory proxy address
-  const existingFactoryProxy = m.getParameter("factoryProxyAddress", "0x0000000000000000000000000000000000000000");
-  
-  // Deploy new module implementations if needed
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
-  } = m.useModule(ModuleImplementationsModule);
-
-  // Deploy new plugin implementation
-  const newPluginImpl = m.contract("AlgebraUpgradeablePlugin", [
-    config.algebraFactory,
-    existingFactoryProxy,
-    volatilityOracleImpl,
-    dynamicFeeImpl,
-    farmingProxyImpl,
-    almImpl,
-    securityImpl
-  ], {
-    id: "NewPluginImplementation"
-  });
-
-  // Get factory instance at proxy address
-  const factory = m.contractAt("AlgebraUpgradeablePluginFactory", existingFactoryProxy, {
-    id: "ExistingFactoryForPluginUpgrade"
-  });
-
-  // Upgrade all plugins via beacon
-  m.call(factory, "upgradePlugins", [newPluginImpl], {
-    id: "UpgradePlugins"
-  });
-
-  return { 
-    newPluginImpl,
-    volatilityOracleImpl,
-    dynamicFeeImpl,
-    farmingProxyImpl,
-    almImpl,
-    securityImpl
   };
 });

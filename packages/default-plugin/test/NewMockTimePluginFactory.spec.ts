@@ -809,7 +809,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // Existing plugin still works (factory upgrade doesn't affect plugins!)
       expect(await plugin.pool()).to.eq(poolBefore);
       const feeConfigAfter = await plugin.feeConfig.staticCall();
-      await plugin.
+      
       expect(feeConfigAfter.baseFee).to.eq(feeConfigBefore.baseFee);
     });
   });
@@ -1213,7 +1213,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const mockFactoryAddress = await mockAlgebraFactory.getAddress();
       const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
+      const newImplFactory = await ethers.getContractFactory('MockTimeUpgradedPlugin');
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
@@ -1227,7 +1227,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
 
       // Use upgraded plugin to write NEW timepoints
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress()) as any;
+      const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await plugin.getAddress()) as any;
       
       // Advance time and swap (triggers _writeTimepoint in beforeSwap)
       await upgradedPlugin.advanceTime(200);
@@ -1289,7 +1289,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const mockFactoryAddress = await mockAlgebraFactory.getAddress();
       const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
+      const newImplFactory = await ethers.getContractFactory('MockTimeUpgradedPlugin');
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
@@ -1303,7 +1303,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
 
      
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress()) as any;
+      const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await plugin.getAddress()) as any;
       await upgradedPlugin.advanceTime(100);
       
       // Should not revert - TWAP calculation uses preserved timepoints

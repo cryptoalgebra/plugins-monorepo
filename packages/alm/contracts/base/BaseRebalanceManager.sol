@@ -113,6 +113,8 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     require(_highInventoryLevel > _balancedStateMin, '_highInventoryLevel must be > _balancedStateMin');
     require(_maxDepositRatio > _highInventoryLevel, '_maxDepositRatio must be > _highInventoryLevel');
     require(_maxDepositRatio < 9500, '_maxDepositRatio must be < 9500');
+    require(thresholds.limitAllocation <= 10000 - _maxDepositRatio, 'limitAllocation incompatible with new maxDepositRatio');
+    require(thresholds.ratioBuffer < _lowInventoryLevel, 'ratioBuffer must be < lowInventoryLevel');
     thresholds.maxDepositRatio = _maxDepositRatio;
     thresholds.balancedStateMin = _balancedStateMin;
     thresholds.lowInventoryLevel = _lowInventoryLevel;
@@ -123,6 +125,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   function setRatioBuffer(uint16 _ratioBuffer) external {
     _authorize();
     require(_ratioBuffer <= 10000, '_ratioBuffer must be <= 10000');
+    require(_ratioBuffer < thresholds.lowInventoryLevel, '_ratioBuffer must be < lowInventoryLevel');
     thresholds.ratioBuffer = _ratioBuffer;
     emit SetRatioBuffer(_ratioBuffer);
   }
@@ -130,6 +133,8 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   function setMajorDeviation(uint16 _majorDeviation) external {
     _authorize();
     require(_majorDeviation >= thresholds.minorDeviation, '_majorDeviation must be >= minorDeviation');
+    require(_majorDeviation <= thresholds.criticalDeviation, '_majorDeviation must be <= criticalDeviation');
+    require(_majorDeviation <= 10000, '_majorDeviation must be <= 10000');
     thresholds.majorDeviation = _majorDeviation;
     emit SetMajorDeviation(_majorDeviation);
   }
@@ -137,6 +142,8 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   function setMinorDeviation(uint16 _minorDeviation) external {
     _authorize();
     require(_minorDeviation <= 300, '_minorDeviation must be <= 300');
+    require(_minorDeviation <= thresholds.majorDeviation, '_minorDeviation must be <= majorDeviation');
+    require(_minorDeviation <= 10000, '_minorDeviation must be <= 10000');
     thresholds.minorDeviation = _minorDeviation;
     emit SetMinorDeviation(_minorDeviation);
   }
@@ -144,6 +151,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   function setCriticalDeviation(uint16 _criticalDeviation) external {
     _authorize();
     require(_criticalDeviation >= thresholds.majorDeviation, '_criticalDeviation must be >= majorDeviation');
+    require(_criticalDeviation <= 10000, '_criticalDeviation must be <= 10000');
     thresholds.criticalDeviation = _criticalDeviation;
     emit SetCriticalDeviation(_criticalDeviation);
   }
@@ -663,9 +671,14 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     require(_thresholds.baseRangeUpper >= 100 && _thresholds.baseRangeUpper <= 10000, 'Invalid base range upper');
     require(_thresholds.limitAllocation >= 100 && _thresholds.limitAllocation <= 10000 - _thresholds.maxDepositRatio, 'Invalid limit allocation');
     require(_thresholds.ratioBuffer <= 10000, '_ratioBuffer must be <= 10000');
+    require(_thresholds.ratioBuffer < _thresholds.lowInventoryLevel, '_ratioBuffer must be < lowInventoryLevel');
     require(_thresholds.majorDeviation >= _thresholds.minorDeviation, '_majorDeviation must be >= minorDeviation');
+    require(_thresholds.majorDeviation <= _thresholds.criticalDeviation, '_majorDeviation must be <= criticalDeviation');
+    require(_thresholds.majorDeviation <= 10000, '_majorDeviation must be <= 10000');
     require(_thresholds.minorDeviation <= 300, '_minorDeviation must be <= 300');
+    require(_thresholds.minorDeviation <= 10000, '_minorDeviation must be <= 10000');
     require(_thresholds.criticalDeviation >= _thresholds.majorDeviation, '_criticalDeviation must be >= majorDeviation');
+    require(_thresholds.criticalDeviation <= 10000, '_criticalDeviation must be <= 10000');
     require(
       _thresholds.idleDepositRatio >= 100 && _thresholds.idleDepositRatio <= 10000,
       '_idleDepositRatio must be 100 <= _idleDepositRatio <= 10000'

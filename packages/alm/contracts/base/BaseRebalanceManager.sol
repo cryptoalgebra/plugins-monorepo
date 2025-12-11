@@ -373,7 +373,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       }
 
       if (twapResult.percentageOfDepositTokenUnused <= thresholds.idleDepositRatio) {
-        return (false, State.Normal); // no rebalance needed
+        return (false, state); // no rebalance needed
       } else {
         return (true, state);
       }

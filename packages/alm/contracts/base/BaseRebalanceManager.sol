@@ -223,6 +223,10 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
         if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
+        lastRebalanceTimestamp = _blockTimestamp();
+        lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
+        state = newState;
+
         IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0);
       } else {
         IAlgebraVault(vault).setDepositMax(0, 0);

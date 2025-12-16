@@ -54,19 +54,19 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   }
 
   struct Thresholds {
-    uint16 depositTokenUnusedThreshold;
-    uint16 simulate;
-    uint16 normalThreshold;
-    uint16 underInventoryThreshold;
-    uint16 overInventoryThreshold;
-    uint16 priceChangeThreshold;
-    uint16 extremeVolatility;
-    uint16 highVolatility;
-    uint16 someVolatility;
-    uint16 dtrDelta;
-    uint16 baseLowPct;
-    uint16 baseHighPct;
-    uint16 limitReservePct;
+    uint16 idleDepositRatio;
+    uint16 maxDepositRatio;
+    uint16 balancedStateMin;
+    uint16 lowInventoryLevel;
+    uint16 highInventoryLevel;
+    uint16 priceShiftTrigger;
+    uint16 criticalDeviation;
+    uint16 majorDeviation;
+    uint16 minorDeviation;
+    uint16 ratioBuffer;
+    uint16 baseRangeLower;
+    uint16 baseRangeUpper;
+    uint16 limitAllocation;
   }
 
   address public vault;
@@ -88,74 +88,82 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   address public pool;
   uint32 public minTimeBetweenRebalances;
 
-  function setPriceChangeThreshold(uint16 _priceChangeThreshold) external {
+  function setPriceShiftTrigger(uint16 _priceShiftTrigger) external {
     _authorize();
-    require(_priceChangeThreshold < 10000, 'Invalid price change threshold');
-    thresholds.priceChangeThreshold = _priceChangeThreshold;
-    emit SetPriceChangeThreshold(_priceChangeThreshold);
+    require(_priceShiftTrigger < 10000, 'Invalid price shift trigger');
+    thresholds.priceShiftTrigger = _priceShiftTrigger;
+    emit SetPriceShiftTrigger(_priceShiftTrigger);
   }
 
-  function setPercentages(uint16 _baseLowPct, uint16 _baseHighPct, uint16 _limitReservePct) external {
+  function setRangeParams(uint16 _baseRangeLower, uint16 _baseRangeUpper, uint16 _limitAllocation) external {
     _authorize();
-    require(_baseLowPct >= 100 && _baseLowPct <= 10000, 'Invalid base low percent');
-    require(_baseHighPct >= 100 && _baseHighPct <= 10000, 'Invalid base high percent');
-    require(_limitReservePct >= 100 && _limitReservePct <= 10000 - thresholds.simulate, 'Invalid limit reserve percent');
-    thresholds.baseLowPct = _baseLowPct;
-    thresholds.baseHighPct = _baseHighPct;
-    thresholds.limitReservePct = _limitReservePct;
-    emit SetPercentages(_baseLowPct, _baseHighPct, _limitReservePct);
+    require(_baseRangeLower >= 100 && _baseRangeLower <= 10000, 'Invalid base range lower');
+    require(_baseRangeUpper >= 100 && _baseRangeUpper <= 10000, 'Invalid base range upper');
+    require(_limitAllocation >= 100 && _limitAllocation <= 10000 - thresholds.maxDepositRatio, 'Invalid limit allocation');
+    thresholds.baseRangeLower = _baseRangeLower;
+    thresholds.baseRangeUpper = _baseRangeUpper;
+    thresholds.limitAllocation = _limitAllocation;
+    emit SetRangeParams(_baseRangeLower, _baseRangeUpper, _limitAllocation);
   }
 
-  function setTriggers(uint16 _simulate, uint16 _normalThreshold, uint16 _underInventoryThreshold, uint16 _overInventoryThreshold) external {
+  function setInventoryLevels(uint16 _maxDepositRatio, uint16 _balancedStateMin, uint16 _lowInventoryLevel, uint16 _highInventoryLevel) external {
     _authorize();
-    require(_underInventoryThreshold > 6000, '_underInventoryThreshold must be > 6000');
-    require(_normalThreshold > _underInventoryThreshold, '_normalThreshold must be > _underInventoryThreshold');
-    require(_overInventoryThreshold > _normalThreshold, '_overInventoryThreshold must be > _normalThreshold');
-    require(_simulate > _overInventoryThreshold, 'Simulate must be > _overInventoryThreshold');
-    require(_simulate < 9500, 'Simulate must be < 9500');
-    thresholds.simulate = _simulate;
-    thresholds.normalThreshold = _normalThreshold;
-    thresholds.underInventoryThreshold = _underInventoryThreshold;
-    thresholds.overInventoryThreshold = _overInventoryThreshold;
-    emit SetTriggers(_simulate, _normalThreshold, _underInventoryThreshold, _overInventoryThreshold);
+    require(_lowInventoryLevel > 6000, '_lowInventoryLevel must be > 6000');
+    require(_balancedStateMin > _lowInventoryLevel, '_balancedStateMin must be > _lowInventoryLevel');
+    require(_highInventoryLevel > _balancedStateMin, '_highInventoryLevel must be > _balancedStateMin');
+    require(_maxDepositRatio > _highInventoryLevel, '_maxDepositRatio must be > _highInventoryLevel');
+    require(_maxDepositRatio < 9500, '_maxDepositRatio must be < 9500');
+    require(thresholds.limitAllocation <= 10000 - _maxDepositRatio, 'limitAllocation incompatible with new maxDepositRatio');
+    require(thresholds.ratioBuffer < _lowInventoryLevel, 'ratioBuffer must be < lowInventoryLevel');
+    thresholds.maxDepositRatio = _maxDepositRatio;
+    thresholds.balancedStateMin = _balancedStateMin;
+    thresholds.lowInventoryLevel = _lowInventoryLevel;
+    thresholds.highInventoryLevel = _highInventoryLevel;
+    emit SetInventoryLevels(_maxDepositRatio, _balancedStateMin, _lowInventoryLevel, _highInventoryLevel);
   }
 
-  function setDtrDelta(uint16 _dtrDelta) external {
+  function setRatioBuffer(uint16 _ratioBuffer) external {
     _authorize();
-    require(_dtrDelta <= 10000, '_dtrDelta must be <= 10000');
-    thresholds.dtrDelta = _dtrDelta;
-    emit SetDtrDelta(_dtrDelta);
+    require(_ratioBuffer <= 10000, '_ratioBuffer must be <= 10000');
+    require(_ratioBuffer < thresholds.lowInventoryLevel, '_ratioBuffer must be < lowInventoryLevel');
+    thresholds.ratioBuffer = _ratioBuffer;
+    emit SetRatioBuffer(_ratioBuffer);
   }
 
-  function setHighVolatility(uint16 _highVolatility) external {
+  function setMajorDeviation(uint16 _majorDeviation) external {
     _authorize();
-    require(_highVolatility >= thresholds.someVolatility, '_highVolatility must be >= someVolatility');
-    thresholds.highVolatility = _highVolatility;
-    emit SetHighVolatility(_highVolatility);
+    require(_majorDeviation >= thresholds.minorDeviation, '_majorDeviation must be >= minorDeviation');
+    require(_majorDeviation <= thresholds.criticalDeviation, '_majorDeviation must be <= criticalDeviation');
+    require(_majorDeviation <= 10000, '_majorDeviation must be <= 10000');
+    thresholds.majorDeviation = _majorDeviation;
+    emit SetMajorDeviation(_majorDeviation);
   }
 
-  function setSomeVolatility(uint16 _someVolatility) external {
+  function setMinorDeviation(uint16 _minorDeviation) external {
     _authorize();
-    require(_someVolatility <= 300, '_someVolatility must be <= 300');
-    thresholds.someVolatility = _someVolatility;
-    emit SetSomeVolatility(_someVolatility);
+    require(_minorDeviation <= 300, '_minorDeviation must be <= 300');
+    require(_minorDeviation <= thresholds.majorDeviation, '_minorDeviation must be <= majorDeviation');
+    require(_minorDeviation <= 10000, '_minorDeviation must be <= 10000');
+    thresholds.minorDeviation = _minorDeviation;
+    emit SetMinorDeviation(_minorDeviation);
   }
 
-  function setExtremeVolatility(uint16 _extremeVolatility) external {
+  function setCriticalDeviation(uint16 _criticalDeviation) external {
     _authorize();
-    require(_extremeVolatility >= thresholds.highVolatility, '_extremeVolatility must be >= highVolatility');
-    thresholds.extremeVolatility = _extremeVolatility;
-    emit SetExtremeVolatility(_extremeVolatility);
+    require(_criticalDeviation >= thresholds.majorDeviation, '_criticalDeviation must be >= majorDeviation');
+    require(_criticalDeviation <= 10000, '_criticalDeviation must be <= 10000');
+    thresholds.criticalDeviation = _criticalDeviation;
+    emit SetCriticalDeviation(_criticalDeviation);
   }
 
-  function setDepositTokenUnusedThreshold(uint16 _depositTokenUnusedThreshold) external {
+  function setIdleDepositRatio(uint16 _idleDepositRatio) external {
     _authorize();
     require(
-      _depositTokenUnusedThreshold >= 100 && _depositTokenUnusedThreshold <= 10000,
-      '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000'
+      _idleDepositRatio >= 100 && _idleDepositRatio <= 10000,
+      '_idleDepositRatio must be 100 <= _idleDepositRatio <= 10000'
     );
-    thresholds.depositTokenUnusedThreshold = _depositTokenUnusedThreshold;
-    emit SetDepositTokenUnusedThreshold(_depositTokenUnusedThreshold);
+    thresholds.idleDepositRatio = _idleDepositRatio;
+    emit SetIdleDepositRatio(_idleDepositRatio);
   }
 
   function setMinTimeBetweenRebalances(uint32 _minTimeBetweenRebalances) external {
@@ -204,9 +212,9 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
           if (
             obtainTWAPsResult.currentPriceAccountingDecimals == 0 ||
             obtainTWAPsResult.totalDepositToken == 0 ||
-            (newState == State.Normal &&
+              (newState == State.Normal &&
               obtainTWAPsResult.totalPairedInDeposit <=
-              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
+              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitAllocation))
           ) return;
           ranges = _getRangesWithState(newState, obtainTWAPsResult);
         } else {
@@ -215,15 +223,11 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
         if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
-        require(gasleft() >= 1600000, 'Not enough gas left');
-        try IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
-          lastRebalanceTimestamp = _blockTimestamp();
-          lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
-          state = newState;
-        } catch {
-          state = State.Special;
-          _pause();
-        }
+        lastRebalanceTimestamp = _blockTimestamp();
+        lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
+        state = newState;
+
+        IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0);
       } else {
         IAlgebraVault(vault).setDepositMax(0, 0);
         state = State.Special;
@@ -298,14 +302,14 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     uint256 fastSlowDiff = _calcPercentageDiff(twapResult.fastAvgPriceAccountingDecimals, twapResult.slowAvgPriceAccountingDecimals);
     uint256 fastCurrentDiff = _calcPercentageDiff(twapResult.fastAvgPriceAccountingDecimals, twapResult.currentPriceAccountingDecimals);
 
-    bool isExtremeVolatility = fastSlowDiff >= thresholds.extremeVolatility || fastCurrentDiff >= thresholds.extremeVolatility;
+    bool isExtremeVolatility = fastSlowDiff >= thresholds.criticalDeviation || fastCurrentDiff >= thresholds.criticalDeviation;
     if (!isExtremeVolatility) {
-      bool isHighVolatility = fastSlowDiff >= thresholds.highVolatility || fastCurrentDiff >= thresholds.highVolatility;
+      bool isHighVolatility = fastSlowDiff >= thresholds.majorDeviation || fastCurrentDiff >= thresholds.majorDeviation;
       if (!isHighVolatility) {
         if (
           !((state == State.OverInventory || state == State.Normal) &&
             lastRebalanceCurrentPrice != 0 &&
-            twapResult.percentageOfDepositToken < thresholds.underInventoryThreshold - thresholds.dtrDelta)
+            twapResult.percentageOfDepositToken < thresholds.lowInventoryLevel - thresholds.ratioBuffer)
         ) {
           if (_blockTimestamp() < lastRebalanceTimestamp + minTimeBetweenRebalances) {
             return (DecideStatus.TooSoon, State.Special);
@@ -313,7 +317,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
           (bool needToRebalance, State newState) = _updateStatus(twapResult);
           if (needToRebalance) {
-            if (fastCurrentDiff < thresholds.someVolatility) {
+            if (fastCurrentDiff < thresholds.minorDeviation) {
               return (DecideStatus.Normal, newState); // normal rebalance
             } else {
               return (DecideStatus.TooSoon, newState); // too soon
@@ -325,7 +329,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
       } else {
         // handle high volatility
         if (state != State.Special) {
-          if (fastCurrentDiff >= thresholds.someVolatility && twapResult.sameBlock) {
+          if (fastCurrentDiff >= thresholds.minorDeviation && twapResult.sameBlock) {
             return (DecideStatus.TooSoon, State.Special);
           }
         } else {
@@ -333,7 +337,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
           return (DecideStatus.NoNeed, State.Special);
         }
       }
-      // high volatility, fastSlowDiff >= thresholds.highVolatility
+      // high volatility, fastSlowDiff >= thresholds.majorDeviation
       state = State.Special;
       return (DecideStatus.Special, State.Special);
     } else {
@@ -345,15 +349,15 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     if (state != State.Special && lastRebalanceCurrentPrice != 0) {
       if (state != State.Normal) {
         if (state != State.OverInventory) {
-          if (twapResult.percentageOfDepositToken <= thresholds.simulate) {
-            if (twapResult.percentageOfDepositToken >= thresholds.normalThreshold) {
+          if (twapResult.percentageOfDepositToken <= thresholds.maxDepositRatio) {
+            if (twapResult.percentageOfDepositToken >= thresholds.balancedStateMin) {
               return (true, State.Normal);
             }
           } else {
             return (true, State.OverInventory);
           }
-        } else if (twapResult.percentageOfDepositToken >= thresholds.underInventoryThreshold) {
-          if (twapResult.percentageOfDepositToken <= thresholds.overInventoryThreshold) {
+        } else if (twapResult.percentageOfDepositToken >= thresholds.lowInventoryLevel) {
+          if (twapResult.percentageOfDepositToken <= thresholds.highInventoryLevel) {
             return (true, State.Normal);
           }
         } else {
@@ -361,25 +365,25 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
         }
 
         uint256 priceChange = _calcPercentageDiff(lastRebalanceCurrentPrice, twapResult.currentPriceAccountingDecimals); // percentage diff between lastRebalanceCurrentPrice and currentPriceAccountingDecimals
-        if (priceChange > thresholds.priceChangeThreshold) {
+        if (priceChange > thresholds.priceShiftTrigger) {
           return (true, state);
         }
-      } else if (twapResult.percentageOfDepositToken <= thresholds.simulate) {
-        if (twapResult.percentageOfDepositToken < thresholds.underInventoryThreshold) {
+      } else if (twapResult.percentageOfDepositToken <= thresholds.maxDepositRatio) {
+        if (twapResult.percentageOfDepositToken < thresholds.lowInventoryLevel) {
           return (true, State.UnderInventory);
         }
       } else {
         return (true, State.OverInventory);
       }
 
-      if (twapResult.percentageOfDepositTokenUnused <= thresholds.depositTokenUnusedThreshold) {
-        return (false, State.Normal); // no rebalance needed
+      if (twapResult.percentageOfDepositTokenUnused <= thresholds.idleDepositRatio) {
+        return (false, state); // no rebalance needed
       } else {
         return (true, state);
       }
     } else {
-      if (twapResult.percentageOfDepositToken <= thresholds.simulate) {
-        if (twapResult.percentageOfDepositToken >= thresholds.underInventoryThreshold) {
+      if (twapResult.percentageOfDepositToken <= thresholds.maxDepositRatio) {
+        if (twapResult.percentageOfDepositToken >= thresholds.lowInventoryLevel) {
           return (true, State.Normal);
         } else {
           return (true, State.UnderInventory);
@@ -595,15 +599,15 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
     uint256 lowerPriceBound = 0;
     if (_state != State.UnderInventory) {
-      lowerPriceBound = targetPrice - _calcPart(thresholds.baseLowPct, targetPrice);
+      lowerPriceBound = targetPrice - _calcPart(thresholds.baseRangeLower, targetPrice);
     }
-    uint256 upperPriceBound = targetPrice + _calcPart(thresholds.baseHighPct, targetPrice);
+    uint256 upperPriceBound = targetPrice + _calcPart(thresholds.baseRangeUpper, targetPrice);
 
     if (_state == State.Normal) {
       uint256 totalTokens = twapResult.totalDepositToken + twapResult.totalPairedInDeposit;
-      uint256 partOfTotalTokens = _calcPart(totalTokens, thresholds.limitReservePct); // 5% of totalTokensInToken0
+      uint256 partOfTotalTokens = _calcPart(totalTokens, thresholds.limitAllocation); // 5% of totalTokensInToken0
       uint256 excess = twapResult.totalPairedInDeposit - partOfTotalTokens;
-      uint256 partOfExcess = excess * thresholds.baseLowPct;
+      uint256 partOfExcess = excess * thresholds.baseRangeLower;
       uint256 excessCoef = partOfExcess / twapResult.totalDepositToken;
       if (excessCoef != 0) {
         targetPrice += _calcPart(excessCoef, targetPrice);
@@ -653,22 +657,27 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   }
 
   function _validateThresholds(Thresholds memory _thresholds) internal pure {
-    require(_thresholds.priceChangeThreshold < 10000, 'Invalid price change threshold');
-    require(_thresholds.underInventoryThreshold > 6000, '_underInventoryThreshold must be > 6000');
-    require(_thresholds.normalThreshold > _thresholds.underInventoryThreshold, '_normalThreshold must be > _underInventoryThreshold');
-    require(_thresholds.overInventoryThreshold > _thresholds.normalThreshold, '_overInventoryThreshold must be > _normalThreshold');
-    require(_thresholds.simulate > _thresholds.overInventoryThreshold, 'Simulate must be > _overInventoryThreshold');
-    require(_thresholds.simulate < 9500, 'Simulate must be < 9500');
-    require(_thresholds.baseLowPct >= 100 && _thresholds.baseLowPct <= 10000, 'Invalid base low percent');
-    require(_thresholds.baseHighPct >= 100 && _thresholds.baseHighPct <= 10000, 'Invalid base high percent');
-    require(_thresholds.limitReservePct >= 100 && _thresholds.limitReservePct <= 10000 - _thresholds.simulate, 'Invalid limit reserve percent');
-    require(_thresholds.dtrDelta <= 10000, '_dtrDelta must be <= 10000');
-    require(_thresholds.highVolatility >= _thresholds.someVolatility, '_highVolatility must be >= someVolatility');
-    require(_thresholds.someVolatility <= 300, '_someVolatility must be <= 300');
-    require(_thresholds.extremeVolatility >= _thresholds.highVolatility, '_extremeVolatility must be >= highVolatility');
+    require(_thresholds.priceShiftTrigger < 10000, 'Invalid price shift trigger');
+    require(_thresholds.lowInventoryLevel > 6000, '_lowInventoryLevel must be > 6000');
+    require(_thresholds.balancedStateMin > _thresholds.lowInventoryLevel, '_balancedStateMin must be > _lowInventoryLevel');
+    require(_thresholds.highInventoryLevel > _thresholds.balancedStateMin, '_highInventoryLevel must be > _balancedStateMin');
+    require(_thresholds.maxDepositRatio > _thresholds.highInventoryLevel, '_maxDepositRatio must be > _highInventoryLevel');
+    require(_thresholds.maxDepositRatio < 9500, '_maxDepositRatio must be < 9500');
+    require(_thresholds.baseRangeLower >= 100 && _thresholds.baseRangeLower <= 10000, 'Invalid base range lower');
+    require(_thresholds.baseRangeUpper >= 100 && _thresholds.baseRangeUpper <= 10000, 'Invalid base range upper');
+    require(_thresholds.limitAllocation >= 100 && _thresholds.limitAllocation <= 10000 - _thresholds.maxDepositRatio, 'Invalid limit allocation');
+    require(_thresholds.ratioBuffer <= 10000, '_ratioBuffer must be <= 10000');
+    require(_thresholds.ratioBuffer < _thresholds.lowInventoryLevel, '_ratioBuffer must be < lowInventoryLevel');
+    require(_thresholds.majorDeviation >= _thresholds.minorDeviation, '_majorDeviation must be >= minorDeviation');
+    require(_thresholds.majorDeviation <= _thresholds.criticalDeviation, '_majorDeviation must be <= criticalDeviation');
+    require(_thresholds.majorDeviation <= 10000, '_majorDeviation must be <= 10000');
+    require(_thresholds.minorDeviation <= 300, '_minorDeviation must be <= 300');
+    require(_thresholds.minorDeviation <= 10000, '_minorDeviation must be <= 10000');
+    require(_thresholds.criticalDeviation >= _thresholds.majorDeviation, '_criticalDeviation must be >= majorDeviation');
+    require(_thresholds.criticalDeviation <= 10000, '_criticalDeviation must be <= 10000');
     require(
-      _thresholds.depositTokenUnusedThreshold >= 100 && _thresholds.depositTokenUnusedThreshold <= 10000,
-      '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000'
+      _thresholds.idleDepositRatio >= 100 && _thresholds.idleDepositRatio <= 10000,
+      '_idleDepositRatio must be 100 <= _idleDepositRatio <= 10000'
     );
   }
 }

@@ -8,19 +8,19 @@ import { rebalances3 } from "./almRebalances3.json";
 describe('#AlmPlugin', () => {
 	async function almPluginFixture(
 		thresholds: {
-			depositTokenUnusedThreshold: string | number,
-			simulate: string | number,
-			normalThreshold: string | number,
-			underInventoryThreshold: string | number,
-			overInventoryThreshold: string | number,
-			priceChangeThreshold: string | number,
-			extremeVolatility: string | number,
-			highVolatility: string | number,
-			someVolatility: string | number,
-			dtrDelta: string | number,
-			baseLowPct: string | number,
-			baseHighPct: string | number,
-			limitReservePct: string | number,
+			idleDepositRatio: string | number,
+			maxDepositRatio: string | number,
+			balancedStateMin: string | number,
+			lowInventoryLevel: string | number,
+			highInventoryLevel: string | number,
+			priceShiftTrigger: string | number,
+			criticalDeviation: string | number,
+			majorDeviation: string | number,
+			minorDeviation: string | number,
+			ratioBuffer: string | number,
+			baseRangeLower: string | number,
+			baseRangeUpper: string | number,
+			limitAllocation: string | number,
 		},
 		tickSpacing: number,
 		allowToken0: boolean,
@@ -45,19 +45,19 @@ describe('#AlmPlugin', () => {
 	describe('#initializeALM', () => {
 		it("can initialize", async () => {
 			await almPluginFixture({
-				depositTokenUnusedThreshold: 100,
-				simulate: 9400, // было 9300
-				normalThreshold: 8100, // было 8000
-				underInventoryThreshold: 7800, // было 7700
-				overInventoryThreshold: 9100,
-				priceChangeThreshold: 100,
-				extremeVolatility: 2500,
-				highVolatility: 900, // было 500
-				someVolatility: 200, // было 100
-				dtrDelta: 300,
-				baseLowPct: 3000, // было 2000
-				baseHighPct: 1500, // было 3000
-				limitReservePct: 500,
+				idleDepositRatio: 100,
+				maxDepositRatio: 9400, // было 9300
+				balancedStateMin: 8100, // было 8000
+				lowInventoryLevel: 7800, // было 7700
+				highInventoryLevel: 9100,
+				priceShiftTrigger: 100,
+				criticalDeviation: 2500,
+				majorDeviation: 900, // было 500
+				minorDeviation: 200, // было 100
+				ratioBuffer: 300,
+				baseRangeLower: 3000, // было 2000
+				baseRangeUpper: 1500, // было 3000
+				limitAllocation: 500,
 			}, 228, true, false);
 		});
 	});
@@ -67,19 +67,19 @@ describe('#AlmPlugin', () => {
 			if (rebalance.rebalance.limitPosition != null) {
 				it(`rebalance for tx ${rebalance.transactionHash}`, async () => {
 					const { almPlugin, mockVault } = await almPluginFixture({
-						depositTokenUnusedThreshold: rebalance.state.depositTokenUnusedThreshold,
-						simulate: rebalance.state.simulateTrigger,
-						normalThreshold: rebalance.state.normalTrigger,
-						underInventoryThreshold: rebalance.state.underTrigger,
-						overInventoryThreshold: rebalance.state.overTrigger,
-						priceChangeThreshold: (BigInt(rebalance.state.priceChangeTrigger) / 2n).toString(),
-						extremeVolatility: rebalance.state.extremeVolatility,
-						highVolatility: rebalance.state.highVolatility,
-						someVolatility: rebalance.state.someVolatility,
-						dtrDelta: rebalance.state.dtrDelta,
-						baseLowPct: rebalance.state.baseLowPct,
-						baseHighPct: rebalance.state.baseHighPct,
-						limitReservePct: rebalance.state.limitReservePct,
+						idleDepositRatio: rebalance.state.depositTokenUnusedThreshold,
+						maxDepositRatio: rebalance.state.simulateTrigger,
+						balancedStateMin: rebalance.state.normalTrigger,
+						lowInventoryLevel: rebalance.state.underTrigger,
+						highInventoryLevel: rebalance.state.overTrigger,
+						priceShiftTrigger: (BigInt(rebalance.state.priceChangeTrigger) / 2n).toString(),
+						criticalDeviation: rebalance.state.extremeVolatility,
+						majorDeviation: rebalance.state.highVolatility,
+						minorDeviation: rebalance.state.someVolatility,
+						ratioBuffer: rebalance.state.dtrDelta,
+						baseRangeLower: rebalance.state.baseLowPct,
+						baseRangeUpper: rebalance.state.baseHighPct,
+						limitAllocation: rebalance.state.limitReservePct,
 					}, 60, true, false);
 
 					const state = rebalance.state;
@@ -118,19 +118,19 @@ describe('#AlmPlugin', () => {
 			if (rebalance.rebalance.limitPosition != null) {
 				it(`rebalance for tx ${rebalance.transactionHash}`, async () => {
 					const { almPlugin, mockVault } = await almPluginFixture({
-						depositTokenUnusedThreshold: rebalance.state.depositTokenUnusedThreshold,
-						simulate: rebalance.state.simulateTrigger,
-						normalThreshold: rebalance.state.normalTrigger,
-						underInventoryThreshold: rebalance.state.underTrigger,
-						overInventoryThreshold: rebalance.state.overTrigger,
-						priceChangeThreshold: (BigInt(rebalance.state.priceChangeTrigger) / 2n).toString(),
-						extremeVolatility: rebalance.state.extremeVolatility,
-						highVolatility: rebalance.state.highVolatility,
-						someVolatility: rebalance.state.someVolatility,
-						dtrDelta: rebalance.state.dtrDelta,
-						baseLowPct: rebalance.state.baseLowPct,
-						baseHighPct: rebalance.state.baseHighPct,
-						limitReservePct: rebalance.state.limitReservePct,
+						idleDepositRatio: rebalance.state.depositTokenUnusedThreshold,
+						maxDepositRatio: rebalance.state.simulateTrigger,
+						balancedStateMin: rebalance.state.normalTrigger,
+						lowInventoryLevel: rebalance.state.underTrigger,
+						highInventoryLevel: rebalance.state.overTrigger,
+						priceShiftTrigger: (BigInt(rebalance.state.priceChangeTrigger) / 2n).toString(),
+						criticalDeviation: rebalance.state.extremeVolatility,
+						majorDeviation: rebalance.state.highVolatility,
+						minorDeviation: rebalance.state.someVolatility,
+						ratioBuffer: rebalance.state.dtrDelta,
+						baseRangeLower: rebalance.state.baseLowPct,
+						baseRangeUpper: rebalance.state.baseHighPct,
+						limitAllocation: rebalance.state.limitReservePct,
 					}, 200, false, true);
 
 					const state = rebalance.state;

@@ -2,14 +2,14 @@
 pragma solidity >=0.5.0;
 
 interface IRebalanceManager {
-	event SetPriceChangeThreshold(uint16 priceChangeThreshold);
-	event SetPercentages(uint16 baseLowPct, uint16 baseHighPct, uint16 limitReservePct);
-	event SetTriggers(uint16 simulate, uint16 normalThreshold, uint16 underInventoryThreshold, uint16 overInventoryThreshold);
-	event SetDtrDelta(uint16 dtrDelta);
-	event SetHighVolatility(uint16 highVolatility);
-	event SetSomeVolatility(uint16 someVolatility);
-	event SetExtremeVolatility(uint16 extremeVolatility);
-	event SetDepositTokenUnusedThreshold(uint16 depositTokenUnusedThreshold);
+	event SetPriceShiftTrigger(uint16 priceShiftTrigger);
+	event SetRangeParams(uint16 baseRangeLower, uint16 baseRangeUpper, uint16 limitAllocation);
+	event SetInventoryLevels(uint16 maxDepositRatio, uint16 balancedStateMin, uint16 lowInventoryLevel, uint16 highInventoryLevel);
+	event SetRatioBuffer(uint16 ratioBuffer);
+	event SetMajorDeviation(uint16 majorDeviation);
+	event SetMinorDeviation(uint16 minorDeviation);
+	event SetCriticalDeviation(uint16 criticalDeviation);
+	event SetIdleDepositRatio(uint16 idleDepositRatio);
 	event SetMinTimeBetweenRebalances(uint32 minTimeBetweenRebalances);
 	event SetVault(address vault);
 	event Paused();

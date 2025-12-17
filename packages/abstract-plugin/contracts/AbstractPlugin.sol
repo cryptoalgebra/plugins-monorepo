@@ -47,17 +47,6 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     }
   }
 
-  /// @inheritdoc IAbstractPlugin
-  function getActiveModulesCount() external view virtual override returns (uint256) {
-    return activeModules.length;
-  }
-
-  /// @inheritdoc IAbstractPlugin
-  function getModuleName(uint256 index) external view virtual override returns (string memory) {
-    require(index < activeModules.length, 'Index out of bounds');
-    return activeModules[index];
-  }
-
   function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
   }

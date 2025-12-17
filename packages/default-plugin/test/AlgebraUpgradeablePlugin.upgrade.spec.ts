@@ -256,22 +256,6 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       expect(configAfter).to.eq(configBefore);
     });
 
-    it('active modules are preserved after upgrade', async () => {
-      const fixture = await loadFixture(upgradeFixture);
-      
-      await fixture.mockPool1.setPlugin(fixture.plugin1);
-
-      const moduleCountBefore = await fixture.plugin1.getActiveModulesCount();
-
-      // Upgrade
-      await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
-
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await fixture.plugin1.getAddress());
-      const moduleCountAfter = await upgradedPlugin.getActiveModulesCount();
-      
-      expect(moduleCountAfter).to.eq(moduleCountBefore);
-    });
-
     it('fee configuration is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
       

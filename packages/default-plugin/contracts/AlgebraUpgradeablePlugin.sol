@@ -134,7 +134,7 @@ contract AlgebraUpgradeablePlugin is
   function beforeInitialize(
     address ,
     uint160
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -144,7 +144,7 @@ contract AlgebraUpgradeablePlugin is
     address ,
     uint160 ,
     int24 tick
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _initialize_TWAP(_blockTimestamp(), tick);
     return IAlgebraPlugin.afterInitialize.selector;
   }
@@ -157,7 +157,7 @@ contract AlgebraUpgradeablePlugin is
     int24 ,
     int128 desiredLiquidityDelta,
     bytes calldata 
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
+  ) external override onlyPool returns (bytes4, uint24) {
     // Security check - different logic for burns (negative liquidity) vs mints
     if (desiredLiquidityDelta < 0) {
       _checkStatusOnBurn(pool);
@@ -178,7 +178,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     uint256,
     bytes calldata
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
@@ -192,7 +192,7 @@ contract AlgebraUpgradeablePlugin is
     uint160,
     bool,
     bytes calldata
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (bytes4, uint24, uint24) {
     // Security check
     _checkStatus(pool);
 
@@ -212,7 +212,7 @@ contract AlgebraUpgradeablePlugin is
     int256,
     int256,
     bytes calldata
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();
 
     // Update virtual pool for farming
@@ -231,7 +231,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     uint256,
     bytes calldata
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     // Security check
     _checkStatus(pool);
 
@@ -247,7 +247,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     uint256,
     bytes calldata
-  ) external override(UpgradeableAbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  ) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig);
     return IAlgebraPlugin.afterFlash.selector;
   }

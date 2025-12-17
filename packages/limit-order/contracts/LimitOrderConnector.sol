@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/ILimitOrderPlugin.sol';
 import './interfaces/ILimitOrderPluginImplementation.sol';
+import './libraries/LimitOrderStorage.sol';
 
 /// @title LimitOrder Connector
 /// @notice This contract provides delegatecall functions to LimitOrder implementation
@@ -13,21 +14,6 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   using Plugins for uint8;
 
   uint8 internal constant LIMIT_ORDER_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
-
-  /// @dev Storage namespace for LimitOrder plugin using ERC-7201
-  bytes32 internal constant LIMIT_ORDER_NAMESPACE = keccak256('algebra.storage.limitorder');
-
-  struct LimitOrderLayout {
-    address limitOrderManager;
-  }
-
-  /// @dev Fetch pointer of LimitOrder plugin's storage for direct view access
-  function _getLimitOrderLayout() internal pure returns (LimitOrderLayout storage layout) {
-    bytes32 position = LIMIT_ORDER_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable limitOrderImplementation;
@@ -65,7 +51,7 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
 
   /// @inheritdoc ILimitOrderPlugin
   function limitOrderManager() external view override returns (address) {
-    return _getLimitOrderLayout().limitOrderManager;
+    return LimitOrderStorage.layout().limitOrderManager;
   }
 
   /// @inheritdoc ILimitOrderPlugin

@@ -2,26 +2,12 @@
 pragma solidity ^0.8.20;
 
 import './interfaces/IReflexRouter.sol';
+import './libraries/ReflexStorage.sol';
 
 /// @title Reflex Plugin Implementation
 /// @notice This contract contains ALL logic for Reflex plugin that works with namespaced storage
 /// @dev Called via delegatecall from ReflexConnector to reduce main contract size
 contract ReflexPluginImplementation {
-  /// @dev Storage namespace for Reflex plugin using ERC-7201
-  bytes32 internal constant REFLEX_NAMESPACE = keccak256('algebra.storage.reflex');
-
-  struct ReflexLayout {
-    address reflexRouter;
-    bytes32 reflexConfigId;
-  }
-
-  /// @dev Fetch pointer of Reflex plugin's storage
-  function _getReflexLayout() internal pure returns (ReflexLayout storage layout) {
-    bytes32 position = REFLEX_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @notice Initialize Reflex plugin
   /// @dev Called via delegatecall from connector
@@ -29,7 +15,7 @@ contract ReflexPluginImplementation {
   /// @param _configId Configuration ID for profit distribution
   function initializeReflex(address _router, bytes32 _configId) external {
     require(_router != address(0), 'Invalid router address');
-    ReflexLayout storage layout = _getReflexLayout();
+    ReflexStorage.Layout storage layout = ReflexStorage.layout();
     layout.reflexRouter = _router;
     layout.reflexConfigId = _configId;
   }
@@ -39,7 +25,7 @@ contract ReflexPluginImplementation {
   /// @param _router New router address
   function setReflexRouter(address _router) external {
     require(_router != address(0), 'Invalid router address');
-    ReflexLayout storage layout = _getReflexLayout();
+    ReflexStorage.Layout storage layout = ReflexStorage.layout();
     layout.reflexRouter = _router;
   }
 
@@ -47,7 +33,7 @@ contract ReflexPluginImplementation {
   /// @dev Called via delegatecall from connector
   /// @param _configId New config ID
   function setReflexConfigId(bytes32 _configId) external {
-    ReflexLayout storage layout = _getReflexLayout();
+    ReflexStorage.Layout storage layout = ReflexStorage.layout();
     layout.reflexConfigId = _configId;
   }
 
@@ -55,16 +41,14 @@ contract ReflexPluginImplementation {
   /// @dev Called via staticcall from connector
   /// @return Router address
   function getReflexRouter() external view returns (address) {
-    ReflexLayout storage layout = _getReflexLayout();
-    return layout.reflexRouter;
+    return ReflexStorage.layout().reflexRouter;
   }
 
   /// @notice Get reflex config ID
   /// @dev Called via staticcall from connector
   /// @return Config ID
   function getReflexConfigId() external view returns (bytes32) {
-    ReflexLayout storage layout = _getReflexLayout();
-    return layout.reflexConfigId;
+    return ReflexStorage.layout().reflexConfigId;
   }
 
   /// @notice Execute reflex after swap
@@ -83,7 +67,7 @@ contract ReflexPluginImplementation {
     bool zeroForOne,
     address recipient
   ) external returns (uint256 profit, address profitToken) {
-    ReflexLayout storage layout = _getReflexLayout();
+    ReflexStorage.Layout storage layout = ReflexStorage.layout();
 
     uint256 swapAmountIn = uint256(amount0Delta > 0 ? amount0Delta : amount1Delta);
 

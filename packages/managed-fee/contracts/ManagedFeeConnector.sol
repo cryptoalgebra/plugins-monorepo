@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/IManagedSwapFeePlugin.sol';
 import './interfaces/IManagedFeePluginImplementation.sol';
+import './libraries/ManagedFeeStorage.sol';
 
 /// @title ManagedFee Connector
 /// @notice This contract provides delegatecall interface to ManagedFee plugin implementation
@@ -13,22 +14,6 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
   using Plugins for uint8;
 
   uint8 internal constant MANAGED_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
-
-  /// @dev Storage namespace for ManagedFee plugin using ERC-7201
-  bytes32 internal constant MANAGED_FEE_NAMESPACE = keccak256('algebra.storage.managedfee');
-
-  struct ManagedFeeLayout {
-    mapping(address => bool) whitelistedAddresses;
-    mapping(bytes32 => bool) usedNonces;
-  }
-
-  /// @dev Fetch pointer of ManagedFee plugin's storage for direct view access
-  function _getManagedFeeLayout() internal pure returns (ManagedFeeLayout storage layout) {
-    bytes32 position = MANAGED_FEE_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable managedFeeImplementation;
@@ -64,7 +49,7 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
 
   /// @inheritdoc IManagedSwapFeePlugin
   function whitelistedAddresses(address _address) external view override returns (bool) {
-    return _getManagedFeeLayout().whitelistedAddresses[_address];
+    return ManagedFeeStorage.layout().whitelistedAddresses[_address];
   }
 
   /// @inheritdoc IManagedSwapFeePlugin

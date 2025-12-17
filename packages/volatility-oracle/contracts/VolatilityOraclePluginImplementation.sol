@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import './libraries/VolatilityOracle.sol';
+import './libraries/VolatilityOracleStorage.sol';
 
 /// @title VolatilityOracle Plugin Implementation
 /// @notice This contract contains state management logic for VolatilityOracle plugin using namespaced storage
@@ -10,24 +11,6 @@ import './libraries/VolatilityOracle.sol';
 contract VolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
-
-  /// @dev Storage namespace for VolatilityOracle plugin using ERC-7201
-  bytes32 internal constant VOLATILITY_ORACLE_STORAGE_SLOT = keccak256('algebra.storage.volatilityoracle');
-
-  struct VolatilityOracleLayout {
-    uint16 timepointIndex;
-    uint32 lastTimepointTimestamp;
-    bool isInitialized;
-    VolatilityOracle.Timepoint[UINT16_MODULO] timepoints;
-  }
-
-  /// @dev Fetch pointer of VolatilityOracle plugin's storage
-  function _getVolatilityOracleLayout() internal pure returns (VolatilityOracleLayout storage layout) {
-    bytes32 position = VOLATILITY_ORACLE_STORAGE_SLOT;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @notice Initialize VolatilityOracle plugin state
   /// @dev Called via delegatecall from connector
@@ -39,7 +22,7 @@ contract VolatilityOraclePluginImplementation {
   /// @dev Called via delegatecall from connector
   /// @param initialized New initialized state
   function setInitialized(bool initialized) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     layout.isInitialized = initialized;
   }
 
@@ -47,7 +30,7 @@ contract VolatilityOraclePluginImplementation {
   /// @dev Called via delegatecall from connector
   /// @param index New timepoint index
   function setTimepointIndex(uint16 index) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     layout.timepointIndex = index;
   }
 
@@ -55,7 +38,7 @@ contract VolatilityOraclePluginImplementation {
   /// @dev Called via delegatecall from connector
   /// @param timestamp New timestamp
   function setLastTimepointTimestamp(uint32 timestamp) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     layout.lastTimepointTimestamp = timestamp;
   }
 
@@ -63,24 +46,21 @@ contract VolatilityOraclePluginImplementation {
   /// @dev Called via staticcall from connector
   /// @return isInitialized Whether the oracle is initialized
   function getIsInitialized() external view returns (bool) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.isInitialized;
+    return VolatilityOracleStorage.layout().isInitialized;
   }
 
   /// @notice Get timepoint index
   /// @dev Called via staticcall from connector
   /// @return index Current timepoint index
   function getTimepointIndex() external view returns (uint16) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.timepointIndex;
+    return VolatilityOracleStorage.layout().timepointIndex;
   }
 
   /// @notice Get last timepoint timestamp
   /// @dev Called via staticcall from connector
   /// @return timestamp Last timepoint timestamp
   function getLastTimepointTimestamp() external view returns (uint32) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.lastTimepointTimestamp;
+    return VolatilityOracleStorage.layout().lastTimepointTimestamp;
   }
 
   // ============ Timepoints Array Operations ============
@@ -90,8 +70,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param index The index of the timepoint
   /// @return timepoint The timepoint data
   function getTimepoint(uint16 index) external view returns (VolatilityOracle.Timepoint memory) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    return layout.timepoints[index];
+    return VolatilityOracleStorage.layout().timepoints[index];
   }
 
   /// @notice Set a single timepoint by index
@@ -99,8 +78,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param index The index of the timepoint
   /// @param timepoint The timepoint data to set
   function setTimepoint(uint16 index, VolatilityOracle.Timepoint calldata timepoint) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
-    layout.timepoints[index] = timepoint;
+    VolatilityOracleStorage.layout().timepoints[index] = timepoint;
   }
 
   /// @notice Initialize the timepoints array (write first timepoint)
@@ -108,7 +86,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param time The initialization timestamp
   /// @param tick The initial tick
   function initializeTimepoints(uint32 time, int24 tick) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     layout.timepoints.initialize(time, tick);
   }
 
@@ -117,7 +95,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param time The initialization timestamp
   /// @param tick The initial tick
   function initializeTWAP(uint32 time, int24 tick) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     layout.timepoints.initialize(time, tick);
     layout.lastTimepointTimestamp = time;
     layout.isInitialized = true;
@@ -128,7 +106,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param currentTimestamp Current block timestamp
   /// @param tick Current tick from pool
   function writeTimepointSimple(uint32 currentTimestamp, int24 tick) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
 
     require(layout.isInitialized, 'Not initialized');
     if (layout.lastTimepointTimestamp == currentTimestamp) return;
@@ -148,7 +126,7 @@ contract VolatilityOraclePluginImplementation {
     uint32 currentTimestamp,
     int24 tick
   ) external view returns (uint88 volatilityAverage) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
 
     uint16 lastTimepointIndex = layout.timepointIndex;
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastTimepointIndex);
@@ -168,7 +146,7 @@ contract VolatilityOraclePluginImplementation {
     uint32 blockTimestamp,
     int24 tick
   ) external returns (uint16 indexUpdated, uint16 oldestIndex) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     return layout.timepoints.write(lastIndex, blockTimestamp, tick);
   }
 
@@ -177,7 +155,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param lastIndex The index of the last written timepoint
   /// @return oldestIndex The index of the oldest timepoint
   function getOldestTimepointIndex(uint16 lastIndex) external view returns (uint16) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     return layout.timepoints.getOldestIndex(lastIndex);
   }
 
@@ -196,7 +174,7 @@ contract VolatilityOraclePluginImplementation {
     uint16 lastIndex,
     uint16 oldestIndex
   ) external view returns (VolatilityOracle.Timepoint memory result) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     return layout.timepoints.getSingleTimepoint(time, secondsAgo, tick, lastIndex, oldestIndex);
   }
 
@@ -214,7 +192,7 @@ contract VolatilityOraclePluginImplementation {
     int24 tick,
     uint16 lastIndex
   ) external view returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     return layout.timepoints.getTimepoints(currentTime, secondsAgos, tick, lastIndex);
   }
 
@@ -231,7 +209,7 @@ contract VolatilityOraclePluginImplementation {
     uint16 lastIndex,
     uint16 oldestIndex
   ) external view returns (uint88) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     return layout.timepoints.getAverageVolatility(currentTime, tick, lastIndex, oldestIndex);
   }
 
@@ -240,7 +218,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param startIndex Start index for prepayment
   /// @param amount Number of slots to prepay
   function prepayTimepointsSlots(uint16 startIndex, uint16 amount) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     require(!layout.timepoints[startIndex].initialized, 'Already initialized');
     require(amount > 0 && type(uint16).max - startIndex >= amount, 'Invalid amount');
 
@@ -266,7 +244,7 @@ contract VolatilityOraclePluginImplementation {
   ) external view returns (int24 timeWeightedAverageTick) {
     if (period == 0) return currentTick;
 
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     uint16 lastIndex = layout.timepointIndex;
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
 
@@ -303,7 +281,7 @@ contract VolatilityOraclePluginImplementation {
   /// @param currentTime Current block timestamp
   /// @return True if timepoints are available for the period
   function canGetTwap(uint32 period, uint32 currentTime) external view returns (bool) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
 
     if (!layout.isInitialized) return false;
     if (period == 0) return true;

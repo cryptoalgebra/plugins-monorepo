@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/IFarmingPlugin.sol';
 import './interfaces/IFarmingProxyPluginImplementation.sol';
+import './libraries/FarmingProxyStorage.sol';
 
 /// @title FarmingProxy Connector
 /// @notice This contract provides delegatecall interface to FarmingProxy plugin implementation
@@ -12,34 +13,20 @@ import './interfaces/IFarmingProxyPluginImplementation.sol';
 abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   using Plugins for uint8;
 
-  /// @dev Storage namespace for FarmingProxy plugin using ERC-7201
-  bytes32 internal constant FARMING_PROXY_NAMESPACE = keccak256('algebra.storage.farmingproxy');
-
   uint8 internal constant FARMING_PROXY_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable farmingProxyImplementation;
 
-  struct FarmingProxyLayout {
-    address incentive;
-    address lastIncentiveOwner;
-  }
 
   constructor(address _farmingProxyImplementation) {
     farmingProxyImplementation = _farmingProxyImplementation;
   }
 
-  /// @dev Fetch pointer of FarmingProxy plugin's storage
-  function _getFarmingProxyLayout() internal pure returns (FarmingProxyLayout storage layout) {
-    bytes32 position = FARMING_PROXY_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @notice Get the incentive address
   function _getIncentive() internal view returns (address) {
-    return _getFarmingProxyLayout().incentive;
+    return FarmingProxyStorage.layout().incentive;
   }
 
   /// @notice Initialize FarmingProxy plugin via delegatecall

@@ -5,28 +5,13 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import './interfaces/IFarmingPluginFactory.sol';
 import './interfaces/IAlgebraVirtualPool.sol';
+import './libraries/FarmingProxyStorage.sol';
 
 /// @title FarmingProxy Plugin Implementation
 /// @notice This contract contains ALL logic for FarmingProxy plugin that works with namespaced storage
 /// @dev Called via delegatecall from FarmingProxyConnector to reduce main contract size
 contract FarmingProxyPluginImplementation {
   using Plugins for uint8;
-
-  /// @dev Storage namespace for FarmingProxy plugin using ERC-7201
-  bytes32 internal constant FARMING_PROXY_NAMESPACE = keccak256('algebra.storage.farmingproxy');
-
-  struct FarmingProxyLayout {
-    address incentive;
-    address lastIncentiveOwner;
-  }
-
-  /// @dev Fetch pointer of FarmingProxy plugin's storage
-  function _getFarmingProxyLayout() internal pure returns (FarmingProxyLayout storage layout) {
-    bytes32 position = FARMING_PROXY_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @notice Initialize FarmingProxy plugin
   /// @dev Called via delegatecall from connector
@@ -40,7 +25,7 @@ contract FarmingProxyPluginImplementation {
   /// @param pluginFactory The plugin factory address
   /// @param pool The pool address
   function setIncentive(address newIncentive, address pluginFactory, address pool) external {
-    FarmingProxyLayout storage layout = _getFarmingProxyLayout();
+    FarmingProxyStorage.Layout storage layout = FarmingProxyStorage.layout();
 
     bool toConnect = newIncentive != address(0);
     bool accessAllowed;
@@ -85,7 +70,7 @@ contract FarmingProxyPluginImplementation {
   /// @param targetIncentive The incentive address to check
   /// @param pool The pool address
   function isIncentiveConnected(address targetIncentive, address pool) external view returns (bool) {
-    FarmingProxyLayout storage layout = _getFarmingProxyLayout();
+    FarmingProxyStorage.Layout storage layout = FarmingProxyStorage.layout();
 
     if (layout.incentive != targetIncentive) return false;
 
@@ -101,8 +86,7 @@ contract FarmingProxyPluginImplementation {
   /// @notice Update virtual pool tick
   /// @dev Called via delegatecall from connector
   function updateVirtualPoolTick(bool zeroToOne, int24 tick) external {
-    FarmingProxyLayout storage layout = _getFarmingProxyLayout();
-    address _incentive = layout.incentive;
+    address _incentive = FarmingProxyStorage.layout().incentive;
 
     if (_incentive != address(0)) {
       IAlgebraVirtualPool(_incentive).crossTo(tick, zeroToOne);

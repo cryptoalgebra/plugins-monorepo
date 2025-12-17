@@ -3,6 +3,7 @@ pragma solidity =0.8.20;
 
 import '../AlgebraUpgradeablePlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracle.sol';
+import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracleStorage.sol';
 
 /// @title Mock upgradeable plugin for testing
 /// @notice Used for testing time dependent behavior
@@ -54,7 +55,7 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
 
   /// @notice Batch update timepoints for testing filled oracle
   function batchUpdate(UpdateParams[] calldata params) external {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
 
     uint16 _index = layout.timepointIndex;
     uint32 _time = uint32(time);

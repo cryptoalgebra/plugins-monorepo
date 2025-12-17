@@ -4,6 +4,7 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './libraries/VolatilityOracle.sol';
+import './libraries/VolatilityOracleStorage.sol';
 import './interfaces/IVolatilityOracle.sol';
 import './interfaces/IVolatilityOraclePluginImplementation.sol';
 
@@ -17,25 +18,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
   uint8 internal constant VOLATILITY_ORACLE_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
-
-  /// @dev Storage namespace for VolatilityOracle plugin using ERC-7201
-  /// @dev Must match the slot in VolatilityOraclePluginImplementation
-  bytes32 internal constant VOLATILITY_ORACLE_STORAGE_SLOT = keccak256('algebra.storage.volatilityoracle');
-
-  struct VolatilityOracleLayout {
-    uint16 timepointIndex;
-    uint32 lastTimepointTimestamp;
-    bool isInitialized;
-    VolatilityOracle.Timepoint[UINT16_MODULO] timepoints;
-  }
-
-  /// @dev Fetch pointer of VolatilityOracle plugin's storage for direct view access
-  function _getVolatilityOracleLayout() internal pure returns (VolatilityOracleLayout storage layout) {
-    bytes32 position = VOLATILITY_ORACLE_STORAGE_SLOT;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable volatilityOracleImplementation;
@@ -164,7 +146,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
 
   /// @notice Get average volatility (view version)
   function _getAverageVolatilityLast() internal view returns (uint88 volatilityAverage) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     (, int24 tick, , ) = _getPoolState();
     uint16 lastIndex = layout.timepointIndex;
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
@@ -191,7 +173,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
       uint16 windowStartIndex
     )
   {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     VolatilityOracle.Timepoint storage tp = layout.timepoints[index];
     return (
       tp.initialized,
@@ -206,7 +188,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
 
   /// @inheritdoc IVolatilityOracle
   function timepointIndex() external view override returns (uint16) {
-    return _getVolatilityOracleLayout().timepointIndex;
+    return VolatilityOracleStorage.layout().timepointIndex;
   }
 
   /// @inheritdoc IVolatilityOracle
@@ -216,19 +198,19 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
 
   /// @inheritdoc IVolatilityOracle
   function lastTimepointTimestamp() external view override returns (uint32) {
-    return _getVolatilityOracleLayout().lastTimepointTimestamp;
+    return VolatilityOracleStorage.layout().lastTimepointTimestamp;
   }
 
   /// @inheritdoc IVolatilityOracle
   function isInitialized() external view override returns (bool) {
-    return _getVolatilityOracleLayout().isInitialized;
+    return VolatilityOracleStorage.layout().isInitialized;
   }
 
   /// @inheritdoc IVolatilityOracle
   function getSingleTimepoint(
     uint32 secondsAgo
   ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     (, int24 tick, , ) = _getPoolState();
     uint16 lastIndex = layout.timepointIndex;
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
@@ -248,7 +230,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   function getTimepoints(
     uint32[] memory secondsAgos
   ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    VolatilityOracleLayout storage layout = _getVolatilityOracleLayout();
+    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     (, int24 tick, , ) = _getPoolState();
     uint16 lastIndex = layout.timepointIndex;
 

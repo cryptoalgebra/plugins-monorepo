@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/ISecurityPlugin.sol';
 import './interfaces/ISecurityPluginImplementation.sol';
+import './libraries/SecurityStorage.sol';
 
 /// @title Security Connector
 /// @notice This contract provides delegatecall interface to Security plugin implementation
@@ -14,21 +15,6 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
 
   uint8 internal constant SECURITY_PLUGIN_CONFIG =
     uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
-
-  /// @dev Storage namespace for Security plugin using ERC-7201
-  bytes32 internal constant SECURITY_NAMESPACE = keccak256('algebra.storage.security');
-
-  struct SecurityLayout {
-    address securityRegistry;
-  }
-
-  /// @dev Fetch pointer of Security plugin's storage for direct view access
-  function _getSecurityLayout() internal pure returns (SecurityLayout storage layout) {
-    bytes32 position = SECURITY_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable securityImplementation;
@@ -73,6 +59,6 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
 
   /// @inheritdoc ISecurityPlugin
   function getSecurityRegistry() external view override returns (address) {
-    return _getSecurityLayout().securityRegistry;
+    return SecurityStorage.layout().securityRegistry;
   }
 }

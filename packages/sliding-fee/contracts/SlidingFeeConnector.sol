@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/ISlidingFeePlugin.sol';
 import './interfaces/ISlidingFeePluginImplementation.sol';
+import './libraries/SlidingFeeStorage.sol';
 
 /// @title SlidingFee Connector
 /// @notice This contract provides delegatecall interface to SlidingFee plugin implementation
@@ -14,29 +15,8 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
 
   uint8 internal constant SLIDING_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
-  /// @dev Storage namespace for SlidingFee plugin using ERC-7201
-  bytes32 internal constant SLIDING_FEE_NAMESPACE = keccak256('algebra.storage.slidingfee');
-
   uint64 internal constant FEE_FACTOR_SHIFT = 96;
 
-  struct FeeFactors {
-    uint128 zeroToOneFeeFactor;
-    uint128 oneToZeroFeeFactor;
-  }
-
-  struct SlidingFeeLayout {
-    FeeFactors feeFactors;
-    uint16 priceChangeFactor;
-    uint16 baseFee;
-  }
-
-  /// @dev Fetch pointer of SlidingFee plugin's storage for direct view access
-  function _getSlidingFeeLayout() internal pure returns (SlidingFeeLayout storage layout) {
-    bytes32 position = SLIDING_FEE_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable slidingFeeImplementation;
@@ -80,23 +60,23 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
 
   /// @notice Get price change factor
   function _getPriceChangeFactor() internal view returns (uint16) {
-    return _getSlidingFeeLayout().priceChangeFactor;
+    return SlidingFeeStorage.layout().priceChangeFactor;
   }
 
   /// @notice Get base fee
   function _getBaseFee() internal view returns (uint16) {
-    return _getSlidingFeeLayout().baseFee;
+    return SlidingFeeStorage.layout().baseFee;
   }
 
   /// @notice Get fee factors
   function _getFeeFactors() internal view returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
-    FeeFactors memory factors = _getSlidingFeeLayout().feeFactors;
+    SlidingFeeStorage.FeeFactors memory factors = SlidingFeeStorage.layout().feeFactors;
     return (factors.zeroToOneFeeFactor, factors.oneToZeroFeeFactor);
   }
 
   /// @notice Get current fee for direction
   function _getCurrentFee(bool zeroToOne) internal view returns (uint16) {
-    SlidingFeeLayout storage layout = _getSlidingFeeLayout();
+    SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
     uint256 adjustedFee = zeroToOne
       ? (uint256(layout.baseFee) * layout.feeFactors.zeroToOneFeeFactor) >> FEE_FACTOR_SHIFT
       : (uint256(layout.baseFee) * layout.feeFactors.oneToZeroFeeFactor) >> FEE_FACTOR_SHIFT;

@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/IAlmPlugin.sol';
 import './interfaces/IAlmPluginImplementation.sol';
+import './libraries/AlmStorage.sol';
 
 /// @title ALM Connector
 /// @notice This contract provides delegatecall interface to ALM plugin implementation
@@ -13,23 +14,6 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
 
   uint8 internal constant ALM_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
   address internal immutable almImplementation;
-
-  /// @dev Storage namespace for ALM plugin using ERC-7201
-  bytes32 internal constant ALM_NAMESPACE = keccak256('algebra.storage.alm');
-
-  struct AlmLayout {
-    address rebalanceManager;
-    uint32 slowTwapPeriod;
-    uint32 fastTwapPeriod;
-  }
-
-  /// @dev Fetch pointer of ALM plugin's storage for direct view access
-  function _getAlmLayout() internal pure returns (AlmLayout storage layout) {
-    bytes32 position = ALM_NAMESPACE;
-    assembly {
-      layout.slot := position
-    }
-  }
 
   constructor(address _almImplementation) {
     almImplementation = _almImplementation;
@@ -63,18 +47,18 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
   }
 
   function _getSlowTwapPeriod() internal view returns (uint32) {
-    return _getAlmLayout().slowTwapPeriod;
+    return AlmStorage.layout().slowTwapPeriod;
   }
 
   function _getFastTwapPeriod() internal view returns (uint32) {
-    return _getAlmLayout().fastTwapPeriod;
+    return AlmStorage.layout().fastTwapPeriod;
   }
 
   // ###### Public Interface (IAlmPlugin) ######
 
   /// @inheritdoc IAlmPlugin
   function rebalanceManager() external view override returns (address) {
-    return _getAlmLayout().rebalanceManager;
+    return AlmStorage.layout().rebalanceManager;
   }
 
   /// @inheritdoc IAlmPlugin

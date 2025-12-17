@@ -120,17 +120,23 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('only factory can call beforeCreatePoolHook', async () => {
       await expect(
         pluginFactory.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')
-      ).to.be.reverted;
+      ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAlgebraFactory');
     });
   });
 
   describe('#CreatePluginForExistingPool', () => {
     it('only if has role', async () => {
-      await expect(pluginFactory.connect(other).createPluginForExistingPool(wallet.address, other.address)).to.be.reverted;
+      await expect(pluginFactory.connect(other).createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'OnlyPoolsAdministrator'
+      );
     });
 
     it('cannot create for nonexistent pool', async () => {
-      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWith('Pool not exist');
+      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'PoolNotExist'
+      );
     });
 
     it('can create for existing pool', async () => {
@@ -150,7 +156,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
       await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
 
-      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWith('Already created');
+      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'PluginAlreadyCreated'
+      );
     });
   });
 
@@ -166,7 +175,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         baseFee: 150,
       };
       it('fails if caller is not owner', async () => {
-        await expect(pluginFactory.connect(other).setDefaultFeeConfiguration(configuration)).to.be.revertedWith('Only administrator');
+        await expect(pluginFactory.connect(other).setDefaultFeeConfiguration(configuration)).to.be.revertedWithCustomError(
+          pluginFactory,
+          'OnlyAdministrator'
+        );
       });
 
       it('updates defaultFeeConfiguration', async () => {
@@ -224,7 +236,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
   describe('#setFarmingAddress', () => {
     it('fails if caller is not owner', async () => {
-      await expect(pluginFactory.connect(other).setFarmingAddress(wallet.address)).to.be.revertedWith('Only administrator');
+      await expect(pluginFactory.connect(other).setFarmingAddress(wallet.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'OnlyAdministrator'
+      );
     });
 
     it('updates farmingAddress', async () => {
@@ -238,7 +253,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
     it('cannot set current address', async () => {
       await pluginFactory.setFarmingAddress(other.address);
-      await expect(pluginFactory.setFarmingAddress(other.address)).to.be.reverted;
+      await expect(pluginFactory.setFarmingAddress(other.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'FarmingAddressUnchanged'
+      );
     });
   });
 
@@ -267,7 +285,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         ZERO_ADDRESS
       );
 
-      await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWith('Only administrator');
+      await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'OnlyAdministrator'
+      );
     });
 
     it('administrator can upgrade plugins successfully', async () => {
@@ -318,7 +339,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('fails if caller is not administrator', async () => {
       await expect(
         pluginFactory.connect(other).setSecurityRegistry(wallet.address)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
     });
 
     it('updates securityRegistry', async () => {
@@ -331,7 +352,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('fails if caller is not administrator', async () => {
       await expect(
         pluginFactory.connect(other).setDefaultRebalanceManager(wallet.address)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
     });
 
     it('updates defaultRebalanceManager', async () => {
@@ -344,7 +365,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('fails if caller is not administrator', async () => {
       await expect(
         pluginFactory.connect(other).setDefaultAlmTwapPeriods(3600, 600)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
     });
 
     it('updates TWAP periods', async () => {
@@ -356,7 +377,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('reverts if slowPeriod < fastPeriod', async () => {
       await expect(
         pluginFactory.setDefaultAlmTwapPeriods(600, 3600)
-      ).to.be.revertedWith('slowPeriod must be >= fastPeriod');
+      ).to.be.revertedWithCustomError(pluginFactory, 'InvalidAlmTwapPeriods');
     });
   });
 });

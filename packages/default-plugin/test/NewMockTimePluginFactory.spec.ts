@@ -151,7 +151,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
           await mockPool.getAddress(), 
           ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
         )
-      ).to.be.revertedWith('Already created');
+      ).to.be.revertedWithCustomError(mockPluginFactory, 'PluginAlreadyCreated');
     });
   });
 
@@ -311,7 +311,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       it('reverts if slowPeriod < fastPeriod', async () => {
         await expect(
           mockPluginFactory.setDefaultAlmTwapPeriods(600, 3600)
-        ).to.be.revertedWith('slowPeriod must be >= fastPeriod');
+        ).to.be.revertedWithCustomError(mockPluginFactory, 'InvalidAlmTwapPeriods');
       });
     });
   });
@@ -809,7 +809,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // Existing plugin still works (factory upgrade doesn't affect plugins!)
       expect(await plugin.pool()).to.eq(poolBefore);
       const feeConfigAfter = await plugin.feeConfig.staticCall();
-      await plugin.
       expect(feeConfigAfter.baseFee).to.eq(feeConfigBefore.baseFee);
     });
   });

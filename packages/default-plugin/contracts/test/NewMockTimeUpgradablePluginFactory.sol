@@ -13,6 +13,7 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPlugin
 import '../AlgebraPluginBeacon.sol';
 import '../AlgebraPluginProxy.sol';
 import '../interfaces/IAlgebraUpgradeablePlugin.sol';
+import '../interfaces/IAlgebraDefaultPluginFactory.sol';
 
 
 /// @title Mock Factory for testing upgradeable plugins with Beacon Proxy pattern
@@ -20,10 +21,7 @@ import '../interfaces/IAlgebraUpgradeablePlugin.sol';
 /// @dev Uses Transparent Upgradeable Proxy pattern with ERC-7201 namespaced storage
 contract NewMockTimeUpgradeablePluginFactory is
   Initializable,
-  IBasePluginFactory,
-  IFarmingPluginFactory,
-  IDynamicFeePluginFactory,
-  ISecurityPluginFactory
+  IAlgebraDefaultPluginFactory
 {
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
@@ -150,7 +148,7 @@ contract NewMockTimeUpgradeablePluginFactory is
 
   function _createPlugin(address pool) internal returns (address plugin) {
     PluginFactoryStorage storage s = _getStorage();
-    require(s.pluginByPool[pool] == address(0), 'Already created');
+    if (s.pluginByPool[pool] != address(0)) revert PluginAlreadyCreated();
 
     // Create proxy with empty init data
     plugin = address(new AlgebraPluginProxy(s.beacon, ''));
@@ -237,7 +235,7 @@ contract NewMockTimeUpgradeablePluginFactory is
 
   /// @notice Set the default ALM TWAP periods
   function setDefaultAlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod) external {
-    require(slowPeriod >= fastPeriod, 'slowPeriod must be >= fastPeriod');
+    if (slowPeriod < fastPeriod) revert InvalidAlmTwapPeriods();
     PluginFactoryStorage storage s = _getStorage();
     s.defaultSlowTwapPeriod = slowPeriod;
     s.defaultFastTwapPeriod = fastPeriod;

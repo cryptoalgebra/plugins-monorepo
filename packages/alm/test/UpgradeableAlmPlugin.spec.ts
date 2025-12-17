@@ -257,7 +257,7 @@ describe('#UpgradeableAlmPlugin', () => {
           SLOW_TWAP_PERIOD,
           FAST_TWAP_PERIOD
         )
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should allow factory owner to call setters', async () => {
@@ -310,7 +310,7 @@ describe('#UpgradeableAlmPlugin', () => {
       // 'other' has no role
       await expect(
         pluginProxy.connect(other).setSlowTwapPeriod(7200)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should revert when unauthorized user calls setFastTwapPeriod', async () => {
@@ -325,7 +325,7 @@ describe('#UpgradeableAlmPlugin', () => {
       // 'other' has no role
       await expect(
         pluginProxy.connect(other).setFastTwapPeriod(100)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should revert when unauthorized user calls setRebalanceManager', async () => {
@@ -341,7 +341,7 @@ describe('#UpgradeableAlmPlugin', () => {
       const newManager = '0x0000000000000000000000000000000000000099';
       await expect(
         pluginProxy.connect(other).setRebalanceManager(newManager)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should not allow calling setters after role revocation', async () => {
@@ -366,7 +366,7 @@ describe('#UpgradeableAlmPlugin', () => {
       // 'other' can no longer call setter
       await expect(
         pluginProxy.connect(other).setSlowTwapPeriod(9000)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 });

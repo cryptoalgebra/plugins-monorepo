@@ -32,15 +32,14 @@ describe('AlgebraUpgradeablePlugin', () => {
   // plain tests for hooks functionality
   describe('#Hooks', () => {
     it('only pool can call hooks', async () => {
-      const errorMessage = 'Only pool can call this';
-      await expect(plugin.beforeInitialize(wallet.address, 100)).to.be.revertedWith(errorMessage);
-      await expect(plugin.afterInitialize(wallet.address, 100, 100)).to.be.revertedWith(errorMessage);
-      await expect(plugin.beforeModifyPosition(wallet.address, wallet.address, 100, 100, 100, '0x')).to.be.revertedWith(errorMessage);
-      await expect(plugin.afterModifyPosition(wallet.address, wallet.address, 100, 100, 100, 100, 100, '0x')).to.be.revertedWith(errorMessage);
-      await expect(plugin.beforeSwap(wallet.address, wallet.address, true, 100, 100, false, '0x')).to.be.revertedWith(errorMessage);
-      await expect(plugin.afterSwap(wallet.address, wallet.address, true, 100, 100, 100, 100, '0x')).to.be.revertedWith(errorMessage);
-      await expect(plugin.beforeFlash(wallet.address, wallet.address, 100, 100, '0x')).to.be.revertedWith(errorMessage);
-      await expect(plugin.afterFlash(wallet.address, wallet.address, 100, 100, 100, 100, '0x')).to.be.revertedWith(errorMessage);
+      await expect(plugin.beforeInitialize(wallet.address, 100)).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterInitialize(wallet.address, 100, 100)).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.beforeModifyPosition(wallet.address, wallet.address, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterModifyPosition(wallet.address, wallet.address, 100, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.beforeSwap(wallet.address, wallet.address, true, 100, 100, false, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterSwap(wallet.address, wallet.address, true, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.beforeFlash(wallet.address, wallet.address, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterFlash(wallet.address, wallet.address, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
     });
 
     describe('not implemented hooks', async () => {

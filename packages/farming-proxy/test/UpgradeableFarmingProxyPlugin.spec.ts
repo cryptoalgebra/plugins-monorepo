@@ -224,7 +224,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const poolAddress = await mockPool.getAddress();
       await expect(
         pluginProxy.connect(other).initialize(poolAddress)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 

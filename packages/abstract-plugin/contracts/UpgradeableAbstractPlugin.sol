@@ -44,7 +44,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   }
 
   modifier onlyPluginFactory() {
-    require(msg.sender == pluginFactory, 'Only plugin factory');
+    if (msg.sender != pluginFactory) revert OnlyPluginFactory();
     _;
   }
 
@@ -64,11 +64,11 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   }
 
   function _checkIfFromPool() internal view {
-    require(msg.sender == pool, 'Only pool can call this');
+    if (msg.sender != pool) revert OnlyPool();
   }
 
   function _authorize() internal view virtual {
-    require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender), 'Only administrator');
+    if (!IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender)) revert OnlyAdministrator();
   }
 
   function getActiveModuleNames() external view override returns (string[] memory moduleNames) {

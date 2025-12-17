@@ -224,7 +224,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       // 'other' is not owner and has no role
       await expect(
         pluginProxy.connect(other).initialize(MOCK_POOL, DEFAULT_FEE_CONFIG)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should allow factory owner to call changeFeeConfiguration', async () => {
@@ -257,7 +257,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       // 'other' has no role
       await expect(
         pluginProxy.connect(other).changeFeeConfiguration(ALT_FEE_CONFIG)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should not allow calling changeFeeConfiguration after role revocation', async () => {
@@ -276,7 +276,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       // 'other' can no longer call changeFeeConfiguration
       await expect(
         pluginProxy.connect(other).changeFeeConfiguration(DEFAULT_FEE_CONFIG)
-      ).to.be.revertedWith('Only administrator');
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 });

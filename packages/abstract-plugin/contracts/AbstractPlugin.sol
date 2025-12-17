@@ -35,7 +35,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   }
 
   function _checkIfFromPool() internal view {
-    require(msg.sender == pool, 'Only pool can call this');
+    if (msg.sender != pool) revert OnlyPool();
   }
 
   function _authorize() internal view virtual;

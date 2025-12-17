@@ -5,6 +5,9 @@ pragma solidity =0.8.20;
 /// @notice Abstract base contract for all plugin connectors providing common delegatecall utilities
 /// @dev Eliminates code duplication across connectors by providing shared delegation logic
 abstract contract BaseConnector {
+
+  error ConnectorDelegatecallFailed();
+
   /// @dev Execute delegatecall and revert with original error if failed
   /// @param implementation The implementation address to delegatecall
   /// @param data The encoded function call data
@@ -18,7 +21,7 @@ abstract contract BaseConnector {
           revert(add(32, returnData), mload(returnData))
         }
       }
-      revert('Connector: delegatecall failed');
+      revert ConnectorDelegatecallFailed();
     }
   }
 

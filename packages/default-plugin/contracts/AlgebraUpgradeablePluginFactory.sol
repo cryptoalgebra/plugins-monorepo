@@ -9,23 +9,18 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
-import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+
 
 import './AlgebraPluginBeacon.sol';
 import './AlgebraPluginProxy.sol';
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
+import './interfaces/IAlgebraDefaultPluginFactory.sol';
 
 /// @title Algebra Upgradeable Plugin Factory
 /// @notice Factory for deploying upgradeable plugins using Beacon Proxy pattern
 /// @dev Uses Transparent Upgradeable Proxy pattern with ERC-7201 namespaced storage
 /// @dev Deploy behind TransparentUpgradeableProxy from OpenZeppelin
-contract AlgebraUpgradeablePluginFactory is
-  Initializable,
-  IBasePluginFactory,
-  IFarmingPluginFactory,
-  IDynamicFeePluginFactory,
-  ISecurityPluginFactory
-{
+contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPluginFactory {
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
     keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
@@ -68,13 +63,12 @@ contract AlgebraUpgradeablePluginFactory is
   // ========== Modifiers ==========
 
   modifier onlyAdministrator() {
-    require(
-      IAlgebraFactory(_getStorage().algebraFactory).hasRoleOrOwner(
+    if (
+      !IAlgebraFactory(_getStorage().algebraFactory).hasRoleOrOwner(
         ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR,
         msg.sender
-      ),
-      'Only administrator'
-    );
+      )
+    ) revert OnlyAdministrator();
     _;
   }
 
@@ -132,30 +126,30 @@ contract AlgebraUpgradeablePluginFactory is
     address,
     bytes calldata
   ) external override returns (address) {
-    require(msg.sender == _getStorage().algebraFactory);
+    if (msg.sender != _getStorage().algebraFactory) revert OnlyAlgebraFactory();
     return _createPlugin(pool);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
   function afterCreatePoolHook(address, address, address) external view override {
-    require(msg.sender == _getStorage().algebraFactory);
+    if (msg.sender != _getStorage().algebraFactory) revert OnlyAlgebraFactory();
   }
 
   /// @inheritdoc IBasePluginFactory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     PluginFactoryStorage storage s = _getStorage();
     IAlgebraFactory factory = IAlgebraFactory(s.algebraFactory);
-    require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender));
+    if (!factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender)) revert OnlyPoolsAdministrator();
 
     address pool = factory.poolByPair(token0, token1);
-    require(pool != address(0), 'Pool not exist');
+    if (pool == address(0)) revert PoolNotExist();
 
     return _createPlugin(pool);
   }
 
   function _createPlugin(address pool) internal returns (address plugin) {
     PluginFactoryStorage storage s = _getStorage();
-    require(s.pluginByPool[pool] == address(0), 'Already created');
+    if (s.pluginByPool[pool] != address(0)) revert PluginAlreadyCreated();
 
     // Create proxy with empty init data (initialization happens separately)
     plugin = address(new AlgebraPluginProxy(s.beacon, ''));
@@ -224,7 +218,7 @@ contract AlgebraUpgradeablePluginFactory is
   /// @inheritdoc IFarmingPluginFactory
   function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {
     PluginFactoryStorage storage s = _getStorage();
-    require(s.farmingAddress != newFarmingAddress);
+    if (s.farmingAddress == newFarmingAddress) revert FarmingAddressUnchanged();
     s.farmingAddress = newFarmingAddress;
     emit FarmingAddress(newFarmingAddress);
   }
@@ -246,7 +240,7 @@ contract AlgebraUpgradeablePluginFactory is
   /// @param slowPeriod Slow TWAP period in seconds
   /// @param fastPeriod Fast TWAP period in seconds
   function setDefaultAlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod) external onlyAdministrator {
-    require(slowPeriod >= fastPeriod, 'slowPeriod must be >= fastPeriod');
+    if (slowPeriod < fastPeriod) revert InvalidAlmTwapPeriods();
     PluginFactoryStorage storage s = _getStorage();
     s.defaultSlowTwapPeriod = slowPeriod;
     s.defaultFastTwapPeriod = fastPeriod;

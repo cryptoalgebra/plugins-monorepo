@@ -12,8 +12,13 @@ import '../SlidingFeeConnector.sol';
 contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFeeConnector {
   using Plugins for uint8;
 
+  event Fee(uint16 fee);
+
   /// @dev Last tick storage for fee calculation
   int24 public lastTick;
+
+  /// @dev Last calculated fee for tests (avoids log parsing)
+  uint16 public lastFee;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -28,13 +33,21 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
   /// @notice Initialize the plugin for a specific pool
   /// @param _pool The pool address this plugin is attached to
   /// @param _baseFee The base fee for sliding fee calculation
-  function initialize(address _pool, uint16 _baseFee) external initializer {
+  function initialize(address _pool, uint16 _baseFee) external initializer onlyPluginFactory {
     __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 slidingFeeConfig = _initializeSlidingFee(_baseFee);
     defaultPluginConfig = defaultPluginConfig | slidingFeeConfig;
 
     activeModules.push('Sliding Fee Plugin');
+  }
+
+  /// @notice Test helper: compute fee for arbitrary ticks (updates factors)
+  /// @dev Stores result in lastFee to avoid receipt parsing/staticCall
+  function getFeeForSwap(bool zeroToOne, int24 lastTick_, int24 currentTick_) external returns (uint16 fee) {
+    fee = _getFeeAndUpdateFactors(zeroToOne, currentTick_, lastTick_);
+    lastFee = fee;
+    emit Fee(fee);
   }
 
   // ###### HOOKS ######

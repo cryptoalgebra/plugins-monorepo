@@ -12,9 +12,9 @@ describe('UpgradeableSlidingFeePlugin', function () {
     const MockFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = await MockFactory.deploy();
 
-    // Deploy MockPluginFactory
-    const MockPluginFactory = await ethers.getContractFactory('MockPluginFactory');
-    const mockPluginFactory = await MockPluginFactory.deploy();
+    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
+    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
+    const proxyDeployer = await BeaconProxyDeployer.deploy();
 
     // Deploy MockPool
     const MockPool = await ethers.getContractFactory('MockPool');
@@ -28,7 +28,7 @@ describe('UpgradeableSlidingFeePlugin', function () {
     const UpgradeableSlidingFeePluginTest = await ethers.getContractFactory('UpgradeableSlidingFeePluginTest');
     const pluginImplementation = await UpgradeableSlidingFeePluginTest.deploy(
       mockFactory.target,
-      mockPluginFactory.target,
+      proxyDeployer.target,
       slidingFeeImpl.target
     );
 
@@ -37,18 +37,18 @@ describe('UpgradeableSlidingFeePlugin', function () {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     // Deploy BeaconProxy for first plugin
-    const BeaconProxy = await ethers.getContractFactory('BeaconProxy');
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
       mockPool.target,
       DEFAULT_BASE_FEE,
     ]);
-    const proxy1 = await BeaconProxy.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, initData);
+    const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
     // Get plugin interface for proxy
-    const plugin1 = UpgradeableSlidingFeePluginTest.attach(proxy1.target) as any;
+    const plugin1 = UpgradeableSlidingFeePluginTest.attach(proxy1Address) as any;
 
     // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1.target);
+    await mockPool.setPlugin(proxy1Address);
 
     // Grant manager role to manager
     const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
@@ -60,13 +60,12 @@ describe('UpgradeableSlidingFeePlugin', function () {
       user,
       otherUser,
       mockFactory,
-      mockPluginFactory,
+      proxyDeployer,
       mockPool,
       slidingFeeImpl,
       pluginImplementation,
       beacon,
       plugin1,
-      BeaconProxy,
       UpgradeableSlidingFeePluginTest,
       ALGEBRA_BASE_PLUGIN_MANAGER,
     };
@@ -77,7 +76,7 @@ describe('UpgradeableSlidingFeePlugin', function () {
       const { plugin1, mockPool } = await loadFixture(deployFixture);
 
       expect(await plugin1.pool()).to.equal(mockPool.target);
-      expect(await plugin1.baseFee.staticCall()).to.equal(DEFAULT_BASE_FEE);
+      expect(await plugin1.baseFee()).to.equal(DEFAULT_BASE_FEE);
     });
 
     it('should have Sliding Fee Plugin in active modules', async function () {
@@ -110,13 +109,13 @@ describe('UpgradeableSlidingFeePlugin', function () {
     it('should initialize with default price change factor', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      expect(await plugin1.priceChangeFactor.staticCall()).to.equal(1000);
+      expect(await plugin1.priceChangeFactor()).to.equal(1000);
     });
 
     it('should initialize with correct fee factors', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      const [zeroToOneFactor, oneToZeroFactor] = await plugin1.feeFactors.staticCall();
+      const [zeroToOneFactor, oneToZeroFactor] = await plugin1.feeFactors();
       // Initial factors should be 1 << 96
       const expectedFactor = 1n << 96n;
       expect(zeroToOneFactor).to.equal(expectedFactor);
@@ -133,7 +132,7 @@ describe('UpgradeableSlidingFeePlugin', function () {
         .to.emit(plugin1, 'BaseFee')
         .withArgs(newBaseFee);
 
-      expect(await plugin1.baseFee.staticCall()).to.equal(newBaseFee);
+      expect(await plugin1.baseFee()).to.equal(newBaseFee);
     });
 
     it('should allow manager to set price change factor', async function () {
@@ -144,7 +143,7 @@ describe('UpgradeableSlidingFeePlugin', function () {
         .to.emit(plugin1, 'PriceChangeFactor')
         .withArgs(newFactor);
 
-      expect(await plugin1.priceChangeFactor.staticCall()).to.equal(newFactor);
+      expect(await plugin1.priceChangeFactor()).to.equal(newFactor);
     });
 
     it('should not allow non-manager to set base fee', async function () {
@@ -171,9 +170,9 @@ describe('UpgradeableSlidingFeePlugin', function () {
         pluginImplementation,
         plugin1,
         mockPool,
-        BeaconProxy,
         UpgradeableSlidingFeePluginTest,
         manager,
+        proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
@@ -186,20 +185,21 @@ describe('UpgradeableSlidingFeePlugin', function () {
         mockPool2.target,
         differentBaseFee,
       ]);
-      const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
-      const plugin2 = UpgradeableSlidingFeePluginTest.attach(proxy2.target) as any;
+      await proxyDeployer.deploy(beacon.target, initData2);
+      const proxy2Address = await proxyDeployer.lastDeployedProxy();
+      const plugin2 = UpgradeableSlidingFeePluginTest.attach(proxy2Address) as any;
 
       // Verify different values
       expect(await plugin1.pool()).to.equal(mockPool.target);
       expect(await plugin2.pool()).to.equal(mockPool2.target);
 
-      expect(await plugin1.baseFee.staticCall()).to.equal(DEFAULT_BASE_FEE);
-      expect(await plugin2.baseFee.staticCall()).to.equal(differentBaseFee);
+      expect(await plugin1.baseFee()).to.equal(DEFAULT_BASE_FEE);
+      expect(await plugin2.baseFee()).to.equal(differentBaseFee);
 
       // Change base fee in plugin1, verify plugin2 unchanged
       await plugin1.connect(manager).setBaseFee(1000);
-      expect(await plugin1.baseFee.staticCall()).to.equal(1000);
-      expect(await plugin2.baseFee.staticCall()).to.equal(differentBaseFee);
+      expect(await plugin1.baseFee()).to.equal(1000);
+      expect(await plugin2.baseFee()).to.equal(differentBaseFee);
     });
   });
 
@@ -208,10 +208,9 @@ describe('UpgradeableSlidingFeePlugin', function () {
       const {
         beacon,
         mockFactory,
-        mockPluginFactory,
+        proxyDeployer,
         pluginImplementation,
         plugin1,
-        BeaconProxy,
         UpgradeableSlidingFeePluginTest,
       } = await loadFixture(deployFixture);
 
@@ -224,15 +223,16 @@ describe('UpgradeableSlidingFeePlugin', function () {
         mockPool2.target,
         5000,
       ]);
-      const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
-      const plugin2 = UpgradeableSlidingFeePluginTest.attach(proxy2.target) as any;
+      await proxyDeployer.deploy(beacon.target, initData2);
+      const proxy2Address = await proxyDeployer.lastDeployedProxy();
+      const plugin2 = UpgradeableSlidingFeePluginTest.attach(proxy2Address) as any;
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);
       expect(await plugin2.factory()).to.equal(mockFactory.target);
 
-      expect(await plugin1.pluginFactory()).to.equal(mockPluginFactory.target);
-      expect(await plugin2.pluginFactory()).to.equal(mockPluginFactory.target);
+      expect(await plugin1.pluginFactory()).to.equal(proxyDeployer.target);
+      expect(await plugin2.pluginFactory()).to.equal(proxyDeployer.target);
     });
   });
 

@@ -10,9 +10,9 @@ describe('UpgradeableSecurityPlugin', function () {
     const MockFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = await MockFactory.deploy();
 
-    // Deploy MockPluginFactory
-    const MockPluginFactory = await ethers.getContractFactory('MockPluginFactory');
-    const mockPluginFactory = await MockPluginFactory.deploy();
+    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
+    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
+    const proxyDeployer = await BeaconProxyDeployer.deploy();
 
     // Deploy MockPool
     const MockPool = await ethers.getContractFactory('MockPool');
@@ -30,7 +30,7 @@ describe('UpgradeableSecurityPlugin', function () {
     const UpgradeableSecurityPluginTest = await ethers.getContractFactory('UpgradeableSecurityPluginTest');
     const pluginImplementation = await UpgradeableSecurityPluginTest.deploy(
       mockFactory.target,
-      mockPluginFactory.target,
+      proxyDeployer.target,
       securityImpl.target
     );
 
@@ -39,18 +39,18 @@ describe('UpgradeableSecurityPlugin', function () {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     // Deploy BeaconProxy for first plugin
-    const BeaconProxy = await ethers.getContractFactory('BeaconProxy');
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
       mockPool.target,
       mockSecurityRegistry.target,
     ]);
-    const proxy1 = await BeaconProxy.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, initData);
+    const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
     // Get plugin interface for proxy
-    const plugin1 = UpgradeableSecurityPluginTest.attach(proxy1.target) as any;
+    const plugin1 = UpgradeableSecurityPluginTest.attach(proxy1Address) as any;
 
     // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1.target);
+    await mockPool.setPlugin(proxy1Address);
 
     // Grant manager role to manager
     const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
@@ -62,14 +62,13 @@ describe('UpgradeableSecurityPlugin', function () {
       user,
       otherUser,
       mockFactory,
-      mockPluginFactory,
+      proxyDeployer,
       mockPool,
       mockSecurityRegistry,
       securityImpl,
       pluginImplementation,
       beacon,
       plugin1,
-      BeaconProxy,
       UpgradeableSecurityPluginTest,
       ALGEBRA_BASE_PLUGIN_MANAGER,
     };
@@ -80,7 +79,7 @@ describe('UpgradeableSecurityPlugin', function () {
       const { plugin1, mockPool, mockSecurityRegistry } = await loadFixture(deployFixture);
 
       expect(await plugin1.pool()).to.equal(mockPool.target);
-      expect(await plugin1.getSecurityRegistry.staticCall()).to.equal(mockSecurityRegistry.target);
+      expect(await plugin1.getSecurityRegistry()).to.equal(mockSecurityRegistry.target);
     });
 
     it('should have Security Plugin in active modules', async function () {
@@ -121,7 +120,7 @@ describe('UpgradeableSecurityPlugin', function () {
         .to.emit(plugin1, 'SecurityRegistry')
         .withArgs(otherUser.address);
 
-      expect(await plugin1.getSecurityRegistry.staticCall()).to.equal(otherUser.address);
+      expect(await plugin1.getSecurityRegistry()).to.equal(otherUser.address);
     });
 
     it('should not allow non-manager to set securityRegistry', async function () {
@@ -136,7 +135,7 @@ describe('UpgradeableSecurityPlugin', function () {
       const { plugin1, manager } = await loadFixture(deployFixture);
 
       await plugin1.connect(manager).setSecurityRegistry(ethers.ZeroAddress);
-      expect(await plugin1.getSecurityRegistry.staticCall()).to.equal(ethers.ZeroAddress);
+      expect(await plugin1.getSecurityRegistry()).to.equal(ethers.ZeroAddress);
     });
   });
 
@@ -148,8 +147,8 @@ describe('UpgradeableSecurityPlugin', function () {
         plugin1,
         mockPool,
         mockSecurityRegistry,
-        BeaconProxy,
         UpgradeableSecurityPluginTest,
+        proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
@@ -165,15 +164,16 @@ describe('UpgradeableSecurityPlugin', function () {
         mockPool2.target,
         mockSecurityRegistry2.target,
       ]);
-      const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
-      const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2.target) as any;
+      await proxyDeployer.deploy(beacon.target, initData2);
+      const proxy2Address = await proxyDeployer.lastDeployedProxy();
+      const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2Address) as any;
 
       // Verify different values
       expect(await plugin1.pool()).to.equal(mockPool.target);
       expect(await plugin2.pool()).to.equal(mockPool2.target);
 
-      expect(await plugin1.getSecurityRegistry.staticCall()).to.equal(mockSecurityRegistry.target);
-      expect(await plugin2.getSecurityRegistry.staticCall()).to.equal(mockSecurityRegistry2.target);
+      expect(await plugin1.getSecurityRegistry()).to.equal(mockSecurityRegistry.target);
+      expect(await plugin2.getSecurityRegistry()).to.equal(mockSecurityRegistry2.target);
     });
   });
 
@@ -182,10 +182,9 @@ describe('UpgradeableSecurityPlugin', function () {
       const {
         beacon,
         mockFactory,
-        mockPluginFactory,
+        proxyDeployer,
         pluginImplementation,
         plugin1,
-        BeaconProxy,
         UpgradeableSecurityPluginTest,
       } = await loadFixture(deployFixture);
 
@@ -198,15 +197,16 @@ describe('UpgradeableSecurityPlugin', function () {
         mockPool2.target,
         ethers.ZeroAddress,
       ]);
-      const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
-      const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2.target) as any;
+      await proxyDeployer.deploy(beacon.target, initData2);
+      const proxy2Address = await proxyDeployer.lastDeployedProxy();
+      const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2Address) as any;
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);
       expect(await plugin2.factory()).to.equal(mockFactory.target);
 
-      expect(await plugin1.pluginFactory()).to.equal(mockPluginFactory.target);
-      expect(await plugin2.pluginFactory()).to.equal(mockPluginFactory.target);
+      expect(await plugin1.pluginFactory()).to.equal(proxyDeployer.target);
+      expect(await plugin2.pluginFactory()).to.equal(proxyDeployer.target);
     });
   });
 

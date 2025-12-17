@@ -4,7 +4,7 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './types/AlgebraFeeConfiguration.sol';
-import { AlgebraFeeConfigurationU144, AlgebraFeeConfigurationU144Lib } from './types/AlgebraFeeConfigurationU144.sol';
+import { AlgebraFeeConfigurationU144 } from './types/AlgebraFeeConfigurationU144.sol';
 import './libraries/AdaptiveFee.sol';
 import './interfaces/IDynamicFeeManager.sol';
 import './interfaces/IDynamicFeePluginImplementation.sol';

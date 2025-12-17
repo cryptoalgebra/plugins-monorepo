@@ -1,13 +1,12 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
 import { Wallet, AbiCoder, keccak256 } from 'ethers'
-import { ManagedSwapFeeTest } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 
 describe('ManagedSwapFee', () => {
   let wallet: Wallet, other: Wallet;
-  let managedSwapFeePlugin: ManagedSwapFeeTest;
+  let managedSwapFeePlugin: any;
   let pluginData: string;
   let nonce: string;
   let fee: number;
@@ -15,8 +14,11 @@ describe('ManagedSwapFee', () => {
   let expireTime: number;
 
   async function managedSwapFeeFixture() {
-    const factory = await ethers.getContractFactory('ManagedSwapFeeTest');
-    return (await factory.deploy()) as any as ManagedSwapFeeTest;
+    const ManagedFeePluginImplementation = await ethers.getContractFactory('ManagedFeePluginImplementation');
+    const managedFeeImpl = await ManagedFeePluginImplementation.deploy();
+
+    const ManagedFeeTest = await ethers.getContractFactory('ManagedFeeTest');
+    return await ManagedFeeTest.deploy(managedFeeImpl.target);
   }
 
   async function generatePluginData(nonce: string, fee: number, user: string, expireTime: number, signer: Wallet): Promise<string> {
@@ -55,7 +57,9 @@ describe('ManagedSwapFee', () => {
     });
 
     it('fee is used on swap', async () => {
-      await expect(managedSwapFeePlugin.connect(wallet).getFeeForSwap(pluginData)).to.be.emit(managedSwapFeePlugin, "Fee").withArgs(1000)
+      await expect(managedSwapFeePlugin.connect(wallet).getFeeForSwap(pluginData))
+        .to.be.emit(managedSwapFeePlugin, 'Fee')
+        .withArgs(1000)
     });
 
     it('revert if signer is not whitelisted', async () => {
@@ -88,7 +92,7 @@ describe('ManagedSwapFee', () => {
     });
 
     it('gas cost', async () => {
-      await snapshotGasCost(managedSwapFeePlugin.getGasCostOfGetFeeForSwap(pluginData));
+      await snapshotGasCost(managedSwapFeePlugin.getFeeForSwap(pluginData));
     });
 
   });

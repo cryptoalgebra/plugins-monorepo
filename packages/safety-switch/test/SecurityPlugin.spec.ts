@@ -1,27 +1,53 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
 import { Wallet, ZeroAddress } from 'ethers';
-import { SecurityPluginTest, SecurityRegistry, MockFactory } from '../typechain';
+import { SecurityRegistry, MockFactory } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 
 describe('SecurityPlugin', () => {
   let wallet: Wallet, other: Wallet;
-  let plugin: SecurityPluginTest;
+  let plugin: any;
+  let pool: any;
   let registry: SecurityRegistry;
   let mockFactory: MockFactory
 
   async function safetySwitchFixture() {
-
     const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = (await mockFactoryFactory.deploy()) as any as MockFactory;
 
     const registryFactory = await ethers.getContractFactory('SecurityRegistry');
-    const registry = (await registryFactory.deploy(mockFactory)) as any as SecurityRegistry; 
+    const registry = (await registryFactory.deploy(mockFactory)) as any as SecurityRegistry;
 
-    const factory = await ethers.getContractFactory('SecurityPluginTest');
-    const plugin = (await factory.deploy(mockFactory, registry)) as any as SecurityPluginTest;
+    const MockPool = await ethers.getContractFactory('MockPool');
+    const pool = await MockPool.deploy();
 
-    return {plugin, registry, mockFactory};
+    const SecurityPluginImplementation = await ethers.getContractFactory('SecurityPluginImplementation');
+    const securityImpl = await SecurityPluginImplementation.deploy();
+
+    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
+    const proxyDeployer = await BeaconProxyDeployer.deploy();
+
+    const UpgradeableSecurityPluginTest = await ethers.getContractFactory('UpgradeableSecurityPluginTest');
+    const pluginImplementation = await UpgradeableSecurityPluginTest.deploy(
+      mockFactory.target,
+      proxyDeployer.target,
+      securityImpl.target
+    );
+
+    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
+    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
+
+    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [pool.target, registry.target]);
+    await proxyDeployer.deploy(beacon.target, initData);
+    const proxyAddress = await proxyDeployer.lastDeployedProxy();
+
+    const plugin = UpgradeableSecurityPluginTest.attach(proxyAddress) as any;
+
+    await pool.setPlugin(proxyAddress);
+    // Trigger beforeInitialize to set pluginConfig in the pool
+    await pool.initialize(79228162514264337593543950336n);
+
+    return { plugin, pool, registry, mockFactory };
   }
 
   before('prepare signers', async () => {
@@ -29,39 +55,33 @@ describe('SecurityPlugin', () => {
   });
 
   beforeEach('deploy safetySwitchTest', async () => {
-    ({plugin, registry, mockFactory} = await loadFixture(safetySwitchFixture))
+    ({plugin, pool, registry, mockFactory} = await loadFixture(safetySwitchFixture))
   });
 
   describe('#SecurityPlugin', () => {
-    let defaultConfig: bigint;
-
-    beforeEach('initialize pool', async () => {
-      defaultConfig = await plugin.defaultPluginConfig();
-    });
-
     describe('ENABLE status', async () => {
       it('works correct', async () => {
-        await expect(plugin.swap()).to.not.be.reverted;
-        await expect(plugin.mint()).not.to.be.reverted;
-        await expect(plugin.burn()).not.to.be.reverted; 
+        await expect(pool.swapToTick(0)).to.not.be.reverted;
+        await expect(pool.mint(ZeroAddress, wallet.address, -60, 60, 1, '0x')).to.not.be.reverted;
+        await expect(pool.burn(-60, 60, 1, '0x')).to.not.be.reverted;
       });
     });
 
     describe('BURN_ONLY status', async () => {
       it('works correct', async () => {
         await registry.setGlobalStatus(1)
-        await expect(plugin.swap()).to.be.revertedWithCustomError(plugin,'BurnOnly'); 
-        await expect(plugin.mint()).to.be.revertedWithCustomError(plugin,'BurnOnly'); 
-        await expect(plugin.burn()).to.not.be.reverted;
+        await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
+        await expect(pool.mint(ZeroAddress, wallet.address, -60, 60, 1, '0x')).to.be.revertedWithCustomError(plugin, 'BurnOnly');
+        await expect(pool.burn(-60, 60, 1, '0x')).to.not.be.reverted;
       });
     });
 
     describe('DISABLED status', async () => {
       it('works correct', async () => {
         await registry.setGlobalStatus(2)
-        await expect(plugin.swap()).to.be.revertedWithCustomError(plugin,'PoolDisabled');
-        await expect(plugin.burn()).to.be.revertedWithCustomError(plugin,'PoolDisabled');
-        await expect(plugin.mint()).to.be.revertedWithCustomError(plugin,'PoolDisabled');
+        await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+        await expect(pool.burn(-60, 60, 1, '0x')).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+        await expect(pool.mint(ZeroAddress, wallet.address, -60, 60, 1, '0x')).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
       });
     });
   })

@@ -25,7 +25,7 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
   /// @notice Initialize the plugin for a specific pool
   /// @param _pool The pool address this plugin is attached to
   /// @param _feeDiscountRegistry The fee discount registry address
-  function initialize(address _pool, address _feeDiscountRegistry) external initializer {
+  function initialize(address _pool, address _feeDiscountRegistry) external initializer onlyPluginFactory {
     __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 feeDiscountConfig = _initializeFeeDiscount(_feeDiscountRegistry);

@@ -30,10 +30,10 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
   ) external initializer {
     _authorize();
 
-    _initializeAlm(_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod);
+    (uint8 pluginConfig, string memory moduleName) = _initializeAlm(_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod);
 
-    _appendActiveModule('ALM');
-    _setDefaultPluginConfig(ALM_PLUGIN_CONFIG);
+    _appendActiveModule(moduleName);
+    _setDefaultPluginConfig(pluginConfig);
 
     emit PluginInitialized(_pool, _rebalanceManager);
   }

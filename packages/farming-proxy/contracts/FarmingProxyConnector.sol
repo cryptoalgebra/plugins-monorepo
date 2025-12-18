@@ -13,6 +13,7 @@ import './libraries/FarmingProxyStorage.sol';
 abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   using Plugins for uint8;
 
+  string internal constant MODULE_NAME = 'Farming Proxy Plugin';
   uint8 internal constant FARMING_PROXY_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -23,12 +24,8 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   }
 
   /// @notice Initialize FarmingProxy plugin via delegatecall
-  function _initializeFarmingProxy() internal returns (uint8) {
-    _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeCall(IFarmingProxyPluginImplementation.initializeFarmingProxy, ())
-    );
-    return FARMING_PROXY_PLUGIN_CONFIG;
+  function _initializeFarmingProxy() internal returns (uint8 pluginConfig, string memory moduleName) {
+    return (FARMING_PROXY_PLUGIN_CONFIG, MODULE_NAME);
   }
 
   /// @notice Update virtual pool tick via delegatecall

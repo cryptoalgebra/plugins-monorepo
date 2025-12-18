@@ -25,10 +25,10 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
   /// @param _pool The pool address this plugin is attached to
   function initialize(address _pool) external initializer onlyPluginFactory {
 
-    uint8 managedFeeConfig = _initializeManagedFee();
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | managedFeeConfig);
+    (uint8 pluginConfig, string memory moduleName) = _initializeManagedFee();
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
 
-    _appendActiveModule('Managed Fee Plugin');
+    _appendActiveModule(moduleName);
   }
 
   // ###### HOOKS ######

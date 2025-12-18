@@ -12,12 +12,6 @@ contract VolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
-  /// @notice Initialize VolatilityOracle plugin state
-  /// @dev Called via delegatecall from connector
-  function initializeVolatilityOracleState() external {
-    // Initial state is already zero-initialized
-  }
-
   /// @notice Set initialized state
   /// @dev Called via delegatecall from connector
   /// @param initialized New initialized state

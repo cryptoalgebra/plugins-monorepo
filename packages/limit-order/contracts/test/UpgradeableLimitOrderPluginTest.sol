@@ -27,10 +27,10 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
   /// @param _limitOrderManager The limit order manager address
   function initialize(address _pool, address _limitOrderManager) external initializer onlyPluginFactory {
 
-    uint8 limitOrderConfig = _initializeLimitOrder(_limitOrderManager);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | limitOrderConfig);
+    (uint8 pluginConfig, string memory moduleName) = _initializeLimitOrder(_limitOrderManager);
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
 
-    _appendActiveModule('Limit Order Plugin');
+    _appendActiveModule(moduleName);
   }
 
   // ###### HOOKS ######

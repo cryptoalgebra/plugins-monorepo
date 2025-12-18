@@ -13,6 +13,7 @@ import './libraries/LimitOrderStorage.sol';
 abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   using Plugins for uint8;
 
+  string internal constant MODULE_NAME = 'Limit Order Plugin';
   uint8 internal constant LIMIT_ORDER_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -23,12 +24,14 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   }
 
   /// @notice Initialize LimitOrder plugin with manager address via delegatecall
-  function _initializeLimitOrder(address _limitOrderManager) internal returns (uint8) {
+  function _initializeLimitOrder(
+    address _limitOrderManager
+  ) internal returns (uint8 pluginConfig, string memory moduleName) {
     _delegateCall(
       limitOrderImplementation,
       abi.encodeCall(ILimitOrderPluginImplementation.initializeLimitOrder, (_limitOrderManager))
     );
-    return LIMIT_ORDER_PLUGIN_CONFIG;
+    return (LIMIT_ORDER_PLUGIN_CONFIG, MODULE_NAME);
   }
 
   /// @notice Update limit order manager state after swap via delegatecall

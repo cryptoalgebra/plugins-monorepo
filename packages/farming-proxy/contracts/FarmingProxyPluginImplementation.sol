@@ -13,12 +13,6 @@ import './libraries/FarmingProxyStorage.sol';
 contract FarmingProxyPluginImplementation {
   using Plugins for uint8;
 
-  /// @notice Initialize FarmingProxy plugin
-  /// @dev Called via delegatecall from connector
-  function initializeFarmingProxy() external {
-    // Nothing to initialize for now
-  }
-
   /// @notice Set incentive address - COMPLETE LOGIC HERE
   /// @dev Called via delegatecall from connector
   /// @param newIncentive The new incentive address

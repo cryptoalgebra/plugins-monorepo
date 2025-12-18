@@ -61,33 +61,34 @@ contract AlgebraUpgradeablePlugin is
     uint32 slowTwapPeriod,
     uint32 fastTwapPeriod
   ) external override initializer onlyPluginFactory {
+    uint8 config;
+    uint8 pluginConfig;
+    string memory moduleName;
 
-    // Build plugin config from all modules
-    uint8 config = 0;
+    // Initialize VolatilityOracle
+    (pluginConfig, moduleName) = _initializeVolatilityOracle();
+    config = config | pluginConfig;
+    _appendActiveModule(moduleName);
 
-    // 1. Initialize VolatilityOracle
-    config = config | _initializeVolatilityOracleState();
-    _appendActiveModule('Volatility Oracle');
+    // Initialize DynamicFee
+    (pluginConfig, moduleName) = _initializeDynamicFee(feeConfig);
+    config = config | pluginConfig;
+    _appendActiveModule(moduleName);
 
-    // 2. Initialize DynamicFee with provided config
-    config = config | _initializeDynamicFee(feeConfig);
-    _appendActiveModule('Dynamic Fee');
+    // Initialize FarmingProxy
+    (pluginConfig, moduleName) = _initializeFarmingProxy();
+    config = config | pluginConfig;
+    _appendActiveModule(moduleName);
 
-    // 3. Initialize FarmingProxy
-    config = config | _initializeFarmingProxy();
-    _appendActiveModule('Farming Proxy');
+    // Initialize ALM 
+    (pluginConfig, moduleName) = _initializeAlm(rebalanceManager, slowTwapPeriod, fastTwapPeriod);
+    config = config | pluginConfig;
+    _appendActiveModule(moduleName);
 
-    // 4. Initialize ALM if rebalance manager is provided
-    if (rebalanceManager != address(0)) {
-      config = config | _initializeAlm(rebalanceManager, slowTwapPeriod, fastTwapPeriod);
-      _appendActiveModule('ALM');
-    }
-
-    // 5. Initialize Security if registry is provided
-    if (securityRegistry != address(0)) {
-      config = config | _initializeSecurity(securityRegistry);
-      _appendActiveModule('Security');
-    }
+    // Initialize Security
+    (pluginConfig, moduleName) = _initializeSecurity(securityRegistry);
+    config = config | pluginConfig;
+    _appendActiveModule(moduleName);
 
     _setDefaultPluginConfig(config);
 

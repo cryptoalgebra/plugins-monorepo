@@ -35,10 +35,10 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
   /// @param _baseFee The base fee for sliding fee calculation
   function initialize(address _pool, uint16 _baseFee) external initializer onlyPluginFactory {
 
-    uint8 slidingFeeConfig = _initializeSlidingFee(_baseFee);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | slidingFeeConfig);
+    (uint8 pluginConfig, string memory moduleName) = _initializeSlidingFee(_baseFee);
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
 
-    _appendActiveModule('Sliding Fee Plugin');
+    _appendActiveModule(moduleName);
   }
 
   /// @notice Test helper: compute fee for arbitrary ticks (updates factors)

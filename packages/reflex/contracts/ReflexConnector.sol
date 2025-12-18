@@ -13,6 +13,7 @@ import './libraries/ReflexStorage.sol';
 abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   using Plugins for uint8;
 
+  string internal constant MODULE_NAME = 'Reflex Plugin';
   uint8 internal constant REFLEX_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -23,12 +24,15 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   }
 
   /// @notice Initialize Reflex plugin via delegatecall
-  function _initializeReflex(address _router, bytes32 _configId) internal returns (uint8) {
+  function _initializeReflex(
+    address _router,
+    bytes32 _configId
+  ) internal returns (uint8 pluginConfig, string memory moduleName) {
     _delegateCall(
       reflexImplementation,
       abi.encodeCall(IReflexPluginImplementation.initializeReflex, (_router, _configId))
     );
-    return REFLEX_PLUGIN_CONFIG;
+    return (REFLEX_PLUGIN_CONFIG, MODULE_NAME);
   }
 
   /// @notice Execute reflex after swap via delegatecall

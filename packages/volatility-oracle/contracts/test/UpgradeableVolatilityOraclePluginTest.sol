@@ -28,10 +28,10 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
   /// @param _pool The pool address this plugin is attached to
   function initializePlugin(address _pool) external initializer {
 
-    uint8 volatilityOracleConfig = _initializeVolatilityOracleState();
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | volatilityOracleConfig);
+    (uint8 pluginConfig, string memory moduleName) = _initializeVolatilityOracle();
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
 
-    _appendActiveModule('Volatility Oracle Plugin');
+    _appendActiveModule(moduleName);
   }
 
   // ###### HOOKS ######

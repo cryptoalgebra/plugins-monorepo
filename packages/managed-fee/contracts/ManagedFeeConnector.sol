@@ -13,6 +13,7 @@ import './libraries/ManagedFeeStorage.sol';
 abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
   using Plugins for uint8;
 
+  string internal constant MODULE_NAME = 'Managed Fee Plugin';
   uint8 internal constant MANAGED_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -23,9 +24,8 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
   }
 
   /// @notice Initialize ManagedFee plugin via delegatecall
-  function _initializeManagedFee() internal returns (uint8) {
-    _delegateCall(managedFeeImplementation, abi.encodeCall(IManagedFeePluginImplementation.initializeManagedFee, ()));
-    return MANAGED_FEE_PLUGIN_CONFIG;
+  function _initializeManagedFee() internal returns (uint8 pluginConfig, string memory moduleName) {
+    return (MANAGED_FEE_PLUGIN_CONFIG, MODULE_NAME);
   }
 
   /// @notice Set whitelist status via delegatecall

@@ -17,6 +17,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
+  string internal constant MODULE_NAME = 'Volatility Oracle Plugin';
   uint8 internal constant VOLATILITY_ORACLE_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -27,12 +28,8 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @notice Initialize VolatilityOracle plugin state via delegatecall
-  function _initializeVolatilityOracleState() internal returns (uint8) {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.initializeVolatilityOracleState, ())
-    );
-    return VOLATILITY_ORACLE_PLUGIN_CONFIG;
+  function _initializeVolatilityOracle() internal returns (uint8 pluginConfig, string memory moduleName) {
+    return (VOLATILITY_ORACLE_PLUGIN_CONFIG, MODULE_NAME);
   }
 
   /// @notice Get timepoint index via delegatecall

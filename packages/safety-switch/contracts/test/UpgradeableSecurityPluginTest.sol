@@ -26,10 +26,10 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
   /// @param _securityRegistry The security registry address
   function initialize(address _pool, address _securityRegistry) external initializer onlyPluginFactory {
 
-    uint8 securityConfig = _initializeSecurity(_securityRegistry);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | securityConfig);
+    (uint8 pluginConfig, string memory moduleName) = _initializeSecurity(_securityRegistry);
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
 
-    _appendActiveModule('Security Plugin');
+    _appendActiveModule(moduleName);
   }
 
   // ###### HOOKS ######

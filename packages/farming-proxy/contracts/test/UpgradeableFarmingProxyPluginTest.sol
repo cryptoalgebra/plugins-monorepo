@@ -22,10 +22,10 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
   function initialize(address _pool) external initializer {
     _authorize();
 
-    _initializeFarmingProxy();
+    (uint8 pluginConfig, string memory moduleName) = _initializeFarmingProxy();
 
-    _appendActiveModule('FarmingProxy');
-    _setDefaultPluginConfig(FARMING_PROXY_PLUGIN_CONFIG);
+    _appendActiveModule(moduleName);
+    _setDefaultPluginConfig(pluginConfig);
 
     emit PluginInitialized(_pool);
   }

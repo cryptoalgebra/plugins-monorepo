@@ -11,12 +11,6 @@ import './libraries/ManagedFeeStorage.sol';
 contract ManagedFeePluginImplementation {
   using ECDSA for bytes32;
 
-  /// @notice Initialize ManagedFee plugin
-  /// @dev Called via delegatecall from connector
-  function initializeManagedFee() external {
-    // Nothing to initialize for ManagedFee
-  }
-
   /// @notice Set whitelist status for an address
   /// @dev Called via delegatecall from connector
   /// @param _address Address to set whitelist status for

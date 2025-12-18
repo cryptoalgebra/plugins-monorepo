@@ -16,8 +16,7 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   uint8 internal constant SLIDING_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   uint64 internal constant FEE_FACTOR_SHIFT = 96;
-
-
+  
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable slidingFeeImplementation;
 
@@ -26,10 +25,10 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   }
 
   /// @notice Initialize SlidingFee plugin via delegatecall
-  function _initializeSlidingFee(uint16 baseFee) internal returns (uint8) {
+  function _initializeSlidingFee(uint16 _baseFee) internal returns (uint8) {
     _delegateCall(
       slidingFeeImplementation,
-      abi.encodeCall(ISlidingFeePluginImplementation.initializeSlidingFee, (baseFee))
+      abi.encodeCall(ISlidingFeePluginImplementation.initializeSlidingFee, (_baseFee))
     );
     return SLIDING_FEE_PLUGIN_CONFIG;
   }
@@ -58,22 +57,6 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
 
   // ###### View Methods (Direct Storage Access) ######
 
-  /// @notice Get price change factor
-  function _getPriceChangeFactor() internal view returns (uint16) {
-    return SlidingFeeStorage.layout().priceChangeFactor;
-  }
-
-  /// @notice Get base fee
-  function _getBaseFee() internal view returns (uint16) {
-    return SlidingFeeStorage.layout().baseFee;
-  }
-
-  /// @notice Get fee factors
-  function _getFeeFactors() internal view returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
-    SlidingFeeStorage.FeeFactors memory factors = SlidingFeeStorage.layout().feeFactors;
-    return (factors.zeroToOneFeeFactor, factors.oneToZeroFeeFactor);
-  }
-
   /// @notice Get current fee for direction
   function _getCurrentFee(bool zeroToOne) internal view returns (uint16) {
     SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
@@ -90,6 +73,22 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   }
 
   // ###### Public Interface (ISlidingFeePlugin) ######
+
+  /// @inheritdoc ISlidingFeePlugin
+  function priceChangeFactor() external view override returns (uint16) {
+    return SlidingFeeStorage.layout().priceChangeFactor;
+  }
+
+  /// @inheritdoc ISlidingFeePlugin
+  function baseFee() external view override returns (uint16) {
+    return SlidingFeeStorage.layout().baseFee;
+  }
+
+  /// @inheritdoc ISlidingFeePlugin
+  function feeFactors() external view override returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
+    SlidingFeeStorage.FeeFactors memory factors = SlidingFeeStorage.layout().feeFactors;
+    return (factors.zeroToOneFeeFactor, factors.oneToZeroFeeFactor);
+  }
 
   /// @inheritdoc ISlidingFeePlugin
   function setPriceChangeFactor(uint16 newPriceChangeFactor) external override {

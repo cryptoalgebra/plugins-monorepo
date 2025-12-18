@@ -84,23 +84,6 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
-  // ###### Public getters ######
-
-  /// @notice Get the current price change factor
-  function priceChangeFactor() external view returns (uint16) {
-    return _getPriceChangeFactor();
-  }
-
-  /// @notice Get the current base fee
-  function baseFee() external view returns (uint16) {
-    return _getBaseFee();
-  }
-
-  /// @notice Get the current fee factors
-  function feeFactors() external view returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {
-    return _getFeeFactors();
-  }
-
   // ###### Authorization ######
 
   /// @dev Authorization check for SlidingFeeConnector - only ALGEBRA_BASE_PLUGIN_MANAGER

@@ -27,7 +27,6 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
   /// @notice Initialize the plugin for a specific pool
   /// @param _pool The pool address this plugin is attached to
   function initializePlugin(address _pool) external initializer {
-    __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 volatilityOracleConfig = _initializeVolatilityOracleState();
     defaultPluginConfig = defaultPluginConfig | volatilityOracleConfig;
@@ -68,7 +67,7 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
     override(UpgradeableAbstractPlugin, VolatilityOracleConnector)
     returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig)
   {
-    (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
+    return UpgradeableAbstractPlugin._getPoolState();
   }
 
   function _blockTimestamp() internal view override(Timestamp, VolatilityOracleConnector) returns (uint32) {

@@ -34,7 +34,6 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
   /// @param _pool The pool address this plugin is attached to
   /// @param _baseFee The base fee for sliding fee calculation
   function initialize(address _pool, uint16 _baseFee) external initializer onlyPluginFactory {
-    __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 slidingFeeConfig = _initializeSlidingFee(_baseFee);
     defaultPluginConfig = defaultPluginConfig | slidingFeeConfig;

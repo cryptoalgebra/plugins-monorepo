@@ -29,7 +29,6 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
     uint32 _fastTwapPeriod
   ) external initializer {
     _authorize();
-    __UpgradeableAbstractPlugin_init(_pool);
 
     _initializeAlm(_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod);
 

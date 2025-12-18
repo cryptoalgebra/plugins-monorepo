@@ -23,7 +23,6 @@ contract UpgradeableDynamicFeePluginTest is UpgradeableAbstractPlugin, DynamicFe
   /// @param _config Fee configuration
   function initialize(address _pool, AlgebraFeeConfiguration memory _config) external initializer {
     _authorize();
-    __UpgradeableAbstractPlugin_init(_pool);
 
     _initializeDynamicFee(_config);
 

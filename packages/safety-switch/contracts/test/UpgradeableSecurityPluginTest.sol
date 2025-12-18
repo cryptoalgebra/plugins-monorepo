@@ -25,7 +25,6 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
   /// @param _pool The pool address this plugin is attached to
   /// @param _securityRegistry The security registry address
   function initialize(address _pool, address _securityRegistry) external initializer onlyPluginFactory {
-    __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 securityConfig = _initializeSecurity(_securityRegistry);
     defaultPluginConfig = defaultPluginConfig | securityConfig;
@@ -52,7 +51,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     bool,
     bytes calldata
   ) external override onlyPool returns (bytes4, uint24, uint24) {
-    _checkStatus(pool);
+    _checkStatus(_getPool());
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
   }
 
@@ -63,7 +62,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
-    _checkStatus(pool);
+    _checkStatus(_getPool());
     return IAlgebraPlugin.beforeFlash.selector;
   }
 
@@ -76,9 +75,9 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     bytes calldata
   ) external override onlyPool returns (bytes4, uint24) {
     if (liquidityDelta > 0) {
-      _checkStatus(pool);
+      _checkStatus(_getPool());
     } else {
-      _checkStatusOnBurn(pool);
+      _checkStatusOnBurn(_getPool());
     }
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
   }

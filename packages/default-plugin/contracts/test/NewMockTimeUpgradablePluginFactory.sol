@@ -151,11 +151,10 @@ contract NewMockTimeUpgradeablePluginFactory is
     if (s.pluginByPool[pool] != address(0)) revert PluginAlreadyCreated();
 
     // Create proxy with empty init data
-    plugin = address(new AlgebraPluginProxy(s.beacon, ''));
+    plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
     IAlgebraUpgradeablePlugin(plugin).initialize(
-      pool,
       s.defaultFeeConfiguration,
       s.securityRegistry,
       s.defaultRebalanceManager,

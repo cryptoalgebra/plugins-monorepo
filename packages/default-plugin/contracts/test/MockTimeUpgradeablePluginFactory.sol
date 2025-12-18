@@ -115,11 +115,10 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
 
   function _createPlugin(address pool) internal returns (address plugin) {
     // Create proxy pointing to beacon
-    plugin = address(new AlgebraPluginProxy(beacon, ''));
+    plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
     IAlgebraUpgradeablePlugin(plugin).initialize(
-      pool,
       defaultFeeConfiguration,
       securityRegistry,
       address(0), // rebalanceManager

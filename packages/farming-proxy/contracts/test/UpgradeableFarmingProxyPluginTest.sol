@@ -21,7 +21,6 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
   /// @param _pool Pool address
   function initialize(address _pool) external initializer {
     _authorize();
-    __UpgradeableAbstractPlugin_init(_pool);
 
     _initializeFarmingProxy();
 
@@ -43,7 +42,7 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
 
   /// @inheritdoc FarmingProxyConnector
   function _getPool() internal view override returns (address) {
-    return pool;
+    return UpgradeableAbstractPlugin._getPool();
   }
 
   /// @notice Get FarmingProxy implementation address (for testing)

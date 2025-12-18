@@ -13,6 +13,7 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import './interfaces/IAbstractPlugin.sol';
+import './interfaces/IAlgebraPluginProxy.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Abstract Plugin
 /// @notice Base contract for upgradeable plugins using Beacon Proxy pattern
@@ -20,6 +21,7 @@ import './interfaces/IAbstractPlugin.sol';
 abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, Timestamp {
   using Plugins for uint8;
 
+  uint256 public constant POOL_ADDRESS_OFFSET = 75;
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
@@ -28,9 +30,6 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
 
   /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
   address public immutable pluginFactory;
-
-  /// @dev Storage: unique per proxy (stored in proxy's storage)
-  address public pool;
 
   /// @dev Storage: plugin configuration flags
   uint8 public defaultPluginConfig;
@@ -57,14 +56,18 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     _disableInitializers();
   }
 
-  /// @notice Initialize proxy-specific storage
-  /// @param _pool The pool address for this proxy
-  function __UpgradeableAbstractPlugin_init(address _pool) internal onlyInitializing {
-    pool = _pool;
+  function _getPool() internal view virtual returns (address) {
+    bytes32 word;
+    assembly {
+        let ptr := mload(0x40)
+        extcodecopy(address(), ptr, POOL_ADDRESS_OFFSET, 32)
+        word := mload(ptr)
+    }
+    return address(uint160(uint256(word)));
   }
 
   function _checkIfFromPool() internal view {
-    if (msg.sender != pool) revert OnlyPool();
+    if (msg.sender != _getPool()) revert OnlyPool();
   }
 
   function _authorize() internal view virtual {
@@ -79,11 +82,15 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   }
 
   function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
-    (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
+    (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(_getPool()).globalState();
   }
 
   function _getPluginInPool() internal view returns (address plugin) {
-    return IAlgebraPool(pool).plugin();
+    return IAlgebraPool(_getPool()).plugin();
+  }
+
+  function pool() public view returns (address) {
+    return _getPool();
   }
 
   /// @inheritdoc IAbstractPlugin
@@ -181,7 +188,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   function _updatePluginConfigInPool(uint8 newPluginConfig) internal {
     (, , , uint8 currentPluginConfig) = _getPoolState();
     if (currentPluginConfig != newPluginConfig) {
-      IAlgebraPool(pool).setPluginConfig(newPluginConfig);
+      IAlgebraPool(_getPool()).setPluginConfig(newPluginConfig);
     }
   }
 }

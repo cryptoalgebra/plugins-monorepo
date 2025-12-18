@@ -55,14 +55,12 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
-    address _pool,
     AlgebraFeeConfiguration calldata feeConfig,
     address securityRegistry,
     address rebalanceManager,
     uint32 slowTwapPeriod,
     uint32 fastTwapPeriod
   ) external override initializer onlyPluginFactory {
-    __UpgradeableAbstractPlugin_init(_pool);
 
     // Build plugin config from all modules
     uint8 config = 0;
@@ -93,7 +91,7 @@ contract AlgebraUpgradeablePlugin is
 
     defaultPluginConfig = config;
 
-    emit PluginInitialized(_pool);
+    emit PluginInitialized(_getPool());
   }
 
   // ========== Connector Implementations ==========
@@ -104,8 +102,8 @@ contract AlgebraUpgradeablePlugin is
   }
 
   /// @dev Required by FarmingProxyConnector
-  function _getPool() internal view override returns (address) {
-    return pool;
+  function _getPool() internal view override(UpgradeableAbstractPlugin, FarmingProxyConnector) returns (address) {
+    return UpgradeableAbstractPlugin._getPool();
   }
 
   /// @dev Required by DynamicFeeConnector, AlmConnector, SecurityConnector - use base class implementation
@@ -159,10 +157,11 @@ contract AlgebraUpgradeablePlugin is
     bytes calldata 
   ) external override onlyPool returns (bytes4, uint24) {
     // Security check - different logic for burns (negative liquidity) vs mints
+    // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     if (desiredLiquidityDelta < 0) {
-      _checkStatusOnBurn(pool);
+      _checkStatusOnBurn(msg.sender);
     } else {
-      _checkStatus(pool);
+      _checkStatus(msg.sender);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
@@ -194,7 +193,8 @@ contract AlgebraUpgradeablePlugin is
     bytes calldata
   ) external override onlyPool returns (bytes4, uint24, uint24) {
     // Security check
-    _checkStatus(pool);
+    // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
+    _checkStatus(msg.sender);
 
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();
@@ -233,7 +233,8 @@ contract AlgebraUpgradeablePlugin is
     bytes calldata
   ) external override onlyPool returns (bytes4) {
     // Security check
-    _checkStatus(pool);
+    // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
+    _checkStatus(msg.sender);
 
     return IAlgebraPlugin.beforeFlash.selector;
   }

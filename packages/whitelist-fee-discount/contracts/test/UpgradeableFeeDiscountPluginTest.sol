@@ -26,7 +26,6 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
   /// @param _pool The pool address this plugin is attached to
   /// @param _feeDiscountRegistry The fee discount registry address
   function initialize(address _pool, address _feeDiscountRegistry) external initializer onlyPluginFactory {
-    __UpgradeableAbstractPlugin_init(_pool);
 
     uint8 feeDiscountConfig = _initializeFeeDiscount(_feeDiscountRegistry);
     defaultPluginConfig = defaultPluginConfig | feeDiscountConfig;
@@ -54,7 +53,7 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
     bytes calldata
   ) external override onlyPool returns (bytes4, uint24, uint24) {
     (, , uint16 fee, ) = _getPoolState();
-    uint24 discountedFee = _applyFeeDiscount(sender, pool, fee);
+    uint24 discountedFee = _applyFeeDiscount(sender, _getPool(), fee);
     return (IAlgebraPlugin.beforeSwap.selector, discountedFee, 0);
   }
 

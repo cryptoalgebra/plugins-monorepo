@@ -32,8 +32,8 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
 
     _initializeAlm(_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod);
 
-    activeModules.push('ALM');
-    defaultPluginConfig = ALM_PLUGIN_CONFIG;
+    _appendActiveModule('ALM');
+    _setDefaultPluginConfig(ALM_PLUGIN_CONFIG);
 
     emit PluginInitialized(_pool, _rebalanceManager);
   }

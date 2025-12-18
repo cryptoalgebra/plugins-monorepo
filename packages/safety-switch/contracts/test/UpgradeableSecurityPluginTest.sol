@@ -27,9 +27,9 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
   function initialize(address _pool, address _securityRegistry) external initializer onlyPluginFactory {
 
     uint8 securityConfig = _initializeSecurity(_securityRegistry);
-    defaultPluginConfig = defaultPluginConfig | securityConfig;
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | securityConfig);
 
-    activeModules.push('Security Plugin');
+    _appendActiveModule('Security Plugin');
   }
 
   // ###### HOOKS ######
@@ -38,7 +38,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig);
+    _updatePluginConfigInPool(_getDefaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

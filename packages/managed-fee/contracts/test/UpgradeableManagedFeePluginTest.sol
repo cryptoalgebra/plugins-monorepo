@@ -26,9 +26,9 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
   function initialize(address _pool) external initializer onlyPluginFactory {
 
     uint8 managedFeeConfig = _initializeManagedFee();
-    defaultPluginConfig = defaultPluginConfig | managedFeeConfig;
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | managedFeeConfig);
 
-    activeModules.push('Managed Fee Plugin');
+    _appendActiveModule('Managed Fee Plugin');
   }
 
   // ###### HOOKS ######
@@ -37,7 +37,7 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig);
+    _updatePluginConfigInPool(_getDefaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

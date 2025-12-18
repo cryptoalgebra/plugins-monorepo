@@ -28,9 +28,9 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
   function initialize(address _pool, address _limitOrderManager) external initializer onlyPluginFactory {
 
     uint8 limitOrderConfig = _initializeLimitOrder(_limitOrderManager);
-    defaultPluginConfig = defaultPluginConfig | limitOrderConfig;
+    _setDefaultPluginConfig(_getDefaultPluginConfig() | limitOrderConfig);
 
-    activeModules.push('Limit Order Plugin');
+    _appendActiveModule('Limit Order Plugin');
   }
 
   // ###### HOOKS ######
@@ -39,7 +39,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig);
+    _updatePluginConfigInPool(_getDefaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

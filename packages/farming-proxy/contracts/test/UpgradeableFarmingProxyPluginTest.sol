@@ -24,8 +24,8 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
 
     _initializeFarmingProxy();
 
-    activeModules.push('FarmingProxy');
-    defaultPluginConfig = FARMING_PROXY_PLUGIN_CONFIG;
+    _appendActiveModule('FarmingProxy');
+    _setDefaultPluginConfig(FARMING_PROXY_PLUGIN_CONFIG);
 
     emit PluginInitialized(_pool);
   }

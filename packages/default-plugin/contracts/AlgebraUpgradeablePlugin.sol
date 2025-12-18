@@ -67,29 +67,29 @@ contract AlgebraUpgradeablePlugin is
 
     // 1. Initialize VolatilityOracle
     config = config | _initializeVolatilityOracleState();
-    activeModules.push('Volatility Oracle');
+    _appendActiveModule('Volatility Oracle');
 
     // 2. Initialize DynamicFee with provided config
     config = config | _initializeDynamicFee(feeConfig);
-    activeModules.push('Dynamic Fee');
+    _appendActiveModule('Dynamic Fee');
 
     // 3. Initialize FarmingProxy
     config = config | _initializeFarmingProxy();
-    activeModules.push('Farming Proxy');
+    _appendActiveModule('Farming Proxy');
 
     // 4. Initialize ALM if rebalance manager is provided
     if (rebalanceManager != address(0)) {
       config = config | _initializeAlm(rebalanceManager, slowTwapPeriod, fastTwapPeriod);
-      activeModules.push('ALM');
+      _appendActiveModule('ALM');
     }
 
     // 5. Initialize Security if registry is provided
     if (securityRegistry != address(0)) {
       config = config | _initializeSecurity(securityRegistry);
-      activeModules.push('Security');
+      _appendActiveModule('Security');
     }
 
-    defaultPluginConfig = config;
+    _setDefaultPluginConfig(config);
 
     emit PluginInitialized(_getPool());
   }
@@ -133,7 +133,7 @@ contract AlgebraUpgradeablePlugin is
     address ,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig);
+    _updatePluginConfigInPool(_getDefaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
@@ -178,7 +178,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig);
+    _updatePluginConfigInPool(_getDefaultPluginConfig());
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
@@ -249,7 +249,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig);
+    _updatePluginConfigInPool(_getDefaultPluginConfig());
     return IAlgebraPlugin.afterFlash.selector;
   }
 

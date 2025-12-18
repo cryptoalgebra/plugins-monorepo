@@ -26,8 +26,8 @@ contract UpgradeableDynamicFeePluginTest is UpgradeableAbstractPlugin, DynamicFe
 
     _initializeDynamicFee(_config);
 
-    activeModules.push('DynamicFee');
-    defaultPluginConfig = DYNAMIC_FEE_PLUGIN_CONFIG;
+    _appendActiveModule('DynamicFee');
+    _setDefaultPluginConfig(DYNAMIC_FEE_PLUGIN_CONFIG);
 
     emit PluginInitialized(_pool);
   }

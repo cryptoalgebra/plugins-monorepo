@@ -14,6 +14,7 @@ import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import './interfaces/IAbstractPlugin.sol';
 import './interfaces/IAlgebraPluginProxy.sol';
+import './libraries/AbstractPluginStorage.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Abstract Plugin
 /// @notice Base contract for upgradeable plugins using Beacon Proxy pattern
@@ -30,12 +31,6 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
 
   /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
   address public immutable pluginFactory;
-
-  /// @dev Storage: plugin configuration flags
-  uint8 public defaultPluginConfig;
-
-  /// @dev Storage: active module names
-  string[] public activeModules;
 
   modifier onlyPool() {
     _checkIfFromPool();
@@ -54,6 +49,16 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     factory = _factory;
     pluginFactory = _pluginFactory;
     _disableInitializers();
+  }
+
+  /// @notice Returns the default plugin config
+  function defaultPluginConfig() public view returns (uint8) {
+    return _getDefaultPluginConfig();
+  }
+
+  /// @notice Returns a module name by index 
+  function activeModules(uint256 index) public view returns (string memory) {
+    return _activeModules()[index];
   }
 
   function _getPool() internal view virtual returns (address) {
@@ -75,9 +80,10 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   }
 
   function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
-    moduleNames = new string[](activeModules.length);
-    for (uint256 i = 0; i < activeModules.length; i++) {
-      moduleNames[i] = activeModules[i];
+    string[] storage modules = _activeModules();
+    moduleNames = new string[](modules.length);
+    for (uint256 i = 0; i < modules.length; i++) {
+      moduleNames[i] = modules[i];
     }
   }
 
@@ -191,4 +197,25 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
       IAlgebraPool(_getPool()).setPluginConfig(newPluginConfig);
     }
   }
+
+  function _abstractPluginStorage() internal pure returns (AbstractPluginStorage.Layout storage s) {
+    return AbstractPluginStorage.layout();
+  }
+
+  function _getDefaultPluginConfig() internal view returns (uint8) {
+    return _abstractPluginStorage().defaultPluginConfig;
+  }
+
+  function _setDefaultPluginConfig(uint8 config) internal {
+    _abstractPluginStorage().defaultPluginConfig = config;
+  }
+
+  function _appendActiveModule(string memory name) internal {
+    _abstractPluginStorage().activeModules.push(name);
+  }
+
+  function _activeModules() internal view returns (string[] storage modules) {
+    modules = _abstractPluginStorage().activeModules;
+  }
+
 }

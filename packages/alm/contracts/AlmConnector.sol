@@ -46,14 +46,6 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
     );
   }
 
-  function _getSlowTwapPeriod() internal view returns (uint32) {
-    return AlmStorage.layout().slowTwapPeriod;
-  }
-
-  function _getFastTwapPeriod() internal view returns (uint32) {
-    return AlmStorage.layout().fastTwapPeriod;
-  }
-
   // ###### Public Interface (IAlmPlugin) ######
 
   /// @inheritdoc IAlmPlugin
@@ -62,13 +54,13 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
   }
 
   /// @inheritdoc IAlmPlugin
-  function slowTwapPeriod() external view override returns (uint32) {
-    return _getSlowTwapPeriod();
+  function slowTwapPeriod() public view override returns (uint32) {
+    return AlmStorage.layout().slowTwapPeriod;
   }
 
   /// @inheritdoc IAlmPlugin
-  function fastTwapPeriod() external view override returns (uint32) {
-    return _getFastTwapPeriod();
+  function fastTwapPeriod() public view override returns (uint32) {
+    return AlmStorage.layout().fastTwapPeriod;
   }
 
   /// @inheritdoc IAlmPlugin

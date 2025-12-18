@@ -18,15 +18,8 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable farmingProxyImplementation;
 
-
   constructor(address _farmingProxyImplementation) {
     farmingProxyImplementation = _farmingProxyImplementation;
-  }
-
-
-  /// @notice Get the incentive address
-  function _getIncentive() internal view returns (address) {
-    return FarmingProxyStorage.layout().incentive;
   }
 
   /// @notice Initialize FarmingProxy plugin via delegatecall
@@ -50,7 +43,7 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
 
   /// @inheritdoc IFarmingPlugin
   function incentive() external view override returns (address) {
-    return _getIncentive();
+    return FarmingProxyStorage.layout().incentive;
   }
 
   /// @inheritdoc IFarmingPlugin

@@ -266,8 +266,8 @@ contract AlgebraUpgradeablePlugin is
   /// @dev Trigger ALM rebalance with TWAP data
   function _triggerAlmRebalance(int24 currentTick) internal {
     // Get TWAP periods from ALM
-    uint32 slowPeriod = _getSlowTwapPeriod();
-    uint32 fastPeriod = _getFastTwapPeriod();
+    uint32 slowPeriod = slowTwapPeriod();
+    uint32 fastPeriod = fastTwapPeriod();
 
     // Skip if ALM is not initialized (both periods are 0)
     if (slowPeriod == 0 && fastPeriod == 0) return;

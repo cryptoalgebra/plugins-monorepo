@@ -12,7 +12,7 @@ import './libraries/ReflexStorage.sol';
 /// @dev Provides thin wrappers that delegate to implementation via delegatecall
 abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   using Plugins for uint8;
-  
+
   uint8 internal constant REFLEX_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -29,16 +29,6 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
       abi.encodeCall(IReflexPluginImplementation.initializeReflex, (_router, _configId))
     );
     return REFLEX_PLUGIN_CONFIG;
-  }
-
-  /// @notice Set reflex router via delegatecall
-  function _setReflexRouter(address _router) internal {
-    _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexRouter, (_router)));
-  }
-
-  /// @notice Set reflex config ID via delegatecall
-  function _setReflexConfigId(bytes32 _configId) internal {
-    _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexConfigId, (_configId)));
   }
 
   /// @notice Execute reflex after swap via delegatecall
@@ -78,7 +68,7 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   function setReflexRouter(address _router) external override {
     _authorize();
     address oldRouter = _getReflexRouter();
-    _setReflexRouter(_router);
+    _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexRouter, (_router)));
     emit ReflexRouterUpdated(oldRouter, _router);
   }
 
@@ -99,7 +89,7 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   function setReflexConfigId(bytes32 _configId) external override {
     _authorize();
     bytes32 oldConfigId = _getReflexConfigId();
-    _setReflexConfigId(_configId);
+    _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexConfigId, (_configId)));
     emit ReflexConfigIdUpdated(oldConfigId, _configId);
   }
 }

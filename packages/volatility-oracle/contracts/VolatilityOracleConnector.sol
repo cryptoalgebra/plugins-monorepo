@@ -35,15 +35,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     return VOLATILITY_ORACLE_PLUGIN_CONFIG;
   }
 
-  /// @notice Get initialized state via delegatecall
-  function _getIsInitialized() internal returns (bool) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getIsInitialized, ())
-    );
-    return abi.decode(returnData, (bool));
-  }
-
   /// @notice Get timepoint index via delegatecall
   function _getTimepointIndex() internal returns (uint16) {
     bytes memory returnData = _delegateCall(
@@ -95,14 +86,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     _delegateCall(
       volatilityOracleImplementation,
       abi.encodeCall(IVolatilityOraclePluginImplementation.writeTimepointSimple, (_blockTimestamp(), tick))
-    );
-  }
-
-  /// @notice Prepay storage slots for timepoints via delegatecall
-  function _prepayTimepointsSlots(uint16 startIndex, uint16 amount) internal {
-    _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.prepayTimepointsSlots, (startIndex, amount))
     );
   }
 
@@ -240,6 +223,9 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   /// @inheritdoc IVolatilityOracle
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
     _authorize();
-    _prepayTimepointsSlots(startIndex, amount);
+    _delegateCall(
+      volatilityOracleImplementation,
+      abi.encodeCall(IVolatilityOraclePluginImplementation.prepayTimepointsSlots, (startIndex, amount))
+    );
   }
 }

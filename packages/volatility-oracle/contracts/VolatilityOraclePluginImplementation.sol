@@ -13,78 +13,6 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
-  /// @notice Set initialized state
-  /// @dev Called via delegatecall from connector
-  /// @param initialized New initialized state
-  function setInitialized(bool initialized) external {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    layout.isInitialized = initialized;
-  }
-
-  /// @notice Set timepoint index
-  /// @dev Called via delegatecall from connector
-  /// @param index New timepoint index
-  function setTimepointIndex(uint16 index) external {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    layout.timepointIndex = index;
-  }
-
-  /// @notice Set last timepoint timestamp
-  /// @dev Called via delegatecall from connector
-  /// @param timestamp New timestamp
-  function setLastTimepointTimestamp(uint32 timestamp) external {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    layout.lastTimepointTimestamp = timestamp;
-  }
-
-  /// @notice Get initialized state
-  /// @dev Called via staticcall from connector
-  /// @return isInitialized Whether the oracle is initialized
-  function getIsInitialized() external view returns (bool) {
-    return VolatilityOracleStorage.layout().isInitialized;
-  }
-
-  /// @notice Get timepoint index
-  /// @dev Called via staticcall from connector
-  /// @return index Current timepoint index
-  function getTimepointIndex() external view returns (uint16) {
-    return VolatilityOracleStorage.layout().timepointIndex;
-  }
-
-  /// @notice Get last timepoint timestamp
-  /// @dev Called via staticcall from connector
-  /// @return timestamp Last timepoint timestamp
-  function getLastTimepointTimestamp() external view returns (uint32) {
-    return VolatilityOracleStorage.layout().lastTimepointTimestamp;
-  }
-
-  // ============ Timepoints Array Operations ============
-
-  /// @notice Get a single timepoint by index
-  /// @dev Called via staticcall from connector
-  /// @param index The index of the timepoint
-  /// @return timepoint The timepoint data
-  function getTimepoint(uint16 index) external view returns (VolatilityOracle.Timepoint memory) {
-    return VolatilityOracleStorage.layout().timepoints[index];
-  }
-
-  /// @notice Set a single timepoint by index
-  /// @dev Called via delegatecall from connector
-  /// @param index The index of the timepoint
-  /// @param timepoint The timepoint data to set
-  function setTimepoint(uint16 index, VolatilityOracle.Timepoint calldata timepoint) external {
-    VolatilityOracleStorage.layout().timepoints[index] = timepoint;
-  }
-
-  /// @notice Initialize the timepoints array (write first timepoint)
-  /// @dev Called via delegatecall from connector
-  /// @param time The initialization timestamp
-  /// @param tick The initial tick
-  function initializeTimepoints(uint32 time, int24 tick) external {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    layout.timepoints.initialize(time, tick);
-  }
-
   /// @notice Initialize TWAP oracle - initializes timepoints and sets all state in one call
   /// @dev Equivalent to the original _initialize_TWAP in VolatilityOraclePlugin
   /// @param time The initialization timestamp
@@ -100,7 +28,7 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
   /// @dev Equivalent to the original _writeTimepoint in VolatilityOraclePlugin
   /// @param currentTimestamp Current block timestamp
   /// @param tick Current tick from pool
-  function writeTimepointSimple(uint32 currentTimestamp, int24 tick) external {
+  function writeTimepoint(uint32 currentTimestamp, int24 tick) external {
     VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
 
     require(layout.isInitialized, 'Not initialized');
@@ -110,102 +38,6 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
 
     layout.timepointIndex = newLastIndex;
     layout.lastTimepointTimestamp = currentTimestamp;
-  }
-
-  /// @notice Get average volatility using current state
-  /// @dev Equivalent to the original _getAverageVolatilityLast in VolatilityOraclePlugin
-  /// @param currentTimestamp Current block timestamp
-  /// @param tick Current tick from pool
-  /// @return volatilityAverage The average volatility
-  function getAverageVolatilityLast(
-    uint32 currentTimestamp,
-    int24 tick
-  ) external view returns (uint88 volatilityAverage) {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-
-    uint16 lastTimepointIndex = layout.timepointIndex;
-    uint16 oldestIndex = layout.timepoints.getOldestIndex(lastTimepointIndex);
-
-    volatilityAverage = layout.timepoints.getAverageVolatility(currentTimestamp, tick, lastTimepointIndex, oldestIndex);
-  }
-
-  /// @notice Write a new timepoint to the array
-  /// @dev Called via delegatecall from connector
-  /// @param lastIndex The index of the last written timepoint
-  /// @param blockTimestamp The timestamp of the new timepoint
-  /// @param tick The tick value for the new timepoint
-  /// @return indexUpdated The new index of the most recently written element
-  /// @return oldestIndex The index of the oldest timepoint
-  function writeTimepoint(
-    uint16 lastIndex,
-    uint32 blockTimestamp,
-    int24 tick
-  ) external returns (uint16 indexUpdated, uint16 oldestIndex) {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    return layout.timepoints.write(lastIndex, blockTimestamp, tick);
-  }
-
-  /// @notice Get oldest timepoint index
-  /// @dev Called via staticcall from connector
-  /// @param lastIndex The index of the last written timepoint
-  /// @return oldestIndex The index of the oldest timepoint
-  function getOldestTimepointIndex(uint16 lastIndex) external view returns (uint16) {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    return layout.timepoints.getOldestIndex(lastIndex);
-  }
-
-  /// @notice Get single timepoint data
-  /// @dev Called via staticcall from connector
-  /// @param time Current block timestamp
-  /// @param secondsAgo Seconds ago from current time
-  /// @param tick Current tick
-  /// @param lastIndex Last timepoint index
-  /// @param oldestIndex Oldest timepoint index
-  /// @return result The interpolated timepoint data
-  function getSingleTimepointData(
-    uint32 time,
-    uint32 secondsAgo,
-    int24 tick,
-    uint16 lastIndex,
-    uint16 oldestIndex
-  ) external view returns (VolatilityOracle.Timepoint memory result) {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    return layout.timepoints.getSingleTimepoint(time, secondsAgo, tick, lastIndex, oldestIndex);
-  }
-
-  /// @notice Get multiple timepoints data
-  /// @dev Called via staticcall from connector
-  /// @param currentTime Current block timestamp
-  /// @param secondsAgos Array of seconds ago values
-  /// @param tick Current tick
-  /// @param lastIndex Last timepoint index
-  /// @return tickCumulatives Array of tick cumulatives
-  /// @return volatilityCumulatives Array of volatility cumulatives
-  function getTimepointsData(
-    uint32 currentTime,
-    uint32[] calldata secondsAgos,
-    int24 tick,
-    uint16 lastIndex
-  ) external view returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    return layout.timepoints.getTimepoints(currentTime, secondsAgos, tick, lastIndex);
-  }
-
-  /// @notice Get average volatility
-  /// @dev Called via staticcall from connector
-  /// @param currentTime Current block timestamp
-  /// @param tick Current tick
-  /// @param lastIndex Last timepoint index
-  /// @param oldestIndex Oldest timepoint index
-  /// @return volatilityAverage The average volatility
-  function getAverageVolatilityData(
-    uint32 currentTime,
-    int24 tick,
-    uint16 lastIndex,
-    uint16 oldestIndex
-  ) external view returns (uint88) {
-    VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
-    return layout.timepoints.getAverageVolatility(currentTime, tick, lastIndex, oldestIndex);
   }
 
   /// @notice Prepay storage slots for timepoints
@@ -237,7 +69,7 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
     int24 currentTick,
     uint32 currentTime
   ) external view returns (int24 timeWeightedAverageTick) {
-    if (period == 0) return currentTick;
+    require(period != 0, 'Period is zero');
 
     VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     uint16 lastIndex = layout.timepointIndex;
@@ -278,16 +110,13 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
   function canGetTwap(uint32 period, uint32 currentTime) external view returns (bool) {
     VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
 
-    if (!layout.isInitialized) return false;
-    if (period == 0) return true;
-
     uint16 lastIndex = layout.timepointIndex;
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
 
     // Get oldest timepoint timestamp
     uint32 oldestTimestamp = layout.timepoints[oldestIndex].blockTimestamp;
 
-    // Check if the period is within available history
-    return currentTime >= oldestTimestamp + period;
+    // Check if the period is within available history (overflow-safe, matches legacy plugin semantics)
+    return VolatilityOracle._lteConsideringOverflow(oldestTimestamp, currentTime - period, currentTime);
   }
 }

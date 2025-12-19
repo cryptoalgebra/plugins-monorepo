@@ -32,35 +32,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     return (VOLATILITY_ORACLE_PLUGIN_CONFIG, VOLATILITY_ORACLE_MODULE_NAME);
   }
 
-  /// @notice Get timepoint index via delegatecall
-  function _getTimepointIndex() internal returns (uint16) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getTimepointIndex, ())
-    );
-    return abi.decode(returnData, (uint16));
-  }
-
-  /// @notice Get last timepoint timestamp via delegatecall
-  function _getLastTimepointTimestamp() internal returns (uint32) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getLastTimepointTimestamp, ())
-    );
-    return abi.decode(returnData, (uint32));
-  }
-
-  // ============ Timepoints Array Operations ============
-
-  /// @notice Get a single timepoint by index via delegatecall
-  function _getTimepoint(uint16 index) internal returns (VolatilityOracle.Timepoint memory) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getTimepoint, (index))
-    );
-    return abi.decode(returnData, (VolatilityOracle.Timepoint));
-  }
-
   /// @notice Initialize TWAP oracle - single call that initializes timepoints and sets state
   /// @dev Equivalent to the original _initialize_TWAP in VolatilityOraclePlugin
   function _initialize_TWAP(int24 tick) internal {
@@ -82,7 +53,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     (, int24 tick, , ) = _getPoolState();
     _delegateCall(
       volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.writeTimepointSimple, (_blockTimestamp(), tick))
+      abi.encodeCall(IVolatilityOraclePluginImplementation.writeTimepoint, (_blockTimestamp(), tick))
     );
   }
 
@@ -109,16 +80,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     );
     if (!success) return false;
     return abi.decode(returnData, (bool));
-  }
-
-  /// @notice Get last block timestamp from oracle state
-  /// @return The timestamp of the last recorded timepoint
-  function _getOracleLastTimestamp() internal returns (uint32) {
-    bytes memory returnData = _delegateCall(
-      volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.getLastTimepointTimestamp, ())
-    );
-    return abi.decode(returnData, (uint32));
   }
 
   // ============ View Methods (Direct Storage Access) ============

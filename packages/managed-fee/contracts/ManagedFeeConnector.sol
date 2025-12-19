@@ -24,7 +24,7 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
   }
 
   /// @notice Initialize ManagedFee plugin via delegatecall
-  function _initializeManagedFee() internal returns (uint8 pluginConfig, string memory moduleName) {
+  function _initializeManagedFee() internal pure returns (uint8 pluginConfig, string memory moduleName) {
     return (MANAGED_FEE_PLUGIN_CONFIG, MANAGED_FEE_MODULE_NAME);
   }
 

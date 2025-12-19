@@ -3,12 +3,13 @@ pragma solidity =0.8.20;
 
 import './interfaces/ISecurityRegistry.sol';
 import './interfaces/ISecurityPlugin.sol';
+import './interfaces/ISecurityPluginImplementation.sol';
 import './libraries/SecurityStorage.sol';
 
 /// @title Security Plugin Implementation
 /// @notice This contract contains ALL logic for Security plugin that works with namespaced storage
 /// @dev Called via delegatecall from SecurityConnector to reduce main contract size
-contract SecurityPluginImplementation {
+contract SecurityPluginImplementation is ISecurityPluginImplementation {
 
   /// @notice Initialize Security plugin
   /// @dev Called via delegatecall from connector

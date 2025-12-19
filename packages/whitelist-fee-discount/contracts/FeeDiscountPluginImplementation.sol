@@ -2,12 +2,13 @@
 pragma solidity =0.8.20;
 
 import './interfaces/IFeeDiscountRegistry.sol';
+import './interfaces/IFeeDiscountPluginImplementation.sol';
 import './libraries/FeeDiscountStorage.sol';
 
 /// @title FeeDiscount Plugin Implementation
 /// @notice This contract contains ALL logic for FeeDiscount plugin that works with namespaced storage
 /// @dev Called via delegatecall from FeeDiscountConnector to reduce main contract size
-contract FeeDiscountPluginImplementation {
+contract FeeDiscountPluginImplementation is IFeeDiscountPluginImplementation {
   uint16 private constant FEE_DISCOUNT_DENOMINATOR = 1000;
 
   /// @notice Initialize FeeDiscount plugin

@@ -3,11 +3,12 @@ pragma solidity =0.8.20;
 
 import './interfaces/ILimitOrderManager.sol';
 import './libraries/LimitOrderStorage.sol';
+import './interfaces/ILimitOrderPluginImplementation.sol';
 
 /// @title LimitOrder Plugin Implementation
 /// @notice This contract contains the logic for LimitOrder plugin that works with namespaced storage
 /// @dev Called via delegatecall from LimitOrderConnector to reduce main contract size
-contract LimitOrderPluginImplementation {
+contract LimitOrderPluginImplementation is ILimitOrderPluginImplementation {
 
   /// @notice Initialize LimitOrder plugin with manager address
   /// @dev Called via delegatecall from connector

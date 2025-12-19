@@ -4,11 +4,12 @@ pragma solidity =0.8.20;
 import { TickMath } from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import { FullMath } from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 import './libraries/SlidingFeeStorage.sol';
+import './interfaces/ISlidingFeePluginImplementation.sol';
 
 /// @title SlidingFee Plugin Implementation
 /// @notice This contract contains ALL logic for SlidingFee plugin that works with namespaced storage
 /// @dev Called via delegatecall from SlidingFeeConnector to reduce main contract size
-contract SlidingFeePluginImplementation {
+contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
   int16 internal constant FACTOR_DENOMINATOR = 1000;
   uint64 internal constant FEE_FACTOR_SHIFT = 96;
 

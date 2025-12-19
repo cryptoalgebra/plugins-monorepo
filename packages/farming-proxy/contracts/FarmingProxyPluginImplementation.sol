@@ -5,12 +5,13 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import './interfaces/IFarmingPluginFactory.sol';
 import './interfaces/IAlgebraVirtualPool.sol';
+import './interfaces/IFarmingProxyPluginImplementation.sol';
 import './libraries/FarmingProxyStorage.sol';
 
 /// @title FarmingProxy Plugin Implementation
 /// @notice This contract contains ALL logic for FarmingProxy plugin that works with namespaced storage
 /// @dev Called via delegatecall from FarmingProxyConnector to reduce main contract size
-contract FarmingProxyPluginImplementation {
+contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
   using Plugins for uint8;
 
   /// @notice Set incentive address - COMPLETE LOGIC HERE

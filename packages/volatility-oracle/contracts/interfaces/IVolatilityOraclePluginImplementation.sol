@@ -7,7 +7,6 @@ import '../libraries/VolatilityOracle.sol';
 /// @notice Interface for VolatilityOracle plugin implementation contract
 /// @dev Used for type-safe delegatecall encoding in VolatilityOracleConnector
 interface IVolatilityOraclePluginImplementation {
-  function initializeVolatilityOracleState() external;
   function setInitialized(bool initialized) external;
   function setTimepointIndex(uint16 index) external;
   function setLastTimepointTimestamp(uint32 timestamp) external;

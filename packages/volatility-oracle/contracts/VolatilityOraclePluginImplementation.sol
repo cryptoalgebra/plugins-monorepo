@@ -3,12 +3,13 @@ pragma solidity =0.8.20;
 
 import './libraries/VolatilityOracle.sol';
 import './libraries/VolatilityOracleStorage.sol';
+import './interfaces/IVolatilityOraclePluginImplementation.sol';
 
 /// @title VolatilityOracle Plugin Implementation
 /// @notice This contract contains state management logic for VolatilityOracle plugin using namespaced storage
 /// @dev Called via delegatecall from VolatilityOracleConnector
 /// @dev All state including timepoints array is stored in a single namespaced struct
-contract VolatilityOraclePluginImplementation {
+contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 

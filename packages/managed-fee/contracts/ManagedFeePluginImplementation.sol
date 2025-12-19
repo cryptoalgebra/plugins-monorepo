@@ -3,12 +3,13 @@ pragma solidity =0.8.20;
 
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import './interfaces/IManagedSwapFeePlugin.sol';
+import './interfaces/IManagedFeePluginImplementation.sol';
 import './libraries/ManagedFeeStorage.sol';
 
 /// @title ManagedFee Plugin Implementation
 /// @notice This contract contains ALL logic for ManagedFee plugin that works with namespaced storage
 /// @dev Called via delegatecall from ManagedFeeConnector to reduce main contract size
-contract ManagedFeePluginImplementation {
+contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
   using ECDSA for bytes32;
 
   /// @notice Set whitelist status for an address

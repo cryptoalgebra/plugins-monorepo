@@ -2,12 +2,13 @@
 pragma solidity ^0.8.20;
 
 import './interfaces/IReflexRouter.sol';
+import './interfaces/IReflexPluginImplementation.sol';
 import './libraries/ReflexStorage.sol';
 
 /// @title Reflex Plugin Implementation
 /// @notice This contract contains ALL logic for Reflex plugin that works with namespaced storage
 /// @dev Called via delegatecall from ReflexConnector to reduce main contract size
-contract ReflexPluginImplementation {
+contract ReflexPluginImplementation is IReflexPluginImplementation {
 
   /// @notice Initialize Reflex plugin
   /// @dev Called via delegatecall from connector

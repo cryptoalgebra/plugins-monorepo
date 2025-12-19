@@ -2,12 +2,13 @@
 pragma solidity =0.8.20;
 
 import './interfaces/IRebalanceManager.sol';
+import './interfaces/IAlmPluginImplementation.sol';
 import './libraries/AlmStorage.sol';
 
 /// @title ALM Plugin Implementation
 /// @notice This contract contains ALL logic for ALM plugin that works with namespaced storage
 /// @dev Called via delegatecall from AlmConnector to reduce main contract size
-contract AlmPluginImplementation {
+contract AlmPluginImplementation is IAlmPluginImplementation{
   /// @notice Initialize ALM plugin with configuration
   /// @param _rebalanceManager Address of rebalance manager
   /// @param _slowTwapPeriod Period in seconds to get slow TWAP

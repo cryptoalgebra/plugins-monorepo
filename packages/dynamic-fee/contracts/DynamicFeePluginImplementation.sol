@@ -5,11 +5,12 @@ import './types/AlgebraFeeConfiguration.sol';
 import { AlgebraFeeConfigurationU144, AlgebraFeeConfigurationU144Lib } from './types/AlgebraFeeConfigurationU144.sol';
 import './libraries/AdaptiveFee.sol';
 import './libraries/DynamicFeeStorage.sol';
+import './interfaces/IDynamicFeePluginImplementation.sol';
 
 /// @title DynamicFee Plugin Implementation
 /// @notice This contract contains ALL logic for DynamicFee plugin that works with namespaced storage
 /// @dev Called via delegatecall from DynamicFeeConnector to reduce main contract size
-contract DynamicFeePluginImplementation {
+contract DynamicFeePluginImplementation is IDynamicFeePluginImplementation {
   using AlgebraFeeConfigurationU144Lib for AlgebraFeeConfiguration;
 
   /// @notice Initialize DynamicFee plugin with configuration

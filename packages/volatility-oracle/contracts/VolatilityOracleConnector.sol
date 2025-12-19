@@ -135,7 +135,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @inheritdoc IVolatilityOracle
-  function lastTimepointTimestamp() external view override returns (uint32) {
+  function lastTimepointTimestamp() public view override returns (uint32) {
     return VolatilityOracleStorage.layout().lastTimepointTimestamp;
   }
 

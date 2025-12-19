@@ -13,7 +13,7 @@ import './libraries/FeeDiscountStorage.sol';
 abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   using Plugins for uint8;
 
-  string internal constant MODULE_NAME = 'Fee Discount Plugin';
+  string internal constant FEE_DISCOUNT_MODULE_NAME = 'Fee Discount Plugin';
   uint8 internal constant FEE_DISCOUNT_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -31,7 +31,7 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
       feeDiscountImplementation,
       abi.encodeCall(IFeeDiscountPluginImplementation.initializeFeeDiscount, (_feeDiscountRegistry))
     );
-    return (FEE_DISCOUNT_PLUGIN_CONFIG, MODULE_NAME);
+    return (FEE_DISCOUNT_PLUGIN_CONFIG, FEE_DISCOUNT_MODULE_NAME);
   }
 
   /// @notice Apply fee discount via delegatecall

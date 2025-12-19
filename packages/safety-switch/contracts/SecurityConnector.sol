@@ -13,7 +13,7 @@ import './libraries/SecurityStorage.sol';
 abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   using Plugins for uint8;
 
-  string internal constant MODULE_NAME = 'Security Plugin';
+  string internal constant SECURITY_MODULE_NAME = 'Security Plugin';
   uint8 internal constant SECURITY_PLUGIN_CONFIG =
     uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
 
@@ -32,7 +32,7 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
       securityImplementation,
       abi.encodeCall(ISecurityPluginImplementation.initializeSecurity, (_securityRegistry))
     );
-    return (SECURITY_PLUGIN_CONFIG, MODULE_NAME);
+    return (SECURITY_PLUGIN_CONFIG, SECURITY_MODULE_NAME);
   }
 
   /// @notice Check status via delegatecall

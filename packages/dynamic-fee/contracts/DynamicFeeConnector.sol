@@ -16,7 +16,7 @@ import './interfaces/IDynamicFeePluginImplementation.sol';
 abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
   using Plugins for uint8;
 
-  string internal constant MODULE_NAME = 'Dynamic Fee Plugin';
+  string internal constant DYNAMIC_FEE_MODULE_NAME = 'Dynamic Fee Plugin';
   uint8 internal constant DYNAMIC_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -34,7 +34,7 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
       dynamicFeeImplementation,
       abi.encodeCall(IDynamicFeePluginImplementation.initializeDynamicFee, (config))
     );
-    return (DYNAMIC_FEE_PLUGIN_CONFIG, MODULE_NAME);
+    return (DYNAMIC_FEE_PLUGIN_CONFIG, DYNAMIC_FEE_MODULE_NAME);
   }
 
   /// @notice Get current fee based on volatility

@@ -12,7 +12,7 @@ import './libraries/AlmStorage.sol';
 abstract contract AlmConnector is BaseConnector, IAlmPlugin {
   using Plugins for uint8;
 
-  string internal constant MODULE_NAME = 'ALM Plugin';
+  string internal constant ALM_MODULE_NAME = 'ALM Plugin';
   uint8 internal constant ALM_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
   address internal immutable almImplementation;
 
@@ -25,11 +25,13 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
     uint32 _slowTwapPeriod,
     uint32 _fastTwapPeriod
   ) internal returns (uint8 pluginConfig, string memory moduleName) {
-    _delegateCall(
-      almImplementation,
-      abi.encodeCall(IAlmPluginImplementation.initializeALM, (_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod))
-    );
-    return (ALM_PLUGIN_CONFIG, MODULE_NAME);
+    if (_rebalanceManager != address(0)) {
+      _delegateCall(
+        almImplementation,
+        abi.encodeCall(IAlmPluginImplementation.initializeALM, (_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod))
+      );
+    }
+    return (ALM_PLUGIN_CONFIG, ALM_MODULE_NAME);
   }
 
   function _obtainTWAPAndRebalance(

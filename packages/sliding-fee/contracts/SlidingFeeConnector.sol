@@ -13,7 +13,7 @@ import './libraries/SlidingFeeStorage.sol';
 abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   using Plugins for uint8;
 
-  string internal constant MODULE_NAME = 'Sliding Fee Plugin';
+  string internal constant SLIDING_FEE_MODULE_NAME = 'Sliding Fee Plugin';
   uint8 internal constant SLIDING_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   uint64 internal constant FEE_FACTOR_SHIFT = 96;
@@ -31,7 +31,7 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
       slidingFeeImplementation,
       abi.encodeCall(ISlidingFeePluginImplementation.initializeSlidingFee, (_baseFee))
     );
-    return (SLIDING_FEE_PLUGIN_CONFIG, MODULE_NAME);
+    return (SLIDING_FEE_PLUGIN_CONFIG, SLIDING_FEE_MODULE_NAME);
   }
 
   /// @notice Get fee and update factors via delegatecall

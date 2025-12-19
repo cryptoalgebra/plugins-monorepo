@@ -787,4 +787,319 @@ describe('Integration Tests - Fork', function() {
     
     });
   });
+  describe('#Upgrade plugin with upgraded FarmingProxy module', () => {
+    it('upgrades FarmingProxy module and new functions work while plugin stays attached', async () => {
+      const { 
+        ownerSigner, 
+        algebraFactory, 
+        token0Address, 
+        token1Address, 
+        token0, 
+        token1, 
+        nft, 
+        swapRouter,
+        newPluginFactory,
+        beacon
+      } = await loadFixture(deployFixture);
+      
+      
+      await nft.connect(ownerSigner).createAndInitializePoolIfNecessary(
+        token0Address, token1Address, ethers.ZeroAddress, "79228162514264337593543950336", "0x"
+      );
+      
+      const poolAddress = await algebraFactory.poolByPair(token0Address, token1Address);
+      const pool = await ethers.getContractAt('IAlgebraPool', poolAddress);
+      const pluginAddress = await pool.plugin();
+      const plugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
+      
+      const [deployer] = await ethers.getSigners();
+      const mintAmount = ethers.parseEther('100000');
+      await token0.connect(deployer).transfer(ownerSigner.address, mintAmount);
+      await token1.connect(deployer).transfer(ownerSigner.address, mintAmount);
+      
+      const nftAddress = await nft.getAddress();
+      await token0.connect(ownerSigner).approve(nftAddress, mintAmount);
+      await token1.connect(ownerSigner).approve(nftAddress, mintAmount);
+      
+      const deadline = Math.floor(Date.now() / 1000) + 3600;
+      await nft.connect(ownerSigner).mint({
+        token0: token0Address,
+        token1: token1Address,
+        deployer: ethers.ZeroAddress,
+        tickLower: -887220,
+        tickUpper: 887220,
+        amount0Desired: mintAmount,
+        amount1Desired: mintAmount,
+        amount0Min: 0,
+        amount1Min: 0,
+        recipient: ownerSigner.address,
+        deadline: deadline
+      });
+      
+      
+      const swapSupply = ethers.parseEther('5000');
+      await token0.connect(deployer).transfer(ownerSigner.address, swapSupply);
+      
+      const swapAmount = ethers.parseEther('100');
+      const swapRouterAddress = await swapRouter.getAddress();
+      await token0.connect(ownerSigner).approve(swapRouterAddress, swapAmount);
+      
+      await swapRouter.connect(ownerSigner).exactInputSingle({
+        tokenIn: token0Address,
+        tokenOut: token1Address,
+        deployer: ethers.ZeroAddress,
+        recipient: ownerSigner.address,
+        deadline: deadline,
+        amountIn: swapAmount,
+        amountOutMinimum: 0,
+        limitSqrtPrice: MIN_SQRT_RATIO + 1n
+      });
+      
+      
+      const UpgradedFarmingImplFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
+      const upgradedFarmingImpl = await UpgradedFarmingImplFactory.deploy();
+      const upgradedFarmingAddress = await upgradedFarmingImpl.getAddress();
+      
+      const mockFactoryAddress = await algebraFactory.getAddress();
+      const pluginFactoryAddress = await newPluginFactory.getAddress();
+      
+      const volatilityImpl = '0x1f91b08eFE3B12326E703b2C587F5fcadB48f87b';
+      const dynamicFeeImpl = '0x1BA71302d6bA5c14b79EbE96a0aCd02FCbA631F4';
+      const almImpl = '0x03A8A9b290FFC57617adbF6303a8Fb53cD704740';
+      const securityImpl = '0x023D16f783cB0c8fB59f550D91DDda4e56AD130f';
+      
+      
+      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewFarming');
+      const newPluginImpl = await NewPluginFactory.deploy(
+        mockFactoryAddress,
+        pluginFactoryAddress,
+        volatilityImpl,
+        dynamicFeeImpl,
+        upgradedFarmingAddress,  
+        almImpl,
+        securityImpl
+      );
+      
+      const newPluginAddress = await newPluginImpl.getAddress();
+      
+      
+      await newPluginFactory.connect(ownerSigner).upgradePlugins(newPluginAddress);
+      
+      const implementationAfter = await beacon.implementation();
+      expect(implementationAfter).to.equal(newPluginAddress);
+      
+      
+      const poolPluginAfter = await pool.plugin();
+      expect(poolPluginAfter).to.equal(pluginAddress);
+      
+      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewFarming', pluginAddress);
+      
+      
+      expect(await upgradedPlugin.HAS_UPGRADED_FARMING()).to.equal(true);
+      expect(await upgradedPlugin.hasUpgradedFarmingImpl.staticCall()).to.equal(true);
+      
+      expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(false);
+      
+      await upgradedPlugin.connect(ownerSigner).setFarmingPausedMode(true);
+      expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(true);
+      
+      await upgradedPlugin.connect(ownerSigner).setFarmingPausedMode(false);
+      expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(false);
+      
+      const statsResult = await upgradedPlugin.getFarmingUpdateStats.staticCall();
+      
+      
+      await token0.connect(ownerSigner).approve(swapRouterAddress, swapAmount);
+      const token1Before = await token1.balanceOf(ownerSigner.address);
+      
+      await swapRouter.connect(ownerSigner).exactInputSingle({
+        tokenIn: token0Address,
+        tokenOut: token1Address,
+        deployer: ethers.ZeroAddress,
+        recipient: ownerSigner.address,
+        deadline: deadline,
+        amountIn: swapAmount,
+        amountOutMinimum: 0,
+        limitSqrtPrice: MIN_SQRT_RATIO + 1n
+      });
+      
+      const token1After = await token1.balanceOf(ownerSigner.address);
+      const swapOutput = token1After - token1Before;
+      
+      expect(swapOutput).to.be.gt(0);
+      
+      
+    });
+  });
+  describe('#Super Upgrade - ALL Modules V2', () => {
+    it('upgrades ALL 5 modules simultaneously and all work together', async () => {
+      const { 
+        ownerSigner, 
+        algebraFactory, 
+        token0Address, 
+        token1Address, 
+        token0, 
+        token1, 
+        nft, 
+        swapRouter,
+        newPluginFactory,
+        beacon
+      } = await loadFixture(deployFixture);
+      
+      // Create pool and add liquidity
+      await nft.connect(ownerSigner).createAndInitializePoolIfNecessary(
+        token0Address, token1Address, ethers.ZeroAddress, "79228162514264337593543950336", "0x"
+      );
+      
+      const poolAddress = await algebraFactory.poolByPair(token0Address, token1Address);
+      const pool = await ethers.getContractAt('IAlgebraPool', poolAddress);
+      const pluginAddress = await pool.plugin();
+      const plugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
+      
+      const [deployer] = await ethers.getSigners();
+      const mintAmount = ethers.parseEther('100000');
+      await token0.connect(deployer).transfer(ownerSigner.address, mintAmount);
+      await token1.connect(deployer).transfer(ownerSigner.address, mintAmount);
+      
+      const nftAddress = await nft.getAddress();
+      await token0.connect(ownerSigner).approve(nftAddress, mintAmount);
+      await token1.connect(ownerSigner).approve(nftAddress, mintAmount);
+      
+      const deadline = Math.floor(Date.now() / 1000) + 3600;
+      await nft.connect(ownerSigner).mint({
+        token0: token0Address,
+        token1: token1Address,
+        deployer: ethers.ZeroAddress,
+        tickLower: -887220,
+        tickUpper: 887220,
+        amount0Desired: mintAmount,
+        amount1Desired: mintAmount,
+        amount0Min: 0,
+        amount1Min: 0,
+        recipient: ownerSigner.address,
+        deadline: deadline
+      });
+      
+      
+      const swapSupply = ethers.parseEther('5000');
+      await token0.connect(deployer).transfer(ownerSigner.address, swapSupply);
+      
+      const swapAmount = ethers.parseEther('100');
+      const swapRouterAddress = await swapRouter.getAddress();
+      await token0.connect(ownerSigner).approve(swapRouterAddress, swapAmount * 3n);
+      
+      await swapRouter.connect(ownerSigner).exactInputSingle({
+        tokenIn: token0Address,
+        tokenOut: token1Address,
+        deployer: ethers.ZeroAddress,
+        recipient: ownerSigner.address,
+        deadline: deadline,
+        amountIn: swapAmount,
+        amountOutMinimum: 0,
+        limitSqrtPrice: MIN_SQRT_RATIO + 1n
+      });
+      
+      
+      const UpgradedVolatilityFactory = await ethers.getContractFactory('MockUpgradedVolatilityOraclePluginImplementation');
+      const upgradedVolatility = await UpgradedVolatilityFactory.deploy();
+      
+      const UpgradedDynamicFeeFactory = await ethers.getContractFactory('MockUpgradedDynamicFeePluginImplementation');
+      const upgradedDynamicFee = await UpgradedDynamicFeeFactory.deploy();
+      
+      const UpgradedFarmingFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
+      const upgradedFarming = await UpgradedFarmingFactory.deploy();
+      
+      const UpgradedAlmFactory = await ethers.getContractFactory('MockUpgradedALMPluginImplementation');
+      const upgradedAlm = await UpgradedAlmFactory.deploy();
+      
+      const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      const upgradedSecurity = await UpgradedSecurityFactory.deploy();
+      
+      
+      const mockFactoryAddress = await algebraFactory.getAddress();
+      const pluginFactoryAddress = await newPluginFactory.getAddress();
+      
+      
+      const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
+      const superPlugin = await SuperPluginFactory.deploy(
+        mockFactoryAddress,
+        pluginFactoryAddress,
+        await upgradedVolatility.getAddress(),   
+        await upgradedDynamicFee.getAddress(),   
+        await upgradedFarming.getAddress(),      
+        await upgradedAlm.getAddress(),          
+        await upgradedSecurity.getAddress()      
+      );
+      
+      
+      await newPluginFactory.connect(ownerSigner).upgradePlugins(await superPlugin.getAddress());
+      
+      const implementationAfter = await beacon.implementation();
+      expect(implementationAfter).to.equal(await superPlugin.getAddress());
+      
+      const upgradedPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
+      
+      
+      expect(await upgradedPluginProxy.HAS_UPGRADED_VOLATILITY()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_DYNAMIC_FEE()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_FARMING()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_ALM()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_SECURITY()).to.equal(true);
+      
+      
+      expect(await upgradedPluginProxy.hasUpgradedVolatilityImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedDynamicFeeImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedFarmingImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedAlmImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
+      
+      
+      await upgradedPluginProxy.connect(ownerSigner).setAdvancedFeeMode(true);
+      expect(await upgradedPluginProxy.getAdvancedFeeMode.staticCall()).to.equal(true);
+      
+      
+      await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(true);
+      expect(await upgradedPluginProxy.getFarmingPausedMode.staticCall()).to.equal(true);
+      await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(false);
+      
+      
+      await upgradedPluginProxy.connect(ownerSigner).setAlmAdvancedMode(true);
+      expect(await upgradedPluginProxy.getAlmAdvancedMode.staticCall()).to.equal(true);
+      
+      
+      await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(true);
+      expect(await upgradedPluginProxy.getSecurityEmergencyMode.staticCall()).to.equal(true);
+      await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(false);
+      
+      
+      await token0.connect(ownerSigner).approve(swapRouterAddress, swapAmount);
+      const token1Before = await token1.balanceOf(ownerSigner.address);
+      
+      await swapRouter.connect(ownerSigner).exactInputSingle({
+        tokenIn: token0Address,
+        tokenOut: token1Address,
+        deployer: ethers.ZeroAddress,
+        recipient: ownerSigner.address,
+        deadline: deadline,
+        amountIn: swapAmount,
+        amountOutMinimum: 0,
+        limitSqrtPrice: MIN_SQRT_RATIO + 1n
+      });
+      
+      const token1After = await token1.balanceOf(ownerSigner.address);
+      const swapOutput = token1After - token1Before;
+      
+      expect(swapOutput).to.be.gt(0);
+      
+      
+      
+      const farmingStats = await upgradedPluginProxy.getFarmingUpdateStats.staticCall();
+      const securityStats = await upgradedPluginProxy.getSecurityCheckStats.staticCall();
+      
+      
+      expect(securityStats.checkCount).to.be.gt(0);
+      
+      
+    });
+  });
 });

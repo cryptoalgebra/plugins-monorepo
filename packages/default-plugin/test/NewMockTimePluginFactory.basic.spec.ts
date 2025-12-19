@@ -164,28 +164,11 @@ describe('NewMockTimePluginFactory - Basic', () => {
     let mockPool: any;
 
     beforeEach('setup ALM and Security config', async () => {
-      // Set ALM configuration BEFORE creating plugin
+      // Set Security configuration BEFORE creating plugin
       await mockPluginFactory.setSecurityRegistry(other.address);
-      await mockPluginFactory.setDefaultRebalanceManager(almManager.address);
-      await mockPluginFactory.setDefaultAlmTwapPeriods(3600, 600);
 
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       mockPool = await mockPoolFactory.deploy();
-    });
-
-    it('plugin receives ALM configuration', async () => {
-      await mockPluginFactory.beforeCreatePoolHook(
-        await mockPool.getAddress(), 
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
-      );
-
-      const pluginAddress = await mockPluginFactory.pluginByPool(mockPool.getAddress());
-      const plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress);
-
-      // Check ALM config was passed to plugin
-      expect(await plugin.rebalanceManager()).to.eq(almManager.address);
-      expect(await plugin.slowTwapPeriod()).to.eq(3600);
-      expect(await plugin.fastTwapPeriod()).to.eq(600);
     });
 
     it('plugin receives security configuration', async () => {

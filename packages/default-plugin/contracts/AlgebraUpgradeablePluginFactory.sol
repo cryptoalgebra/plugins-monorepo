@@ -24,8 +24,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
     keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
-  // ========== ERC-7201 Namespaced Storage ==========
-
   /// @custom:storage-location erc7201:algebra.pluginfactory.storage
   struct PluginFactoryStorage {
     // Core
@@ -38,10 +36,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
-    // ALM
-    address defaultRebalanceManager;
-    uint32 defaultSlowTwapPeriod;
-    uint32 defaultFastTwapPeriod;
   }
 
   bytes32 private constant STORAGE_LOCATION = keccak256('algebra.pluginfactory.storage');
@@ -53,14 +47,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     }
   }
 
-  // ========== Events ==========
-
-  event PluginCreated(address indexed pool, address plugin);
-  event RebalanceManager(address newRebalanceManager);
-  event AlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod);
-
-  // ========== Modifiers ==========
-
   modifier onlyAdministrator() {
     if (
       !IAlgebraFactory(_getStorage().algebraFactory).hasRoleOrOwner(
@@ -70,8 +56,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     ) revert OnlyAdministrator();
     _;
   }
-
-  // ========== Constructor & Initializer ==========
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -156,10 +140,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     // Initialize plugin with pool address and all configurations
     IAlgebraUpgradeablePlugin(plugin).initialize(
       s.defaultFeeConfiguration,
-      s.securityRegistry,
-      s.defaultRebalanceManager,
-      s.defaultSlowTwapPeriod,
-      s.defaultFastTwapPeriod
+      s.securityRegistry
     );
 
     s.pluginByPool[pool] = plugin;
@@ -176,21 +157,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   /// @inheritdoc ISecurityPluginFactory
   function securityRegistry() external view override returns (address) {
     return _getStorage().securityRegistry;
-  }
-
-  /// @notice Default ALM rebalance manager address
-  function defaultRebalanceManager() external view returns (address) {
-    return _getStorage().defaultRebalanceManager;
-  }
-
-  /// @notice Default slow TWAP period for ALM (in seconds)
-  function defaultSlowTwapPeriod() external view returns (uint32) {
-    return _getStorage().defaultSlowTwapPeriod;
-  }
-
-  /// @notice Default fast TWAP period for ALM (in seconds)
-  function defaultFastTwapPeriod() external view returns (uint32) {
-    return _getStorage().defaultFastTwapPeriod;
   }
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -225,24 +191,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
-  }
-
-  /// @notice Set the default ALM rebalance manager
-  /// @param newRebalanceManager The new rebalance manager address
-  function setDefaultRebalanceManager(address newRebalanceManager) external onlyAdministrator {
-    _getStorage().defaultRebalanceManager = newRebalanceManager;
-    emit RebalanceManager(newRebalanceManager);
-  }
-
-  /// @notice Set the default ALM TWAP periods
-  /// @param slowPeriod Slow TWAP period in seconds
-  /// @param fastPeriod Fast TWAP period in seconds
-  function setDefaultAlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod) external onlyAdministrator {
-    if (slowPeriod < fastPeriod) revert InvalidAlmTwapPeriods();
-    PluginFactoryStorage storage s = _getStorage();
-    s.defaultSlowTwapPeriod = slowPeriod;
-    s.defaultFastTwapPeriod = fastPeriod;
-    emit AlmTwapPeriods(slowPeriod, fastPeriod);
   }
 
   // ========== Upgrade Management ==========

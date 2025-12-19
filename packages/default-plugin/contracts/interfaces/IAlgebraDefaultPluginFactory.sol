@@ -17,6 +17,10 @@ interface IAlgebraDefaultPluginFactory is IBasePluginFactory, IFarmingPluginFact
   error FarmingAddressUnchanged();
   error InvalidAlmTwapPeriods();
 
+  event PluginCreated(address indexed pool, address plugin);
+  event RebalanceManager(address newRebalanceManager);
+  event AlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod);
+
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraDefaultPluginFactory
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);

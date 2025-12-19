@@ -10,17 +10,11 @@ interface IAlgebraUpgradeablePlugin {
   /// @param pool The pool address
   event PluginInitialized(address indexed pool);
 
-  /// @notice Initialize plugin with pool and fee configuration
+  /// @notice Initialize plugin with fee configuration and security registry
   /// @param feeConfig The initial fee configuration
   /// @param securityRegistry The security registry address
-  /// @param rebalanceManager The ALM rebalance manager address
-  /// @param slowTwapPeriod Slow TWAP period in seconds for ALM
-  /// @param fastTwapPeriod Fast TWAP period in seconds for ALM
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry,
-    address rebalanceManager,
-    uint32 slowTwapPeriod,
-    uint32 fastTwapPeriod
+    address securityRegistry
   ) external;
 }

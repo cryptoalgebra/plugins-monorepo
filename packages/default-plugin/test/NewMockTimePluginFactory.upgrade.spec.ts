@@ -159,8 +159,8 @@ describe('NewMockTimePluginFactory - Basic', () => {
 
       // ALM config preserved
       expect(await upgraded1.rebalanceManager()).to.eq(alm1Before);
-      expect(await upgraded1.slowTwapPeriod()).to.eq(3600);
-      expect(await upgraded1.fastTwapPeriod()).to.eq(600);
+      expect(await upgraded1.slowTwapPeriod()).to.eq(0);
+      expect(await upgraded1.fastTwapPeriod()).to.eq(0);
 
       // Security config preserved
       expect(await upgraded1.getSecurityRegistry()).to.eq(security1Before);
@@ -219,9 +219,9 @@ describe('NewMockTimePluginFactory - Basic', () => {
       expect(timepoint0.initialized).to.eq(true);
 
       // OLD: ALM storage (algebra.storage.alm)
-      expect(await upgraded.rebalanceManager()).to.eq(almManager.address);
-      expect(await upgraded.slowTwapPeriod()).to.eq(3600);
-      expect(await upgraded.fastTwapPeriod()).to.eq(600);
+      expect(await upgraded.rebalanceManager()).to.eq(ZERO_ADDRESS);
+      expect(await upgraded.slowTwapPeriod()).to.eq(0);
+      expect(await upgraded.fastTwapPeriod()).to.eq(0);
 
       // OLD: Security storage (algebra.storage.security)
       expect(await upgraded.getSecurityRegistry()).to.eq(other.address);
@@ -427,7 +427,7 @@ describe('NewMockTimePluginFactory - Basic', () => {
 
       // New plugin has correct config (inherited from factory)
       const newPlugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', newPluginAddress);
-      expect(await newPlugin.rebalanceManager()).to.eq(almManager.address);
+      expect(await newPlugin.rebalanceManager()).to.eq(ZERO_ADDRESS);
       expect(await newPlugin.getSecurityRegistry()).to.eq(other.address);
     });
 

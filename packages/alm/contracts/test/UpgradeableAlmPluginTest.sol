@@ -9,7 +9,7 @@ import '../AlmConnector.sol';
 /// @dev Uses delegatecall to AlmPluginImplementation for all ALM logic
 contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
   /// @dev Emitted when plugin is initialized
-  event PluginInitialized(address indexed pool, address rebalanceManager);
+  event PluginInitialized(address indexed pool);
 
   constructor(
     address _factory,
@@ -18,24 +18,16 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
   ) UpgradeableAbstractPlugin(_factory, _pluginFactory) AlmConnector(_almImplementation) {}
 
   /// @notice Initialize the plugin proxy
-  /// @param _pool Pool address
-  /// @param _rebalanceManager Rebalance manager address
-  /// @param _slowTwapPeriod Slow TWAP period in seconds
-  /// @param _fastTwapPeriod Fast TWAP period in seconds
-  function initialize(
-    address _pool,
-    address _rebalanceManager,
-    uint32 _slowTwapPeriod,
-    uint32 _fastTwapPeriod
-  ) external initializer {
+  /// @param _pool Pool address (for test ergonomics only; real pool is read from proxy bytecode)
+  function initialize(address _pool) external initializer {
     _authorize();
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeAlm(_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod);
+    (uint8 pluginConfig, string memory moduleName) = _initializeAlm();
 
     _appendActiveModule(moduleName);
     _setDefaultPluginConfig(pluginConfig);
 
-    emit PluginInitialized(_pool, _rebalanceManager);
+    emit PluginInitialized(_pool);
   }
 
   /// @dev Authorization - use real auth from UpgradeableAbstractPlugin

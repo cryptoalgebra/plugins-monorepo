@@ -20,17 +20,7 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
     almImplementation = _almImplementation;
   }
 
-  function _initializeAlm(
-    address _rebalanceManager,
-    uint32 _slowTwapPeriod,
-    uint32 _fastTwapPeriod
-  ) internal returns (uint8 pluginConfig, string memory moduleName) {
-    if (_rebalanceManager != address(0)) {
-      _delegateCall(
-        almImplementation,
-        abi.encodeCall(IAlmPluginImplementation.initializeALM, (_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod))
-      );
-    }
+  function _initializeAlm() internal pure returns (uint8 pluginConfig, string memory moduleName) {
     return (ALM_PLUGIN_CONFIG, ALM_MODULE_NAME);
   }
 
@@ -69,7 +59,10 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
   /// @inheritdoc IAlmPlugin
   function initializeALM(address _rebalanceManager, uint32 _slowTwapPeriod, uint32 _fastTwapPeriod) external override {
     _authorize();
-    _initializeAlm(_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod);
+    _delegateCall(
+      almImplementation,
+      abi.encodeCall(IAlmPluginImplementation.initializeALM, (_rebalanceManager, _slowTwapPeriod, _fastTwapPeriod))
+    );
   }
 
   /// @inheritdoc IAlmPlugin

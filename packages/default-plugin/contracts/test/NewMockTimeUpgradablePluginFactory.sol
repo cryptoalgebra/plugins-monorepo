@@ -62,12 +62,6 @@ contract NewMockTimeUpgradeablePluginFactory is
     }
   }
 
-  // ========== Events ==========
-
-  event PluginCreated(address indexed pool, address plugin);
-  event RebalanceManager(address newRebalanceManager);
-  event AlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod);
-
   // ========== Constructor & Initializer ==========
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -156,10 +150,7 @@ contract NewMockTimeUpgradeablePluginFactory is
     // Initialize plugin with pool address and all configurations
     IAlgebraUpgradeablePlugin(plugin).initialize(
       s.defaultFeeConfiguration,
-      s.securityRegistry,
-      s.defaultRebalanceManager,
-      s.defaultSlowTwapPeriod,
-      s.defaultFastTwapPeriod
+      s.securityRegistry
     );
 
     s.pluginByPool[pool] = plugin;

@@ -161,28 +161,11 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     let mockPool: any;
 
     beforeEach('setup ALM and Security config', async () => {
-      // Set ALM configuration BEFORE creating plugin
+      // Set Security configuration BEFORE creating plugin
       await mockPluginFactory.setSecurityRegistry(other.address);
-      await mockPluginFactory.setDefaultRebalanceManager(almManager.address);
-      await mockPluginFactory.setDefaultAlmTwapPeriods(3600, 600);
 
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       mockPool = await mockPoolFactory.deploy();
-    });
-
-    it('plugin receives ALM configuration', async () => {
-      await mockPluginFactory.beforeCreatePoolHook(
-        await mockPool.getAddress(), 
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
-      );
-
-      const pluginAddress = await mockPluginFactory.pluginByPool(mockPool.getAddress());
-      const plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress);
-
-      // Check ALM config was passed to plugin
-      expect(await plugin.rebalanceManager()).to.eq(almManager.address);
-      expect(await plugin.slowTwapPeriod()).to.eq(3600);
-      expect(await plugin.fastTwapPeriod()).to.eq(600);
     });
 
     it('plugin receives security configuration', async () => {
@@ -497,8 +480,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // ALM config preserved
       expect(await upgraded1.rebalanceManager()).to.eq(alm1Before);
-      expect(await upgraded1.slowTwapPeriod()).to.eq(3600);
-      expect(await upgraded1.fastTwapPeriod()).to.eq(600);
+      expect(await upgraded1.slowTwapPeriod()).to.eq(0);
+      expect(await upgraded1.fastTwapPeriod()).to.eq(0);
 
       // Security config preserved
       expect(await upgraded1.getSecurityRegistry()).to.eq(security1Before);
@@ -557,9 +540,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       expect(timepoint0.initialized).to.eq(true);
 
       // OLD: ALM storage (algebra.storage.alm)
-      expect(await upgraded.rebalanceManager()).to.eq(almManager.address);
-      expect(await upgraded.slowTwapPeriod()).to.eq(3600);
-      expect(await upgraded.fastTwapPeriod()).to.eq(600);
+      expect(await upgraded.rebalanceManager()).to.eq(ZERO_ADDRESS);
+      expect(await upgraded.slowTwapPeriod()).to.eq(0);
+      expect(await upgraded.fastTwapPeriod()).to.eq(0);
 
       // OLD: Security storage (algebra.storage.security)
       expect(await upgraded.getSecurityRegistry()).to.eq(other.address);
@@ -765,7 +748,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // New plugin has correct config (inherited from factory)
       const newPlugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', newPluginAddress);
-      expect(await newPlugin.rebalanceManager()).to.eq(almManager.address);
+      expect(await newPlugin.rebalanceManager()).to.eq(ZERO_ADDRESS);
       expect(await newPlugin.getSecurityRegistry()).to.eq(other.address);
     });
 

@@ -347,37 +347,4 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       expect(await pluginFactory.securityRegistry()).to.eq(other.address);
     });
   });
-
-  describe('#setDefaultRebalanceManager', () => {
-    it('fails if caller is not administrator', async () => {
-      await expect(
-        pluginFactory.connect(other).setDefaultRebalanceManager(wallet.address)
-      ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
-    });
-
-    it('updates defaultRebalanceManager', async () => {
-      await pluginFactory.setDefaultRebalanceManager(other.address);
-      expect(await pluginFactory.defaultRebalanceManager()).to.eq(other.address);
-    });
-  });
-
-  describe('#setDefaultAlmTwapPeriods', () => {
-    it('fails if caller is not administrator', async () => {
-      await expect(
-        pluginFactory.connect(other).setDefaultAlmTwapPeriods(3600, 600)
-      ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
-    });
-
-    it('updates TWAP periods', async () => {
-      await pluginFactory.setDefaultAlmTwapPeriods(7200, 1200);
-      expect(await pluginFactory.defaultSlowTwapPeriod()).to.eq(7200);
-      expect(await pluginFactory.defaultFastTwapPeriod()).to.eq(1200);
-    });
-
-    it('reverts if slowPeriod < fastPeriod', async () => {
-      await expect(
-        pluginFactory.setDefaultAlmTwapPeriods(600, 3600)
-      ).to.be.revertedWithCustomError(pluginFactory, 'InvalidAlmTwapPeriods');
-    });
-  });
 });

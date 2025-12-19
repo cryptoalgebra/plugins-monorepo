@@ -56,10 +56,7 @@ contract AlgebraUpgradeablePlugin is
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry,
-    address rebalanceManager,
-    uint32 slowTwapPeriod,
-    uint32 fastTwapPeriod
+    address securityRegistry
   ) external override initializer onlyPluginFactory {
     uint8 config;
     uint8 pluginConfig;
@@ -81,7 +78,7 @@ contract AlgebraUpgradeablePlugin is
     _appendActiveModule(moduleName);
 
     // Initialize ALM 
-    (pluginConfig, moduleName) = _initializeAlm(rebalanceManager, slowTwapPeriod, fastTwapPeriod);
+    (pluginConfig, moduleName) = _initializeAlm();
     config = config | pluginConfig;
     _appendActiveModule(moduleName);
 

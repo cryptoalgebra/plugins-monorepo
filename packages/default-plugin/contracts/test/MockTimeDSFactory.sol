@@ -122,10 +122,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     // Initialize plugin
     IAlgebraUpgradeablePlugin(plugin).initialize(
       defaultFeeConfiguration,
-      securityRegistry,
-      address(0), // rebalanceManager
-      0, // slowTwapPeriod
-      0 // fastTwapPeriod
+      securityRegistry
     );
 
     pluginByPool[pool] = plugin;

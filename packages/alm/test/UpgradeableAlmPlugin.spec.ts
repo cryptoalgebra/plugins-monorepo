@@ -57,66 +57,52 @@ describe('#UpgradeableAlmPlugin', () => {
       // Grant role to wallet for initialization
       await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
       
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
 
       expect(await pluginProxy.pool()).to.eq(MOCK_POOL);
       expect(await pluginProxy.factory()).to.eq(await mockFactory.getAddress());
-      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(MOCK_REBALANCE_MANAGER);
-      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(SLOW_TWAP_PERIOD);
-      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(FAST_TWAP_PERIOD);
+
+      // ALM is NOT configured during plugin init
+      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(ZERO_ADDRESS);
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(0);
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(0);
     });
 
     it('should not allow double initialization', async () => {
       // Grant role to wallet for initialization
       await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
       
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
 
       await expect(
-        pluginProxy.initialize(
-          MOCK_POOL,
-          MOCK_REBALANCE_MANAGER,
-          SLOW_TWAP_PERIOD,
-          FAST_TWAP_PERIOD
-        )
+        pluginProxy.initialize(MOCK_POOL)
       ).to.be.reverted;
+    });
+  });
+
+  describe('#initializeALM', () => {
+    beforeEach(async () => {
+      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
+      await pluginProxy.initialize(MOCK_POOL);
+    });
+
+    it('should initialize ALM config with correct values', async () => {
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(MOCK_REBALANCE_MANAGER);
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(SLOW_TWAP_PERIOD);
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(FAST_TWAP_PERIOD);
     });
 
     it('should revert if slowTwapPeriod < fastTwapPeriod', async () => {
-      // Grant role to wallet for initialization
-      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
-
       await expect(
-        pluginProxy.initialize(
-          MOCK_POOL,
-          MOCK_REBALANCE_MANAGER,
-          100, // slow
-          200  // fast > slow - invalid
-        )
+        pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, 100, 200)
       ).to.be.revertedWith('_slowTwapPeriod must be >= _fastTwapPeriod');
     });
 
     it('should revert if rebalanceManager is zero address', async () => {
-      // Grant role to wallet for initialization
-      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
-
       await expect(
-        pluginProxy.initialize(
-          MOCK_POOL,
-          ZERO_ADDRESS,
-          SLOW_TWAP_PERIOD,
-          FAST_TWAP_PERIOD
-        )
+        pluginProxy.initializeALM(ZERO_ADDRESS, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD)
       ).to.be.revertedWith('_rebalanceManager must be non zero address');
     });
   });
@@ -126,12 +112,8 @@ describe('#UpgradeableAlmPlugin', () => {
       // Grant role to wallet for initialization and setters
       await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
 
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
     });
 
     it('should update slowTwapPeriod', async () => {
@@ -183,8 +165,11 @@ describe('#UpgradeableAlmPlugin', () => {
       const MANAGER_1 = '0x0000000000000000000000000000000000000033';
       const MANAGER_2 = '0x0000000000000000000000000000000000000044';
 
-      await pluginProxy.initialize(MOCK_POOL, MANAGER_1, 1000, 100);
-      await pluginProxy2.initialize(MOCK_POOL, MANAGER_2, 2000, 200);
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy2.initialize(MOCK_POOL);
+
+      await pluginProxy.initializeALM(MANAGER_1, 1000, 100);
+      await pluginProxy2.initializeALM(MANAGER_2, 2000, 200);
       
       expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(MANAGER_1);
       expect(await pluginProxy2.rebalanceManager.staticCall()).to.eq(MANAGER_2);
@@ -218,12 +203,7 @@ describe('#UpgradeableAlmPlugin', () => {
   describe('#authorization', () => {
     it('should allow factory owner to call initialize', async () => {
       // wallet is the owner of MockFactory
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
 
       expect(await pluginProxy.pool()).to.eq(MOCK_POOL);
     });
@@ -233,12 +213,7 @@ describe('#UpgradeableAlmPlugin', () => {
       await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), other.address);
       
       // Connect as 'other' and initialize
-      await pluginProxy.connect(other).initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.connect(other).initialize(MOCK_POOL);
 
       expect(await pluginProxy.pool()).to.eq(MOCK_POOL);
     });
@@ -246,23 +221,14 @@ describe('#UpgradeableAlmPlugin', () => {
     it('should revert when unauthorized user calls initialize', async () => {
       // 'other' is not owner and has no role
       await expect(
-        pluginProxy.connect(other).initialize(
-          MOCK_POOL,
-          MOCK_REBALANCE_MANAGER,
-          SLOW_TWAP_PERIOD,
-          FAST_TWAP_PERIOD
-        )
+        pluginProxy.connect(other).initialize(MOCK_POOL)
       ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
     it('should allow factory owner to call setters', async () => {
       // wallet is the owner, initialize first
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
 
       // Owner can call setters
       await pluginProxy.setSlowTwapPeriod(7200);
@@ -271,12 +237,8 @@ describe('#UpgradeableAlmPlugin', () => {
 
     it('should allow user with role to call setters', async () => {
       // Initialize as owner first
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
 
       // Grant role to 'other'
       await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), other.address);
@@ -295,12 +257,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
     it('should revert when unauthorized user calls setSlowTwapPeriod', async () => {
       // Initialize as owner
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
 
       // 'other' has no role
       await expect(
@@ -310,12 +267,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
     it('should revert when unauthorized user calls setFastTwapPeriod', async () => {
       // Initialize as owner
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
 
       // 'other' has no role
       await expect(
@@ -325,12 +277,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
     it('should revert when unauthorized user calls setRebalanceManager', async () => {
       // Initialize as owner
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
 
       // 'other' has no role
       const newManager = '0x0000000000000000000000000000000000000099';
@@ -341,12 +288,8 @@ describe('#UpgradeableAlmPlugin', () => {
 
     it('should not allow calling setters after role revocation', async () => {
       // Initialize as owner
-      await pluginProxy.initialize(
-        MOCK_POOL,
-        MOCK_REBALANCE_MANAGER,
-        SLOW_TWAP_PERIOD,
-        FAST_TWAP_PERIOD
-      );
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
 
       // Grant role to 'other'
       await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), other.address);

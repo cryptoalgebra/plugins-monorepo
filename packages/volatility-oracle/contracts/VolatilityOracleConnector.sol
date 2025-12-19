@@ -28,7 +28,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @notice Initialize VolatilityOracle plugin state via delegatecall
-  function _initializeVolatilityOracle() internal returns (uint8 pluginConfig, string memory moduleName) {
+  function _initializeVolatilityOracle() internal pure returns (uint8 pluginConfig, string memory moduleName) {
     return (VOLATILITY_ORACLE_PLUGIN_CONFIG, MODULE_NAME);
   }
 
@@ -63,10 +63,10 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
 
   /// @notice Initialize TWAP oracle - single call that initializes timepoints and sets state
   /// @dev Equivalent to the original _initialize_TWAP in VolatilityOraclePlugin
-  function _initialize_TWAP(uint32 time, int24 tick) internal {
+  function _initialize_TWAP(int24 tick) internal {
     _delegateCall(
       volatilityOracleImplementation,
-      abi.encodeCall(IVolatilityOraclePluginImplementation.initializeTWAP, (time, tick))
+      abi.encodeCall(IVolatilityOraclePluginImplementation.initializeTWAP, (_blockTimestamp(), tick))
     );
   }
 
@@ -172,8 +172,11 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @inheritdoc IVolatilityOracle
-  function initialize() external pure override {
-    revert('Use plugin initialize');
+  function initialize() external override {
+    require(!VolatilityOracleStorage.layout().isInitialized, 'Already initialized');
+    (uint160 price, int24 tick, , ) = _getPoolState();
+    require(price != 0, 'Pool is not initialized');
+    _initialize_TWAP(tick); 
   }
 
   /// @inheritdoc IVolatilityOracle

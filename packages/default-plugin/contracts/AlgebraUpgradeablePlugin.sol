@@ -144,7 +144,7 @@ contract AlgebraUpgradeablePlugin is
     uint160 ,
     int24 tick
   ) external override onlyPool returns (bytes4) {
-    _initialize_TWAP(_blockTimestamp(), tick);
+    _initialize_TWAP(tick);
     return IAlgebraPlugin.afterInitialize.selector;
   }
 

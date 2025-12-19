@@ -37,7 +37,7 @@ describe('Integration Tests - Fork', function() {
     
     
     const beaconAddress = await newPluginFactory.beacon();
-    const beacon = await ethers.getContractAt('AlgebraPluginBeacon', beaconAddress);
+    const beacon = await ethers.getContractAt('UpgradeableBeacon', beaconAddress);
     
     
     const ownerSigner = await ethers.getSigner(owner);

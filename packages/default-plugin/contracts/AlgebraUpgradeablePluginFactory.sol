@@ -10,8 +10,8 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePlugin
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 
+import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 
-import './AlgebraPluginBeacon.sol';
 import './AlgebraPluginProxy.sol';
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
@@ -90,7 +90,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   ) external initializer {
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
-    s.beacon = address(new AlgebraPluginBeacon(_algebraFactory, pluginImplementation));
+    s.beacon = address(new UpgradeableBeacon(pluginImplementation));
 
     // Validate and set initial fee configuration
     AdaptiveFee.validateFeeConfiguration(initialFeeConfig);
@@ -251,12 +251,12 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   /// @notice Upgrade all plugins to new implementation
   /// @param newImplementation Address of the new implementation
   function upgradePlugins(address newImplementation) external onlyAdministrator {
-    AlgebraPluginBeacon(_getStorage().beacon).upgradeTo(newImplementation);
+    UpgradeableBeacon(_getStorage().beacon).upgradeTo(newImplementation);
   }
 
   /// @notice Get current implementation address
   /// @return The current plugin implementation address
   function implementation() external view returns (address) {
-    return AlgebraPluginBeacon(_getStorage().beacon).implementation();
+    return UpgradeableBeacon(_getStorage().beacon).implementation();
   }
 }

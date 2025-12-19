@@ -66,7 +66,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const plugin2 = pluginContractFactory.attach(plugin2Address) as any as MockTimeAlgebraUpgradeablePlugin;
 
     // Get beacon from factory
-    const beacon = await ethers.getContractAt('AlgebraPluginBeacon', await pluginFactory.beacon());
+    const beacon = await ethers.getContractAt('UpgradeableBeacon', await pluginFactory.beacon());
     const originalImplementation = await beacon.implementation();
 
     // Deploy upgraded implementation (MockUpgradedPlugin)
@@ -143,15 +143,6 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       expect(state1.tick).to.not.eq(state2.tick);
     });
 
-    it('beacon has correct algebraFactory', async () => {
-      const fixture = await loadFixture(upgradeFixture);
-      expect(await fixture.beacon.algebraFactory()).to.eq(await fixture.mockFactory.getAddress());
-    });
-
-    it('beacon has correct pluginFactory', async () => {
-      const fixture = await loadFixture(upgradeFixture);
-      expect(await fixture.beacon.pluginFactory()).to.eq(await fixture.pluginFactory.getAddress());
-    });
   });
 
   describe('#Upgrade Process', () => {
@@ -161,7 +152,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Other user cannot upgrade
       await expect(
         fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation)
-      ).to.be.revertedWithCustomError(fixture.beacon, 'Unauthorized');
+      ).to.be.revertedWith('Ownable: caller is not the owner');
     });
 
     it('owner can upgrade beacon', async () => {
@@ -199,30 +190,31 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       expect(await upgradedPlugin2.isUpgraded()).to.eq(true);
     });
 
-    it('user with ALGEBRA_BASE_PLUGIN_MANAGER role can upgrade beacon directly', async () => {
+    it('user with ALGEBRA_BASE_PLUGIN_MANAGER role cannot upgrade beacon directly (owner-only beacon)', async () => {
       const fixture = await loadFixture(upgradeFixture);
       
-      // Grant role to 'other' user
-      const ALGEBRA_BASE_PLUGIN_MANAGER = await fixture.beacon.ALGEBRA_BASE_PLUGIN_MANAGER();
-      await fixture.mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, other.address);
+      // Granting role in algebraFactory does not affect owner-only beacon authorization
+      await fixture.mockFactory.grantRole(
+        ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER')),
+        other.address
+      );
 
-      // Other user can now upgrade directly via beacon (not through factory)
-      await fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation);
-
-      expect(await fixture.beacon.implementation()).to.eq(fixture.upgradedImplementation);
+      await expect(
+        fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
     });
 
-    it('owner of algebraFactory can upgrade beacon directly', async () => {
+    it('owner of algebraFactory cannot upgrade beacon directly (owner-only beacon)', async () => {
       const fixture = await loadFixture(upgradeFixture);
       
       // wallet is owner of mockFactory, so should be able to upgrade
       // Need to call beacon.upgradeTo directly, not through factory
       const beaconAddress = await fixture.beacon.getAddress();
-      const beacon = await ethers.getContractAt('AlgebraPluginBeacon', beaconAddress);
+      const beacon = await ethers.getContractAt('UpgradeableBeacon', beaconAddress);
       
-      await beacon.connect(wallet).upgradeTo(fixture.upgradedImplementation);
-      
-      expect(await beacon.implementation()).to.eq(fixture.upgradedImplementation);
+      await expect(
+        beacon.connect(wallet).upgradeTo(fixture.upgradedImplementation)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
     });
   });
 

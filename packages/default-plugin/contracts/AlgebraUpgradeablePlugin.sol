@@ -268,22 +268,11 @@ contract AlgebraUpgradeablePlugin is
     uint32 slowPeriod = slowTwapPeriod();
     uint32 fastPeriod = fastTwapPeriod();
 
-    // Skip if ALM is not initialized (both periods are 0)
-    if (slowPeriod == 0 && fastPeriod == 0) return;
-
-    // Get TWAP ticks if we have enough history
-    int24 slowTwapTick = currentTick;
-    int24 fastTwapTick = currentTick;
-
-    if (_canGetTwap(slowPeriod)) {
-      slowTwapTick = _getTwapTick(slowPeriod);
+    // rebalance happens only if rebalanceManager != 0 and we have enough history for slowTwapPeriod.
+    if (rebalanceManager() != address(0) && _canGetTwap(slowPeriod)) {
+      int24 slowTwapTick = _getTwapTick(slowPeriod);
+      int24 fastTwapTick = _getTwapTick(fastPeriod);
+      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastTimepointTimestamp());
     }
-
-    if (_canGetTwap(fastPeriod)) {
-      fastTwapTick = _getTwapTick(fastPeriod);
-    }
-
-    // Call ALM rebalance with TWAP data
-    _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, _getOracleLastTimestamp());
   }
 }

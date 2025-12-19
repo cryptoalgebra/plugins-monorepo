@@ -42,7 +42,7 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
   // ###### Public Interface (IAlmPlugin) ######
 
   /// @inheritdoc IAlmPlugin
-  function rebalanceManager() external view override returns (address) {
+  function rebalanceManager() public view override returns (address) {
     return AlmStorage.layout().rebalanceManager;
   }
 

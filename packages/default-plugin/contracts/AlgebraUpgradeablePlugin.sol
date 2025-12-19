@@ -154,8 +154,8 @@ contract AlgebraUpgradeablePlugin is
     int128 desiredLiquidityDelta,
     bytes calldata 
   ) external override onlyPool returns (bytes4, uint24) {
-    // Security check - different logic for burns (negative liquidity) vs mints
-    // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
+    // Security check 
+    // onlyPool guarantees msg.sender is the pool
     if (desiredLiquidityDelta < 0) {
       _checkStatusOnBurn(msg.sender);
     } else {
@@ -216,7 +216,7 @@ contract AlgebraUpgradeablePlugin is
     // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
 
-    // ALM: Obtain TWAP and trigger rebalance
+    // Obtain TWAP and trigger rebalance
     _triggerAlmRebalance(tick);
 
     return IAlgebraPlugin.afterSwap.selector;

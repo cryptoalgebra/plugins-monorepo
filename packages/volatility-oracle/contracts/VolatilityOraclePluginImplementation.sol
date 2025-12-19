@@ -7,14 +7,11 @@ import './interfaces/IVolatilityOraclePluginImplementation.sol';
 
 /// @title VolatilityOracle Plugin Implementation
 /// @notice This contract contains state management logic for VolatilityOracle plugin using namespaced storage
-/// @dev Called via delegatecall from VolatilityOracleConnector
-/// @dev All state including timepoints array is stored in a single namespaced struct
 contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
-  /// @notice Initialize TWAP oracle - initializes timepoints and sets all state in one call
-  /// @dev Equivalent to the original _initialize_TWAP in VolatilityOraclePlugin
+  /// @notice Initialize TWAP oracle
   /// @param time The initialization timestamp
   /// @param tick The initial tick
   function initializeTWAP(uint32 time, int24 tick) external {
@@ -24,8 +21,7 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
     layout.isInitialized = true;
   }
 
-  /// @notice Write timepoint with automatic state management
-  /// @dev Equivalent to the original _writeTimepoint in VolatilityOraclePlugin
+  /// @notice Write timepoint
   /// @param currentTimestamp Current block timestamp
   /// @param tick Current tick from pool
   function writeTimepoint(uint32 currentTimestamp, int24 tick) external {
@@ -41,7 +37,6 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
   }
 
   /// @notice Prepay storage slots for timepoints
-  /// @dev Called via delegatecall from connector
   /// @param startIndex Start index for prepayment
   /// @param amount Number of slots to prepay
   function prepayTimepointsSlots(uint16 startIndex, uint16 amount) external {
@@ -96,7 +91,6 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
     int56 tickCumulativesDelta = current.tickCumulative - old.tickCumulative;
     timeWeightedAverageTick = int24(tickCumulativesDelta / int56(uint56(period)));
 
-    // Always round to negative infinity
     if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(period)) != 0)) {
       timeWeightedAverageTick--;
     }

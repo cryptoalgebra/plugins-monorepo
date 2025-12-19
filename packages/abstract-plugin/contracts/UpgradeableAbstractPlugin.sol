@@ -18,18 +18,18 @@ import './libraries/AbstractPluginStorage.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Abstract Plugin
 /// @notice Base contract for upgradeable plugins using Beacon Proxy pattern
-/// @dev Uses storage for per-proxy data (pool) and immutables for shared data (factory, pluginFactory)
 abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, Timestamp {
   using Plugins for uint8;
 
+  /// @dev Offset in AlgebraPluginProxy bytecode
   uint256 public constant POOL_ADDRESS_OFFSET = 75;
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
-  /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
+  /// @dev shared across all proxies
   address public immutable factory;
 
-  /// @dev Immutable: shared across all proxies (stored in implementation bytecode)
+  /// @dev shared across all proxies
   address public immutable pluginFactory;
 
   modifier onlyPool() {
@@ -42,9 +42,6 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     _;
   }
 
-  /// @notice Constructor sets immutable values that are shared across ALL proxies
-  /// @param _factory The Algebra factory address
-  /// @param _pluginFactory The plugin factory address
   constructor(address _factory, address _pluginFactory) {
     factory = _factory;
     pluginFactory = _pluginFactory;
@@ -56,11 +53,14 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     return _getDefaultPluginConfig();
   }
 
-  /// @notice Returns a module name by index 
+  /// @notice Returns a module name by index
+  /// @param index Module index in the active modules array
+  /// @return Module name
   function activeModules(uint256 index) public view returns (string memory) {
     return _activeModules()[index];
   }
 
+  /// @dev Reads the pool address embedded in the proxy's bytecode.
   function _getPool() internal view virtual returns (address) {
     bytes32 word;
     assembly {
@@ -79,14 +79,6 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     if (!IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender)) revert OnlyAdministrator();
   }
 
-  function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
-    string[] storage modules = _activeModules();
-    moduleNames = new string[](modules.length);
-    for (uint256 i = 0; i < modules.length; i++) {
-      moduleNames[i] = modules[i];
-    }
-  }
-
   function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(_getPool()).globalState();
   }
@@ -97,6 +89,14 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
 
   function pool() public view returns (address) {
     return _getPool();
+  }
+  
+  function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
+    string[] storage modules = _activeModules();
+    moduleNames = new string[](modules.length);
+    for (uint256 i = 0; i < modules.length; i++) {
+      moduleNames[i] = modules[i];
+    }
   }
 
   /// @inheritdoc IAbstractPlugin

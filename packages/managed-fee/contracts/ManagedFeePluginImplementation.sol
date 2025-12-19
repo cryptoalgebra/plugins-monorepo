@@ -13,7 +13,6 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
   using ECDSA for bytes32;
 
   /// @notice Set whitelist status for an address
-  /// @dev Called via delegatecall from connector
   /// @param _address Address to set whitelist status for
   /// @param status True to whitelist, false to remove from whitelist
   function setWhitelistStatus(address _address, bool status) external {
@@ -21,7 +20,6 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
   }
 
   /// @notice Check if address is whitelisted
-  /// @dev Called via staticcall from connector
   /// @param _address Address to check
   /// @return True if whitelisted
   function isWhitelisted(address _address) external view returns (bool) {
@@ -29,7 +27,6 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
   }
 
   /// @notice Get managed fee from plugin data
-  /// @dev Called via delegatecall from connector, validates signature and returns fee
   /// @param pluginData Encoded PluginData struct
   /// @return fee The fee to apply
   function getManagedFee(bytes memory pluginData) external returns (uint24 fee) {

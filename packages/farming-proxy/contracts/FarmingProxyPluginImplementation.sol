@@ -9,13 +9,12 @@ import './interfaces/IFarmingProxyPluginImplementation.sol';
 import './libraries/FarmingProxyStorage.sol';
 
 /// @title FarmingProxy Plugin Implementation
-/// @notice This contract contains ALL logic for FarmingProxy plugin that works with namespaced storage
-/// @dev Called via delegatecall from FarmingProxyConnector to reduce main contract size
+/// @notice FarmingProxy module logic using namespaced storage
+/// @dev Executed via delegatecall from FarmingProxyConnector
 contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
   using Plugins for uint8;
 
-  /// @notice Set incentive address - COMPLETE LOGIC HERE
-  /// @dev Called via delegatecall from connector
+  /// @notice Set or clear the active incentive
   /// @param newIncentive The new incentive address
   /// @param pluginFactory The plugin factory address
   /// @param pool The pool address
@@ -60,10 +59,10 @@ contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
     }
   }
 
-  /// @notice Check if incentive is connected - COMPLETE LOGIC HERE
-  /// @dev Called via delegatecall from connector
+  /// @notice Check whether an incentive is currently connected
   /// @param targetIncentive The incentive address to check
   /// @param pool The pool address
+  /// @return True if the plugin is attached, AFTER_SWAP is enabled, and `targetIncentive` is active
   function isIncentiveConnected(address targetIncentive, address pool) external view returns (bool) {
     FarmingProxyStorage.Layout storage layout = FarmingProxyStorage.layout();
 
@@ -78,8 +77,9 @@ contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
     return true;
   }
 
-  /// @notice Update virtual pool tick
-  /// @dev Called via delegatecall from connector
+  /// @notice Notify the active incentive about a tick crossing
+  /// @param zeroToOne Swap direction
+  /// @param tick Current pool tick
   function updateVirtualPoolTick(bool zeroToOne, int24 tick) external {
     address _incentive = FarmingProxyStorage.layout().incentive;
 

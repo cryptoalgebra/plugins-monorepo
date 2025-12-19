@@ -11,7 +11,6 @@ import './libraries/ReflexStorage.sol';
 contract ReflexPluginImplementation is IReflexPluginImplementation {
 
   /// @notice Initialize Reflex plugin
-  /// @dev Called via delegatecall from connector
   /// @param _router Address of reflex router
   /// @param _configId Configuration ID for profit distribution
   function initializeReflex(address _router, bytes32 _configId) external {
@@ -22,7 +21,6 @@ contract ReflexPluginImplementation is IReflexPluginImplementation {
   }
 
   /// @notice Set reflex router
-  /// @dev Called via delegatecall from connector
   /// @param _router New router address
   function setReflexRouter(address _router) external {
     require(_router != address(0), 'Invalid router address');
@@ -31,7 +29,6 @@ contract ReflexPluginImplementation is IReflexPluginImplementation {
   }
 
   /// @notice Set reflex config ID
-  /// @dev Called via delegatecall from connector
   /// @param _configId New config ID
   function setReflexConfigId(bytes32 _configId) external {
     ReflexStorage.Layout storage layout = ReflexStorage.layout();
@@ -39,21 +36,18 @@ contract ReflexPluginImplementation is IReflexPluginImplementation {
   }
 
   /// @notice Get reflex router
-  /// @dev Called via staticcall from connector
   /// @return Router address
   function getReflexRouter() external view returns (address) {
     return ReflexStorage.layout().reflexRouter;
   }
 
   /// @notice Get reflex config ID
-  /// @dev Called via staticcall from connector
   /// @return Config ID
   function getReflexConfigId() external view returns (bytes32) {
     return ReflexStorage.layout().reflexConfigId;
   }
 
   /// @notice Execute reflex after swap
-  /// @dev Called via delegatecall from connector
   /// @param triggerPoolId Unique identifier for the pool that triggered the swap
   /// @param amount0Delta The change in token0 balance from the original swap
   /// @param amount1Delta The change in token1 balance from the original swap

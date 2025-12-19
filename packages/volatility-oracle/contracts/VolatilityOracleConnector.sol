@@ -10,8 +10,6 @@ import './interfaces/IVolatilityOraclePluginImplementation.sol';
 
 /// @title VolatilityOracle Connector
 /// @notice This contract provides delegatecall interface to VolatilityOracle plugin implementation
-/// @dev All state including the timepoints array is managed via delegatecall to the implementation contract
-/// @dev The implementation uses ERC-7201 namespaced storage for collision-free storage access
 abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle {
   using Plugins for uint8;
   uint256 internal constant UINT16_MODULO = 65536;
@@ -20,7 +18,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   string internal constant VOLATILITY_ORACLE_MODULE_NAME = 'Volatility Oracle Plugin';
   uint8 internal constant VOLATILITY_ORACLE_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
 
-  /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
+  /// @dev changes only on full plugin upgrade
   address internal immutable volatilityOracleImplementation;
 
   constructor(address _volatilityOracleImplementation) {
@@ -32,8 +30,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     return (VOLATILITY_ORACLE_PLUGIN_CONFIG, VOLATILITY_ORACLE_MODULE_NAME);
   }
 
-  /// @notice Initialize TWAP oracle - single call that initializes timepoints and sets state
-  /// @dev Equivalent to the original _initialize_TWAP in VolatilityOraclePlugin
   function _initialize_TWAP(int24 tick) internal {
     _delegateCall(
       volatilityOracleImplementation,
@@ -47,8 +43,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   /// @dev Get block timestamp - must be implemented by inheriting contract
   function _blockTimestamp() internal view virtual returns (uint32);
 
-  /// @notice Write timepoint with automatic state management (simplified version)
-  /// @dev Equivalent to the original _writeTimepoint in VolatilityOraclePlugin
   function _writeTimepoint() internal {
     (, int24 tick, , ) = _getPoolState();
     _delegateCall(

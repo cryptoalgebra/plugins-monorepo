@@ -9,7 +9,6 @@ import './libraries/SlidingFeeStorage.sol';
 
 /// @title SlidingFee Connector
 /// @notice This contract provides delegatecall interface to SlidingFee plugin implementation
-/// @dev Inherits from ISlidingFeePlugin and provides all public methods as thin wrappers
 abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   using Plugins for uint8;
 

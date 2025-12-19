@@ -14,14 +14,12 @@ contract DynamicFeePluginImplementation is IDynamicFeePluginImplementation {
   using AlgebraFeeConfigurationU144Lib for AlgebraFeeConfiguration;
 
   /// @notice Initialize DynamicFee plugin with configuration
-  /// @dev Called via delegatecall from connector
   function initializeDynamicFee(AlgebraFeeConfiguration memory config) external {
     AdaptiveFee.validateFeeConfiguration(config);
     DynamicFeeStorage.layout().feeConfig = config.pack();
   }
 
   /// @notice Get current fee based on volatility
-  /// @dev Called via delegatecall from connector
   function getCurrentFee(uint88 volatilityAverage) external view returns (uint16 fee) {
     AlgebraFeeConfigurationU144 feeConfig_ = DynamicFeeStorage.layout().feeConfig;
 
@@ -30,14 +28,12 @@ contract DynamicFeePluginImplementation is IDynamicFeePluginImplementation {
   }
 
   /// @notice Change fee configuration
-  /// @dev Called via delegatecall from connector
   function changeFeeConfiguration(AlgebraFeeConfiguration calldata config) external {
     AdaptiveFee.validateFeeConfiguration(config);
     DynamicFeeStorage.layout().feeConfig = config.pack();
   }
 
   /// @notice Get fee configuration
-  /// @dev Called via staticcall from connector
   function getFeeConfig()
     external
     view

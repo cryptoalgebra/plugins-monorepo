@@ -9,7 +9,6 @@ import './libraries/LimitOrderStorage.sol';
 
 /// @title LimitOrder Connector
 /// @notice This contract provides delegatecall functions to LimitOrder implementation
-/// @dev Inherits from ILimitOrderPlugin and provides all public methods as thin wrappers
 abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   using Plugins for uint8;
 

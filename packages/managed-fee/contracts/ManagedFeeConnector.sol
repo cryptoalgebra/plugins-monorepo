@@ -8,8 +8,7 @@ import './interfaces/IManagedFeePluginImplementation.sol';
 import './libraries/ManagedFeeStorage.sol';
 
 /// @title ManagedFee Connector
-/// @notice This contract provides delegatecall interface to ManagedFee plugin implementation
-/// @dev Inherits from IManagedSwapFeePlugin and provides all public methods as thin wrappers
+/// @notice ManagedFee module provides delegatecall functions to ManagedFee implementation
 abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
   using Plugins for uint8;
 

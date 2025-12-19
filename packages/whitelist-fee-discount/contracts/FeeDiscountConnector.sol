@@ -9,14 +9,13 @@ import './libraries/FeeDiscountStorage.sol';
 
 /// @title FeeDiscount Connector
 /// @notice This contract provides delegatecall interface to FeeDiscount plugin implementation
-/// @dev Inherits from IFeeDiscountPlugin and provides all public methods as thin wrappers
 abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   using Plugins for uint8;
 
   string internal constant FEE_DISCOUNT_MODULE_NAME = 'Fee Discount Plugin';
   uint8 internal constant FEE_DISCOUNT_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG);
 
-  /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
+  /// @dev changes only on full plugin upgrade
   address internal immutable feeDiscountImplementation;
 
   constructor(address _feeDiscountImplementation) {

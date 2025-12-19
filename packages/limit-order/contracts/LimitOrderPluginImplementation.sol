@@ -10,26 +10,28 @@ import './interfaces/ILimitOrderPluginImplementation.sol';
 /// @dev Called via delegatecall from LimitOrderConnector to reduce main contract size
 contract LimitOrderPluginImplementation is ILimitOrderPluginImplementation {
 
-  /// @notice Initialize LimitOrder plugin with manager address
-  /// @dev Called via delegatecall from connector
+  /// @notice Initializes limit order manager
+  /// @param limitOrderManager Manager address
   function initializeLimitOrder(address limitOrderManager) external {
     LimitOrderStorage.layout().limitOrderManager = limitOrderManager;
   }
 
-  /// @notice Set the limitOrderManager address
-  /// @dev Called via delegatecall from connector
+  /// @notice Sets limit order manager
+  /// @param manager New manager address
   function setLimitOrderManager(address manager) external {
     LimitOrderStorage.layout().limitOrderManager = manager;
   }
 
-  /// @notice Get the limitOrderManager address
-  /// @dev Called via staticcall from connector
+  /// @notice Returns limit order manager
+  /// @return Manager address
   function getLimitOrderManager() external view returns (address) {
     return LimitOrderStorage.layout().limitOrderManager;
   }
 
-  /// @notice Update limit order manager state after swap
-  /// @dev Called via delegatecall from connector
+  /// @notice Notifies manager after swap (if configured)
+  /// @param pool Pool address
+  /// @param zeroToOne Swap direction
+  /// @param tick Current pool tick
   function updateLimitOrderManagerState(address pool, bool zeroToOne, int24 tick) external {
     address manager = LimitOrderStorage.layout().limitOrderManager;
 

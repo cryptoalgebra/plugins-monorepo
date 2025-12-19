@@ -9,7 +9,6 @@ import './libraries/FarmingProxyStorage.sol';
 
 /// @title FarmingProxy Connector
 /// @notice This contract provides delegatecall interface to FarmingProxy plugin implementation
-/// @dev Inherits from BaseConnector for common delegatecall utilities
 abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   using Plugins for uint8;
 

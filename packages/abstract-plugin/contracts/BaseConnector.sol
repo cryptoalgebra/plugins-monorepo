@@ -3,7 +3,6 @@ pragma solidity =0.8.20;
 
 /// @title Base Connector
 /// @notice Abstract base contract for all plugin connectors providing common delegatecall utilities
-/// @dev Eliminates code duplication across connectors by providing shared delegation logic
 abstract contract BaseConnector {
 
   error ConnectorDelegatecallFailed();

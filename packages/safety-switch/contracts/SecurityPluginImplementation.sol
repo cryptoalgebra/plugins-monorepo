@@ -12,28 +12,24 @@ import './libraries/SecurityStorage.sol';
 contract SecurityPluginImplementation is ISecurityPluginImplementation {
 
   /// @notice Initialize Security plugin
-  /// @dev Called via delegatecall from connector
   /// @param _securityRegistry Address of security registry
   function initializeSecurity(address _securityRegistry) external {
     SecurityStorage.layout().securityRegistry = _securityRegistry;
   }
 
   /// @notice Set security registry
-  /// @dev Called via delegatecall from connector
   /// @param _securityRegistry New security registry address
   function setSecurityRegistry(address _securityRegistry) external {
     SecurityStorage.layout().securityRegistry = _securityRegistry;
   }
 
   /// @notice Get security registry
-  /// @dev Called via staticcall from connector
   /// @return Security registry address
   function getSecurityRegistry() external view returns (address) {
     return SecurityStorage.layout().securityRegistry;
   }
 
   /// @notice Check pool status
-  /// @dev Called via delegatecall from connector
   /// @param poolAddress Address of pool to check
   function checkStatus(address poolAddress) external {
     address securityRegistry = SecurityStorage.layout().securityRegistry;
@@ -51,7 +47,6 @@ contract SecurityPluginImplementation is ISecurityPluginImplementation {
   }
 
   /// @notice Check pool status on burn
-  /// @dev Called via delegatecall from connector
   /// @param poolAddress Address of pool to check
   function checkStatusOnBurn(address poolAddress) external {
     address securityRegistry = SecurityStorage.layout().securityRegistry;

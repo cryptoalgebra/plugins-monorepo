@@ -9,7 +9,6 @@ import './libraries/SecurityStorage.sol';
 
 /// @title Security Connector
 /// @notice This contract provides delegatecall interface to Security plugin implementation
-/// @dev Inherits from BaseConnector for common delegatecall utilities
 abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   using Plugins for uint8;
 

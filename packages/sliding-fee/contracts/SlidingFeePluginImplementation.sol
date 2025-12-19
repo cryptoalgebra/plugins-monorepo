@@ -14,7 +14,6 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
   uint64 internal constant FEE_FACTOR_SHIFT = 96;
 
   /// @notice Initialize SlidingFee plugin with base fee
-  /// @dev Called via delegatecall from connector
   /// @param baseFee Base fee to set
   function initializeSlidingFee(uint16 baseFee) external {
     SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
@@ -24,7 +23,6 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
   }
 
   /// @notice Get fee and update factors
-  /// @dev Called via delegatecall from connector
   /// @param zeroToOne Direction of swap
   /// @param currentTick Current pool tick
   /// @param lastTick Last tick
@@ -56,35 +54,30 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
   }
 
   /// @notice Set price change factor
-  /// @dev Called via delegatecall from connector
   /// @param newPriceChangeFactor New price change factor
   function setPriceChangeFactor(uint16 newPriceChangeFactor) external {
     SlidingFeeStorage.layout().priceChangeFactor = newPriceChangeFactor;
   }
 
   /// @notice Set base fee
-  /// @dev Called via delegatecall from connector
   /// @param newBaseFee New base fee
   function setBaseFee(uint16 newBaseFee) external {
     SlidingFeeStorage.layout().baseFee = newBaseFee;
   }
 
   /// @notice Get price change factor
-  /// @dev Called via staticcall from connector
   /// @return Price change factor
   function getPriceChangeFactor() external view returns (uint16) {
     return SlidingFeeStorage.layout().priceChangeFactor;
   }
 
   /// @notice Get base fee
-  /// @dev Called via staticcall from connector
   /// @return Base fee
   function getBaseFee() external view returns (uint16) {
     return SlidingFeeStorage.layout().baseFee;
   }
 
   /// @notice Get fee factors
-  /// @dev Called via staticcall from connector
   /// @return zeroToOneFeeFactor Fee factor for zeroToOne direction
   /// @return oneToZeroFeeFactor Fee factor for oneToZero direction
   function getFeeFactors() external view returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor) {

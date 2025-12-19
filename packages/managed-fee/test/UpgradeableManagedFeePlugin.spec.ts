@@ -36,7 +36,7 @@ describe('UpgradeableManagedFeePlugin', function () {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target]);
+    const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
     await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
@@ -108,7 +108,7 @@ describe('UpgradeableManagedFeePlugin', function () {
       const { plugin1, mockPool } = await loadFixture(deployFixture);
 
       await expect(
-        plugin1.initialize(mockPool.target)
+        plugin1.initialize()
       ).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
@@ -173,7 +173,7 @@ describe('UpgradeableManagedFeePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-        const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool2.target]);
+        const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', []);
         await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableManagedFeePluginTest.attach(proxy2Address) as any;
@@ -203,8 +203,8 @@ describe('UpgradeableManagedFeePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-        const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool2.target]);
-        await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
+      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', []);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableManagedFeePluginTest.attach(proxy2Address) as any;
 

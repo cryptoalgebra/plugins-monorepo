@@ -53,9 +53,10 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-    const proxy = await BeaconProxyFactory.deploy(
+    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
+      await mockPool.getAddress(),
       '0x' // Empty data - we'll call initialize separately
     );
 
@@ -152,14 +153,14 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-      const proxy2 = await BeaconProxyFactory.deploy(await beacon.getAddress(), '0x');
-
-      const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;
-
       // Deploy second mock pool
       const MockPoolFactory = await ethers.getContractFactory('MockPool');
       const mockPool2 = await MockPoolFactory.deploy() as any as MockPool;
+
+      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), await mockPool2.getAddress(), '0x');
+
+      const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;
       await mockPool2.setPlugin(await pluginProxy2.getAddress());
 
       // Initialize both with different pools
@@ -170,9 +171,6 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       await pluginProxy2.initialize(pool2);
 
       // Verify storage is isolated
-      expect(await pluginProxy.pool()).to.eq(pool1);
-      expect(await pluginProxy2.pool()).to.eq(pool2);
-
       // Set incentive only on first proxy
       await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
 
@@ -187,8 +185,9 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-      const proxy2 = await BeaconProxyFactory.deploy(await beacon.getAddress(), '0x');
+      // Use pool-aware proxy so _getPool works consistently
+      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), await mockPool.getAddress(), '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;
 

@@ -7,7 +7,7 @@ import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.s
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
-import '../AlgebraPluginProxy.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
 import '../interfaces/IAlgebraUpgradeablePlugin.sol';
 import './MockTimeAlgebraUpgradeablePlugin.sol';
 

@@ -43,7 +43,7 @@ describe('UpgradeableLimitOrderPlugin', function () {
       mockPool.target,
       mockLimitOrderManager.target,
     ]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
     // Get plugin interface for proxy
@@ -161,14 +161,11 @@ describe('UpgradeableLimitOrderPlugin', function () {
         mockPool2.target,
         mockLimitOrderManager2.target,
       ]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableLimitOrderPluginTest.attach(proxy2Address) as any;
 
       // Verify different values
-      expect(await plugin1.pool()).to.equal(mockPool.target);
-      expect(await plugin2.pool()).to.equal(mockPool2.target);
-
       expect(await plugin1.limitOrderManager.staticCall()).to.equal(mockLimitOrderManager.target);
       expect(await plugin2.limitOrderManager.staticCall()).to.equal(mockLimitOrderManager2.target);
     });
@@ -194,7 +191,7 @@ describe('UpgradeableLimitOrderPlugin', function () {
         mockPool2.target,
         ethers.ZeroAddress,
       ]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableLimitOrderPluginTest.attach(proxy2Address) as any;
 

@@ -57,6 +57,9 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.4
         version: 1.2.4
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -279,6 +282,9 @@ importers:
 
   packages/test-utils:
     devDependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.9
         version: 1.2.9

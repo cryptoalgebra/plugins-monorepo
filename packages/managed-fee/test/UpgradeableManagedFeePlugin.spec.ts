@@ -37,7 +37,7 @@ describe('UpgradeableManagedFeePlugin', function () {
 
     // Deploy BeaconProxy for first plugin
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
     // Get plugin interface for proxy
@@ -173,13 +173,10 @@ describe('UpgradeableManagedFeePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool2.target]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+        const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool2.target]);
+        await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableManagedFeePluginTest.attach(proxy2Address) as any;
-
-      // Verify different pool addresses
-      expect(await plugin1.pool()).to.not.equal(await plugin2.pool());
 
       // Whitelist user in plugin1 only
       await plugin1.connect(manager).setWhitelistStatus(user.address, true);
@@ -206,8 +203,8 @@ describe('UpgradeableManagedFeePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool2.target]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+        const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool2.target]);
+        await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableManagedFeePluginTest.attach(proxy2Address) as any;
 

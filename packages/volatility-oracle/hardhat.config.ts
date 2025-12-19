@@ -30,6 +30,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/test-utils/contracts/MockPluginFactory.sol',
       '@cryptoalgebra/test-utils/contracts/MockERC20.sol',
       '@cryptoalgebra/test-utils/contracts/BeaconImports.sol',
+      '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol',
       '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol',
       '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol',
       '@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol',

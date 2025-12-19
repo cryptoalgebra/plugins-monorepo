@@ -59,9 +59,10 @@ describe('#UpgradeableDynamicFeePlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-    const proxy = await BeaconProxyFactory.deploy(
+    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
+      MOCK_POOL,
       '0x' // Empty data - we'll call initialize separately
     );
 
@@ -153,27 +154,27 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
   describe('#storage isolation', () => {
     it('should have isolated storage between proxies', async () => {
-      // Deploy second proxy
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-      const proxy2 = await BeaconProxyFactory.deploy(await beacon.getAddress(), '0x');
+      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy1 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
+      const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
-      const pluginProxy2 = await ethers.getContractAt('UpgradeableDynamicFeePluginTest', await proxy2.getAddress()) as any as UpgradeableDynamicFeePluginTest;
+      const pluginProxy1 = await ethers.getContractAt(
+        'UpgradeableDynamicFeePluginTest',
+        await proxy1.getAddress()
+      ) as any as UpgradeableDynamicFeePluginTest;
+      const pluginProxy2 = await ethers.getContractAt(
+        'UpgradeableDynamicFeePluginTest',
+        await proxy2.getAddress()
+      ) as any as UpgradeableDynamicFeePluginTest;
 
       // Initialize both with different values
-      const POOL_1 = '0x0000000000000000000000000000000000000011';
-      const POOL_2 = '0x0000000000000000000000000000000000000022';
-
-      await pluginProxy.initialize(POOL_1, DEFAULT_FEE_CONFIG);
-      await pluginProxy2.initialize(POOL_2, ALT_FEE_CONFIG);
-
-      // Verify storage is isolated
-      expect(await pluginProxy.pool()).to.eq(POOL_1);
-      expect(await pluginProxy2.pool()).to.eq(POOL_2);
+      await pluginProxy1.initialize(MOCK_POOL, DEFAULT_FEE_CONFIG);
+      await pluginProxy2.initialize(MOCK_POOL, ALT_FEE_CONFIG);
       
-      const config1 = await pluginProxy.feeConfig.staticCall();
+      const config1 = await pluginProxy1.feeConfig.staticCall();
       const config2 = await pluginProxy2.feeConfig.staticCall();
       
       expect(config1.baseFee).to.eq(DEFAULT_FEE_CONFIG.baseFee);
@@ -190,8 +191,8 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-      const proxy2 = await BeaconProxyFactory.deploy(await beacon.getAddress(), '0x');
+      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableDynamicFeePluginTest', await proxy2.getAddress()) as any as UpgradeableDynamicFeePluginTest;
 

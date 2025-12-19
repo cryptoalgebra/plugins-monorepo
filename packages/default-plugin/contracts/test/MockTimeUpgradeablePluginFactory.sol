@@ -8,7 +8,7 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 
 import './MockTimeAlgebraUpgradeablePlugin.sol';
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
-import '../AlgebraPluginProxy.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
 import '../interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Mock Factory for testing upgradeable plugins with Beacon Proxy pattern

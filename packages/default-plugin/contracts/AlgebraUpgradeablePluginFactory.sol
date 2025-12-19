@@ -2,17 +2,16 @@
 pragma solidity =0.8.20;
 
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 
-import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
-
-import './AlgebraPluginProxy.sol';
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
 

@@ -30,7 +30,7 @@ describe('SlidingFee', () => {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target, 100]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxyAddress = await proxyDeployer.lastDeployedProxy();
 
     return UpgradeableSlidingFeePluginTest.attach(proxyAddress) as any;

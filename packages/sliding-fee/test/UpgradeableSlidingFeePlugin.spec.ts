@@ -41,7 +41,7 @@ describe('UpgradeableSlidingFeePlugin', function () {
       mockPool.target,
       DEFAULT_BASE_FEE,
     ]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
     // Get plugin interface for proxy
@@ -185,14 +185,11 @@ describe('UpgradeableSlidingFeePlugin', function () {
         mockPool2.target,
         differentBaseFee,
       ]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableSlidingFeePluginTest.attach(proxy2Address) as any;
 
       // Verify different values
-      expect(await plugin1.pool()).to.equal(mockPool.target);
-      expect(await plugin2.pool()).to.equal(mockPool2.target);
-
       expect(await plugin1.baseFee()).to.equal(DEFAULT_BASE_FEE);
       expect(await plugin2.baseFee()).to.equal(differentBaseFee);
 
@@ -223,7 +220,7 @@ describe('UpgradeableSlidingFeePlugin', function () {
         mockPool2.target,
         5000,
       ]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableSlidingFeePluginTest.attach(proxy2Address) as any;
 

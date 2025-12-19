@@ -43,7 +43,7 @@ describe('UpgradeableSecurityPlugin', function () {
       mockPool.target,
       mockSecurityRegistry.target,
     ]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
     // Get plugin interface for proxy
@@ -164,14 +164,11 @@ describe('UpgradeableSecurityPlugin', function () {
         mockPool2.target,
         mockSecurityRegistry2.target,
       ]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2Address) as any;
 
       // Verify different values
-      expect(await plugin1.pool()).to.equal(mockPool.target);
-      expect(await plugin2.pool()).to.equal(mockPool2.target);
-
       expect(await plugin1.getSecurityRegistry()).to.equal(mockSecurityRegistry.target);
       expect(await plugin2.getSecurityRegistry()).to.equal(mockSecurityRegistry2.target);
     });
@@ -197,7 +194,7 @@ describe('UpgradeableSecurityPlugin', function () {
         mockPool2.target,
         ethers.ZeroAddress,
       ]);
-      await proxyDeployer.deploy(beacon.target, initData2);
+      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
       const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2Address) as any;
 

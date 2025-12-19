@@ -4,8 +4,9 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 
+import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
+
 import { UpgradeableBeacon } from '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
-import { BeaconProxy } from '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol';
 
 import '../interfaces/ILimitOrderPluginFactory.sol';
 import './UpgradeableLimitOrderPluginTest.sol';
@@ -59,7 +60,7 @@ contract UpgradeableLimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrd
     require(pluginByPool[pool] == address(0), 'Already created');
 
     bytes memory initData = abi.encodeCall(UpgradeableLimitOrderPluginTest.initialize, (pool, limitOrderManager));
-    plugin = address(new BeaconProxy(address(beacon), initData));
+    plugin = address(new AlgebraPluginProxy(address(beacon), pool, initData));
 
     pluginByPool[pool] = plugin;
   }

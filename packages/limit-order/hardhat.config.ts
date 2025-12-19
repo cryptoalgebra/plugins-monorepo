@@ -25,6 +25,7 @@ const config: HardhatUserConfig = {
   typechain: baseConfig.typechain,
   dependencyCompiler: {
     paths: [
+      '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol',
       '@cryptoalgebra/test-utils/contracts/MockFactory.sol',
       '@cryptoalgebra/test-utils/contracts/MockPool.sol',
       '@cryptoalgebra/test-utils/contracts/MockPluginFactory.sol',

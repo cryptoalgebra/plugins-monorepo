@@ -60,7 +60,7 @@ describe('AlgebraFeeDiscountPlugin', () => {
       mockPool.target,
       registry.target,
     ]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxyAddress = await proxyDeployer.lastDeployedProxy();
 
     plugin = UpgradeableFeeDiscountPluginTest__factory.connect(proxyAddress, wallet);

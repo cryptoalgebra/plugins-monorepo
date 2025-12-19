@@ -11,7 +11,7 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginF
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
 
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
-import '../AlgebraPluginProxy.sol';
+import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
 import '../interfaces/IAlgebraUpgradeablePlugin.sol';
 import '../interfaces/IAlgebraDefaultPluginFactory.sol';
 

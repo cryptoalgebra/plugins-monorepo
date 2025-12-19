@@ -38,7 +38,7 @@ describe('SecurityPlugin', () => {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [pool.target, registry.target]);
-    await proxyDeployer.deploy(beacon.target, initData);
+    await proxyDeployer.deploy(beacon.target, pool.target, initData);
     const proxyAddress = await proxyDeployer.lastDeployedProxy();
 
     const plugin = UpgradeableSecurityPluginTest.attach(proxyAddress) as any;

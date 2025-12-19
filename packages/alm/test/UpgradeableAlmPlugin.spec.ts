@@ -41,9 +41,10 @@ describe('#UpgradeableAlmPlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-    const proxy = await BeaconProxyFactory.deploy(
+    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
+      MOCK_POOL,
       '0x' // Empty data - we'll call initialize separately
     );
 
@@ -173,23 +174,17 @@ describe('#UpgradeableAlmPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-      const proxy2 = await BeaconProxyFactory.deploy(await beacon.getAddress(), '0x');
+      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy2.getAddress()) as any as UpgradeableAlmPluginTest;
 
       // Initialize both with different values
-      const POOL_1 = '0x0000000000000000000000000000000000000011';
-      const POOL_2 = '0x0000000000000000000000000000000000000022';
       const MANAGER_1 = '0x0000000000000000000000000000000000000033';
       const MANAGER_2 = '0x0000000000000000000000000000000000000044';
 
-      await pluginProxy.initialize(POOL_1, MANAGER_1, 1000, 100);
-      await pluginProxy2.initialize(POOL_2, MANAGER_2, 2000, 200);
-
-      // Verify storage is isolated
-      expect(await pluginProxy.pool()).to.eq(POOL_1);
-      expect(await pluginProxy2.pool()).to.eq(POOL_2);
+      await pluginProxy.initialize(MOCK_POOL, MANAGER_1, 1000, 100);
+      await pluginProxy2.initialize(MOCK_POOL, MANAGER_2, 2000, 200);
       
       expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(MANAGER_1);
       expect(await pluginProxy2.rebalanceManager.staticCall()).to.eq(MANAGER_2);
@@ -208,8 +203,8 @@ describe('#UpgradeableAlmPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const BeaconProxyFactory = await ethers.getContractFactory('BeaconProxy');
-      const proxy2 = await BeaconProxyFactory.deploy(await beacon.getAddress(), '0x');
+      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy2.getAddress()) as any as UpgradeableAlmPluginTest;
 

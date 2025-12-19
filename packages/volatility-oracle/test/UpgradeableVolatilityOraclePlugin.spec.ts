@@ -34,12 +34,10 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
-    // Deploy BeaconProxy for first plugin
-    const BeaconProxy = await ethers.getContractFactory('BeaconProxy');
-    const initData = pluginImplementation.interface.encodeFunctionData('initializePlugin', [
-      mockPool.target,
-    ]);
-    const proxy1 = await BeaconProxy.deploy(beacon.target, initData);
+    // Deploy pool-aware proxy (required for POOL_ADDRESS_OFFSET-based pool discovery)
+    const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+    const initData = pluginImplementation.interface.encodeFunctionData('initializePlugin');
+    const proxy1 = await AlgebraPluginProxy.deploy(beacon.target, mockPool.target, initData);
 
     // Get plugin interface for proxy
     const plugin1 = UpgradeableVolatilityOraclePluginTest.attach(proxy1.target) as any;
@@ -63,7 +61,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       pluginImplementation,
       beacon,
       plugin1,
-      BeaconProxy,
       UpgradeableVolatilityOraclePluginTest,
       ALGEBRA_BASE_PLUGIN_MANAGER,
     };
@@ -87,7 +84,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const { plugin1, mockPool } = await loadFixture(deployFixture);
 
       await expect(
-        plugin1.initializePlugin(mockPool.target)
+        plugin1.initializePlugin()
       ).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
@@ -110,8 +107,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
         beacon,
         pluginImplementation,
         plugin1,
-        mockPool,
-        BeaconProxy,
         UpgradeableVolatilityOraclePluginTest,
       } = await loadFixture(deployFixture);
 
@@ -120,15 +115,16 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin', [
-        mockPool2.target,
-      ]);
-      const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
+      const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxy2 = await AlgebraPluginProxy.deploy(beacon.target, mockPool2.target, '0x');
       const plugin2 = UpgradeableVolatilityOraclePluginTest.attach(proxy2.target) as any;
 
-      // Verify different pool addresses
-      expect(await plugin1.pool()).to.equal(mockPool.target);
-      expect(await plugin2.pool()).to.equal(mockPool2.target);
+      await mockPool2.setPlugin(proxy2.target);
+
+      // Initialization state is stored per-proxy (must be isolated)
+      await expect(plugin1.initializePlugin()).to.be.revertedWith('Initializable: contract is already initialized');
+      await expect(plugin2.initializePlugin()).to.not.be.reverted;
+      await expect(plugin2.initializePlugin()).to.be.revertedWith('Initializable: contract is already initialized');
     });
   });
 
@@ -140,7 +136,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
         mockPluginFactory,
         pluginImplementation,
         plugin1,
-        BeaconProxy,
         UpgradeableVolatilityOraclePluginTest,
       } = await loadFixture(deployFixture);
 
@@ -149,10 +144,9 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin', [
-        mockPool2.target,
-      ]);
-      const proxy2 = await BeaconProxy.deploy(beacon.target, initData2);
+      const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+      const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin');
+      const proxy2 = await AlgebraPluginProxy.deploy(beacon.target, mockPool2.target, initData2);
       const plugin2 = UpgradeableVolatilityOraclePluginTest.attach(proxy2.target) as any;
 
       // Both should have same factory addresses (immutables from implementation)

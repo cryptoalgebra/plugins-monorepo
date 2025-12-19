@@ -14,13 +14,6 @@ const config = {
   // Security registry address (optional, can be set later)
   securityRegistry: "0x0000000000000000000000000000000000000000",
   
-  // Default ALM rebalance manager (optional, can be set later)
-  rebalanceManager: "0x0000000000000000000000000000000000000000",
-  
-  // Default ALM TWAP periods
-  slowTwapPeriod: 3600,  
-  fastTwapPeriod: 60,   
-  
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
@@ -40,7 +33,6 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
   const volatilityOracleImpl = m.contract("VolatilityOraclePluginImplementation", [], {
     id: "VolatilityOracleImpl"
   });
-
 
   const dynamicFeeImpl = m.contract("DynamicFeePluginImplementation", [], {
     id: "DynamicFeeImpl"
@@ -173,33 +165,19 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
 
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
-  // // Set farming address if provided
-  // if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
-  //   m.call(factory, "setFarmingAddress", [config.farmingCenter], {
-  //     id: "SetFarmingAddress"
-  //   });
-  // }
+  // Set farming address if provided
+  if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
+    m.call(factory, "setFarmingAddress", [config.farmingCenter], {
+      id: "SetFarmingAddress"
+    });
+  }
 
-  // // Set security registry if provided
-  // if (config.securityRegistry !== "0x0000000000000000000000000000000000000000") {
-  //   m.call(factory, "setSecurityRegistry", [config.securityRegistry], {
-  //     id: "SetSecurityRegistry"
-  //   });
-  // }
-
-  // // Set rebalance manager if provided
-  // if (config.rebalanceManager !== "0x0000000000000000000000000000000000000000") {
-  //   m.call(factory, "setDefaultRebalanceManager", [config.rebalanceManager], {
-  //     id: "SetRebalanceManager"
-  //   });
-  // }
-
-  // // Set ALM TWAP periods if non-zero
-  // if (config.slowTwapPeriod > 0 && config.fastTwapPeriod > 0) {
-  //   m.call(factory, "setDefaultAlmTwapPeriods", [config.slowTwapPeriod, config.fastTwapPeriod], {
-  //     id: "SetAlmTwapPeriods"
-  //   });
-  // }
+  // Set security registry if provided
+  if (config.securityRegistry !== "0x0000000000000000000000000000000000000000") {
+    m.call(factory, "setSecurityRegistry", [config.securityRegistry], {
+      id: "SetSecurityRegistry"
+    });
+  }
 
   return {
     factory,

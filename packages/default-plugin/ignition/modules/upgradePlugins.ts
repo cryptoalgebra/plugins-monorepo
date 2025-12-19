@@ -16,29 +16,24 @@ const config = {
 // Deploy fresh module implementations for the new plugin version
 
 const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => {
-  // Deploy VolatilityOracle module
-  const volatilityOracleImpl = m.contract("VolatilityOracle", [], {
-    id: "VolatilityOracleImplementation"
+  const volatilityOracleImpl = m.contract("VolatilityOraclePluginImplementation", [], {
+    id: "VolatilityOracleImpl"
   });
 
-  // Deploy DynamicFee module
-  const dynamicFeeImpl = m.contract("DynamicFeeManager", [], {
-    id: "DynamicFeeImplementation"
+  const dynamicFeeImpl = m.contract("DynamicFeePluginImplementation", [], {
+    id: "DynamicFeeImpl"
   });
 
-  // Deploy FarmingProxy module
-  const farmingProxyImpl = m.contract("FarmingProxy", [], {
-    id: "FarmingProxyImplementation"
+  const farmingProxyImpl = m.contract("FarmingProxyPluginImplementation", [], {
+    id: "FarmingProxyImpl"
   });
 
-  // Deploy ALM module
-  const almImpl = m.contract("AlmModule", [], {
-    id: "AlmImplementation"
+  const almImpl = m.contract("AlmPluginImplementation", [], {
+    id: "AlmImpl"
   });
 
-  // Deploy Security module
-  const securityImpl = m.contract("SecurityModule", [], {
-    id: "SecurityImplementation"
+  const securityImpl = m.contract("SecurityPluginImplementation", [], {
+    id: "SecurityImpl"
   });
 
   return { 

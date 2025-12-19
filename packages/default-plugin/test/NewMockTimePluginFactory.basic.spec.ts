@@ -154,7 +154,7 @@ describe('NewMockTimePluginFactory - Basic', () => {
           await mockPool.getAddress(), 
           ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
         )
-      ).to.be.revertedWith('Already created');
+      ).to.be.revertedWithCustomError(mockPluginFactory, 'PluginAlreadyCreated');
     });
   });
 

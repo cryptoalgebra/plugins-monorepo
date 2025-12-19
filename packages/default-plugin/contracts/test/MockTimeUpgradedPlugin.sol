@@ -2,6 +2,8 @@
 pragma solidity =0.8.20;
 
 import './MockTimeAlgebraUpgradeablePlugin.sol';
+import '@cryptoalgebra/integral-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
+import '@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol';
 
 /// @title Mock Time Upgraded Plugin for testing upgrades with time manipulation
 /// @notice Extends MockTimeAlgebraUpgradeablePlugin to keep advanceTime() after upgrade

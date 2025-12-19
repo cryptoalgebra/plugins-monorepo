@@ -3,8 +3,6 @@ import { expect } from 'test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
-
-
 const MIN_SQRT_RATIO = 4295128739n;
 const MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342n;
 
@@ -15,7 +13,6 @@ describe('Integration Tests - Fork', function() {
     const nft = await ethers.getContractAt('INonfungiblePositionManager', '0x8aD26dc9f724c9A7319E0E25b907d15626D9a056');
     const swapRouter = await ethers.getContractAt('ISwapRouter', '0x5Cd40c7E21A15E7FC2503Fffd77cF70c60628F6C');
     const owner = await algebraFactory.owner();
-    
     
     await impersonateAccount(owner);
     await setBalance(owner, ethers.parseEther('10'));
@@ -60,8 +57,6 @@ describe('Integration Tests - Fork', function() {
       beacon
     };
   }
-
-  
 
   it('should deploy fixture', async () => {
     const { owner } = await loadFixture(deployFixture);
@@ -445,6 +440,7 @@ describe('Integration Tests - Fork', function() {
   });
   describe('#Upgrade plugin with upgraded module', ()=> {
     it('upgrades security module and new functions work while plugin stays attached to pool', async () => {
+      
       const { 
         ownerSigner, 
         algebraFactory, 

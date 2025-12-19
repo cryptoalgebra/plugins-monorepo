@@ -72,7 +72,7 @@ describe('#ALM Configuration', () => {
       it('reverts if slowPeriod < fastPeriod', async () => {
         await expect(
           mockPluginFactory.setDefaultAlmTwapPeriods(600, 3600)
-        ).to.be.revertedWith('slowPeriod must be >= fastPeriod');
+        ).to.be.revertedWithCustomError(mockPluginFactory, 'InvalidAlmTwapPeriods');
       });
     });
   });

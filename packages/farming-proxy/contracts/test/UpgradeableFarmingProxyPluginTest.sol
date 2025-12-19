@@ -41,7 +41,7 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
   }
 
   /// @inheritdoc FarmingProxyConnector
-  function _getPool() internal view override returns (address) {
+  function _getPool() internal view override(UpgradeableAbstractPlugin, FarmingProxyConnector) returns (address) {
     return UpgradeableAbstractPlugin._getPool();
   }
 

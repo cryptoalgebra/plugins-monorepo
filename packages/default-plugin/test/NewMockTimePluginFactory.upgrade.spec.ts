@@ -204,7 +204,7 @@ describe('NewMockTimePluginFactory - Basic', () => {
       expect(await upgraded.pool()).to.eq(await mockPool.getAddress());
       expect(await upgraded.pluginFactory()).to.eq(factoryAddress);
       expect(await upgraded.defaultPluginConfig()).to.not.eq(0);
-      expect(await upgraded.activeModules(0)).to.eq('Volatility Oracle');
+      expect(await upgraded.activeModules(0)).to.eq('Volatility Oracle Plugin');
 
       // OLD: DynamicFee storage (algebra.storage.dynamicfee)
       const feeConfig = await upgraded.feeConfig.staticCall();

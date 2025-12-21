@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-import '../AlgebraUpgradeablePlugin.sol';
+import '../../AlgebraUpgradeablePlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracle.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracleStorage.sol';
 

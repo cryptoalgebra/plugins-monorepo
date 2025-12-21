@@ -6,10 +6,10 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginF
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 
-import './MockTimeAlgebraUpgradeablePlugin.sol';
+import '../plugins/MockTimeAlgebraUpgradeablePlugin.sol';
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
-import '../interfaces/IAlgebraUpgradeablePlugin.sol';
+import '../../interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Mock Factory for testing upgradeable plugins with Beacon Proxy pattern
 /// @notice Creates MockTimeAlgebraUpgradeablePlugin instances using Beacon Proxy for testing

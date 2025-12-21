@@ -4,7 +4,6 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracle.sol';
 
 /// @title Mock Upgraded VolatilityOracle Plugin Implementation
-
 contract MockUpgradedVolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];

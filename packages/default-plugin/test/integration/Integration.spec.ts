@@ -184,8 +184,6 @@ describe('Integration Tests - Fork', function() {
     
     });
 
- 
-
   describe('#Plugin Upgrade on Live Network', () => {
     let ownerSigner;
     let algebraFactory;

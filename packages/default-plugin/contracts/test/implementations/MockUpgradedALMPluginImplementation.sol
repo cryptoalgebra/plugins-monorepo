@@ -78,7 +78,7 @@ contract MockUpgradedALMPluginImplementation {
     int24 fastTwapTick,
     uint32 lastBlockTimestamp
   ) external {
-    AlmLayout storage layout = _getAlmLayout();
+    AlmLayoutV2 storage layout = _getAlmLayout();
     address manager = layout.rebalanceManager;
 
     if (manager != address(0)) {

@@ -12,8 +12,8 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPlugin
 
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
-import '../interfaces/IAlgebraUpgradeablePlugin.sol';
-import '../interfaces/IAlgebraDefaultPluginFactory.sol';
+import '../../interfaces/IAlgebraUpgradeablePlugin.sol';
+import '../../interfaces/IAlgebraDefaultPluginFactory.sol';
 
 
 /// @title Mock Factory for testing upgradeable plugins with Beacon Proxy pattern

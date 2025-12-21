@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-import '../AlgebraUpgradeablePlugin.sol';
-import './UpgradeTestStorage.sol';
+import '../../AlgebraUpgradeablePlugin.sol';
+import '../utils/UpgradeTestStorage.sol';
 
 /// @title Mock Upgraded Plugin for testing upgrades
 /// @notice This contract simulates an upgraded version of AlgebraUpgradeablePlugin

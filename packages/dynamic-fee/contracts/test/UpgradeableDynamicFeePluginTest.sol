@@ -24,12 +24,19 @@ contract UpgradeableDynamicFeePluginTest is UpgradeableAbstractPlugin, DynamicFe
   function initialize(address _pool, AlgebraFeeConfiguration memory _config) external initializer {
     _authorize();
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeDynamicFee(_config);
-
-    _appendActiveModule(moduleName);
-    _setDefaultPluginConfig(pluginConfig);
+    _initializeDynamicFee(_config);
 
     emit PluginInitialized(_pool);
+  }
+
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = DYNAMIC_FEE_MODULE_NAME;
+  }
+
+  function defaultPluginConfig() public view override returns (uint8) {
+    return DYNAMIC_FEE_PLUGIN_CONFIG;
   }
 
   /// @inheritdoc IAlgebraDynamicFeePlugin

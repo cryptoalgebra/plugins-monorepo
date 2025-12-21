@@ -29,12 +29,11 @@ abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
   /// @notice Initialize DynamicFee plugin with configuration via delegatecall
   function _initializeDynamicFee(
     AlgebraFeeConfiguration memory config
-  ) internal returns (uint8 pluginConfig, string memory moduleName) {
+  ) internal {
     _delegateCall(
       dynamicFeeImplementation,
       abi.encodeCall(IDynamicFeePluginImplementation.initializeDynamicFee, (config))
     );
-    return (DYNAMIC_FEE_PLUGIN_CONFIG, DYNAMIC_FEE_MODULE_NAME);
   }
 
   /// @notice Get current fee based on volatility

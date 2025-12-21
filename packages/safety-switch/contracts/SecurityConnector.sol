@@ -26,12 +26,11 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   /// @notice Initialize Security plugin via delegatecall
   function _initializeSecurity(
     address _securityRegistry
-  ) internal returns (uint8 pluginConfig, string memory moduleName) {
+  ) internal {
     _delegateCall(
       securityImplementation,
       abi.encodeCall(ISecurityPluginImplementation.initializeSecurity, (_securityRegistry))
     );
-    return (SECURITY_PLUGIN_CONFIG, SECURITY_MODULE_NAME);
   }
 
   /// @notice Check status via delegatecall

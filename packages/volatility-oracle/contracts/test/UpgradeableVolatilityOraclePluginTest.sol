@@ -26,17 +26,22 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
 
   /// @notice Initialize the plugin for a specific pool
   function initializePlugin() external initializer {
+  }
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeVolatilityOracle();
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = VOLATILITY_ORACLE_MODULE_NAME;
+  }
 
-    _appendActiveModule(moduleName);
+  function defaultPluginConfig() public view override returns (uint8) {
+    return VOLATILITY_ORACLE_PLUGIN_CONFIG;
   }
 
   // ###### HOOKS ######
 
   function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

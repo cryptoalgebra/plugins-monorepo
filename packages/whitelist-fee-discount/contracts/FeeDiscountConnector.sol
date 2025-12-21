@@ -25,12 +25,11 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   /// @notice Initialize FeeDiscount plugin via delegatecall
   function _initializeFeeDiscount(
     address _feeDiscountRegistry
-  ) internal returns (uint8 pluginConfig, string memory moduleName) {
+  ) internal {
     _delegateCall(
       feeDiscountImplementation,
       abi.encodeCall(IFeeDiscountPluginImplementation.initializeFeeDiscount, (_feeDiscountRegistry))
     );
-    return (FEE_DISCOUNT_PLUGIN_CONFIG, FEE_DISCOUNT_MODULE_NAME);
   }
 
   /// @notice Apply fee discount via delegatecall

@@ -25,12 +25,11 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   /// @notice Initialize LimitOrder plugin with manager address via delegatecall
   function _initializeLimitOrder(
     address _limitOrderManager
-  ) internal returns (uint8 pluginConfig, string memory moduleName) {
+  ) internal {
     _delegateCall(
       limitOrderImplementation,
       abi.encodeCall(ILimitOrderPluginImplementation.initializeLimitOrder, (_limitOrderManager))
     );
-    return (LIMIT_ORDER_PLUGIN_CONFIG, LIMIT_ORDER_MODULE_NAME);
   }
 
   /// @notice Update limit order manager state after swap via delegatecall

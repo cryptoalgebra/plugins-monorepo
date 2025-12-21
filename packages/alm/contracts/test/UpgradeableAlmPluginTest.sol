@@ -22,12 +22,17 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
   function initialize(address _pool) external initializer {
     _authorize();
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeAlm();
-
-    _appendActiveModule(moduleName);
-    _setDefaultPluginConfig(pluginConfig);
-
     emit PluginInitialized(_pool);
+  }
+
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = ALM_MODULE_NAME;
+  }
+
+  function defaultPluginConfig() public view override returns (uint8) {
+    return ALM_PLUGIN_CONFIG;
   }
 
   /// @dev Authorization - use real auth from UpgradeableAbstractPlugin

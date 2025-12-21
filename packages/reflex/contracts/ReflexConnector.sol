@@ -27,12 +27,11 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   function _initializeReflex(
     address _router,
     bytes32 _configId
-  ) internal returns (uint8 pluginConfig, string memory moduleName) {
+  ) internal {
     _delegateCall(
       reflexImplementation,
       abi.encodeCall(IReflexPluginImplementation.initializeReflex, (_router, _configId))
     );
-    return (REFLEX_PLUGIN_CONFIG, REFLEX_MODULE_NAME);
   }
 
   /// @notice Execute reflex after swap via delegatecall

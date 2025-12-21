@@ -34,11 +34,17 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
   /// @param _pool The pool address this plugin is attached to
   /// @param _baseFee The base fee for sliding fee calculation
   function initialize(address _pool, uint16 _baseFee) external initializer onlyPluginFactory {
+    _initializeSlidingFee(_baseFee);
+  }
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeSlidingFee(_baseFee);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = SLIDING_FEE_MODULE_NAME;
+  }
 
-    _appendActiveModule(moduleName);
+  function defaultPluginConfig() public view override returns (uint8) {
+    return SLIDING_FEE_PLUGIN_CONFIG;
   }
 
   /// @notice Test helper: compute fee for arbitrary ticks (updates factors)
@@ -55,7 +61,7 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

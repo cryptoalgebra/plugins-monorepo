@@ -25,11 +25,6 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     volatilityOracleImplementation = _volatilityOracleImplementation;
   }
 
-  /// @notice Initialize VolatilityOracle plugin state via delegatecall
-  function _initializeVolatilityOracle() internal pure returns (uint8 pluginConfig, string memory moduleName) {
-    return (VOLATILITY_ORACLE_PLUGIN_CONFIG, VOLATILITY_ORACLE_MODULE_NAME);
-  }
-
   function _initialize_TWAP(int24 tick) internal {
     _delegateCall(
       volatilityOracleImplementation,

@@ -22,11 +22,6 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
     farmingProxyImplementation = _farmingProxyImplementation;
   }
 
-  /// @notice Initialize FarmingProxy plugin via delegatecall
-  function _initializeFarmingProxy() internal pure returns (uint8 pluginConfig, string memory moduleName) {
-    return (FARMING_PROXY_PLUGIN_CONFIG, FARMING_PROXY_MODULE_NAME);
-  }
-
   /// @notice Update virtual pool tick via delegatecall
   function _updateVirtualPoolTick(bool zeroToOne, int24 tick) internal {
     _delegateCall(

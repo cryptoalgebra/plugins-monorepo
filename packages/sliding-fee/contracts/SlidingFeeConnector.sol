@@ -25,12 +25,11 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   }
 
   /// @notice Initialize SlidingFee plugin via delegatecall
-  function _initializeSlidingFee(uint16 _baseFee) internal returns (uint8 pluginConfig, string memory moduleName) {
+  function _initializeSlidingFee(uint16 _baseFee) internal {
     _delegateCall(
       slidingFeeImplementation,
       abi.encodeCall(ISlidingFeePluginImplementation.initializeSlidingFee, (_baseFee))
     );
-    return (SLIDING_FEE_PLUGIN_CONFIG, SLIDING_FEE_MODULE_NAME);
   }
 
   /// @notice Get fee and update factors via delegatecall

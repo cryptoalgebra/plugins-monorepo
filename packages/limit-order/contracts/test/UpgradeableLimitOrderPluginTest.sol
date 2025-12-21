@@ -26,11 +26,17 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
   /// @param _pool The pool address this plugin is attached to
   /// @param _limitOrderManager The limit order manager address
   function initialize(address _pool, address _limitOrderManager) external initializer onlyPluginFactory {
+    _initializeLimitOrder(_limitOrderManager);
+  }
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeLimitOrder(_limitOrderManager);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = LIMIT_ORDER_MODULE_NAME;
+  }
 
-    _appendActiveModule(moduleName);
+  function defaultPluginConfig() public view override returns (uint8) {
+    return LIMIT_ORDER_PLUGIN_CONFIG;
   }
 
   // ###### HOOKS ######
@@ -39,7 +45,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

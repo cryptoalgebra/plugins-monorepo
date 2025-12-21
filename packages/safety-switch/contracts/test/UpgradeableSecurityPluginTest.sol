@@ -25,11 +25,17 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
   /// @param _pool The pool address this plugin is attached to
   /// @param _securityRegistry The security registry address
   function initialize(address _pool, address _securityRegistry) external initializer onlyPluginFactory {
+    _initializeSecurity(_securityRegistry);
+  }
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeSecurity(_securityRegistry);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = SECURITY_MODULE_NAME;
+  }
 
-    _appendActiveModule(moduleName);
+  function defaultPluginConfig() public view override returns (uint8) {
+    return SECURITY_PLUGIN_CONFIG;
   }
 
   // ###### HOOKS ######
@@ -38,7 +44,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

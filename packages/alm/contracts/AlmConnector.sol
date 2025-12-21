@@ -20,9 +20,7 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
     almImplementation = _almImplementation;
   }
 
-  function _initializeAlm() internal pure returns (uint8 pluginConfig, string memory moduleName) {
-    return (ALM_PLUGIN_CONFIG, ALM_MODULE_NAME);
-  }
+
 
   function _obtainTWAPAndRebalance(
     int24 currentTick,

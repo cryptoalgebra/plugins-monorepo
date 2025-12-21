@@ -14,7 +14,6 @@ import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import './interfaces/IAbstractPlugin.sol';
 import './interfaces/IAlgebraPluginProxy.sol';
-import './libraries/AbstractPluginStorage.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Abstract Plugin
 /// @notice Base contract for upgradeable plugins using Beacon Proxy pattern
@@ -48,18 +47,6 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     _disableInitializers();
   }
 
-  /// @notice Returns the default plugin config
-  function defaultPluginConfig() public view returns (uint8) {
-    return _getDefaultPluginConfig();
-  }
-
-  /// @notice Returns a module name by index
-  /// @param index Module index in the active modules array
-  /// @return Module name
-  function activeModules(uint256 index) public view returns (string memory) {
-    return _activeModules()[index];
-  }
-
   /// @dev Reads the pool address embedded in the proxy's bytecode.
   function _getPool() internal view virtual returns (address) {
     bytes32 word;
@@ -90,14 +77,14 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   function pool() public view returns (address) {
     return _getPool();
   }
-  
-  function getActiveModuleNames() external view override returns (string[] memory moduleNames) {
-    string[] storage modules = _activeModules();
-    moduleNames = new string[](modules.length);
-    for (uint256 i = 0; i < modules.length; i++) {
-      moduleNames[i] = modules[i];
-    }
-  }
+
+  /// @inheritdoc IAbstractPlugin
+  /// @dev must be implemented by the default plugin
+  function getActiveModuleNames() external view virtual override returns (string[] memory moduleNames);
+
+  /// @notice Returns the default plugin config
+  /// @dev Must be implemented by the default plugin, used to sync config into the pool
+  function defaultPluginConfig() public view virtual returns (uint8);
 
   /// @inheritdoc IAbstractPlugin
   function collectPluginFee(address token, uint256 amount, address recipient) external virtual override {
@@ -197,25 +184,4 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
       IAlgebraPool(_getPool()).setPluginConfig(newPluginConfig);
     }
   }
-
-  function _abstractPluginStorage() internal pure returns (AbstractPluginStorage.Layout storage s) {
-    return AbstractPluginStorage.layout();
-  }
-
-  function _getDefaultPluginConfig() internal view returns (uint8) {
-    return _abstractPluginStorage().defaultPluginConfig;
-  }
-
-  function _setDefaultPluginConfig(uint8 config) internal {
-    _abstractPluginStorage().defaultPluginConfig = config;
-  }
-
-  function _appendActiveModule(string memory name) internal {
-    _abstractPluginStorage().activeModules.push(name);
-  }
-
-  function _activeModules() internal view returns (string[] storage modules) {
-    modules = _abstractPluginStorage().activeModules;
-  }
-
 }

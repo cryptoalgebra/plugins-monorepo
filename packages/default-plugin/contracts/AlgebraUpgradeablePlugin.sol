@@ -58,38 +58,30 @@ contract AlgebraUpgradeablePlugin is
     AlgebraFeeConfiguration calldata feeConfig,
     address securityRegistry
   ) external override initializer onlyPluginFactory {
-    uint8 config;
-    uint8 pluginConfig;
-    string memory moduleName;
-
-    // Initialize VolatilityOracle
-    (pluginConfig, moduleName) = _initializeVolatilityOracle();
-    config = config | pluginConfig;
-    _appendActiveModule(moduleName);
-
-    // Initialize DynamicFee
-    (pluginConfig, moduleName) = _initializeDynamicFee(feeConfig);
-    config = config | pluginConfig;
-    _appendActiveModule(moduleName);
-
-    // Initialize FarmingProxy
-    (pluginConfig, moduleName) = _initializeFarmingProxy();
-    config = config | pluginConfig;
-    _appendActiveModule(moduleName);
-
-    // Initialize ALM 
-    (pluginConfig, moduleName) = _initializeAlm();
-    config = config | pluginConfig;
-    _appendActiveModule(moduleName);
-
-    // Initialize Security
-    (pluginConfig, moduleName) = _initializeSecurity(securityRegistry);
-    config = config | pluginConfig;
-    _appendActiveModule(moduleName);
-
-    _setDefaultPluginConfig(config);
+    // Initialize modules that require state setup
+    _initializeDynamicFee(feeConfig);
+    _initializeSecurity(securityRegistry);
 
     emit PluginInitialized(_getPool());
+  }
+
+  function getActiveModuleNames() external pure override returns (string[] memory) {
+    string[] memory activeModules = new string[](5);
+    activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
+    activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
+    activeModules[2] = FARMING_PROXY_MODULE_NAME;
+    activeModules[3] = ALM_MODULE_NAME;
+    activeModules[4] = SECURITY_MODULE_NAME;
+    return activeModules;
+  }
+
+  function defaultPluginConfig() public pure override returns (uint8) {
+    return
+      VOLATILITY_ORACLE_PLUGIN_CONFIG |
+      DYNAMIC_FEE_PLUGIN_CONFIG |
+      FARMING_PROXY_PLUGIN_CONFIG |
+      ALM_PLUGIN_CONFIG |
+      SECURITY_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -131,7 +123,7 @@ contract AlgebraUpgradeablePlugin is
     address ,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
@@ -176,7 +168,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
@@ -247,7 +239,7 @@ contract AlgebraUpgradeablePlugin is
     uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.afterFlash.selector;
   }
 

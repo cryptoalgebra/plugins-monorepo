@@ -22,11 +22,6 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
     managedFeeImplementation = _managedFeeImplementation;
   }
 
-  /// @notice Initialize ManagedFee plugin via delegatecall
-  function _initializeManagedFee() internal pure returns (uint8 pluginConfig, string memory moduleName) {
-    return (MANAGED_FEE_PLUGIN_CONFIG, MANAGED_FEE_MODULE_NAME);
-  }
-
   /// @notice Set whitelist status via delegatecall
   function _setWhitelistStatus(address _address, bool status) internal {
     _delegateCall(

@@ -26,11 +26,17 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
   /// @param _pool The pool address this plugin is attached to
   /// @param _feeDiscountRegistry The fee discount registry address
   function initialize(address _pool, address _feeDiscountRegistry) external initializer onlyPluginFactory {
+    _initializeFeeDiscount(_feeDiscountRegistry);
+  }
 
-    (uint8 pluginConfig, string memory moduleName) = _initializeFeeDiscount(_feeDiscountRegistry);
-    _setDefaultPluginConfig(_getDefaultPluginConfig() | pluginConfig);
+  /// @inheritdoc IAbstractPlugin
+  function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {
+    moduleNames = new string[](1);
+    moduleNames[0] = FEE_DISCOUNT_MODULE_NAME;
+  }
 
-    _appendActiveModule(moduleName);
+  function defaultPluginConfig() public view override returns (uint8) {
+    return FEE_DISCOUNT_PLUGIN_CONFIG;
   }
 
   // ###### HOOKS ######
@@ -39,7 +45,7 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
     address,
     uint160
   ) external override onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(_getDefaultPluginConfig());
+    _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 

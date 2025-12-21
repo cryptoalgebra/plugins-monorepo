@@ -100,8 +100,8 @@ describe('UpgradeableManagedFeePlugin', function () {
     it('should have Managed Fee Plugin in active modules', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      const modules = await plugin1.activeModules(0);
-      expect(modules).to.equal('Managed Fee Plugin');
+      const modules = await plugin1.getActiveModuleNames();
+      expect(modules[0]).to.equal('Managed Fee Plugin');
     });
 
     it('should not allow double initialization', async function () {

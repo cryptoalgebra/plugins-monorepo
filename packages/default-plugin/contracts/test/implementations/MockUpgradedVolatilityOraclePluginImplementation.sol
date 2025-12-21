@@ -30,8 +30,6 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
     }
   }
 
-  
-
   /// @notice Initialize VolatilityOracle plugin state
   /// @dev Called via delegatecall from connector
   function initializeVolatilityOracleState() external {
@@ -132,7 +130,7 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   /// @dev Equivalent to the original _writeTimepoint in VolatilityOraclePlugin
   /// @param currentTimestamp Current block timestamp
   /// @param tick Current tick from pool
-  function writeTimepointSimple(uint32 currentTimestamp, int24 tick) external {
+  function writeTimepoint(uint32 currentTimestamp, int24 tick) external {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
 
     require(layout.isInitialized, 'Not initialized');

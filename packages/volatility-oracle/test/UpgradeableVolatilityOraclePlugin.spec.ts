@@ -76,8 +76,8 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     it('should have Volatility Oracle Plugin in active modules', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      const modules = await plugin1.activeModules(0);
-      expect(modules).to.equal('Volatility Oracle Plugin');
+      const modules = await plugin1.getActiveModuleNames();
+      expect(modules[0]).to.equal('Volatility Oracle Plugin');
     });
 
     it('should not allow double initialization', async function () {

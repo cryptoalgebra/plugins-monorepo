@@ -85,8 +85,8 @@ describe('UpgradeableFeeDiscountPlugin', function () {
     it('should have Fee Discount Plugin in active modules', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      const modules = await plugin1.activeModules(0);
-      expect(modules).to.equal('Fee Discount Plugin');
+      const modules = await plugin1.getActiveModuleNames();
+      expect(modules[0]).to.equal('Fee Discount Plugin');
     });
 
     it('should not allow double initialization', async function () {

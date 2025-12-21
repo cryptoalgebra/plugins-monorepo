@@ -3,7 +3,8 @@ const config = require('dotenv').config({ path: path.resolve(__dirname, '.env') 
 const { 
   ETHERSCAN_API_KEY, 
   MNEMONIC, 
-  INFURA_ID_PROJECT 
+  INFURA_ID_PROJECT,
+  ANKR_API_KEY 
 } = config.parsed || {};
 
 export default {
@@ -15,6 +16,10 @@ export default {
       allowUnlimitedContractSize: true,
       loggingEnabled: false,
       evm: 'paris',
+      forking: {
+        url: `https://rpc.ankr.com/base/${ANKR_API_KEY}`,
+        blockNumber: 39778348,
+      },
     },
     localHardhat: {
       url: `http://127.0.0.1:8545`,
@@ -56,6 +61,11 @@ export default {
     mumbai: {
       url: `https://polygon-mumbai-bor.publicnode.com`,
       chainId: 80001,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
+    base: {
+      url: `https://base-rpc.publicnode.com`,
+      chainId: 8453,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
     mantleTestnet: {

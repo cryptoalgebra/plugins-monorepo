@@ -85,8 +85,8 @@ describe('UpgradeableLimitOrderPlugin', function () {
     it('should have Limit Order Plugin in active modules', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      const modules = await plugin1.activeModules(0);
-      expect(modules).to.equal('Limit Order Plugin');
+      const modules = await plugin1.getActiveModuleNames();
+      expect(modules[0]).to.equal('Limit Order Plugin');
     });
 
     it('should not allow double initialization', async function () {

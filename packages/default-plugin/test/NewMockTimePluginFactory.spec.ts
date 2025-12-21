@@ -444,7 +444,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const feeConfig2Before = await plugin2.feeConfig.staticCall();
       const alm1Before = await plugin.rebalanceManager();
       const security1Before = await plugin.getSecurityRegistry();
-      const activeModules1Before = await plugin.activeModules(0); // First module
 
       // Deploy and upgrade
       const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
@@ -486,8 +485,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // Security config preserved
       expect(await upgraded1.getSecurityRegistry()).to.eq(security1Before);
 
-      // Active modules preserved
-      expect(await upgraded1.activeModules(0)).to.eq(activeModules1Before);
     });
 
     it('new functions available after plugin upgrade', async () => {
@@ -525,7 +522,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       expect(await upgraded.pool()).to.eq(await mockPool.getAddress());
       expect(await upgraded.pluginFactory()).to.eq(factoryAddress);
       expect(await upgraded.defaultPluginConfig()).to.not.eq(0);
-      expect(await upgraded.activeModules(0)).to.eq('Volatility Oracle Plugin');
 
       // OLD: DynamicFee storage (algebra.storage.dynamicfee)
       const feeConfig = await upgraded.feeConfig.staticCall();

@@ -8,21 +8,18 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
-  
   bytes32 internal constant VOLATILITY_ORACLE_STORAGE_SLOT = keccak256('algebra.storage.volatilityoracle');
 
-  
   struct VolatilityOracleLayoutV2 {
     uint16 timepointIndex;
     uint32 lastTimepointTimestamp;
     bool isInitialized;
     VolatilityOracle.Timepoint[UINT16_MODULO] timepoints;
     // V2 fields (new)
-    uint256 writeCount;         
-    bool enhancedMode;          
+    uint256 writeCount;
+    bool enhancedMode;
   }
 
-  
   function _getVolatilityOracleLayout() internal pure returns (VolatilityOracleLayoutV2 storage layout) {
     bytes32 position = VOLATILITY_ORACLE_STORAGE_SLOT;
     assembly {
@@ -149,10 +146,7 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   /// @param currentTimestamp Current block timestamp
   /// @param tick Current tick from pool
   /// @return volatilityAverage The average volatility
-  function getAverageVolatilityLast(
-    uint32 currentTimestamp,
-    int24 tick
-  ) external view returns (uint88 volatilityAverage) {
+  function getAverageVolatilityLast(uint32 currentTimestamp, int24 tick) external view returns (uint88 volatilityAverage) {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
 
     uint16 lastTimepointIndex = layout.timepointIndex;
@@ -168,11 +162,7 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   /// @param tick The tick value for the new timepoint
   /// @return indexUpdated The new index of the most recently written element
   /// @return oldestIndex The index of the oldest timepoint
-  function writeTimepoint(
-    uint16 lastIndex,
-    uint32 blockTimestamp,
-    int24 tick
-  ) external returns (uint16 indexUpdated, uint16 oldestIndex) {
+  function writeTimepoint(uint16 lastIndex, uint32 blockTimestamp, int24 tick) external returns (uint16 indexUpdated, uint16 oldestIndex) {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
     // V2: Track writes
     layout.writeCount++;
@@ -232,12 +222,7 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   /// @param lastIndex Last timepoint index
   /// @param oldestIndex Oldest timepoint index
   /// @return volatilityAverage The average volatility
-  function getAverageVolatilityData(
-    uint32 currentTime,
-    int24 tick,
-    uint16 lastIndex,
-    uint16 oldestIndex
-  ) external view returns (uint88) {
+  function getAverageVolatilityData(uint32 currentTime, int24 tick, uint16 lastIndex, uint16 oldestIndex) external view returns (uint88) {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
     return layout.timepoints.getAverageVolatility(currentTime, tick, lastIndex, oldestIndex);
   }
@@ -266,11 +251,7 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   /// @param currentTick Current pool tick
   /// @param currentTime Current block timestamp
   /// @return timeWeightedAverageTick The time-weighted average tick
-  function getTwapTick(
-    uint32 period,
-    int24 currentTick,
-    uint32 currentTime
-  ) external view returns (int24 timeWeightedAverageTick) {
+  function getTwapTick(uint32 period, int24 currentTick, uint32 currentTime) external view returns (int24 timeWeightedAverageTick) {
     if (period == 0) return currentTick;
 
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
@@ -278,22 +259,10 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
 
     // Get timepoint at current time (0 seconds ago)
-    VolatilityOracle.Timepoint memory current = layout.timepoints.getSingleTimepoint(
-      currentTime,
-      0,
-      currentTick,
-      lastIndex,
-      oldestIndex
-    );
+    VolatilityOracle.Timepoint memory current = layout.timepoints.getSingleTimepoint(currentTime, 0, currentTick, lastIndex, oldestIndex);
 
     // Get timepoint at period seconds ago
-    VolatilityOracle.Timepoint memory old = layout.timepoints.getSingleTimepoint(
-      currentTime,
-      period,
-      currentTick,
-      lastIndex,
-      oldestIndex
-    );
+    VolatilityOracle.Timepoint memory old = layout.timepoints.getSingleTimepoint(currentTime, period, currentTick, lastIndex, oldestIndex);
 
     int56 tickCumulativesDelta = current.tickCumulative - old.tickCumulative;
     timeWeightedAverageTick = int24(tickCumulativesDelta / int56(uint56(period)));
@@ -325,27 +294,23 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
     return currentTime >= oldestTimestamp + period;
   }
 
-  //  V2 NEW FUNCTIONS 
+  //  V2 NEW FUNCTIONS
 
- 
   function setEnhancedMode(bool enabled) external {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
     layout.enhancedMode = enabled;
   }
 
-  
   function getEnhancedMode() external view returns (bool) {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
     return layout.enhancedMode;
   }
 
-  
   function getWriteStats() external view returns (uint256 writeCount) {
     VolatilityOracleLayoutV2 storage layout = _getVolatilityOracleLayout();
     return layout.writeCount;
   }
 
-  
   function isUpgradedVolatilityImpl() external pure returns (bool) {
     return true;
   }

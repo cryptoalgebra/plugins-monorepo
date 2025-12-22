@@ -30,10 +30,7 @@ interface IOracleTWAP {
   /// @param period Number of seconds in the past to start calculating time-weighted average
   /// @return timeWeightedAverageTick The time-weighted average tick from (block.timestamp - period) to block.timestamp
   /// @return isConnected Is oracle currently connected to the pool. If disconnected data can be obsolete
-  function getAverageTick(
-    address pool,
-    uint32 period
-  ) external view returns (int24 timeWeightedAverageTick, bool isConnected);
+  function getAverageTick(address pool, uint32 period) external view returns (int24 timeWeightedAverageTick, bool isConnected);
 
   /// @notice Returns the last timestamp written in the oracle
   function latestTimestamp(address pool) external view returns (uint32);

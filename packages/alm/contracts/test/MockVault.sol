@@ -99,13 +99,7 @@ contract MockVault is IAlgebraVault, ERC20 {
 
   function withdraw(uint256, address) external returns (uint256, uint256) {}
 
-  function rebalance(
-    int24 _baseLower,
-    int24 _baseUpper,
-    int24 _limitLower,
-    int24 _limitUpper,
-    int256 swapQuantity
-  ) external {
+  function rebalance(int24 _baseLower, int24 _baseUpper, int24 _limitLower, int24 _limitUpper, int256 swapQuantity) external {
     if (shouldRevertOnRebalance) revert('shouldRevertOnRebalance');
     emit MockRebalance(_baseLower, _baseUpper, _limitLower, _limitUpper);
   }
@@ -122,10 +116,7 @@ contract MockVault is IAlgebraVault, ERC20 {
 
   function setAffiliate(address _affiliate) external {}
 
-  function _position(
-    int24 tickLower,
-    int24 tickUpper
-  ) internal view returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1) {
+  function _position(int24 tickLower, int24 tickUpper) internal view returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1) {
     bytes32 positionKey;
     address owner = address(this);
     assembly {

@@ -115,10 +115,7 @@ contract VolatilityOracleTest {
         if (_time - _initTime > 24 hours) {
           windowStartIndex = uint16(_index - (uint256(24 hours) / STEP) + 1); // CHECK
           avgTick = -int24(
-            uint24(
-              (STEP * ((nextIndex + 1) * nextIndex - (windowStartIndex + 1) * windowStartIndex)) /
-                (2 * uint256(24 hours))
-            )
+            uint24((STEP * ((nextIndex + 1) * nextIndex - (windowStartIndex + 1) * windowStartIndex)) / (2 * uint256(24 hours)))
           );
         } else {
           uint32 timeDelta = _time - _initTime;
@@ -127,8 +124,7 @@ contract VolatilityOracleTest {
 
         last = VolatilityOracle._createNewTimepoint(last, _time, _tick, avgTick, windowStartIndex);
 
-        if ((_index + 1) - uint256(_index - (uint256(24 hours) / STEP) + 1) > type(uint16).max)
-          windowStartIndex = uint16(_index + 2);
+        if ((_index + 1) - uint256(_index - (uint256(24 hours) / STEP) + 1) > type(uint16).max) windowStartIndex = uint16(_index + 2);
         timepoints[uint16(nextIndex)] = last;
 
         _tick--;
@@ -182,13 +178,7 @@ contract VolatilityOracleTest {
     }
   }
 
-  function volatilityOnRange(
-    uint32 dt,
-    int24 tick0,
-    int24 tick1,
-    int24 avgTick0,
-    int24 avgTick1
-  ) external pure returns (uint256) {
+  function volatilityOnRange(uint32 dt, int24 tick0, int24 tick1, int24 avgTick0, int24 avgTick1) external pure returns (uint256) {
     return VolatilityOracle._volatilityOnRange(int256(uint256(dt)), tick0, tick1, avgTick0, avgTick1);
   }
 
@@ -208,14 +198,7 @@ contract VolatilityOracleTest {
     }
 
     (uint32 _time, int24 _tick, uint16 _index) = (time, tick, index);
-    (int256 avgTick, ) = timepoints._getAverageTick(
-      _time,
-      _tick,
-      _index,
-      oldestIndex,
-      lastTimestamp,
-      lastTickCumulative
-    );
+    (int256 avgTick, ) = timepoints._getAverageTick(_time, _tick, _index, oldestIndex, lastTimestamp, lastTickCumulative);
     return int24(avgTick);
   }
 

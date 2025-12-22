@@ -23,13 +23,8 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   }
 
   /// @notice Initialize LimitOrder plugin with manager address via delegatecall
-  function _initializeLimitOrder(
-    address _limitOrderManager
-  ) internal {
-    _delegateCall(
-      limitOrderImplementation,
-      abi.encodeCall(ILimitOrderPluginImplementation.initializeLimitOrder, (_limitOrderManager))
-    );
+  function _initializeLimitOrder(address _limitOrderManager) internal {
+    _delegateCall(limitOrderImplementation, abi.encodeCall(ILimitOrderPluginImplementation.initializeLimitOrder, (_limitOrderManager)));
   }
 
   /// @notice Update limit order manager state after swap via delegatecall
@@ -50,10 +45,7 @@ abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
   /// @inheritdoc ILimitOrderPlugin
   function setLimitOrderManager(address manager) external override {
     _authorize();
-    _delegateCall(
-      limitOrderImplementation,
-      abi.encodeCall(ILimitOrderPluginImplementation.setLimitOrderManager, (manager))
-    );
+    _delegateCall(limitOrderImplementation, abi.encodeCall(ILimitOrderPluginImplementation.setLimitOrderManager, (manager)));
     emit LimitOrderManager(manager);
   }
 }

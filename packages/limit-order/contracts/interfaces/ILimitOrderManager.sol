@@ -34,12 +34,7 @@ interface ILimitOrderManager is IAlgebraMintCallback {
 
   event LimitOrderTickSpacing(address indexed pool, int24 tickSpacing);
 
-  function place(
-    PoolAddress.PoolKey memory poolKey,
-    int24 tickLower,
-    bool zeroForOne,
-    uint128 liquidity
-  ) external payable;
+  function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable;
 
   function kill(
     PoolAddress.PoolKey memory poolKey,

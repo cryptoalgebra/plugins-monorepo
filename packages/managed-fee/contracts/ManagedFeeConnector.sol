@@ -24,10 +24,7 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
 
   /// @notice Set whitelist status via delegatecall
   function _setWhitelistStatus(address _address, bool status) internal {
-    _delegateCall(
-      managedFeeImplementation,
-      abi.encodeCall(IManagedFeePluginImplementation.setWhitelistStatus, (_address, status))
-    );
+    _delegateCall(managedFeeImplementation, abi.encodeCall(IManagedFeePluginImplementation.setWhitelistStatus, (_address, status)));
   }
 
   /// @notice Get managed fee from plugin data via delegatecall

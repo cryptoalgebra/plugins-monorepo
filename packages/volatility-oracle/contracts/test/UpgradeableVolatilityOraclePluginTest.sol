@@ -25,8 +25,7 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
   ) UpgradeableAbstractPlugin(_factory, _pluginFactory) VolatilityOracleConnector(_volatilityOracleImplementation) {}
 
   /// @notice Initialize the plugin for a specific pool
-  function initializePlugin() external initializer {
-  }
+  function initializePlugin() external initializer {}
 
   /// @inheritdoc IAbstractPlugin
   function getActiveModuleNames() external pure override returns (string[] memory moduleNames) {

@@ -21,8 +21,7 @@ import './interfaces/IAlgebraDefaultPluginFactory.sol';
 /// @dev Deploy behind TransparentUpgradeableProxy from OpenZeppelin
 contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPluginFactory {
   /// @dev The role can be granted in AlgebraFactory
-  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
-    keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
+  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @custom:storage-location erc7201:algebra.pluginfactory.storage
   struct PluginFactoryStorage {
@@ -48,12 +47,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   }
 
   modifier onlyAdministrator() {
-    if (
-      !IAlgebraFactory(_getStorage().algebraFactory).hasRoleOrOwner(
-        ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR,
-        msg.sender
-      )
-    ) revert OnlyAdministrator();
+    if (!IAlgebraFactory(_getStorage().algebraFactory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR, msg.sender))
+      revert OnlyAdministrator();
     _;
   }
 
@@ -101,14 +96,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   // ========== Plugin Creation ==========
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(
-    address pool,
-    address,
-    address,
-    address,
-    address,
-    bytes calldata
-  ) external override returns (address) {
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
     if (msg.sender != _getStorage().algebraFactory) revert OnlyAlgebraFactory();
     return _createPlugin(pool);
   }
@@ -138,10 +126,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(
-      s.defaultFeeConfiguration,
-      s.securityRegistry
-    );
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);

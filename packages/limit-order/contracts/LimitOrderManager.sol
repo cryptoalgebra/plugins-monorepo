@@ -103,11 +103,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     return compressed * tickSpacing;
   }
 
-  function _getCrossedTicks(
-    address pool,
-    int24 tick,
-    int24 tickSpacing
-  ) internal view returns (int24 tickLower, int24 lower, int24 upper) {
+  function _getCrossedTicks(address pool, int24 tick, int24 tickSpacing) internal view returns (int24 tickLower, int24 lower, int24 upper) {
     tickLower = getTickLower(tick, tickSpacing);
     int24 tickLowerLast = tickLowerLasts[pool];
 
@@ -155,12 +151,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     _refundNativeToken(decoded.payer);
   }
 
-  function place(
-    PoolAddress.PoolKey memory poolKey,
-    int24 tickLower,
-    bool zeroForOne,
-    uint128 liquidity
-  ) external payable override {
+  function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable override {
     if (liquidity == 0) revert ZeroLiquidity();
 
     address pool = PoolAddress.computeAddress(poolDeployer, poolKey);
@@ -288,13 +279,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     epochInfo.token1Total = uint128(token1Total - amount1);
     epochInfo.liquidityTotal = liquidityTotal - liquidity;
 
-    IAlgebraPool(pool).collect(
-      address(this),
-      epochInfo.tickLower,
-      epochInfo.tickUpper,
-      uint128(amount0),
-      uint128(amount1)
-    );
+    IAlgebraPool(pool).collect(address(this), epochInfo.tickLower, epochInfo.tickUpper, uint128(amount0), uint128(amount1));
 
     claimTo(poolKey, to);
 

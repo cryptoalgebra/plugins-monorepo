@@ -8,7 +8,7 @@ import './libraries/AlmStorage.sol';
 /// @title ALM Plugin Implementation
 /// @notice This contract contains ALL logic for ALM plugin that works with namespaced storage
 /// @dev Called via delegatecall from AlmConnector to reduce main contract size
-contract AlmPluginImplementation is IAlmPluginImplementation{
+contract AlmPluginImplementation is IAlmPluginImplementation {
   /// @notice Initialize ALM plugin with configuration
   /// @param _rebalanceManager Address of rebalance manager
   /// @param _slowTwapPeriod Period in seconds to get slow TWAP
@@ -73,12 +73,7 @@ contract AlmPluginImplementation is IAlmPluginImplementation{
   /// @param slowTwapTick Slow TWAP tick
   /// @param fastTwapTick Fast TWAP tick
   /// @param lastBlockTimestamp Last block timestamp
-  function obtainTWAPAndRebalance(
-    int24 currentTick,
-    int24 slowTwapTick,
-    int24 fastTwapTick,
-    uint32 lastBlockTimestamp
-  ) external {
+  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
     AlmStorage.Layout storage layout = AlmStorage.layout();
     address manager = layout.rebalanceManager;
 

@@ -28,10 +28,7 @@ contract MockVolatilityOracle is IVolatilityOracle {
   function getTimepoints(
     uint32[] calldata secondsAgos
   ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
-    require(
-      secondsAgos[0] == timepoints[0].blockTimestamp && secondsAgos[1] == timepoints[1].blockTimestamp,
-      'Invalid test case'
-    );
+    require(secondsAgos[0] == timepoints[0].blockTimestamp && secondsAgos[1] == timepoints[1].blockTimestamp, 'Invalid test case');
 
     int56[] memory _tickCumulatives = new int56[](2);
     uint88[] memory _volatilityCumulatives = new uint88[](2);
@@ -53,13 +50,7 @@ contract MockVolatilityOracle is IVolatilityOracle {
     _lastTimepointIndex = newValue;
   }
 
-  function setTimepoint(
-    uint16 index,
-    bool initialized,
-    uint32 timestamp,
-    int56 tickCumulative,
-    uint88 volatilityCumulative
-  ) external {
+  function setTimepoint(uint16 index, bool initialized, uint32 timestamp, int56 tickCumulative, uint88 volatilityCumulative) external {
     timepoints[index].initialized = initialized;
     timepoints[index].blockTimestamp = timestamp;
     timepoints[index].tickCumulative = tickCumulative;
@@ -70,9 +61,7 @@ contract MockVolatilityOracle is IVolatilityOracle {
     return 101;
   }
 
-  function getSingleTimepoint(
-    uint32 secondsAgo
-  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {}
+  function getSingleTimepoint(uint32 secondsAgo) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {}
 
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {}
 

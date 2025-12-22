@@ -125,13 +125,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     return IAlgebraPlugin.afterSwap.selector;
   }
 
-  function beforeFlash(
-    address,
-    address,
-    uint256,
-    uint256,
-    bytes calldata
-  ) external virtual override onlyPool returns (bytes4) {
+  function beforeFlash(address, address, uint256, uint256, bytes calldata) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.beforeFlash.selector;
   }
 

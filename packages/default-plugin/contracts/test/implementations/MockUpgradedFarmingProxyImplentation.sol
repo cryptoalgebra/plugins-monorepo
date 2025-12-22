@@ -11,10 +11,8 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IAlgebraVirtual
 contract MockUpgradedFarmingProxyPluginImplementation {
   using Plugins for uint8;
 
-  
   bytes32 internal constant FARMING_PROXY_NAMESPACE = keccak256('algebra.storage.farmingproxy');
 
-  
   struct FarmingProxyLayoutV2 {
     address incentive;
     address lastIncentiveOwner;
@@ -24,7 +22,6 @@ contract MockUpgradedFarmingProxyPluginImplementation {
     bool pausedMode;
   }
 
-  
   function _getFarmingProxyLayout() internal pure returns (FarmingProxyLayoutV2 storage layout) {
     bytes32 position = FARMING_PROXY_NAMESPACE;
     assembly {
@@ -32,10 +29,10 @@ contract MockUpgradedFarmingProxyPluginImplementation {
     }
   }
 
-  //  V1 FUNCTIONS 
+  //  V1 FUNCTIONS
 
   function initializeFarmingProxy() external {
-   // Nothing to initialize for now
+    // Nothing to initialize for now
   }
 
   function setIncentive(address newIncentive, address pluginFactory, address pool) external {
@@ -110,7 +107,7 @@ contract MockUpgradedFarmingProxyPluginImplementation {
     }
   }
 
-  //  V2 NEW FUNCTIONS 
+  //  V2 NEW FUNCTIONS
 
   function setPausedMode(bool enabled) external {
     FarmingProxyLayoutV2 storage layout = _getFarmingProxyLayout();

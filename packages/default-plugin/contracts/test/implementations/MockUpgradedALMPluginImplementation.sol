@@ -3,20 +3,16 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/alm-plugin/contracts/interfaces/IRebalanceManager.sol';
 
-
 contract MockUpgradedALMPluginImplementation {
-  
   bytes32 internal constant ALM_NAMESPACE = keccak256('algebra.storage.alm');
 
- 
   struct AlmLayoutV2 {
-    
     address rebalanceManager;
     uint32 slowTwapPeriod;
     uint32 fastTwapPeriod;
-    // V2 fields (new) 
-    bool advancedMode;            
-    int24 customThreshold;       
+    // V2 fields (new)
+    bool advancedMode;
+    int24 customThreshold;
   }
 
   function _getAlmLayout() internal pure returns (AlmLayoutV2 storage layout) {
@@ -26,8 +22,6 @@ contract MockUpgradedALMPluginImplementation {
     }
   }
 
-  
-
   function initializeALM(address _rebalanceManager, uint32 _slowTwapPeriod, uint32 _fastTwapPeriod) external {
     require(_rebalanceManager != address(0), '_rebalanceManager must be non zero address');
     require(_slowTwapPeriod >= _fastTwapPeriod, '_slowTwapPeriod must be >= _fastTwapPeriod');
@@ -36,8 +30,8 @@ contract MockUpgradedALMPluginImplementation {
     layout.rebalanceManager = _rebalanceManager;
     layout.slowTwapPeriod = _slowTwapPeriod;
     layout.fastTwapPeriod = _fastTwapPeriod;
-    
-    layout.customThreshold = 100; 
+
+    layout.customThreshold = 100;
   }
 
   function setSlowTwapPeriod(uint32 _slowTwapPeriod) external {
@@ -72,12 +66,7 @@ contract MockUpgradedALMPluginImplementation {
     return layout.fastTwapPeriod;
   }
 
-  function obtainTWAPAndRebalance(
-    int24 currentTick,
-    int24 slowTwapTick,
-    int24 fastTwapTick,
-    uint32 lastBlockTimestamp
-  ) external {
+  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
     AlmLayoutV2 storage layout = _getAlmLayout();
     address manager = layout.rebalanceManager;
 
@@ -86,7 +75,7 @@ contract MockUpgradedALMPluginImplementation {
     }
   }
 
-  //  V2 NEW FUNCTIONS 
+  //  V2 NEW FUNCTIONS
 
   function setAdvancedMode(bool enabled) external {
     AlmLayoutV2 storage layout = _getAlmLayout();
@@ -108,8 +97,6 @@ contract MockUpgradedALMPluginImplementation {
     AlmLayoutV2 storage layout = _getAlmLayout();
     return layout.customThreshold;
   }
-
-  
 
   function isUpgradedAlmImpl() external pure returns (bool) {
     return true;

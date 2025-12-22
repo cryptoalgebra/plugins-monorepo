@@ -15,17 +15,12 @@ import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
 import '../../interfaces/IAlgebraUpgradeablePlugin.sol';
 import '../../interfaces/IAlgebraDefaultPluginFactory.sol';
 
-
 /// @title Mock Factory for testing upgradeable plugins with Beacon Proxy pattern
 /// @notice Matches prod AlgebraUpgradeablePluginFactory architecture for comprehensive testing
 /// @dev Uses Transparent Upgradeable Proxy pattern with ERC-7201 namespaced storage
-contract NewMockTimeUpgradeablePluginFactory is
-  Initializable,
-  IAlgebraDefaultPluginFactory
-{
+contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPluginFactory {
   /// @dev The role can be granted in AlgebraFactory
-  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
-    keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
+  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   // ========== ERC-7201 Namespaced Storage ==========
 
@@ -69,18 +64,18 @@ contract NewMockTimeUpgradeablePluginFactory is
     _disableInitializers();
   }
 
-  /// @notice Initialize the factory  
+  /// @notice Initialize the factory
   /// @param _algebraFactory The Algebra factory address
   /// @param pluginImplementation The plugin implementation address (MockTimeAlgebraUpgradeablePlugin)
   /// @param initialFeeConfig The initial fee configuration
   function initialize(
     address _algebraFactory,
-    address pluginImplementation,   
+    address pluginImplementation,
     AlgebraFeeConfiguration memory initialFeeConfig
   ) external initializer {
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
-    
+
     // Create beacon with provided implementation
     s.beacon = address(new UpgradeableBeacon(pluginImplementation));
 
@@ -108,20 +103,12 @@ contract NewMockTimeUpgradeablePluginFactory is
   // ========== Plugin Creation ==========
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(
-    address pool,
-    address,
-    address,
-    address,
-    address,
-    bytes calldata
-  ) external override returns (address) {
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
     return _createPlugin(pool);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function afterCreatePoolHook(address, address, address) external view override {
-  }
+  function afterCreatePoolHook(address, address, address) external view override {}
 
   /// @inheritdoc IBasePluginFactory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
@@ -148,10 +135,7 @@ contract NewMockTimeUpgradeablePluginFactory is
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(
-      s.defaultFeeConfiguration,
-      s.securityRegistry
-    );
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);

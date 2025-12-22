@@ -24,13 +24,8 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   }
 
   /// @notice Initialize Security plugin via delegatecall
-  function _initializeSecurity(
-    address _securityRegistry
-  ) internal {
-    _delegateCall(
-      securityImplementation,
-      abi.encodeCall(ISecurityPluginImplementation.initializeSecurity, (_securityRegistry))
-    );
+  function _initializeSecurity(address _securityRegistry) internal {
+    _delegateCall(securityImplementation, abi.encodeCall(ISecurityPluginImplementation.initializeSecurity, (_securityRegistry)));
   }
 
   /// @notice Check status via delegatecall
@@ -40,10 +35,7 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
 
   /// @notice Check status on burn via delegatecall
   function _checkStatusOnBurn(address poolAddress) internal {
-    _delegateCall(
-      securityImplementation,
-      abi.encodeCall(ISecurityPluginImplementation.checkStatusOnBurn, (poolAddress))
-    );
+    _delegateCall(securityImplementation, abi.encodeCall(ISecurityPluginImplementation.checkStatusOnBurn, (poolAddress)));
   }
 
   // ###### Public Interface (ISecurityPlugin) ######
@@ -51,10 +43,7 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   /// @inheritdoc ISecurityPlugin
   function setSecurityRegistry(address registry) external override {
     _authorize();
-    _delegateCall(
-      securityImplementation,
-      abi.encodeCall(ISecurityPluginImplementation.setSecurityRegistry, (registry))
-    );
+    _delegateCall(securityImplementation, abi.encodeCall(ISecurityPluginImplementation.setSecurityRegistry, (registry)));
     emit SecurityRegistry(registry);
   }
 

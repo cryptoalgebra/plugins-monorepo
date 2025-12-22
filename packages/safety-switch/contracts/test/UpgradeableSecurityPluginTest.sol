@@ -40,10 +40,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
 
   // ###### HOOKS ######
 
-  function beforeInitialize(
-    address,
-    uint160
-  ) external override onlyPool returns (bytes4) {
+  function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
@@ -61,13 +58,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
   }
 
-  function beforeFlash(
-    address,
-    address,
-    uint256,
-    uint256,
-    bytes calldata
-  ) external override onlyPool returns (bytes4) {
+  function beforeFlash(address, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
     _checkStatus(_getPool());
     return IAlgebraPlugin.beforeFlash.selector;
   }

@@ -88,14 +88,7 @@ contract AlmPluginTest is BaseRebalanceManager {
     return pairedDecimals;
   }
 
-  function _getTwapPrices(
-    address,
-    address,
-    uint8,
-    int24,
-    int24,
-    int24
-  ) internal view override returns (uint256, uint256, uint256) {
+  function _getTwapPrices(address, address, uint8, int24, int24, int24) internal view override returns (uint256, uint256, uint256) {
     return (slowPrice, fastPrice, currentPrice);
   }
 }

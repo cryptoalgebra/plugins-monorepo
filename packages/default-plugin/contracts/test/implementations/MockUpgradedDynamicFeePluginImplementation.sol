@@ -25,7 +25,6 @@ contract MockUpgradedDynamicFeePluginImplementation {
     }
   }
 
-  
   function initializeDynamicFee(AlgebraFeeConfiguration memory config) external {
     AdaptiveFee.validateFeeConfiguration(config);
     DynamicFeeLayoutV2 storage layout = _getDynamicFeeLayout();
@@ -37,9 +36,9 @@ contract MockUpgradedDynamicFeePluginImplementation {
     AlgebraFeeConfigurationU144 feeConfig_ = layout.feeConfig;
 
     if (feeConfig_.alpha1() | feeConfig_.alpha2() == 0) return feeConfig_.baseFee();
-    
+
     fee = AdaptiveFee.getFee(volatilityAverage, feeConfig_);
-    
+
     // V2: Apply multiplier if in advanced mode
     if (layout.advancedMode && layout.customMultiplier > 0) {
       fee = uint16((uint256(fee) * layout.customMultiplier) / 100);

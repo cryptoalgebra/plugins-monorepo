@@ -9,7 +9,7 @@ import './libraries/ManagedFeeStorage.sol';
 /// @title ManagedFee Plugin Implementation
 /// @notice This contract contains ALL logic for ManagedFee plugin that works with namespaced storage
 /// @dev Called via delegatecall from ManagedFeeConnector to reduce main contract size
-contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
+contract ManagedFeePluginImplementation is IManagedFeePluginImplementation {
   using ECDSA for bytes32;
 
   /// @notice Set whitelist status for an address
@@ -32,9 +32,7 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
   function getManagedFee(bytes memory pluginData) external returns (uint24 fee) {
     ManagedFeeStorage.Layout storage layout = ManagedFeeStorage.layout();
 
-    (bytes32 nonce, uint24 _fee, address user, uint32 expireTime, bytes memory signature) = _parsePluginData(
-      pluginData
-    );
+    (bytes32 nonce, uint24 _fee, address user, uint32 expireTime, bytes memory signature) = _parsePluginData(pluginData);
 
     if (_fee >= 1000000) revert IManagedSwapFeePlugin.FeeExceedsLimit();
     if (layout.usedNonces[nonce]) revert IManagedSwapFeePlugin.InvalidNonce();
@@ -47,9 +45,7 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation{
     return _fee;
   }
 
-  function _parsePluginData(
-    bytes memory pluginData
-  ) private pure returns (bytes32, uint24, address, uint32, bytes memory) {
+  function _parsePluginData(bytes memory pluginData) private pure returns (bytes32, uint24, address, uint32, bytes memory) {
     IManagedSwapFeePlugin.PluginData memory data = abi.decode(pluginData, (IManagedSwapFeePlugin.PluginData));
     return (data.nonce, data.fee, data.user, data.expire, data.signature);
   }

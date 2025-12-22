@@ -105,15 +105,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   {
     VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     VolatilityOracle.Timepoint storage tp = layout.timepoints[index];
-    return (
-      tp.initialized,
-      tp.blockTimestamp,
-      tp.tickCumulative,
-      tp.volatilityCumulative,
-      tp.tick,
-      tp.averageTick,
-      tp.windowStartIndex
-    );
+    return (tp.initialized, tp.blockTimestamp, tp.tickCumulative, tp.volatilityCumulative, tp.tick, tp.averageTick, tp.windowStartIndex);
   }
 
   /// @inheritdoc IVolatilityOracle
@@ -126,7 +118,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     require(!VolatilityOracleStorage.layout().isInitialized, 'Already initialized');
     (uint160 price, int24 tick, , ) = _getPoolState();
     require(price != 0, 'Pool is not initialized');
-    _initialize_TWAP(tick); 
+    _initialize_TWAP(tick);
   }
 
   /// @inheritdoc IVolatilityOracle
@@ -140,9 +132,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @inheritdoc IVolatilityOracle
-  function getSingleTimepoint(
-    uint32 secondsAgo
-  ) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
+  function getSingleTimepoint(uint32 secondsAgo) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
     VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
     (, int24 tick, , ) = _getPoolState();
     uint16 lastIndex = layout.timepointIndex;

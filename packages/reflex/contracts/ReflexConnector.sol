@@ -24,14 +24,8 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   }
 
   /// @notice Initialize Reflex plugin via delegatecall
-  function _initializeReflex(
-    address _router,
-    bytes32 _configId
-  ) internal {
-    _delegateCall(
-      reflexImplementation,
-      abi.encodeCall(IReflexPluginImplementation.initializeReflex, (_router, _configId))
-    );
+  function _initializeReflex(address _router, bytes32 _configId) internal {
+    _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.initializeReflex, (_router, _configId)));
   }
 
   /// @notice Execute reflex after swap via delegatecall
@@ -44,10 +38,7 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
   ) internal returns (uint256 profit, address profitToken) {
     bytes memory returnData = _delegateCall(
       reflexImplementation,
-      abi.encodeCall(
-        IReflexPluginImplementation.reflexAfterSwap,
-        (triggerPoolId, amount0Delta, amount1Delta, zeroForOne, recipient)
-      )
+      abi.encodeCall(IReflexPluginImplementation.reflexAfterSwap, (triggerPoolId, amount0Delta, amount1Delta, zeroForOne, recipient))
     );
     return abi.decode(returnData, (uint256, address));
   }

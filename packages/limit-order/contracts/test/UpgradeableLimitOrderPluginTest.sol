@@ -41,10 +41,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
 
   // ###### HOOKS ######
 
-  function beforeInitialize(
-    address,
-    uint160
-  ) external override onlyPool returns (bytes4) {
+  function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }

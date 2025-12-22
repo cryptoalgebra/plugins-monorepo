@@ -119,34 +119,27 @@ contract AlgebraUpgradeablePlugin is
   // ========== HOOKS ==========
 
   /// @inheritdoc IAlgebraPlugin
-  function beforeInitialize(
-    address ,
-    uint160
-  ) external override onlyPool returns (bytes4) {
+  function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function afterInitialize(
-    address ,
-    uint160 ,
-    int24 tick
-  ) external override onlyPool returns (bytes4) {
+  function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
     _initialize_TWAP(tick);
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
   /// @inheritdoc IAlgebraPlugin
   function beforeModifyPosition(
-    address ,
-    address ,
-    int24 ,
-    int24 ,
+    address,
+    address,
+    int24,
+    int24,
     int128 desiredLiquidityDelta,
-    bytes calldata 
+    bytes calldata
   ) external override onlyPool returns (bytes4, uint24) {
-    // Security check 
+    // Security check
     // onlyPool guarantees msg.sender is the pool
     if (desiredLiquidityDelta < 0) {
       _checkStatusOnBurn(msg.sender);
@@ -215,13 +208,7 @@ contract AlgebraUpgradeablePlugin is
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function beforeFlash(
-    address,
-    address,
-    uint256,
-    uint256,
-    bytes calldata
-  ) external override onlyPool returns (bytes4) {
+  function beforeFlash(address, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
@@ -230,15 +217,7 @@ contract AlgebraUpgradeablePlugin is
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function afterFlash(
-    address,
-    address,
-    uint256,
-    uint256,
-    uint256,
-    uint256,
-    bytes calldata
-  ) external override onlyPool returns (bytes4) {
+  function afterFlash(address, address, uint256, uint256, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.afterFlash.selector;
   }

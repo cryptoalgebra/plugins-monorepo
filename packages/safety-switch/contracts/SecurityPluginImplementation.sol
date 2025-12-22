@@ -10,7 +10,6 @@ import './libraries/SecurityStorage.sol';
 /// @notice This contract contains ALL logic for Security plugin that works with namespaced storage
 /// @dev Called via delegatecall from SecurityConnector to reduce main contract size
 contract SecurityPluginImplementation is ISecurityPluginImplementation {
-
   /// @notice Initialize Security plugin
   /// @param _securityRegistry Address of security registry
   function initializeSecurity(address _securityRegistry) external {

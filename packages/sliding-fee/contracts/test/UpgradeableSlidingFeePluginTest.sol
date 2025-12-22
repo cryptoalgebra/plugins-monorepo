@@ -57,19 +57,12 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
 
   // ###### HOOKS ######
 
-  function beforeInitialize(
-    address,
-    uint160
-  ) external override onlyPool returns (bytes4) {
+  function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterInitialize(
-    address,
-    uint160,
-    int24 tick
-  ) external override onlyPool returns (bytes4) {
+  function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
     lastTick = tick;
     return IAlgebraPlugin.afterInitialize.selector;
   }

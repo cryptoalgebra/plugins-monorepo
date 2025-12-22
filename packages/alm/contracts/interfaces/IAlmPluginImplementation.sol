@@ -12,10 +12,5 @@ interface IAlmPluginImplementation {
   function getRebalanceManager() external view returns (address);
   function getSlowTwapPeriod() external view returns (uint32);
   function getFastTwapPeriod() external view returns (uint32);
-  function obtainTWAPAndRebalance(
-    int24 currentTick,
-    int24 slowTwapTick,
-    int24 fastTwapTick,
-    uint32 lastBlockTimestamp
-  ) external;
+  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external;
 }

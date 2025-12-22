@@ -39,14 +39,7 @@ contract UpgradeableLimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrd
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(
-    address pool,
-    address,
-    address,
-    address,
-    address,
-    bytes calldata
-  ) external override returns (address) {
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
     require(msg.sender == algebraFactory, 'Only AlgebraFactory');
     return _createPlugin(pool);
   }

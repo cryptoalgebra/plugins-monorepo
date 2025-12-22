@@ -7,7 +7,6 @@ import './MockTimeAlgebraUpgradeablePlugin.sol';
 /// @notice Plugin version that uses upgraded SecurityPluginImplementation
 /// @dev The security implementation address is set via constructor (immutable)
 contract MockUpgradedPluginWithNewSecurity is MockTimeAlgebraUpgradeablePlugin {
-  
   /// @dev Marker to identify this as upgraded plugin
   bool public constant HAS_UPGRADED_SECURITY = true;
 
@@ -18,7 +17,7 @@ contract MockUpgradedPluginWithNewSecurity is MockTimeAlgebraUpgradeablePlugin {
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl  // ← New security implementation!
+    address _securityImpl // ← New security implementation!
   )
     MockTimeAlgebraUpgradeablePlugin(
       _factory,
@@ -36,36 +35,24 @@ contract MockUpgradedPluginWithNewSecurity is MockTimeAlgebraUpgradeablePlugin {
   /// @notice Set emergency mode via delegatecall to new security impl
   function setSecurityEmergencyMode(bool enabled) external {
     _authorize();
-    _delegateCall(
-      securityImplementation,
-      abi.encodeWithSignature("setEmergencyMode(bool)", enabled)
-    );
+    _delegateCall(securityImplementation, abi.encodeWithSignature('setEmergencyMode(bool)', enabled));
   }
 
   /// @notice Get emergency mode via staticcall
   function getSecurityEmergencyMode() external returns (bool) {
-    bytes memory result = _delegateCall(
-      securityImplementation,
-      abi.encodeWithSignature("getEmergencyMode()")
-    );
+    bytes memory result = _delegateCall(securityImplementation, abi.encodeWithSignature('getEmergencyMode()'));
     return abi.decode(result, (bool));
   }
 
   /// @notice Get check statistics via staticcall
   function getSecurityCheckStats() external returns (uint256 checkCount, uint256 lastCheckTimestamp) {
-    bytes memory result = _delegateCall(
-      securityImplementation,
-      abi.encodeWithSignature("getCheckStats()")
-    );
+    bytes memory result = _delegateCall(securityImplementation, abi.encodeWithSignature('getCheckStats()'));
     return abi.decode(result, (uint256, uint256));
   }
 
   /// @notice Check if using upgraded security impl
   function hasUpgradedSecurityImpl() external returns (bool) {
-    bytes memory result = _delegateCall(
-      securityImplementation,
-      abi.encodeWithSignature("isUpgradedSecurityImpl()")
-    );
+    bytes memory result = _delegateCall(securityImplementation, abi.encodeWithSignature('isUpgradedSecurityImpl()'));
     return abi.decode(result, (bool));
   }
 }

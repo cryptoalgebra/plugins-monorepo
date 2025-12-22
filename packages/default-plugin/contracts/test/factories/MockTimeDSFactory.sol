@@ -15,8 +15,7 @@ import '../plugins/MockTimeAlgebraUpgradeablePlugin.sol';
 /// @notice Adapted for upgradeable plugin with all modules using Beacon Proxy
 contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @dev The role can be granted in AlgebraFactory
-  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR =
-    keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
+  bytes32 public constant ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
 
   /// @inheritdoc IBasePluginFactory
   address public immutable override algebraFactory;
@@ -83,14 +82,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(
-    address pool,
-    address,
-    address,
-    address,
-    address,
-    bytes calldata
-  ) external override returns (address) {
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
     // NOTE: Unlike production factory, we don't check msg.sender == algebraFactory for testing
     return _createPlugin(pool);
   }
@@ -120,10 +112,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(
-      defaultFeeConfiguration,
-      securityRegistry
-    );
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
 
     pluginByPool[pool] = plugin;
     return plugin;

@@ -16,9 +16,9 @@ contract MockUpgradedSecurityPluginImplementation {
     // V1 fields (preserved)
     address securityRegistry;
     // V2 fields (new)
-    uint256 checkCount;        // Count how many times status was checked
+    uint256 checkCount; // Count how many times status was checked
     uint256 lastCheckTimestamp; // When was last check
-    bool emergencyMode;         // New emergency flag
+    bool emergencyMode; // New emergency flag
   }
 
   /// @dev Fetch pointer of Security plugin's storage

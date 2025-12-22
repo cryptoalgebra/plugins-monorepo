@@ -9,7 +9,6 @@ import './libraries/ReflexStorage.sol';
 /// @notice This contract contains ALL logic for Reflex plugin that works with namespaced storage
 /// @dev Called via delegatecall from ReflexConnector to reduce main contract size
 contract ReflexPluginImplementation is IReflexPluginImplementation {
-
   /// @notice Initialize Reflex plugin
   /// @param _router Address of reflex router
   /// @param _configId Configuration ID for profit distribution
@@ -68,13 +67,7 @@ contract ReflexPluginImplementation is IReflexPluginImplementation {
 
     // Failsafe: Use try-catch to prevent router failures from breaking the main swap
     try
-      IReflexRouter(layout.reflexRouter).triggerBackrun(
-        triggerPoolId,
-        uint112(swapAmountIn),
-        zeroForOne,
-        recipient,
-        layout.reflexConfigId
-      )
+      IReflexRouter(layout.reflexRouter).triggerBackrun(triggerPoolId, uint112(swapAmountIn), zeroForOne, recipient, layout.reflexConfigId)
     returns (uint256 backrunProfit, address backrunProfitToken) {
       return (backrunProfit, backrunProfitToken);
     } catch {

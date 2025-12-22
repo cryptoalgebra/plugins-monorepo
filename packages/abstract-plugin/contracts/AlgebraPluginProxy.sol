@@ -6,7 +6,7 @@ import '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol';
 /// @title Algebra Plugin Beacon Proxy
 /// @notice BeaconProxy for Algebra Plugin - delegates calls to implementation from beacon
 contract AlgebraPluginProxy is BeaconProxy {
-  address immutable public pool;
+  address public immutable pool;
 
   constructor(address beacon, address _pool, bytes memory data) BeaconProxy(beacon, data) {
     pool = _pool;

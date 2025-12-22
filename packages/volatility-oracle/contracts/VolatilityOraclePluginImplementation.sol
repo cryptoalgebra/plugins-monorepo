@@ -59,11 +59,7 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
   /// @param currentTick Current pool tick
   /// @param currentTime Current block timestamp
   /// @return timeWeightedAverageTick The time-weighted average tick
-  function getTwapTick(
-    uint32 period,
-    int24 currentTick,
-    uint32 currentTime
-  ) external view returns (int24 timeWeightedAverageTick) {
+  function getTwapTick(uint32 period, int24 currentTick, uint32 currentTime) external view returns (int24 timeWeightedAverageTick) {
     require(period != 0, 'Period is zero');
 
     VolatilityOracleStorage.Layout storage layout = VolatilityOracleStorage.layout();
@@ -71,22 +67,10 @@ contract VolatilityOraclePluginImplementation is IVolatilityOraclePluginImplemen
     uint16 oldestIndex = layout.timepoints.getOldestIndex(lastIndex);
 
     // Get timepoint at current time (0 seconds ago)
-    VolatilityOracle.Timepoint memory current = layout.timepoints.getSingleTimepoint(
-      currentTime,
-      0,
-      currentTick,
-      lastIndex,
-      oldestIndex
-    );
+    VolatilityOracle.Timepoint memory current = layout.timepoints.getSingleTimepoint(currentTime, 0, currentTick, lastIndex, oldestIndex);
 
     // Get timepoint at period seconds ago
-    VolatilityOracle.Timepoint memory old = layout.timepoints.getSingleTimepoint(
-      currentTime,
-      period,
-      currentTick,
-      lastIndex,
-      oldestIndex
-    );
+    VolatilityOracle.Timepoint memory old = layout.timepoints.getSingleTimepoint(currentTime, period, currentTick, lastIndex, oldestIndex);
 
     int56 tickCumulativesDelta = current.tickCumulative - old.tickCumulative;
     timeWeightedAverageTick = int24(tickCumulativesDelta / int56(uint56(period)));

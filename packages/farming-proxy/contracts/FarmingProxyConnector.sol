@@ -24,10 +24,7 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
 
   /// @notice Update virtual pool tick via delegatecall
   function _updateVirtualPoolTick(bool zeroToOne, int24 tick) internal {
-    _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeCall(IFarmingProxyPluginImplementation.updateVirtualPoolTick, (zeroToOne, tick))
-    );
+    _delegateCall(farmingProxyImplementation, abi.encodeCall(IFarmingProxyPluginImplementation.updateVirtualPoolTick, (zeroToOne, tick)));
   }
 
   // ###### Public Interface (IFarmingPlugin) ######

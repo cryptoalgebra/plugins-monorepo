@@ -20,20 +20,10 @@ abstract contract AlmConnector is BaseConnector, IAlmPlugin {
     almImplementation = _almImplementation;
   }
 
-
-
-  function _obtainTWAPAndRebalance(
-    int24 currentTick,
-    int24 slowTwapTick,
-    int24 fastTwapTick,
-    uint32 lastBlockTimestamp
-  ) internal {
+  function _obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) internal {
     _delegateCall(
       almImplementation,
-      abi.encodeCall(
-        IAlmPluginImplementation.obtainTWAPAndRebalance,
-        (currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp)
-      )
+      abi.encodeCall(IAlmPluginImplementation.obtainTWAPAndRebalance, (currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp))
     );
   }
 

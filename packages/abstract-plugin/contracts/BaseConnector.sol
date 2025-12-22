@@ -4,7 +4,6 @@ pragma solidity =0.8.20;
 /// @title Base Connector
 /// @notice Abstract base contract for all plugin connectors providing common delegatecall utilities
 abstract contract BaseConnector {
-
   error ConnectorDelegatecallFailed();
 
   /// @dev Execute delegatecall and revert with original error if failed

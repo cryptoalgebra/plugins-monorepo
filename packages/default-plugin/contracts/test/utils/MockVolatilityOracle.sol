@@ -5,8 +5,5 @@ import { MockVolatilityOracle } from '@cryptoalgebra/volatility-oracle-plugin/co
 
 // @dev Used just to access MockVolatilityOracle in artifacts
 contract Importer is MockVolatilityOracle {
-  constructor(
-    uint32[] memory secondsAgos,
-    int56[] memory tickCumulatives
-  ) MockVolatilityOracle(secondsAgos, tickCumulatives) {}
+  constructor(uint32[] memory secondsAgos, int56[] memory tickCumulatives) MockVolatilityOracle(secondsAgos, tickCumulatives) {}
 }

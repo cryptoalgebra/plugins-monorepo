@@ -23,9 +23,7 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   }
 
   /// @notice Initialize FeeDiscount plugin via delegatecall
-  function _initializeFeeDiscount(
-    address _feeDiscountRegistry
-  ) internal {
+  function _initializeFeeDiscount(address _feeDiscountRegistry) internal {
     _delegateCall(
       feeDiscountImplementation,
       abi.encodeCall(IFeeDiscountPluginImplementation.initializeFeeDiscount, (_feeDiscountRegistry))
@@ -46,10 +44,7 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   /// @inheritdoc IFeeDiscountPlugin
   function setFeeDiscountRegistry(address registry) external override {
     _authorize();
-    _delegateCall(
-      feeDiscountImplementation,
-      abi.encodeCall(IFeeDiscountPluginImplementation.setFeeDiscountRegistry, (registry))
-    );
+    _delegateCall(feeDiscountImplementation, abi.encodeCall(IFeeDiscountPluginImplementation.setFeeDiscountRegistry, (registry)));
     emit FeeDiscountRegistry(registry);
   }
 

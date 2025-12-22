@@ -104,10 +104,7 @@ library VolatilityOracleInteractions {
   /// @param index The index of record in oracle
   /// @return initialized Whether or not the timepoint is initialized
   /// @return timestamp The timestamp of timepoint
-  function timepointMetadata(
-    address oracleAddress,
-    uint16 index
-  ) internal view returns (bool initialized, uint32 timestamp) {
+  function timepointMetadata(address oracleAddress, uint16 index) internal view returns (bool initialized, uint32 timestamp) {
     (initialized, timestamp, , , , , ) = IVolatilityOracle(oracleAddress).timepoints(index);
   }
 

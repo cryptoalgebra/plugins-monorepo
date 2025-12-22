@@ -7,7 +7,6 @@ import './MockTimeAlgebraUpgradeablePlugin.sol';
 /// @notice Plugin version that uses upgraded FarmingProxyPluginImplementation
 /// @dev The farming implementation address is set via constructor (immutable)
 contract MockUpgradedPluginWithNewFarming is MockTimeAlgebraUpgradeablePlugin {
-  
   /// @dev Marker to identify this as upgraded plugin
   bool public constant HAS_UPGRADED_FARMING = true;
 
@@ -16,7 +15,7 @@ contract MockUpgradedPluginWithNewFarming is MockTimeAlgebraUpgradeablePlugin {
     address _pluginFactory,
     address _volatilityOracleImpl,
     address _dynamicFeeImpl,
-    address _farmingProxyImpl,  
+    address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl
   )
@@ -25,47 +24,31 @@ contract MockUpgradedPluginWithNewFarming is MockTimeAlgebraUpgradeablePlugin {
       _pluginFactory,
       _volatilityOracleImpl,
       _dynamicFeeImpl,
-      _farmingProxyImpl,  
+      _farmingProxyImpl,
       _almImpl,
       _securityImpl
     )
   {}
 
-  //  V2 Farming Functions  
+  //  V2 Farming Functions
 
-  
   function setFarmingPausedMode(bool enabled) external {
     _authorize();
-    _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeWithSignature("setPausedMode(bool)", enabled)
-    );
+    _delegateCall(farmingProxyImplementation, abi.encodeWithSignature('setPausedMode(bool)', enabled));
   }
 
-  
   function getFarmingPausedMode() external returns (bool) {
-    bytes memory result = _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeWithSignature("getPausedMode()")
-    );
+    bytes memory result = _delegateCall(farmingProxyImplementation, abi.encodeWithSignature('getPausedMode()'));
     return abi.decode(result, (bool));
   }
 
-  
   function getFarmingUpdateStats() external returns (uint256 updateCount, uint256 lastUpdateTimestamp) {
-    bytes memory result = _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeWithSignature("getUpdateStats()")
-    );
+    bytes memory result = _delegateCall(farmingProxyImplementation, abi.encodeWithSignature('getUpdateStats()'));
     return abi.decode(result, (uint256, uint256));
   }
 
-  
   function hasUpgradedFarmingImpl() external returns (bool) {
-    bytes memory result = _delegateCall(
-      farmingProxyImplementation,
-      abi.encodeWithSignature("isUpgradedFarmingImpl()")
-    );
+    bytes memory result = _delegateCall(farmingProxyImplementation, abi.encodeWithSignature('isUpgradedFarmingImpl()'));
     return abi.decode(result, (bool));
   }
 }

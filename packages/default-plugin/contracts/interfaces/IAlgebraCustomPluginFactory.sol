@@ -26,10 +26,5 @@ interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePlugi
   function pluginByPool(address pool) external view returns (address);
 
   /// @notice Create custom pool
-  function createCustomPool(
-    address creator,
-    address tokenA,
-    address tokenB,
-    bytes calldata data
-  ) external returns (address customPool);
+  function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
 }

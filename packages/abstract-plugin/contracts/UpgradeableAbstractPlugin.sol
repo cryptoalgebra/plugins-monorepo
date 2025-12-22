@@ -51,9 +51,9 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   function _getPool() internal view virtual returns (address) {
     bytes32 word;
     assembly {
-        let ptr := mload(0x40)
-        extcodecopy(address(), ptr, POOL_ADDRESS_OFFSET, 32)
-        word := mload(ptr)
+      let ptr := mload(0x40)
+      extcodecopy(address(), ptr, POOL_ADDRESS_OFFSET, 32)
+      word := mload(ptr)
     }
     return address(uint160(uint256(word)));
   }
@@ -156,13 +156,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     return IAlgebraPlugin.afterSwap.selector;
   }
 
-  function beforeFlash(
-    address,
-    address,
-    uint256,
-    uint256,
-    bytes calldata
-  ) external virtual override onlyPool returns (bytes4) {
+  function beforeFlash(address, address, uint256, uint256, bytes calldata) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.beforeFlash.selector;
   }
 

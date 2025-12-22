@@ -27,15 +27,7 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
     address _almImpl,
     address _securityImpl
   )
-    AlgebraUpgradeablePlugin(
-      _factory,
-      _pluginFactory,
-      _volatilityOracleImpl,
-      _dynamicFeeImpl,
-      _farmingProxyImpl,
-      _almImpl,
-      _securityImpl
-    )
+    AlgebraUpgradeablePlugin(_factory, _pluginFactory, _volatilityOracleImpl, _dynamicFeeImpl, _farmingProxyImpl, _almImpl, _securityImpl)
   {}
 
   function advanceTime(uint256 by) external {

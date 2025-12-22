@@ -13,14 +13,7 @@ contract MockPluginFactory {
     defaultPluginImplementation = implementation;
   }
 
-  function beforeCreatePoolHook(
-    address pool,
-    address,
-    address,
-    address,
-    address,
-    bytes calldata
-  ) external returns (address plugin) {
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external returns (address plugin) {
     // In real scenario, this would create a new plugin proxy
     // For testing, we just return the default implementation
     plugin = defaultPluginImplementation;

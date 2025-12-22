@@ -16,7 +16,7 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   uint8 internal constant SLIDING_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   uint64 internal constant FEE_FACTOR_SHIFT = 96;
-  
+
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable slidingFeeImplementation;
 
@@ -26,10 +26,7 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
 
   /// @notice Initialize SlidingFee plugin via delegatecall
   function _initializeSlidingFee(uint16 _baseFee) internal {
-    _delegateCall(
-      slidingFeeImplementation,
-      abi.encodeCall(ISlidingFeePluginImplementation.initializeSlidingFee, (_baseFee))
-    );
+    _delegateCall(slidingFeeImplementation, abi.encodeCall(ISlidingFeePluginImplementation.initializeSlidingFee, (_baseFee)));
   }
 
   /// @notice Get fee and update factors via delegatecall
@@ -43,10 +40,7 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
 
   /// @notice Set price change factor via delegatecall
   function _setPriceChangeFactor(uint16 newPriceChangeFactor) internal {
-    _delegateCall(
-      slidingFeeImplementation,
-      abi.encodeCall(ISlidingFeePluginImplementation.setPriceChangeFactor, (newPriceChangeFactor))
-    );
+    _delegateCall(slidingFeeImplementation, abi.encodeCall(ISlidingFeePluginImplementation.setPriceChangeFactor, (newPriceChangeFactor)));
   }
 
   /// @notice Set base fee via delegatecall

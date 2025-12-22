@@ -31,10 +31,7 @@ contract OracleTWAP is IOracleTWAP {
   }
 
   /// @inheritdoc IOracleTWAP
-  function getAverageTick(
-    address pool,
-    uint32 period
-  ) external view override returns (int24 timeWeightedAverageTick, bool isConnected) {
+  function getAverageTick(address pool, uint32 period) external view override returns (int24 timeWeightedAverageTick, bool isConnected) {
     address oracleAddress = _getPluginForPool(pool);
     timeWeightedAverageTick = VolatilityOracleInteractions.consult(oracleAddress, period);
     isConnected = VolatilityOracleInteractions.isOracleConnectedToPool(oracleAddress, pool);

@@ -9,7 +9,6 @@ import './interfaces/ILimitOrderPluginImplementation.sol';
 /// @notice This contract contains the logic for LimitOrder plugin that works with namespaced storage
 /// @dev Called via delegatecall from LimitOrderConnector to reduce main contract size
 contract LimitOrderPluginImplementation is ILimitOrderPluginImplementation {
-
   /// @notice Initializes limit order manager
   /// @param limitOrderManager Manager address
   function initializeLimitOrder(address limitOrderManager) external {

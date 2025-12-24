@@ -692,5 +692,163 @@ describe('Integration Tests - Fork', function() {
       expect(securityStats.checkCount).to.be.gt(0);
       
     });
-  });
+    it('Downgrades from super plugin to plugin with oracle module', async () => {
+      // Deploy all 5 upgraded module implementations
+      const UpgradedVolatilityFactory = await ethers.getContractFactory('MockUpgradedVolatilityOraclePluginImplementation');
+      const upgradedVolatility = await UpgradedVolatilityFactory.deploy();
+      
+      const UpgradedDynamicFeeFactory = await ethers.getContractFactory('MockUpgradedDynamicFeePluginImplementation');
+      const upgradedDynamicFee = await UpgradedDynamicFeeFactory.deploy();
+      
+      const UpgradedFarmingFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
+      const upgradedFarming = await UpgradedFarmingFactory.deploy();
+      
+      const UpgradedAlmFactory = await ethers.getContractFactory('MockUpgradedALMPluginImplementation');
+      const upgradedAlm = await UpgradedAlmFactory.deploy();
+      
+      const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
+      const upgradedSecurity = await UpgradedSecurityFactory.deploy();
+      
+      // Deploy super plugin with all upgraded modules
+      const mockFactoryAddress = await algebraFactory.getAddress();
+      const pluginFactoryAddress = await newPluginFactory.getAddress();
+      
+      const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
+      const superPlugin = await SuperPluginFactory.deploy(
+        mockFactoryAddress,
+        pluginFactoryAddress,
+        await upgradedVolatility.getAddress(),
+        await upgradedDynamicFee.getAddress(),
+        await upgradedFarming.getAddress(),
+        await upgradedAlm.getAddress(),
+        await upgradedSecurity.getAddress()
+      );
+      
+      const superPluginAddress = await superPlugin.getAddress();
+      
+      // Upgrade to super plugin
+      await newPluginFactory.connect(ownerSigner).upgradePlugins(superPluginAddress);
+      
+      const implementationAfterUpgrade = await beacon.implementation();
+      expect(implementationAfterUpgrade).to.equal(superPluginAddress);
+      
+      const upgradedPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
+      
+      // Verify all upgraded modules are active
+      expect(await upgradedPluginProxy.HAS_UPGRADED_VOLATILITY()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_DYNAMIC_FEE()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_FARMING()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_ALM()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_SECURITY()).to.equal(true);
+      
+      expect(await upgradedPluginProxy.hasUpgradedVolatilityImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedDynamicFeeImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedFarmingImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedAlmImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
+      
+      // Set states in various modules
+      await upgradedPluginProxy.connect(ownerSigner).setAdvancedFeeMode(true);
+      expect(await upgradedPluginProxy.getAdvancedFeeMode.staticCall()).to.equal(true);
+      
+      await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(true);
+      expect(await upgradedPluginProxy.getFarmingPausedMode.staticCall()).to.equal(true);
+      await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(false);
+      
+      await upgradedPluginProxy.connect(ownerSigner).setAlmAdvancedMode(true);
+      expect(await upgradedPluginProxy.getAlmAdvancedMode.staticCall()).to.equal(true);
+      
+      await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(true);
+      expect(await upgradedPluginProxy.getSecurityEmergencyMode.staticCall()).to.equal(true);
+      await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(false);
+      
+      // Perform swap to generate oracle data
+      const swapAmount = ethers.parseEther('100');
+      const token1Before = await token1.balanceOf(ownerSigner.address);
+      await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
+      
+      const token1After = await token1.balanceOf(ownerSigner.address);
+      const swapOutput = token1After - token1Before;
+      
+      expect(swapOutput).to.be.gt(0);
+      
+      const timepointIndexBefore = await upgradedPluginProxy.timepointIndex();
+      const lastTimestampBefore = await upgradedPluginProxy.lastTimepointTimestamp();
+      const volatilityDataBefore = await upgradedPluginProxy.getSingleTimepoint(0);
+      
+      expect(timepointIndexBefore).to.be.gt(0);
+      expect(volatilityDataBefore.tickCumulative).to.not.equal(0n);
+      
+      // Downgrade
+      const result = await deployNewPluginImplementation(
+        'AlgebraUpgradeablePlugin',
+        algebraFactory,
+        newPluginFactory
+        
+      );
+      
+      // Downgrade to base plugin
+      await newPluginFactory.connect(ownerSigner).upgradePlugins(result.address);
+      
+      const implementationAfterDowngrade = await beacon.implementation();
+      expect(implementationAfterDowngrade).to.equal(result.address);
+      
+      const poolPluginAfter = await pool.plugin();
+      expect(poolPluginAfter).to.equal(pluginAddress);
+      
+      const basePlugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
+      
+      // Verify oracle data persisted after downgrade
+      const timepointIndexAfter = await basePlugin.timepointIndex();
+      const lastTimestampAfter = await basePlugin.lastTimepointTimestamp();
+      const volatilityDataAfter = await basePlugin.getSingleTimepoint(0);
+      
+      expect(timepointIndexAfter).to.equal(timepointIndexBefore);
+      expect(lastTimestampAfter).to.equal(lastTimestampBefore);
+      expect(volatilityDataAfter.tickCumulative).to.not.equal(0n);
+      
+     
+      // Perform swap after downgrade to verify basic functionality still works
+      const swapAmount2 = ethers.parseEther('100');
+      const token1Before2 = await token1.balanceOf(ownerSigner.address);
+      await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount2, deadline);
+      
+      const token1After2 = await token1.balanceOf(ownerSigner.address);
+      const swapOutput2 = token1After2 - token1Before2;
+      
+      expect(swapOutput2).to.be.gt(0);
+      
+      // Verify oracle continues to accumulate data with base implementation
+      const newTimepointIndex = await basePlugin.timepointIndex();
+      expect(newTimepointIndex).to.be.gt(timepointIndexBefore);
+      
+      const volatilityDataFinal = await basePlugin.getSingleTimepoint(0);
+      expect(volatilityDataFinal.tickCumulative).to.not.equal(0n);
+      
+      // Verify base oracle functions still work
+      const isInitialized = await basePlugin.isInitialized();
+      expect(isInitialized).to.equal(true);
+
+     // Verify upgraded module functions are NO LONGER available
+      
+      const superPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
+      await expect(
+        superPluginProxy.getAdvancedFeeMode.staticCall()
+      ).to.be.reverted;  
+
+      await expect(
+        superPluginProxy.getSecurityEmergencyMode.staticCall()
+      ).to.be.reverted; 
+
+      await expect(
+        superPluginProxy.getFarmingPausedMode.staticCall()
+      ).to.be.reverted;  
+
+      
+
+      // Verify base security function still works (if implemented)
+      const securityRegistry = await basePlugin.getSecurityRegistry();
+      expect(securityRegistry).to.not.be.undefined;
+    })
+  })
 });

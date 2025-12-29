@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 library AbstractPluginStorage {
-  /// @dev Storage namespace for AbstractPlugin using ERC-7201-style namespacing.
-  bytes32 internal constant NAMESPACE = keccak256('algebra.storage.abstractplugin');
+  /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.storage.abstractplugin")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 internal constant NAMESPACE = 0x19d84dc05fb3c50d3b0098bed2a255f5b0b8a5c0636a4569059118df8ed92600;
 
   struct Layout {
     uint8 defaultPluginConfig;

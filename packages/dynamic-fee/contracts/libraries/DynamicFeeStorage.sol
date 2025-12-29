@@ -5,8 +5,8 @@ import { AlgebraFeeConfigurationU144 } from '../types/AlgebraFeeConfigurationU14
 
 /// @dev Shared namespaced storage for DynamicFee plugin (used by connector + implementation).
 library DynamicFeeStorage {
-  /// @dev Storage namespace for DynamicFee plugin using ERC-7201-style namespacing.
-  bytes32 internal constant NAMESPACE = keccak256('algebra.storage.dynamicfee');
+  /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.storage.dynamicfee")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 internal constant NAMESPACE = 0xfbbf1a562c70d290e080160018965a1e5db682cf55e666eca8f391a4ceef9a00;
 
   struct Layout {
     AlgebraFeeConfigurationU144 feeConfig;

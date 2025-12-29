@@ -6,9 +6,8 @@ import './VolatilityOracle.sol';
 /// @dev Shared namespaced storage for VolatilityOracle plugin (used by connector + implementation).
 library VolatilityOracleStorage {
   uint256 internal constant UINT16_MODULO = 65536;
-
-  /// @dev Storage namespace for VolatilityOracle plugin using ERC-7201-style namespacing.
-  bytes32 internal constant STORAGE_SLOT = keccak256('algebra.storage.volatilityoracle');
+  /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.storage.volatilityoracle")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 internal constant STORAGE_SLOT = 0x4cc5c36a434034246042af122c958f40937cad4aaa0154d3b81e721d7b524c00;
 
   struct Layout {
     uint16 timepointIndex;

@@ -37,7 +37,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address securityRegistry;
   }
 
-  bytes32 private constant STORAGE_LOCATION = keccak256('algebra.pluginfactory.storage');
+  /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant STORAGE_LOCATION = 0x0e9f0474e886e912cb4b5069ff9005392033d95cf69dfd39d817b89628310400;
 
   function _getStorage() private pure returns (PluginFactoryStorage storage s) {
     bytes32 loc = STORAGE_LOCATION;

@@ -3,8 +3,8 @@ pragma solidity =0.8.20;
 
 /// @dev Shared namespaced storage for SlidingFee plugin (used by connector + implementation).
 library SlidingFeeStorage {
-  /// @dev Storage namespace for SlidingFee plugin using ERC-7201-style namespacing.
-  bytes32 internal constant NAMESPACE = keccak256('algebra.storage.slidingfee');
+  /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.storage.slidingfee")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 internal constant NAMESPACE = 0xaefd1f81f9eb25a0826f3b494fbd0af8927e22e79323f403015079084722c000;
 
   struct FeeFactors {
     uint128 zeroToOneFeeFactor;

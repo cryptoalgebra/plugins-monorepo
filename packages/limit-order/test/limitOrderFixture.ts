@@ -12,7 +12,7 @@ import {
   abi as POOL_ABI,
   bytecode as POOL_BYTECODE,
 } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
-import { LimitOrderTestPluginFactory, LimitOrderManager, IWNativeToken } from '../typechain';
+import { LimitOrderManager, IWNativeToken } from '../typechain';
 import { tokensFixture } from 'test-utils/externalFixtures';
 import { getCreateAddress } from 'ethers';
 import {AlgebraPool, AlgebraFactory, TestAlgebraCallee, AlgebraPoolDeployer, TestERC20 } from '@cryptoalgebra/integral-core/typechain';
@@ -62,8 +62,8 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
 
   const poolFactory = await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE);
 
-  const pluginFactoryFactory = await ethers.getContractFactory('LimitOrderTestPluginFactory');
-  const pluginFactory = (await pluginFactoryFactory.deploy(factory)) as any as LimitOrderTestPluginFactory;
+  const pluginFactoryFactory = await ethers.getContractFactory('UpgradeableLimitOrderTestPluginFactory');
+  const pluginFactory = (await pluginFactoryFactory.deploy(factory)) as any;
 
   const loModuleFactory = await ethers.getContractFactory('LimitOrderManager');
   const loModule = (await loModuleFactory.deploy(wnative, poolDeployer, pluginFactory, factory)) as any as LimitOrderManager

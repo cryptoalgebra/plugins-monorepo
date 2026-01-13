@@ -13,12 +13,24 @@ abstract contract AbstractCustomPluginFactory is ICustomPluginFactory {
   }
 
   /// @inheritdoc ICustomPluginFactory
-  function createCustomPool(address creator, address tokenA, address tokenB, bytes calldata data) external virtual returns (address customPool) {
+  function createCustomPool(
+    address creator,
+    address tokenA,
+    address tokenB,
+    bytes calldata data
+  ) external virtual returns (address customPool) {
     return IAlgebraCustomPoolEntryPoint(entryPoint).createCustomPool(address(this), creator, tokenA, tokenB, data);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
-  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external virtual override returns (address) {
+  function beforeCreatePoolHook(
+    address pool,
+    address,
+    address,
+    address,
+    address,
+    bytes calldata
+  ) external virtual override returns (address) {
     require(msg.sender == entryPoint);
     return _createPlugin(pool);
   }

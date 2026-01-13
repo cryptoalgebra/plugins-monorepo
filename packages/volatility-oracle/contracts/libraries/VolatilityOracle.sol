@@ -101,7 +101,13 @@ library VolatilityOracle {
   ) internal view returns (Timepoint memory targetTimepoint) {
     unchecked {
       uint32 target = time - secondsAgo;
-      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(self, time, target, lastIndex, oldestIndex);
+      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(
+        self,
+        time,
+        target,
+        lastIndex,
+        oldestIndex
+      );
 
       targetTimepoint = beforeOrAt;
       if (target == targetTimepoint.blockTimestamp) return targetTimepoint; // we're at the left boundary
@@ -123,7 +129,10 @@ library VolatilityOracle {
       if (target == timestampAfter) return atOrAfter; // we're at the right boundary
 
       // we're in the middle
-      (uint32 timepointTimeDelta, uint32 targetDelta) = (timestampAfter - targetTimepoint.blockTimestamp, target - targetTimepoint.blockTimestamp);
+      (uint32 timepointTimeDelta, uint32 targetDelta) = (
+        timestampAfter - targetTimepoint.blockTimestamp,
+        target - targetTimepoint.blockTimestamp
+      );
 
       targetTimepoint.tickCumulative +=
         ((tickCumulativeAfter - targetTimepoint.tickCumulative) / int56(uint56(timepointTimeDelta))) *
@@ -207,7 +216,10 @@ library VolatilityOracle {
         if (timeAtLastTimepoint) {
           // interpolate cumulative volatility to avoid search. Since the last timepoint has _just_ been written, we know for sure
           // that the start of the window is between windowStartIndex and windowStartIndex + 1
-          (oldestTimestamp, cumulativeVolatilityAtStart) = (self[windowStartIndex].blockTimestamp, self[windowStartIndex].volatilityCumulative);
+          (oldestTimestamp, cumulativeVolatilityAtStart) = (
+            self[windowStartIndex].blockTimestamp,
+            self[windowStartIndex].volatilityCumulative
+          );
 
           uint32 timeDeltaBetweenPoints = self[windowStartIndex + 1].blockTimestamp - oldestTimestamp;
 
@@ -269,7 +281,13 @@ library VolatilityOracle {
   /// @param avgTick1 The average tick at the right timepoint, must be within int24 range
   /// @return volatility The volatility between two sequential timepoints
   /// If the requirements for the parameters are met, it always fits 88 bits
-  function _volatilityOnRange(int256 dt, int256 tick0, int256 tick1, int256 avgTick0, int256 avgTick1) internal pure returns (uint256 volatility) {
+  function _volatilityOnRange(
+    int256 dt,
+    int256 tick0,
+    int256 tick1,
+    int256 avgTick0,
+    int256 avgTick1
+  ) internal pure returns (uint256 volatility) {
     // On the time interval from the previous timepoint to the current
     // we can represent tick and average tick change as two straight lines:
     // tick = k*t + b, where k and b are some constants
@@ -302,7 +320,15 @@ library VolatilityOracle {
     uint32 lastTimestamp,
     int56 lastTickCumulative
   ) internal view returns (int24 avgTick, uint16 windowStartIndex) {
-    (int256 _avgTick, uint256 _windowStartIndex) = _getAverageTick(self, time, tick, lastIndex, oldestIndex, lastTimestamp, lastTickCumulative);
+    (int256 _avgTick, uint256 _windowStartIndex) = _getAverageTick(
+      self,
+      time,
+      tick,
+      lastIndex,
+      oldestIndex,
+      lastTimestamp,
+      lastTickCumulative
+    );
     unchecked {
       (avgTick, windowStartIndex) = (int24(_avgTick), uint16(_windowStartIndex)); // overflow in uint16(_windowStartIndex) is desired
     }
@@ -370,7 +396,13 @@ library VolatilityOracle {
   ) internal view returns (uint88 volatilityCumulative) {
     unchecked {
       uint32 target = time - secondsAgo;
-      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(self, time, target, lastIndex, oldestIndex);
+      (Timepoint storage beforeOrAt, Timepoint storage atOrAfter, bool samePoint, ) = _getTimepointsAt(
+        self,
+        time,
+        target,
+        lastIndex,
+        oldestIndex
+      );
 
       (uint32 timestampBefore, uint88 volatilityCumulativeBefore) = (beforeOrAt.blockTimestamp, beforeOrAt.volatilityCumulative);
       if (target == timestampBefore) return volatilityCumulativeBefore; // we're at the left boundary
@@ -424,7 +456,9 @@ library VolatilityOracle {
       // we're in the middle
       (uint32 timepointTimeDelta, uint32 targetDelta) = (timestampAfter - timestampBefore, target - timestampBefore);
       return (
-        tickCumulativeBefore + ((tickCumulativeAfter - tickCumulativeBefore) / int56(uint56(timepointTimeDelta))) * int56(uint56(targetDelta)),
+        tickCumulativeBefore +
+          ((tickCumulativeAfter - tickCumulativeBefore) / int56(uint56(timepointTimeDelta))) *
+          int56(uint56(targetDelta)),
         _indexBeforeOrAt
       );
     }

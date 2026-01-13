@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition-ethers";
+import "hardhat-dependency-compiler";
 import { SolcUserConfig } from 'hardhat/types';
 import baseConfig from '../../hardhat.base.config';
 
@@ -22,7 +23,23 @@ const config: HardhatUserConfig = {
   networks: baseConfig.networks,
   etherscan: baseConfig.etherscan,
   typechain: baseConfig.typechain,
+  dependencyCompiler: {
+    paths: [
+      '@cryptoalgebra/test-utils/contracts/MockFactory.sol',
+      '@cryptoalgebra/test-utils/contracts/MockPool.sol',
+      '@cryptoalgebra/test-utils/contracts/MockPluginFactory.sol',
+      '@cryptoalgebra/test-utils/contracts/MockERC20.sol',
+      '@cryptoalgebra/test-utils/contracts/BeaconImports.sol',
+      '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol',
+      '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol',
+      '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol',
+      '@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol',
+      '@cryptoalgebra/test-utils/contracts/TestERC20.sol',
+    ],
+  },
   solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS
 };
+
+
 
 export default config;

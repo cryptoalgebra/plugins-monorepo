@@ -1,35 +1,32 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IAbstractPlugin.sol';
-
 /// @title Managed Swap Fee Plugin Interface
 /// @notice Interface for interacting with the Managed Swap Fee Plugin
-interface IManagedSwapFeePlugin is IAbstractPlugin{
-    
-    error InvalidNonce();
-    error FeeExceedsLimit();
-    error NotWhitelisted();
-    error Expired();
-    error NotAllowed();
+interface IManagedSwapFeePlugin {
+  error InvalidNonce();
+  error FeeExceedsLimit();
+  error NotWhitelisted();
+  error Expired();
+  error NotAllowed();
 
-    event WhitelistedAddress(address indexed _address, bool status);
+  event WhitelistedAddress(address indexed _address, bool status);
 
-    /// @notice Struct representing plugin data
-    struct PluginData {
-        bytes32 nonce;
-        uint24 fee;
-        address user;
-        uint32 expire;
-        bytes signature;
-    }
+  /// @notice Struct representing plugin data
+  struct PluginData {
+    bytes32 nonce;
+    uint24 fee;
+    address user;
+    uint32 expire;
+    bytes signature;
+  }
 
-    /// @notice Checks if an address is whitelisted
-    /// @param _address The address to check
-    /// @return True if the address is whitelisted, false otherwise
-    function whitelistedAddresses(address _address) external view returns (bool);
+  /// @notice Checks if an address is whitelisted
+  /// @param _address The address to check
+  /// @return True if the address is whitelisted, false otherwise
+  function whitelistedAddresses(address _address) external view returns (bool);
 
-    /// @notice Whitelists an address
-    /// @param _address The address to whitelist
-    function setWhitelistStatus(address _address, bool status) external;
+  /// @notice Whitelists an address
+  /// @param _address The address to whitelist
+  function setWhitelistStatus(address _address, bool status) external;
 }

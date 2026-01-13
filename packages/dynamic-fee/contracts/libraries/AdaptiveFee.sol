@@ -98,7 +98,6 @@ library AdaptiveFee {
       default {
         closestValue := 14841315910257660342111 // ~= e^5
       }
-
       x := mod(x, g)
     }
 

@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity =0.8.20;
+
+import './interfaces/IRebalanceManager.sol';
+import './interfaces/IAlmPluginImplementation.sol';
+import './libraries/AlmStorage.sol';
+
+/// @title ALM Plugin Implementation
+/// @notice This contract contains ALL logic for ALM plugin that works with namespaced storage
+/// @dev Called via delegatecall from AlmConnector to reduce main contract size
+contract AlmPluginImplementation is IAlmPluginImplementation {
+  /// @notice Initialize ALM plugin with configuration
+  /// @param _rebalanceManager Address of rebalance manager
+  /// @param _slowTwapPeriod Period in seconds to get slow TWAP
+  /// @param _fastTwapPeriod Period in seconds to get fast TWAP
+  function initializeALM(address _rebalanceManager, uint32 _slowTwapPeriod, uint32 _fastTwapPeriod) external {
+    require(_rebalanceManager != address(0), '_rebalanceManager must be non zero address');
+    require(_slowTwapPeriod >= _fastTwapPeriod, '_slowTwapPeriod must be >= _fastTwapPeriod');
+
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    layout.rebalanceManager = _rebalanceManager;
+    layout.slowTwapPeriod = _slowTwapPeriod;
+    layout.fastTwapPeriod = _fastTwapPeriod;
+  }
+
+  /// @notice Set slow TWAP period
+  /// @param _slowTwapPeriod Period in seconds to get slow TWAP
+  function setSlowTwapPeriod(uint32 _slowTwapPeriod) external {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    require(_slowTwapPeriod >= layout.fastTwapPeriod, '_slowTwapPeriod must be >= fastTwapPeriod');
+    layout.slowTwapPeriod = _slowTwapPeriod;
+  }
+
+  /// @notice Set fast TWAP period
+
+  /// @param _fastTwapPeriod Period in seconds to get fast TWAP
+  function setFastTwapPeriod(uint32 _fastTwapPeriod) external {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    require(_fastTwapPeriod <= layout.slowTwapPeriod, '_fastTwapPeriod must be <= slowTwapPeriod');
+    layout.fastTwapPeriod = _fastTwapPeriod;
+  }
+
+  /// @notice Set rebalance manager
+  /// @param _rebalanceManager Address of rebalance manager
+  function setRebalanceManager(address _rebalanceManager) external {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    layout.rebalanceManager = _rebalanceManager;
+  }
+
+  /// @notice Get rebalance manager address
+  /// @return Address of rebalance manager
+  function getRebalanceManager() external view returns (address) {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    return layout.rebalanceManager;
+  }
+
+  /// @notice Get slow TWAP period
+  /// @return Period in seconds
+  function getSlowTwapPeriod() external view returns (uint32) {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    return layout.slowTwapPeriod;
+  }
+
+  /// @notice Get fast TWAP period
+  /// @return Period in seconds
+  function getFastTwapPeriod() external view returns (uint32) {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    return layout.fastTwapPeriod;
+  }
+
+  /// @notice Obtain TWAP and trigger rebalance
+  /// @param currentTick Current pool tick
+  /// @param slowTwapTick Slow TWAP tick
+  /// @param fastTwapTick Fast TWAP tick
+  /// @param lastBlockTimestamp Last block timestamp
+  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
+    AlmStorage.Layout storage layout = AlmStorage.layout();
+    address manager = layout.rebalanceManager;
+
+    if (manager != address(0)) {
+      IRebalanceManager(manager).obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+    }
+  }
+}

@@ -114,7 +114,9 @@ contract VolatilityOracleTest {
 
         if (_time - _initTime > 24 hours) {
           windowStartIndex = uint16(_index - (uint256(24 hours) / STEP) + 1); // CHECK
-          avgTick = -int24(uint24((STEP * ((nextIndex + 1) * nextIndex - (windowStartIndex + 1) * windowStartIndex)) / (2 * uint256(24 hours))));
+          avgTick = -int24(
+            uint24((STEP * ((nextIndex + 1) * nextIndex - (windowStartIndex + 1) * windowStartIndex)) / (2 * uint256(24 hours)))
+          );
         } else {
           uint32 timeDelta = _time - _initTime;
           avgTick = -int24(uint24((STEP * (nextIndex + 1) * nextIndex) / (2 * uint256(timeDelta))));

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
-import {IAlgebraVault} from '@cryptoalgebra/alm-vault/contracts/interfaces/IAlgebraVault.sol';
-import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {IAlgebraPool} from '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import { IAlgebraVault } from '@cryptoalgebra/alm-vault/contracts/interfaces/IAlgebraVault.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { IAlgebraPool } from '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 
 contract MockVault is IAlgebraVault, ERC20 {
   event MockRebalance(int24 baseLower, int24 baseUpper, int24 limitLower, int24 limitUpper);
@@ -20,8 +20,11 @@ contract MockVault is IAlgebraVault, ERC20 {
   address public override affiliate;
 
   // Position tracking
-  uint256 public basePositionId;
-  uint256 public limitPositionId;
+  uint32 public override basePositionId;
+  uint32 public override limitPositionId;
+
+  // Farming rewards distributor
+  address public override farmingRewardsDistributor;
 
   uint256 public override deposit0Max;
   uint256 public override deposit1Max;
@@ -143,4 +146,24 @@ contract MockVault is IAlgebraVault, ERC20 {
   function getLimitPosition() public view returns (uint128, uint256, uint256) {
     return (0, 0, 0);
   }
+
+  address public rebalanceManager;
+
+  function setRebalanceManager(address _rebalanceManager) external {
+    rebalanceManager = _rebalanceManager;
+  }
+
+  function setTwapPeriod(uint32 newTwapPeriod) external {
+    twapPeriod = newTwapPeriod;
+  }
+
+  function setAuxTwapPeriod(uint32 newAuxTwapPeriod) external {
+    auxTwapPeriod = newAuxTwapPeriod;
+  }
+
+  function setFarmingRewardsDistributor(address _farmingRewardsDistributor) external {
+    farmingRewardsDistributor = _farmingRewardsDistributor;
+  }
+
+  function collectRewards() external {}
 }

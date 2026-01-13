@@ -1,15 +1,19 @@
 {
-  "name": "test-utils",
+  "name": "@cryptoalgebra/test-utils",
   "version": "1.0.0",
   "private": "true",
-  "description": "",
+  "description": "Shared test utilities and mock contracts for Algebra plugins",
   "scripts": {
-    "remove-node-modules": "rm -rf node_modules"
+    "compile": "hardhat compile",
+    "remove-node-modules": "rm -rf node_modules",
+    "clean": "rm -rf artifacts cache typechain"
   },
   "devDependencies": {
     "@cryptoalgebra/integral-core": "1.2.9",
     "@cryptoalgebra/integral-periphery": "1.2.4",
+    "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@ethersproject/abstract-provider": "^5.8.0",
+    "@openzeppelin/contracts": "4.9.3",
     "bignumber.js": "^9.2.1",
     "hardhat": "^2.22.19",
     "mocha-chai-jest-snapshot": "^1.1.6"

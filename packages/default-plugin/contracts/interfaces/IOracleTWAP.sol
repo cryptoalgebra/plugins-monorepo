@@ -15,7 +15,12 @@ interface IOracleTWAP {
   /// @param baseToken Address of an ERC20 token contract used as the baseAmount denomination
   /// @param quoteToken Address of an ERC20 token contract used as the quoteAmount denomination
   /// @return quoteAmount Amount of quoteToken received for baseAmount of baseToken
-  function getQuoteAtTick(int24 tick, uint128 baseAmount, address baseToken, address quoteToken) external pure returns (uint256 quoteAmount);
+  function getQuoteAtTick(
+    int24 tick,
+    uint128 baseAmount,
+    address baseToken,
+    address quoteToken
+  ) external pure returns (uint256 quoteAmount);
 
   /// @notice Fetches time-weighted average tick using Algebra VolatilityOracle
   /// @dev Oracle may stop receiving data from the pool (be disconnected). For that reason it is important

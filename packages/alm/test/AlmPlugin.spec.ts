@@ -46,17 +46,17 @@ describe('#AlmPlugin', () => {
 		it("can initialize", async () => {
 			await almPluginFixture({
 				depositTokenUnusedThreshold: 100,
-				simulate: 9400, // было 9300
-				normalThreshold: 8100, // было 8000
-				underInventoryThreshold: 7800, // было 7700
+				simulate: 9400, // 9300
+				normalThreshold: 8100, // 8000
+				underInventoryThreshold: 7800, // 7700
 				overInventoryThreshold: 9100,
 				priceChangeThreshold: 100,
 				extremeVolatility: 2500,
-				highVolatility: 900, // было 500
-				someVolatility: 200, // было 100
+				highVolatility: 900, //  500
+				someVolatility: 200, // 100
 				dtrDelta: 300,
-				baseLowPct: 3000, // было 2000
-				baseHighPct: 1500, // было 3000
+				baseLowPct: 3000, // 2000
+				baseHighPct: 1500, // 3000
 				limitReservePct: 500,
 			}, 228, true, false);
 		});

@@ -106,7 +106,12 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     emit SetPercentages(_baseLowPct, _baseHighPct, _limitReservePct);
   }
 
-  function setTriggers(uint16 _simulate, uint16 _normalThreshold, uint16 _underInventoryThreshold, uint16 _overInventoryThreshold) external {
+  function setTriggers(
+    uint16 _simulate,
+    uint16 _normalThreshold,
+    uint16 _underInventoryThreshold,
+    uint16 _overInventoryThreshold
+  ) external {
     _authorize();
     require(_underInventoryThreshold > 6000, '_underInventoryThreshold must be > 6000');
     require(_normalThreshold > _underInventoryThreshold, '_normalThreshold must be > _underInventoryThreshold');
@@ -661,7 +666,10 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     require(_thresholds.simulate < 9500, 'Simulate must be < 9500');
     require(_thresholds.baseLowPct >= 100 && _thresholds.baseLowPct <= 10000, 'Invalid base low percent');
     require(_thresholds.baseHighPct >= 100 && _thresholds.baseHighPct <= 10000, 'Invalid base high percent');
-    require(_thresholds.limitReservePct >= 100 && _thresholds.limitReservePct <= 10000 - _thresholds.simulate, 'Invalid limit reserve percent');
+    require(
+      _thresholds.limitReservePct >= 100 && _thresholds.limitReservePct <= 10000 - _thresholds.simulate,
+      'Invalid limit reserve percent'
+    );
     require(_thresholds.dtrDelta <= 10000, '_dtrDelta must be <= 10000');
     require(_thresholds.highVolatility >= _thresholds.someVolatility, '_highVolatility must be >= someVolatility');
     require(_thresholds.someVolatility <= 300, '_someVolatility must be <= 300');

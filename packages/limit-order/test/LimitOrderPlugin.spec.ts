@@ -71,9 +71,9 @@ describe('LimitOrders', () => {
     await swapTarget.mint(pool, poolWnative1, -600, 600, 10n**8n)
     await swapTarget.swapToLowerSqrtPrice(poolWnative1, encodePriceSqrt(1,2), wallet);
 
-    const pluginContractFacroty = await ethers.getContractFactory('LimitOrderTestPlugin');
+    const pluginContractFacroty = await ethers.getContractFactory('UpgradeableLimitOrderPluginTest');
     let pluginAddress = await poolWnative1.plugin();
-    let plugin = (pluginContractFacroty.attach(pluginAddress)) as any as LimitOrderTestPlugin;
+    let plugin = (pluginContractFacroty.attach(pluginAddress)) as any;
 
     await plugin.setLimitOrderManager(loModule);
     expect(await loModule.initialized(poolWnative1)).to.be.eq(false);

@@ -65,7 +65,5 @@ contract MockVolatilityOracle is IVolatilityOracle {
 
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {}
 
-  function initialize() external {
-
-  }
+  function initialize() external {}
 }

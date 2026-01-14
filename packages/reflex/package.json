@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/reflex-plugin",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "",
   "publishConfig": {
     "access": "public"
@@ -12,9 +12,9 @@
     "clean": "rm -rf node_modules artifacts cache typechain"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.9.3",
     "@cryptoalgebra/abstract-plugin": "workspace:^",
-    "@cryptoalgebra/integral-core": "1.2.9"
+    "@cryptoalgebra/integral-core": "1.2.9",
+    "@openzeppelin/contracts": "4.9.3"
   },
   "devDependencies": {
     "@cryptoalgebra/test-utils": "workspace:^"

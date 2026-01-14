@@ -12,7 +12,9 @@
     "clean": "rm -rf node_modules artifacts cache typechain"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.9.3"
+    "@openzeppelin/contracts": "4.9.3",
+    "@cryptoalgebra/abstract-plugin": "workspace:^",
+    "@cryptoalgebra/integral-core": "1.2.9"
   },
   "devDependencies": {
     "@cryptoalgebra/test-utils": "workspace:^"

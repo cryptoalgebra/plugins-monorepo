@@ -11,7 +11,8 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IAlgebraVirtual
 contract MockUpgradedFarmingProxyPluginImplementation {
   using Plugins for uint8;
 
-  bytes32 internal constant FARMING_PROXY_NAMESPACE = keccak256('algebra.storage.farmingproxy');
+
+  bytes32 internal constant FARMING_PROXY_NAMESPACE = 0xdefe014d06c76a87f6a6efbd410e650d6bcbb85e816546b55f626b436c8a1000;
 
   struct FarmingProxyLayoutV2 {
     address incentive;

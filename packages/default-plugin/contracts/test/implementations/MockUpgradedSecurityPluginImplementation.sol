@@ -8,8 +8,8 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPlugin
 /// @notice Extended version with new storage fields and functions
 /// @dev Demonstrates module upgrade while preserving existing storage
 contract MockUpgradedSecurityPluginImplementation {
-  /// @dev SAME namespace as original - ensures storage compatibility
-  bytes32 internal constant SECURITY_NAMESPACE = keccak256('algebra.storage.security');
+
+  bytes32 internal constant SECURITY_NAMESPACE = 0x9487542cdccfb581bd8b0a4955905336ba6ab384679a5f7877ee877650445f00;
 
   /// @dev EXTENDED storage layout - new fields MUST be added at the end
   struct SecurityLayoutV2 {

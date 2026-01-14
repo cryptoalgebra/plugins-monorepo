@@ -8,7 +8,7 @@ contract MockUpgradedVolatilityOraclePluginImplementation {
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
-  bytes32 internal constant VOLATILITY_ORACLE_STORAGE_SLOT = keccak256('algebra.storage.volatilityoracle');
+  bytes32 internal constant VOLATILITY_ORACLE_STORAGE_SLOT = 0x4cc5c36a434034246042af122c958f40937cad4aaa0154d3b81e721d7b524c00;
 
   struct VolatilityOracleLayoutV2 {
     uint16 timepointIndex;

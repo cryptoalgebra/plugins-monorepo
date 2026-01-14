@@ -18,7 +18,7 @@ export default {
       evm: 'paris',
       forking: {
         url: `https://rpc.ankr.com/base/${ANKR_API_KEY}`,
-        blockNumber: 39778348,
+        blockNumber: 40801000,
       },
     },
     localHardhat: {

@@ -9,7 +9,7 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 contract MockUpgradedDynamicFeePluginImplementation {
   using AlgebraFeeConfigurationU144Lib for AlgebraFeeConfiguration;
 
-  bytes32 internal constant DYNAMIC_FEE_NAMESPACE = keccak256('algebra.storage.dynamicfee');
+  bytes32 internal constant DYNAMIC_FEE_NAMESPACE = 0xfbbf1a562c70d290e080160018965a1e5db682cf55e666eca8f391a4ceef9a00;
 
   struct DynamicFeeLayoutV2 {
     AlgebraFeeConfigurationU144 feeConfig;

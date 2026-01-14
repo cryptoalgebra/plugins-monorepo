@@ -12,8 +12,11 @@ lerna-debug.log*
 **/artifacts/
 **/cache/
 **/typechain
-# Coverage
 
+#Deploy
+**/ignition/deployments/
+
+# Coverage
 **/coverage.json
 **/coverage
 

@@ -4,7 +4,8 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/alm-plugin/contracts/interfaces/IRebalanceManager.sol';
 
 contract MockUpgradedALMPluginImplementation {
-  bytes32 internal constant ALM_NAMESPACE = keccak256('algebra.storage.alm');
+
+  bytes32 internal constant ALM_NAMESPACE = 0x45cac7a29736c3b5f9d22ba10a55f4f53e0718585c05d584962ae10a219bbf00;
 
   struct AlmLayoutV2 {
     address rebalanceManager;

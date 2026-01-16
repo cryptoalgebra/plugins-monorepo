@@ -43,6 +43,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/alm-plugin/contracts/AlmPluginImplementation.sol',
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPluginImplementation.sol',
       '@cryptoalgebra/reflex-plugin/contracts/ReflexPluginImplementation.sol',
+      '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol'
     ],
   },
   solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,

@@ -6,13 +6,10 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: "0x51a744E9FEdb15842c3080d0937C99A365C6c358",
+  algebraFactory: "0x10253594A832f967994b44f33411940533302ACb",
   
   // Farming center address (optional, can be set later)
-  farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
-  
-  // Security registry address (optional, can be set later)
-  securityRegistry: "0x0000000000000000000000000000000000000000",
+  farmingCenter: "0x658E287E9C820484f5808f687dC4863B552de37D",
 
   // Reflex router (optional, can be set later)
   reflexRouter: "0x0000000000000000000000000000000000000000",
@@ -188,6 +185,14 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     after: [upgradeAndInitialize]
   });
 
+  const algebraFactory = m.contractAt("IAlgebraFactory", config.algebraFactory, {
+    id: "AlgebraFactory"
+  });
+
+  // ============= SECURITY REGISTRY =============
+  // Always deploy SecurityRegistry for the target AlgebraFactory.
+  const securityRegistry = m.contract("SecurityRegistry", [config.algebraFactory], { id: "SecurityRegistry" });
+
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
   // Set farming address if provided
@@ -198,13 +203,17 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     });
   }
 
-  // Set security registry if provided
-  if (config.securityRegistry !== "0x0000000000000000000000000000000000000000") {
-    m.call(factory, "setSecurityRegistry", [config.securityRegistry], {
-      id: "SetSecurityRegistry",
-      after: [upgradeAndInitialize]
-    });
-  }
+  // Always set SecurityRegistry (either provided or freshly deployed)
+  m.call(factory, "setSecurityRegistry", [securityRegistry], {
+    id: "SetSecurityRegistry",
+    after: [upgradeAndInitialize, securityRegistry]
+  });
+
+  // Set DefaultPluginFactory in AlgebraFactory
+  m.call(algebraFactory, "setDefaultPluginFactory", [factoryProxy], {
+    id: "SetDefaultPluginFactory",
+    after: [upgradeAndInitialize]
+  });
 
   // Set Reflex defaults if provided
   if (config.reflexRouter !== "0x0000000000000000000000000000000000000000") {
@@ -225,6 +234,7 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     factory,
     factoryImpl,
     factoryProxy,
+    securityRegistry,
     ...m.useModule(PluginImplementationModule)
   };
 });

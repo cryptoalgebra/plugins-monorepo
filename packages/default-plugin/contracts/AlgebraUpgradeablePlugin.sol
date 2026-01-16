@@ -11,6 +11,7 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
+import '@cryptoalgebra/reflex-plugin/contracts/ReflexConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
@@ -24,7 +25,8 @@ contract AlgebraUpgradeablePlugin is
   DynamicFeeConnector,
   FarmingProxyConnector,
   AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  ReflexConnector
 {
   using Plugins for uint8;
 
@@ -36,6 +38,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _reflexImpl Reflex implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -43,7 +46,8 @@ contract AlgebraUpgradeablePlugin is
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _reflexImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -51,27 +55,36 @@ contract AlgebraUpgradeablePlugin is
     FarmingProxyConnector(_farmingProxyImpl)
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    ReflexConnector(_reflexImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry
+    address securityRegistry,
+    address reflexRouter,
+    bytes32 reflexConfigId
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
 
+    // Reflex is optional at deployment time: router can be set later.
+    if (reflexRouter != address(0)) {
+      _initializeReflex(reflexRouter, reflexConfigId);
+    }
+
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](6);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[5] = REFLEX_MODULE_NAME;
     return activeModules;
   }
 
@@ -81,7 +94,8 @@ contract AlgebraUpgradeablePlugin is
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      REFLEX_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -167,7 +181,7 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function beforeSwap(
-    address,
+    address sender,
     address,
     bool,
     int256,
@@ -180,8 +194,14 @@ contract AlgebraUpgradeablePlugin is
     _checkStatus(msg.sender);
 
     _writeTimepoint();
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee = _getCurrentFee(volatilityAverage);
+    
+    uint24 fee;
+    if(sender == _getReflexRouter()){
+      fee = 1;
+    } else {
+      uint88 volatilityAverage = _getAverageVolatilityLast();
+      fee = _getCurrentFee(volatilityAverage);
+    }
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
@@ -192,8 +212,8 @@ contract AlgebraUpgradeablePlugin is
     bool zeroToOne,
     int256,
     uint160,
-    int256,
-    int256,
+    int256 amount0Delta,
+    int256 amount1Delta,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();
@@ -203,6 +223,10 @@ contract AlgebraUpgradeablePlugin is
 
     // Obtain TWAP and trigger rebalance
     _triggerAlmRebalance(tick);
+
+    // Reflex  
+    bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
+    _reflexAfterSwapDelegate(triggerPoolId, amount0Delta, amount1Delta, zeroToOne, tx.origin);
 
     return IAlgebraPlugin.afterSwap.selector;
   }

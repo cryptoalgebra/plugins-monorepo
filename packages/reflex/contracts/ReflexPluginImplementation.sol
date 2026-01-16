@@ -62,12 +62,16 @@ contract ReflexPluginImplementation is IReflexPluginImplementation {
     address recipient
   ) external returns (uint256 profit, address profitToken) {
     ReflexStorage.Layout storage layout = ReflexStorage.layout();
-
+    address router = layout.reflexRouter;
+    if(router == address(0)) {
+      return (0, address(0));
+    }
+    
     uint256 swapAmountIn = uint256(amount0Delta > 0 ? amount0Delta : amount1Delta);
 
     // Failsafe: Use try-catch to prevent router failures from breaking the main swap
     try
-      IReflexRouter(layout.reflexRouter).triggerBackrun(triggerPoolId, uint112(swapAmountIn), zeroForOne, recipient, layout.reflexConfigId)
+      IReflexRouter(router).triggerBackrun(triggerPoolId, uint112(swapAmountIn), zeroForOne, recipient, layout.reflexConfigId)
     returns (uint256 backrunProfit, address backrunProfitToken) {
       return (backrunProfit, backrunProfitToken);
     } catch {

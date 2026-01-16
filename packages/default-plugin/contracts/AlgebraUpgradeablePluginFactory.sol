@@ -5,12 +5,9 @@ import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
-import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
@@ -35,6 +32,9 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Reflex
+    address defaultRouter;
+    bytes32 defaultConfigId;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -127,7 +127,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.defaultRouter, s.defaultConfigId);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -156,6 +156,16 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
   }
 
+  /// @inheritdoc IReflexPluginFactory
+  function defaultRouter() external view override returns (address) {
+    return _getStorage().defaultRouter;
+  }
+
+  /// @inheritdoc IReflexPluginFactory
+  function defaultConfigId() external view override returns (bytes32) {
+    return _getStorage().defaultConfigId;
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -177,6 +187,17 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc IReflexPluginFactory
+  function setRouter(address newRouter) external override onlyAdministrator {
+    _getStorage().defaultRouter = newRouter;
+  }
+
+  /// @inheritdoc IReflexPluginFactory
+  function setConfigId(bytes32 newConfigId) external override onlyAdministrator {
+    _getStorage().defaultConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
   }
 
   // ========== Upgrade Management ==========

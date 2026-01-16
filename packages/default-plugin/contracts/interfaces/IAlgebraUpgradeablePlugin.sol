@@ -9,8 +9,15 @@ interface IAlgebraUpgradeablePlugin {
   /// @param pool The pool address
   event PluginInitialized(address indexed pool);
 
-  /// @notice Initialize plugin with fee configuration and security registry
+  /// @notice Initialize plugin with fee configuration, security registry, and optional Reflex defaults
   /// @param feeConfig The initial fee configuration
   /// @param securityRegistry The security registry address
-  function initialize(AlgebraFeeConfiguration calldata feeConfig, address securityRegistry) external;
+  /// @param reflexRouter The default Reflex router
+  /// @param reflexConfigId The default Reflex config id
+  function initialize(
+    AlgebraFeeConfiguration calldata feeConfig,
+    address securityRegistry,
+    address reflexRouter,
+    bytes32 reflexConfigId
+  ) external;
 }

@@ -6,10 +6,10 @@ import { ethers } from 'hardhat';
 
 const CONFIG = {
   // Algebra core factory on the target network
-  algebraFactory: '0x63297eA574a29b396Ae821fE9830E8C7a677A7C9',
+  algebraFactory: '0x10253594A832f967994b44f33411940533302ACb',
 
   // Optional post-config
-  farmingCenter: '0xA64356A430066d1a956bd8631bCf151a1C482C5a',
+  farmingCenter: '0x658E287E9C820484f5808f687dC4863B552de37D',
 
   // Reflex defaults (optional; leave zero/bytes32(0) to skip)
   reflexRouter: '0x0000000000000000000000000000000000000000',

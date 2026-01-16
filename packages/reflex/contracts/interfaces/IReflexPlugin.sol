@@ -3,15 +3,7 @@ pragma solidity ^0.8.20;
 
 /// @title IReflexPlugin
 interface IReflexPlugin {
-  /// @notice Emitted when the Reflex router address is updated
-  /// @param oldRouter The address of the previous router contract
-  /// @param newRouter The address of the new router contract
-  event ReflexRouterUpdated(address oldRouter, address newRouter);
 
-  /// @notice Emitted when the Reflex configuration ID is updated
-  /// @param oldConfigId The previous configuration ID
-  /// @param newConfigId The new configuration ID
-  event ReflexConfigIdUpdated(bytes32 oldConfigId, bytes32 newConfigId);
 
   /// @notice Updates the Reflex router address
   /// @param router New router address to set

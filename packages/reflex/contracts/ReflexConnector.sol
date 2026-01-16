@@ -43,47 +43,31 @@ abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
     return abi.decode(returnData, (uint256, address));
   }
 
-  // ###### View Methods (Direct Storage Access) ######
-
-  /// @notice Get reflex router
-  function _getReflexRouter() internal view returns (address) {
-    return ReflexStorage.layout().reflexRouter;
-  }
-
-  /// @notice Get reflex config ID
-  function _getReflexConfigId() internal view returns (bytes32) {
-    return ReflexStorage.layout().reflexConfigId;
-  }
-
   // ###### Public Interface ######
 
   /// @notice Updates the Reflex router address
   /// @param _router New router address to set
   function setReflexRouter(address _router) external override {
     _authorize();
-    address oldRouter = _getReflexRouter();
     _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexRouter, (_router)));
-    emit ReflexRouterUpdated(oldRouter, _router);
   }
 
   /// @notice Returns the current router address
   /// @return The address of the current Reflex router contract
   function getRouter() public view override returns (address) {
-    return _getReflexRouter();
+    return ReflexStorage.layout().reflexRouter;
   }
 
   /// @notice Get the current configuration ID for profit distribution
   /// @return The current configuration ID
-  function getConfigId() external view override returns (bytes32) {
-    return _getReflexConfigId();
+  function getConfigId() public view override returns (bytes32) {
+    return ReflexStorage.layout().reflexConfigId;
   }
 
   /// @notice Updates the configuration ID for profit distribution
   /// @param _configId New configuration ID to set
   function setReflexConfigId(bytes32 _configId) external override {
     _authorize();
-    bytes32 oldConfigId = _getReflexConfigId();
     _delegateCall(reflexImplementation, abi.encodeCall(IReflexPluginImplementation.setReflexConfigId, (_configId)));
-    emit ReflexConfigIdUpdated(oldConfigId, _configId);
   }
 }

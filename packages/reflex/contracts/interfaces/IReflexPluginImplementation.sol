@@ -17,4 +17,7 @@ interface IReflexPluginImplementation {
     bool zeroForOne,
     address recipient
   ) external returns (uint256 profit, address profitToken);
+
+  event ReflexRouterUpdated(address oldRouter, address newRouter);
+  event ReflexConfigIdUpdated(bytes32 oldConfigId, bytes32 newConfigId);
 }

@@ -5,7 +5,7 @@ import { expect } from 'test-utils/expect';
 import { upgradeablePluginFixture } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
 
-import { MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
+import { MockFactory, MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
 
 describe('AlgebraUpgradeablePlugin', () => {
   let wallet: Wallet, other: Wallet;
@@ -13,6 +13,7 @@ describe('AlgebraUpgradeablePlugin', () => {
   let plugin: MockTimeAlgebraUpgradeablePlugin;
   let mockPool: MockPool;
   let mockPluginFactory: MockTimeUpgradeablePluginFactory;
+  let mockFactory: MockFactory;
 
   let minTick = getMinTick(60);
   let maxTick = getMaxTick(60);
@@ -26,7 +27,7 @@ describe('AlgebraUpgradeablePlugin', () => {
   });
 
   beforeEach('deploy test AlgebraUpgradeablePlugin', async () => {
-    ({ plugin, mockPool, mockPluginFactory } = await loadFixture(upgradeablePluginFixture));
+    ({ plugin, mockPool, mockPluginFactory, mockFactory } = await loadFixture(upgradeablePluginFixture));
   });
 
   // plain tests for hooks functionality
@@ -80,6 +81,36 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.AFTER_FLASH_FLAG);
         await mockPool.flash(wallet.address, 100, 100, '0x');
         expect((await mockPool.globalState()).pluginConfig).to.be.eq(defaultConfig);
+      });
+    });
+
+    describe('Reflex integration', () => {
+      it('swap does not revert if reflex router reverts', async () => {
+        // Give test signer permission to call plugin admin setters (ReflexConnector.setReflexRouter)
+        const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(
+          ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER')
+        );
+        await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, wallet.address);
+
+        // Attach plugin and init pool
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
+
+        // Ensure afterSwap hook is active
+        const defaultConfig = await plugin.defaultPluginConfig();
+        await mockPool.setPluginConfig(BigInt(PLUGIN_FLAGS.AFTER_SWAP_FLAG) | defaultConfig);
+
+        // Deploy reverting Reflex router and set it on the plugin
+        const routerFactory = await ethers.getContractFactory('MockReflexRouterRevert');
+        const router = await routerFactory.deploy();
+        await plugin.setReflexRouter(await router.getAddress());
+
+        // Add some liquidity to allow swaps
+        await mockPool.mint(wallet.address, wallet.address, -120, 120, 1000000n, '0x');
+        await mockPool.mint(wallet.address, wallet.address, minTick, maxTick, 1000000n, '0x');
+
+        // Swap triggers afterSwap -> Reflex, router reverts, but must not break the swap
+        await expect(mockPool.swapToTick(-10)).to.not.be.reverted;
       });
     });
   });
@@ -281,7 +312,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
         expect(moduleNames).to.be.an('array');
-        expect(moduleNames.length).to.eq(5);
+        expect(moduleNames.length).to.eq(6);
         
         // Check each module name is a non-empty string
         for (const moduleName of moduleNames) {
@@ -299,9 +330,10 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect(moduleNames).to.include('Farming Proxy Plugin');
         expect(moduleNames).to.include('Security Plugin');
         expect(moduleNames).to.include('ALM Plugin');
+        expect(moduleNames).to.include('Reflex Plugin');
         
         // Verify module count
-        expect(moduleNames).to.have.lengthOf(5);
+        expect(moduleNames).to.have.lengthOf(6);
       });
 
     });

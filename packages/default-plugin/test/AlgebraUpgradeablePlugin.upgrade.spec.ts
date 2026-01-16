@@ -21,7 +21,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = (await mockFactoryFactory.deploy()) as any as MockFactory;
 
-    // Deploy all 5 implementations
+    // Deploy module implementations
     const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
     const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
 
@@ -37,6 +37,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
+    const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
+    const reflexImpl = await reflexImplFactory.deploy();
+
     // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
     const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const pluginFactory = (await pluginFactoryFactory.deploy(
@@ -46,6 +49,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       farmingProxyImpl,
       almImpl,
       securityImpl,
+      reflexImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
 
@@ -78,7 +82,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       dynamicFeeImpl,
       farmingProxyImpl,
       almImpl,
-      securityImpl
+      securityImpl,
+      reflexImpl
     );
 
     return {
@@ -95,7 +100,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
       almImpl: await almImpl.getAddress(),
-      securityImpl: await securityImpl.getAddress()
+      securityImpl: await securityImpl.getAddress(),
+      reflexImpl: await reflexImpl.getAddress()
     };
   }
 

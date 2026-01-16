@@ -6,7 +6,7 @@ import { OracleTWAP, MockPool, MockTimeDSFactory, TestERC20 } from '../typechain
 import { tokensFixture } from 'test-utils/externalFixtures';
 import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION } from './shared/fixtures';
 
-// Deploy all 5 implementations for MockTimeDSFactory
+// Deploy module implementations for MockTimeDSFactory
 async function deployImplementations() {
   const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
   const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
@@ -23,12 +23,16 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
+  const reflexImpl = await reflexImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    reflexImpl: await reflexImpl.getAddress()
   };
 }
 
@@ -53,6 +57,7 @@ describe('OracleTWAP', () => {
       implementations.farmingProxyImpl,
       implementations.almImpl,
       implementations.securityImpl,
+      implementations.reflexImpl,
       DEFAULT_FEE_CONFIGURATION
     );
 

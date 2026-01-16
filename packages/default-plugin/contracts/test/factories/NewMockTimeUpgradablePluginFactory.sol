@@ -36,6 +36,9 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Reflex
+    address defaultRouter;
+    bytes32 defaultConfigId;
     // ALM
     address defaultRebalanceManager;
     uint32 defaultSlowTwapPeriod;
@@ -135,7 +138,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.defaultRouter, s.defaultConfigId);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -214,6 +217,25 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     s.defaultSlowTwapPeriod = slowPeriod;
     s.defaultFastTwapPeriod = fastPeriod;
     emit AlmTwapPeriods(slowPeriod, fastPeriod);
+  }
+
+  // ========== Reflex Configuration (IReflexPluginFactory) ==========
+
+  function defaultRouter() external view override returns (address) {
+    return _getStorage().defaultRouter;
+  }
+
+  function defaultConfigId() external view override returns (bytes32) {
+    return _getStorage().defaultConfigId;
+  }
+
+  function setRouter(address newRouter) external override {
+    _getStorage().defaultRouter = newRouter;
+  }
+
+  function setConfigId(bytes32 newConfigId) external override {
+    _getStorage().defaultConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
   }
 
   // ========== Upgrade Management ==========

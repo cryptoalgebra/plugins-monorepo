@@ -118,10 +118,18 @@ export async function deployNewPluginImplementation(
     farming?: string;
     alm?: string;
     security?: string;
+    reflex?: string;
   }
 ) {
   const mockFactoryAddress = await algebraFactory.getAddress();
   const pluginFactoryAddress = await pluginFactory.getAddress();
+
+  let reflexImplAddress = moduleOverrides?.reflex;
+  if (!reflexImplAddress) {
+    const ReflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
+    const reflexImpl = await ReflexImplFactory.deploy();
+    reflexImplAddress = await reflexImpl.getAddress();
+  }
 
   const NewPluginFactory = await ethers.getContractFactory(contractName);
   const newPluginImpl = await NewPluginFactory.deploy(
@@ -131,7 +139,8 @@ export async function deployNewPluginImplementation(
     moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
     moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
     moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
+    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
+    reflexImplAddress
   );
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };

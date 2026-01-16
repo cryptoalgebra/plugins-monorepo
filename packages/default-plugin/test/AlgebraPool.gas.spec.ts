@@ -38,7 +38,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   const minTick = getMinTick(tickSpacing);
   const maxTick = getMaxTick(tickSpacing);
 
-  // Deploy all 5 implementations
+  // Deploy module implementations
   async function deployImplementations() {
     const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
     const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
@@ -55,12 +55,16 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
+    const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
+    const reflexImpl = await reflexImplFactory.deploy();
+
     return {
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
       dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
       almImpl: await almImpl.getAddress(),
-      securityImpl: await securityImpl.getAddress()
+      securityImpl: await securityImpl.getAddress(),
+      reflexImpl: await reflexImpl.getAddress()
     };
   }
 
@@ -77,6 +81,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       implementations.farmingProxyImpl,
       implementations.almImpl,
       implementations.securityImpl,
+      implementations.reflexImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
 

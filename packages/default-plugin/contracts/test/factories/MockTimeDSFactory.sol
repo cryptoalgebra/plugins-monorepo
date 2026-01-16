@@ -38,6 +38,9 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Address of Security implementation
   address public immutable securityImplementation;
 
+  /// @notice Address of Reflex implementation
+  address public immutable reflexImplementation;
+
   /// @notice Default fee configuration
   AlgebraFeeConfiguration public defaultFeeConfiguration;
 
@@ -57,6 +60,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl,
+    address _reflexImpl,
     AlgebraFeeConfiguration memory _defaultFeeConfig
   ) {
     algebraFactory = _algebraFactory;
@@ -65,6 +69,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     farmingProxyImplementation = _farmingProxyImpl;
     almImplementation = _almImpl;
     securityImplementation = _securityImpl;
+    reflexImplementation = _reflexImpl;
     defaultFeeConfiguration = _defaultFeeConfig;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
@@ -76,7 +81,8 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      _reflexImpl
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -112,7 +118,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, address(0), bytes32(0));
 
     pluginByPool[pool] = plugin;
     return plugin;

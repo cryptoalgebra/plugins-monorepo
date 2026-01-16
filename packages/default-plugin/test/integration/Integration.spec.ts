@@ -601,8 +601,8 @@ describe('Integration Tests - Fork', function() {
       deadline = poolData.deadline;
     });
 
-    it('upgrades ALL 5 modules simultaneously and all work together', async () => {
-      // Deploy all 5 upgraded module implementations
+    it('upgrades ALL 6 modules simultaneously and all work together', async () => {
+      // Deploy all upgraded module implementations
       const UpgradedVolatilityFactory = await ethers.getContractFactory('MockUpgradedVolatilityOraclePluginImplementation');
       const upgradedVolatility = await UpgradedVolatilityFactory.deploy();
       
@@ -617,6 +617,9 @@ describe('Integration Tests - Fork', function() {
       
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
+
+      const ReflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
+      const reflexImpl = await ReflexImplFactory.deploy();
       
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
@@ -630,7 +633,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        await reflexImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();
@@ -693,7 +697,7 @@ describe('Integration Tests - Fork', function() {
       
     });
     it('Downgrades from super plugin to plugin with oracle module', async () => {
-      // Deploy all 5 upgraded module implementations
+      // Deploy all upgraded module implementations
       const UpgradedVolatilityFactory = await ethers.getContractFactory('MockUpgradedVolatilityOraclePluginImplementation');
       const upgradedVolatility = await UpgradedVolatilityFactory.deploy();
       
@@ -708,6 +712,9 @@ describe('Integration Tests - Fork', function() {
       
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
+
+      const ReflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
+      const reflexImpl = await ReflexImplFactory.deploy();
       
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
@@ -721,7 +728,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        await reflexImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();

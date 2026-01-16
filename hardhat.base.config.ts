@@ -123,6 +123,7 @@ export default {
       url: `https://rpc.mainnet.citrea.xyz`,
       chainId: 4114,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+      gasPrice: 100100
     }
   },
   etherscan: {

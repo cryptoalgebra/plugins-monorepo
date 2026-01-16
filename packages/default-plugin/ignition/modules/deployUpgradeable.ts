@@ -13,6 +13,12 @@ const config = {
   
   // Security registry address (optional, can be set later)
   securityRegistry: "0x0000000000000000000000000000000000000000",
+
+  // Reflex router (optional, can be set later)
+  reflexRouter: "0x0000000000000000000000000000000000000000",
+
+  // Reflex config id (optional, bytes32(0) keeps router default)
+  reflexConfigId: "0x0000000000000000000000000000000000000000000000000000000000000000",
   
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
@@ -50,12 +56,17 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
+  const reflexImpl = m.contract("ReflexPluginImplementation", [], {
+    id: "ReflexImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    reflexImpl
   };
 });
 
@@ -108,7 +119,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl, 
     farmingProxyImpl, 
     almImpl, 
-    securityImpl 
+    securityImpl,
+    reflexImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -119,7 +131,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    reflexImpl
   ], {
     id: "PluginImplementation"
   });
@@ -130,7 +143,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    reflexImpl
   };
 });
 
@@ -188,6 +202,21 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   if (config.securityRegistry !== "0x0000000000000000000000000000000000000000") {
     m.call(factory, "setSecurityRegistry", [config.securityRegistry], {
       id: "SetSecurityRegistry",
+      after: [upgradeAndInitialize]
+    });
+  }
+
+  // Set Reflex defaults if provided
+  if (config.reflexRouter !== "0x0000000000000000000000000000000000000000") {
+    m.call(factory, "setRouter", [config.reflexRouter], {
+      id: "SetReflexRouter",
+      after: [upgradeAndInitialize]
+    });
+  }
+
+  if (config.reflexConfigId !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    m.call(factory, "setConfigId", [config.reflexConfigId], {
+      id: "SetReflexConfigId",
       after: [upgradeAndInitialize]
     });
   }

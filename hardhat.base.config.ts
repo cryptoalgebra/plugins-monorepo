@@ -119,11 +119,19 @@ export default {
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    citrea: {
+      url: `https://rpc.mainnet.citrea.xyz`,
+      chainId: 4114,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    }
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: `${ETHERSCAN_API_KEY}`,
+    apiKey: {
+      citrea: "1111",
+    },
+
     customChains: [
       {
         network: 'seiTestnet',
@@ -165,6 +173,14 @@ export default {
           browserURL: 'https://artio.beratrail.io/',
         },
       },
+      {
+        network: 'citrea',
+        chainId: 4114,
+        urls: {
+          apiURL: 'https://explorer.mainnet.citrea.xyz/api/',
+          browserURL: 'https://explorer.mainnet.citrea.xyz/',
+        },
+      }
     ],
   },
 };

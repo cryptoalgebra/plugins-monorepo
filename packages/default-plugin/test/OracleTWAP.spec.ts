@@ -26,13 +26,17 @@ async function deployImplementations() {
   const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
   const reflexImpl = await reflexImplFactory.deploy();
 
+  const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+  const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
     securityImpl: await securityImpl.getAddress(),
-    reflexImpl: await reflexImpl.getAddress()
+    reflexImpl: await reflexImpl.getAddress(),
+    feeDiscountImpl: await feeDiscountImpl.getAddress(),
   };
 }
 
@@ -58,6 +62,7 @@ describe('OracleTWAP', () => {
       implementations.almImpl,
       implementations.securityImpl,
       implementations.reflexImpl,
+      implementations.feeDiscountImpl,
       DEFAULT_FEE_CONFIGURATION
     );
 

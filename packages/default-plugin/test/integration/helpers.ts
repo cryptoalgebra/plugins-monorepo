@@ -119,6 +119,7 @@ export async function deployNewPluginImplementation(
     alm?: string;
     security?: string;
     reflex?: string;
+    feeDiscount?: string;
   }
 ) {
   const mockFactoryAddress = await algebraFactory.getAddress();
@@ -131,6 +132,13 @@ export async function deployNewPluginImplementation(
     reflexImplAddress = await reflexImpl.getAddress();
   }
 
+  let feeDiscountImplAddress = moduleOverrides?.feeDiscount;
+  if (!feeDiscountImplAddress) {
+    const FeeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+    const feeDiscountImpl = await FeeDiscountImplFactory.deploy();
+    feeDiscountImplAddress = await feeDiscountImpl.getAddress();
+  }
+
   const NewPluginFactory = await ethers.getContractFactory(contractName);
   const newPluginImpl = await NewPluginFactory.deploy(
     mockFactoryAddress,
@@ -140,7 +148,8 @@ export async function deployNewPluginImplementation(
     moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
     moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
     moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
-    reflexImplAddress
+    reflexImplAddress,
+    feeDiscountImplAddress
   );
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };

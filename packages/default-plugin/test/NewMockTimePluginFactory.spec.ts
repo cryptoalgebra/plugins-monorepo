@@ -21,6 +21,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     almImpl: string;
     securityImpl: string;
     reflexImpl: string;
+    feeDiscountImpl: string;
   };
 
   before('prepare signers', async () => {
@@ -221,7 +222,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       // Upgrade
@@ -250,7 +252,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -426,7 +429,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       // Single upgrade call affects ALL plugins
@@ -462,7 +466,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -505,7 +510,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -578,7 +584,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -607,7 +614,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -871,7 +879,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),  // NEW security impl!
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       // Upgrade all plugins via beacon
@@ -903,7 +912,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -937,7 +947,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -981,7 +992,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       // Single upgrade call
@@ -1017,7 +1029,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -1097,7 +1110,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1131,7 +1145,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1176,7 +1191,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1217,7 +1233,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1255,7 +1272,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1295,7 +1313,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         implementations.securityImpl,
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1379,7 +1398,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),  // NEW security impl!
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       // Upgrade all plugins via beacon
@@ -1411,7 +1431,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -1445,7 +1466,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -1489,7 +1511,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       // Single upgrade call
@@ -1525,7 +1548,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.farmingProxyImpl,
         implementations.almImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.reflexImpl
+        implementations.reflexImpl,
+        implementations.feeDiscountImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());

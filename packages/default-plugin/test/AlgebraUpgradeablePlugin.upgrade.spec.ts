@@ -40,6 +40,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
     const reflexImpl = await reflexImplFactory.deploy();
 
+    const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+    const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
     // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
     const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const pluginFactory = (await pluginFactoryFactory.deploy(
@@ -50,8 +53,13 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       almImpl,
       securityImpl,
       reflexImpl,
+      feeDiscountImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
+
+    const feeDiscountRegistryFactory = await ethers.getContractFactory('FeeDiscountRegistry');
+    const feeDiscountRegistry = await feeDiscountRegistryFactory.deploy(await (mockFactory as any).getAddress());
+    await pluginFactory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
 
     // Deploy two mock pools
     const mockPoolFactory = await ethers.getContractFactory('MockPool');
@@ -83,7 +91,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       farmingProxyImpl,
       almImpl,
       securityImpl,
-      reflexImpl
+      reflexImpl,
+      feeDiscountImpl
     );
 
     return {
@@ -101,7 +110,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
       almImpl: await almImpl.getAddress(),
       securityImpl: await securityImpl.getAddress(),
-      reflexImpl: await reflexImpl.getAddress()
+      reflexImpl: await reflexImpl.getAddress(),
+      feeDiscountImpl: await feeDiscountImpl.getAddress(),
     };
   }
 

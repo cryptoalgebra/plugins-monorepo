@@ -620,6 +620,9 @@ describe('Integration Tests - Fork', function() {
 
       const ReflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
       const reflexImpl = await ReflexImplFactory.deploy();
+
+      const FeeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+      const feeDiscountImpl = await FeeDiscountImplFactory.deploy();
       
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
@@ -634,7 +637,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
         await upgradedSecurity.getAddress(),
-        await reflexImpl.getAddress()
+        await reflexImpl.getAddress(),
+        await feeDiscountImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();
@@ -715,6 +719,9 @@ describe('Integration Tests - Fork', function() {
 
       const ReflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
       const reflexImpl = await ReflexImplFactory.deploy();
+
+      const FeeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+      const feeDiscountImpl = await FeeDiscountImplFactory.deploy();
       
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
@@ -729,7 +736,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
         await upgradedSecurity.getAddress(),
-        await reflexImpl.getAddress()
+        await reflexImpl.getAddress(),
+        await feeDiscountImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();

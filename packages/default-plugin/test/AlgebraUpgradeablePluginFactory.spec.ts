@@ -275,6 +275,9 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
       const reflexImpl = await reflexImplFactory.deploy();
 
+      const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+      const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
       const newImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
       const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
       const pluginFactoryAddress = await pluginFactory.getAddress();
@@ -286,7 +289,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         ZERO_ADDRESS,
         ZERO_ADDRESS,
         ZERO_ADDRESS,
-        await reflexImpl.getAddress()
+        await reflexImpl.getAddress(),
+        await feeDiscountImpl.getAddress()
       );
 
       await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWithCustomError(
@@ -298,6 +302,9 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('administrator can upgrade plugins successfully', async () => {
       const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
       const reflexImpl = await reflexImplFactory.deploy();
+
+      const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+      const feeDiscountImpl = await feeDiscountImplFactory.deploy();
 
       // Create plugin first
       await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
@@ -313,7 +320,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         mockFactoryAddress,
         pluginFactoryAddress,
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS,
-        await reflexImpl.getAddress()
+        await reflexImpl.getAddress(),
+        await feeDiscountImpl.getAddress()
       );
 
       // Should succeed (wallet is owner)
@@ -328,6 +336,9 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
       const reflexImpl = await reflexImplFactory.deploy();
 
+      const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+      const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
       await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
       await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
       const pluginAddress = await pluginFactory.pluginByPool(other.address);
@@ -337,7 +348,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         await mockAlgebraFactory.getAddress(),
         await pluginFactory.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS,
-        await reflexImpl.getAddress()
+        await reflexImpl.getAddress(),
+        await feeDiscountImpl.getAddress()
       );
 
       await pluginFactory.upgradePlugins(await newImpl.getAddress());

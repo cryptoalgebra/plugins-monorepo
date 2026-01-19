@@ -58,13 +58,17 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
     const reflexImpl = await reflexImplFactory.deploy();
 
+    const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+    const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
     return {
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
       dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
       almImpl: await almImpl.getAddress(),
       securityImpl: await securityImpl.getAddress(),
-      reflexImpl: await reflexImpl.getAddress()
+      reflexImpl: await reflexImpl.getAddress(),
+      feeDiscountImpl: await feeDiscountImpl.getAddress(),
     };
   }
 
@@ -82,8 +86,13 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       implementations.almImpl,
       implementations.securityImpl,
       implementations.reflexImpl,
+      implementations.feeDiscountImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
+
+    const feeDiscountRegistryFactory = await ethers.getContractFactory('FeeDiscountRegistry');
+    const feeDiscountRegistry = await feeDiscountRegistryFactory.deploy(await fix.factory.getAddress());
+    await mockPluginFactory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
 
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
     const pluginAddress = await mockPluginFactory.pluginByPool(pool);

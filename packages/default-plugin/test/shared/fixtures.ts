@@ -52,13 +52,18 @@ async function deployImplementations() {
   const reflexImplFactory = await ethers.getContractFactory('ReflexPluginImplementation');
   const reflexImpl = await reflexImplFactory.deploy();
 
+  // 7. FeeDiscount Implementation
+  const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+  const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
     securityImpl: await securityImpl.getAddress(),
-    reflexImpl: await reflexImpl.getAddress()
+    reflexImpl: await reflexImpl.getAddress(),
+    feeDiscountImpl: await feeDiscountImpl.getAddress(),
   };
 }
 
@@ -73,6 +78,9 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   const { mockFactory } = await mockFactoryFixture();
   const implementations = await deployImplementations();
 
+  const feeDiscountRegistryFactory = await ethers.getContractFactory('FeeDiscountRegistry');
+  const feeDiscountRegistry = await feeDiscountRegistryFactory.deploy(await (mockFactory as any).getAddress());
+
   // Deploy MockTimeDSFactory with all implementations
   const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
   const mockPluginFactory = (await mockPluginFactoryFactory.deploy(
@@ -83,8 +91,11 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
     implementations.almImpl,
     implementations.securityImpl,
     implementations.reflexImpl,
+    implementations.feeDiscountImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeDSFactory;
+
+  await mockPluginFactory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
 
   // Deploy MockPool
   const mockPoolFactory = await ethers.getContractFactory('MockPool');
@@ -150,7 +161,8 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.farmingProxyImpl,
     implementations.almImpl,
     implementations.securityImpl,
-    implementations.reflexImpl
+    implementations.reflexImpl,
+    implementations.feeDiscountImpl
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
@@ -161,6 +173,10 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     await pluginImpl.getAddress(),
     DEFAULT_FEE_CONFIGURATION
   );
+
+  const feeDiscountRegistryFactory = await ethers.getContractFactory('FeeDiscountRegistry');
+  const feeDiscountRegistry = await feeDiscountRegistryFactory.deploy(mockFactoryAddress);
+  await pluginFactory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
 
   return {
     pluginFactory,
@@ -182,6 +198,9 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
   const { mockFactory } = await mockFactoryFixture();
   const implementations = await deployImplementations();
 
+  const feeDiscountRegistryFactory = await ethers.getContractFactory('FeeDiscountRegistry');
+  const feeDiscountRegistry = await feeDiscountRegistryFactory.deploy(await (mockFactory as any).getAddress());
+
   // Deploy MockTimeUpgradeablePluginFactory with all implementations
   const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeUpgradeablePluginFactory');
   const mockPluginFactory = (await mockPluginFactoryFactory.deploy(
@@ -192,8 +211,11 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
     implementations.almImpl,
     implementations.securityImpl,
     implementations.reflexImpl,
+    implementations.feeDiscountImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeUpgradeablePluginFactory;
+
+  await mockPluginFactory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
 
   // Deploy MockPool
   const mockPoolFactory = await ethers.getContractFactory('MockPool');
@@ -228,6 +250,7 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     almImpl: string;
     securityImpl: string;
     reflexImpl: string;
+    feeDiscountImpl: string;
   };
 }
 
@@ -266,7 +289,8 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
     implementations.farmingProxyImpl,
     implementations.almImpl,
     implementations.securityImpl,
-    implementations.reflexImpl
+    implementations.reflexImpl,
+    implementations.feeDiscountImpl
   );
 
   // Attach factory interface to proxy
@@ -278,6 +302,10 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
     await pluginImpl.getAddress(),  
     DEFAULT_FEE_CONFIGURATION
   );
+
+  const feeDiscountRegistryFactory = await ethers.getContractFactory('FeeDiscountRegistry');
+  const feeDiscountRegistry = await feeDiscountRegistryFactory.deploy(mockFactoryAddress);
+  await pluginFactory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
 
   return {
     mockPluginFactory: pluginFactory as any as NewMockTimeUpgradeablePluginFactory, 

@@ -35,6 +35,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     // Reflex
     address defaultRouter;
     bytes32 defaultConfigId;
+    // Fee discount
+    address feeDiscountRegistry;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -127,7 +129,13 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.defaultRouter, s.defaultConfigId);
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      s.defaultFeeConfiguration,
+      s.securityRegistry,
+      s.defaultRouter,
+      s.defaultConfigId,
+      s.feeDiscountRegistry
+    );
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -166,6 +174,11 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return _getStorage().defaultConfigId;
   }
 
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function feeDiscountRegistry() external view override returns (address) {
+    return _getStorage().feeDiscountRegistry;
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -187,6 +200,12 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override onlyAdministrator {
+    _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
+    emit FeeDiscountRegistry(newFeeDiscountRegistry);
   }
 
   /// @inheritdoc IReflexPluginFactory

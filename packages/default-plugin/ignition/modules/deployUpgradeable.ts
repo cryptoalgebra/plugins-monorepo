@@ -57,13 +57,18 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "ReflexImpl"
   });
 
+  const feeDiscountImpl = m.contract("FeeDiscountPluginImplementation", [], {
+    id: "FeeDiscountImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl
   };
 });
 
@@ -117,7 +122,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     farmingProxyImpl, 
     almImpl, 
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -129,7 +135,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     farmingProxyImpl,
     almImpl,
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl
   ], {
     id: "PluginImplementation"
   });
@@ -141,7 +148,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     farmingProxyImpl,
     almImpl,
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl
   };
 });
 
@@ -193,6 +201,10 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // Always deploy SecurityRegistry for the target AlgebraFactory.
   const securityRegistry = m.contract("SecurityRegistry", [config.algebraFactory], { id: "SecurityRegistry" });
 
+  // ============= FEE DISCOUNT REGISTRY =============
+  // Always deploy FeeDiscountRegistry for the target AlgebraFactory.
+  const feeDiscountRegistry = m.contract("FeeDiscountRegistry", [config.algebraFactory], { id: "FeeDiscountRegistry" });
+
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
   // Set farming address if provided
@@ -207,6 +219,12 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   m.call(factory, "setSecurityRegistry", [securityRegistry], {
     id: "SetSecurityRegistry",
     after: [upgradeAndInitialize, securityRegistry]
+  });
+
+  // Always set FeeDiscountRegistry (either provided or freshly deployed)
+  m.call(factory, "setFeeDiscountRegistry", [feeDiscountRegistry], {
+    id: "SetFeeDiscountRegistry",
+    after: [upgradeAndInitialize, feeDiscountRegistry]
   });
 
   // Set DefaultPluginFactory in AlgebraFactory
@@ -235,6 +253,7 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     factoryImpl,
     factoryProxy,
     securityRegistry,
+    feeDiscountRegistry,
     ...m.useModule(PluginImplementationModule)
   };
 });

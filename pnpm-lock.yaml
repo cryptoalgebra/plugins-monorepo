@@ -118,6 +118,9 @@ importers:
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
         version: link:../volatility-oracle
+      '@cryptoalgebra/whitelist-fee-discount-plugin':
+        specifier: workspace:^
+        version: link:../whitelist-fee-discount
       '@openzeppelin/contracts':
         specifier: ^4.9.3
         version: 4.9.3

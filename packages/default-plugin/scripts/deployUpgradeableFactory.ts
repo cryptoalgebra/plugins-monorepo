@@ -71,6 +71,10 @@ async function main() {
   const reflexImpl = await ReflexImpl.deploy();
   await reflexImpl.waitForDeployment();
 
+  const FeeDiscountImpl = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+  const feeDiscountImpl = await FeeDiscountImpl.deploy();
+  await feeDiscountImpl.waitForDeployment();
+
   console.log('Implementations:', {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
@@ -78,6 +82,7 @@ async function main() {
     almImpl: await almImpl.getAddress(),
     securityImpl: await securityImpl.getAddress(),
     reflexImpl: await reflexImpl.getAddress(),
+    feeDiscountImpl: await feeDiscountImpl.getAddress(),
   });
 
   // ----------------------------
@@ -115,7 +120,8 @@ async function main() {
     await farmingProxyImpl.getAddress(),
     await almImpl.getAddress(),
     await securityImpl.getAddress(),
-    await reflexImpl.getAddress()
+    await reflexImpl.getAddress(),
+    await feeDiscountImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
   console.log('PluginImplementation:', await pluginImpl.getAddress());
@@ -153,6 +159,15 @@ async function main() {
   console.log('SecurityRegistry:', securityRegistryAddress);
 
   // ----------------------------
+  // 7b) Deploy FeeDiscountRegistry
+  // ----------------------------
+  const FeeDiscountRegistry = await ethers.getContractFactory('FeeDiscountRegistry');
+  const feeDiscountRegistry = await FeeDiscountRegistry.deploy(algebraFactory);
+  await feeDiscountRegistry.waitForDeployment();
+  const feeDiscountRegistryAddress = await feeDiscountRegistry.getAddress();
+  console.log('FeeDiscountRegistry:', feeDiscountRegistryAddress);
+
+  // ----------------------------
   // 8) Post-deploy configuration
   // ----------------------------
   if (CONFIG.farmingCenter !== ethers.ZeroAddress) {
@@ -164,6 +179,12 @@ async function main() {
   {
     const tx = await factory.setSecurityRegistry(securityRegistryAddress);
     console.log('setSecurityRegistry tx:', tx.hash);
+    await tx.wait();
+  }
+
+  {
+    const tx = await factory.setFeeDiscountRegistry(feeDiscountRegistryAddress);
+    console.log('setFeeDiscountRegistry tx:', tx.hash);
     await tx.wait();
   }
 
@@ -197,6 +218,7 @@ async function main() {
     factoryImpl: await factoryImpl.getAddress(),
     pluginImpl: await pluginImpl.getAddress(),
     securityRegistry: securityRegistryAddress,
+    feeDiscountRegistry: feeDiscountRegistryAddress,
   });
 }
 

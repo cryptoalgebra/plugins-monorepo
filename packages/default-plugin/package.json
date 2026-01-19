@@ -19,6 +19,7 @@
     "@cryptoalgebra/reflex-plugin": "workspace:^",
     "@cryptoalgebra/safety-switch-plugin": "workspace:^",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
+    "@cryptoalgebra/whitelist-fee-discount-plugin": "workspace:^",
     "@openzeppelin/contracts": "^4.9.3",
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },

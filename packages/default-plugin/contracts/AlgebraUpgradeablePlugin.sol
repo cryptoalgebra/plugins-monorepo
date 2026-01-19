@@ -12,6 +12,7 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol'
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 import '@cryptoalgebra/reflex-plugin/contracts/ReflexConnector.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
@@ -26,7 +27,8 @@ contract AlgebraUpgradeablePlugin is
   FarmingProxyConnector,
   AlmConnector,
   SecurityConnector,
-  ReflexConnector
+  ReflexConnector,
+  FeeDiscountConnector
 {
   using Plugins for uint8;
 
@@ -39,6 +41,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
   /// @param _reflexImpl Reflex implementation address
+  /// @param _feeDiscountImpl FeeDiscount implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -47,7 +50,8 @@ contract AlgebraUpgradeablePlugin is
     address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl,
-    address _reflexImpl
+    address _reflexImpl,
+    address _feeDiscountImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -56,6 +60,7 @@ contract AlgebraUpgradeablePlugin is
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
     ReflexConnector(_reflexImpl)
+    FeeDiscountConnector(_feeDiscountImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
@@ -63,7 +68,8 @@ contract AlgebraUpgradeablePlugin is
     AlgebraFeeConfiguration calldata feeConfig,
     address securityRegistry,
     address reflexRouter,
-    bytes32 reflexConfigId
+    bytes32 reflexConfigId,
+    address feeDiscountRegistry
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
@@ -74,17 +80,21 @@ contract AlgebraUpgradeablePlugin is
       _initializeReflex(reflexRouter, reflexConfigId);
     }
 
+    // FeeDiscount 
+    _initializeFeeDiscount(feeDiscountRegistry);
+
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](6);
+    string[] memory activeModules = new string[](7);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
     activeModules[5] = REFLEX_MODULE_NAME;
+    activeModules[6] = FEE_DISCOUNT_MODULE_NAME;
     return activeModules;
   }
 
@@ -95,7 +105,8 @@ contract AlgebraUpgradeablePlugin is
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
       SECURITY_PLUGIN_CONFIG |
-      REFLEX_PLUGIN_CONFIG;
+      REFLEX_PLUGIN_CONFIG |
+      FEE_DISCOUNT_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -196,12 +207,16 @@ contract AlgebraUpgradeablePlugin is
     _writeTimepoint();
     
     uint24 fee;
-    if(sender == _getReflexRouter()){
+    address router = _getReflexRouter();
+    if(sender == router || tx.origin == router){
       fee = 1;
     } else {
       uint88 volatilityAverage = _getAverageVolatilityLast();
       fee = _getCurrentFee(volatilityAverage);
+      // Apply whitelist fee discount
+      fee = _applyFeeDiscount(tx.origin, msg.sender, fee);
     }
+
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 

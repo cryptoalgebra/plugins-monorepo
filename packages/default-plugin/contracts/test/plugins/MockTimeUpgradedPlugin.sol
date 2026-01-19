@@ -29,7 +29,8 @@ contract MockTimeUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
     address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl,
-    address _reflexImpl
+    address _reflexImpl,
+    address _feeDiscountImpl
   )
     MockTimeAlgebraUpgradeablePlugin(
       _factory,
@@ -39,7 +40,8 @@ contract MockTimeUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
       _farmingProxyImpl,
       _almImpl,
       _securityImpl,
-      _reflexImpl
+      _reflexImpl,
+      _feeDiscountImpl
     )
   {}
 

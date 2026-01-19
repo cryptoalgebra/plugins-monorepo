@@ -41,6 +41,9 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
   /// @notice Address of Reflex implementation
   address public immutable reflexImplementation;
 
+  /// @notice Address of FeeDiscount implementation
+  address public immutable feeDiscountImplementation;
+
   /// @notice Default fee configuration
   AlgebraFeeConfiguration public defaultFeeConfiguration;
 
@@ -53,6 +56,9 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
   /// @notice Security registry address
   address public securityRegistry;
 
+  /// @notice Fee discount registry address
+  address public feeDiscountRegistry;
+
   constructor(
     address _algebraFactory,
     address _volatilityOracleImpl,
@@ -61,6 +67,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     address _almImpl,
     address _securityImpl,
     address _reflexImpl,
+    address _feeDiscountImpl,
     AlgebraFeeConfiguration memory _defaultFeeConfig
   ) {
     algebraFactory = _algebraFactory;
@@ -70,6 +77,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     almImplementation = _almImpl;
     securityImplementation = _securityImpl;
     reflexImplementation = _reflexImpl;
+    feeDiscountImplementation = _feeDiscountImpl;
     defaultFeeConfiguration = _defaultFeeConfig;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
@@ -81,7 +89,8 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
       _farmingProxyImpl,
       _almImpl,
       _securityImpl,
-      _reflexImpl
+      _reflexImpl,
+      _feeDiscountImpl
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -116,7 +125,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, address(0), bytes32(0));
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, address(0), bytes32(0), feeDiscountRegistry);
 
     pluginByPool[pool] = plugin;
     return plugin;
@@ -131,6 +140,10 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
 
   function setSecurityRegistry(address _securityRegistry) external {
     securityRegistry = _securityRegistry;
+  }
+
+  function setFeeDiscountRegistry(address _feeDiscountRegistry) external {
+    feeDiscountRegistry = _feeDiscountRegistry;
   }
 
   // ========== Upgrade Management ==========

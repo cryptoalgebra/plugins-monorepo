@@ -114,6 +114,11 @@ export default {
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
       gasPrice: 50_000_000_000,
     },
+    baseTestnet: {
+      url: `https://base-sepolia-public.nodies.app`,
+      chainId: 84532,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
     artheraTestnet: {
       url: `https://rpc-test.arthera.net`,
       chainId: 10243,
@@ -172,6 +177,14 @@ export default {
         urls: {
           apiURL: 'https://api.routescan.io/v2/network/testnet/evm/80085/etherscan/api/',
           browserURL: 'https://artio.beratrail.io/',
+        },
+      },
+      {
+        network: "baseTestnet",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=84532",
+          browserURL: "https://sepolia.basescan.org",
         },
       },
       {

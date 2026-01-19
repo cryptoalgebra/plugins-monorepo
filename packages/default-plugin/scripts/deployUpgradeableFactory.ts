@@ -1,4 +1,6 @@
 import { ethers } from 'hardhat';
+import fs from 'fs';
+import path from 'path';
 
 // ============================
 // CONFIG (EDIT THESE)
@@ -44,36 +46,64 @@ async function main() {
   console.log('Deployer:', deployerAddress);
   console.log('AlgebraFactory:', algebraFactory);
 
+  const deploymentsDir = path.join(__dirname, '..', 'deployments');
+  fs.mkdirSync(deploymentsDir, { recursive: true });
+
+  const nowIso = new Date().toISOString().replace(/[:.]/g, '-');
+  const deploymentFile = path.join(deploymentsDir, `${network.name}-${network.chainId.toString()}-${nowIso}.json`);
+
+  const deployment: any = {
+    network: {
+      name: network.name,
+      chainId: network.chainId.toString(),
+    },
+    deployer: deployerAddress,
+    algebraFactory,
+    createdAt: new Date().toISOString(),
+    contracts: {},
+  };
+
+  const record = (name: string, address: string, constructorArgs?: any[]) => {
+    deployment.contracts[name] = { address, constructorArgs: constructorArgs ?? [] };
+  };
+
   // ----------------------------
   // 1) Deploy module implementations
   // ----------------------------
   const VolatilityOracleImpl = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
   const volatilityOracleImpl = await VolatilityOracleImpl.deploy();
   await volatilityOracleImpl.waitForDeployment();
+  record('VolatilityOraclePluginImplementation', await volatilityOracleImpl.getAddress());
 
   const DynamicFeeImpl = await ethers.getContractFactory('DynamicFeePluginImplementation');
   const dynamicFeeImpl = await DynamicFeeImpl.deploy();
   await dynamicFeeImpl.waitForDeployment();
+  record('DynamicFeePluginImplementation', await dynamicFeeImpl.getAddress());
 
   const FarmingProxyImpl = await ethers.getContractFactory('FarmingProxyPluginImplementation');
   const farmingProxyImpl = await FarmingProxyImpl.deploy();
   await farmingProxyImpl.waitForDeployment();
+  record('FarmingProxyPluginImplementation', await farmingProxyImpl.getAddress());
 
   const AlmImpl = await ethers.getContractFactory('AlmPluginImplementation');
   const almImpl = await AlmImpl.deploy();
   await almImpl.waitForDeployment();
+  record('AlmPluginImplementation', await almImpl.getAddress());
 
   const SecurityImpl = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await SecurityImpl.deploy();
   await securityImpl.waitForDeployment();
+  record('SecurityPluginImplementation', await securityImpl.getAddress());
 
   const ReflexImpl = await ethers.getContractFactory('ReflexPluginImplementation');
   const reflexImpl = await ReflexImpl.deploy();
   await reflexImpl.waitForDeployment();
+  record('ReflexPluginImplementation', await reflexImpl.getAddress());
 
   const FeeDiscountImpl = await ethers.getContractFactory('FeeDiscountPluginImplementation');
   const feeDiscountImpl = await FeeDiscountImpl.deploy();
   await feeDiscountImpl.waitForDeployment();
+  record('FeeDiscountPluginImplementation', await feeDiscountImpl.getAddress());
 
   console.log('Implementations:', {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
@@ -92,6 +122,7 @@ async function main() {
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.waitForDeployment();
   console.log('ProxyAdmin:', await proxyAdmin.getAddress());
+  record('ProxyAdmin', await proxyAdmin.getAddress());
 
   // ----------------------------
   // 3) Deploy factory proxy placeholder
@@ -107,6 +138,7 @@ async function main() {
   await factoryProxy.waitForDeployment();
   const factoryProxyAddress = await factoryProxy.getAddress();
   console.log('FactoryProxy:', factoryProxyAddress);
+  record('TransparentUpgradeableProxy', factoryProxyAddress, [await proxyAdmin.getAddress(), await proxyAdmin.getAddress(), '0x']);
 
   // ----------------------------
   // 4) Deploy plugin implementation (needs factoryProxy address)
@@ -125,6 +157,17 @@ async function main() {
   );
   await pluginImpl.waitForDeployment();
   console.log('PluginImplementation:', await pluginImpl.getAddress());
+  record('AlgebraUpgradeablePlugin', await pluginImpl.getAddress(), [
+    algebraFactory,
+    factoryProxyAddress,
+    await volatilityOracleImpl.getAddress(),
+    await dynamicFeeImpl.getAddress(),
+    await farmingProxyImpl.getAddress(),
+    await almImpl.getAddress(),
+    await securityImpl.getAddress(),
+    await reflexImpl.getAddress(),
+    await feeDiscountImpl.getAddress(),
+  ]);
 
   // ----------------------------
   // 5) Deploy factory implementation
@@ -133,6 +176,7 @@ async function main() {
   const factoryImpl = await FactoryImpl.deploy();
   await factoryImpl.waitForDeployment();
   console.log('FactoryImplementation:', await factoryImpl.getAddress());
+  record('AlgebraUpgradeablePluginFactory', await factoryImpl.getAddress());
 
   // ----------------------------
   // 6) Upgrade proxy -> factoryImpl and initialize
@@ -157,6 +201,7 @@ async function main() {
   await securityRegistry.waitForDeployment();
   const securityRegistryAddress = await securityRegistry.getAddress();
   console.log('SecurityRegistry:', securityRegistryAddress);
+  record('SecurityRegistry', securityRegistryAddress, [algebraFactory]);
 
   // ----------------------------
   // 7b) Deploy FeeDiscountRegistry
@@ -166,6 +211,7 @@ async function main() {
   await feeDiscountRegistry.waitForDeployment();
   const feeDiscountRegistryAddress = await feeDiscountRegistry.getAddress();
   console.log('FeeDiscountRegistry:', feeDiscountRegistryAddress);
+  record('FeeDiscountRegistry', feeDiscountRegistryAddress, [algebraFactory]);
 
   // ----------------------------
   // 8) Post-deploy configuration
@@ -220,6 +266,9 @@ async function main() {
     securityRegistry: securityRegistryAddress,
     feeDiscountRegistry: feeDiscountRegistryAddress,
   });
+
+  fs.writeFileSync(deploymentFile, JSON.stringify(deployment, null, 2));
+  console.log('Saved deployment file:', deploymentFile);
 }
 
 main().catch((err) => {

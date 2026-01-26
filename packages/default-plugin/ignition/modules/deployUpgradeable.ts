@@ -171,15 +171,13 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     after: [upgradeAndInitialize]
   });
 
-  // ----------------------------
-  // 7) Deploy SecurityRegistry
-  // ----------------------------
-  const SecurityRegistry = await ethers.getContractFactory('SecurityRegistry');
-  const securityRegistry = await SecurityRegistry.deploy(algebraFactory);
-  await securityRegistry.waitForDeployment();
-  const securityRegistryAddress = await securityRegistry.getAddress();
-  console.log('SecurityRegistry:', securityRegistryAddress);
+  const algebraFactory = m.contractAt("IAlgebraFactory", config.algebraFactory, {
+    id: "AlgebraFactory"
+  });
 
+  // ============= SECURITY REGISTRY =============
+  // Always deploy SecurityRegistry for the target AlgebraFactory.
+  const securityRegistry = m.contract("SecurityRegistry", [config.algebraFactory], { id: "SecurityRegistry" });
 
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
@@ -191,29 +189,23 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     });
   }
 
-  {
-    const tx = await factory.setSecurityRegistry(securityRegistryAddress);
-    console.log('setSecurityRegistry tx:', tx.hash);
-    await tx.wait();
-  }
+  // Always set SecurityRegistry (either provided or freshly deployed)
+  m.call(factory, "setSecurityRegistry", [securityRegistry], {
+    id: "SetSecurityRegistry",
+    after: [upgradeAndInitialize, securityRegistry]
+  });
 
   // Set DefaultPluginFactory in AlgebraFactory
-  const algebraFactoryContract = new ethers.Contract(
-    algebraFactory,
-    ['function setDefaultPluginFactory(address newDefaultPluginFactory) external'],
-    deployer
-  );
-  
-  {
-    const tx = await algebraFactoryContract.setDefaultPluginFactory(factoryProxyAddress);
-    console.log('setDefaultPluginFactory tx:', tx.hash);
-    await tx.wait();
-  }
+  m.call(algebraFactory, "setDefaultPluginFactory", [factoryProxy], {
+    id: "SetDefaultPluginFactory",
+    after: [upgradeAndInitialize]
+  });
 
   return {
     factory,
     factoryImpl,
     factoryProxy,
+    securityRegistry,
     ...m.useModule(PluginImplementationModule)
   };
 });

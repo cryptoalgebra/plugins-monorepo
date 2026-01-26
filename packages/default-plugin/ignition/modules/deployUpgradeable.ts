@@ -1,21 +1,17 @@
-import { ethers } from 'hardhat';
+// @ts-nocheck
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-// ============================
-// CONFIG (EDIT THESE)
-// ============================
+// ============= CONFIGURATION =============
+// Update these addresses for your deployment network
 
-const CONFIG = {
-  // Algebra core factory on the target network
-  algebraFactory: '0x10253594A832f967994b44f33411940533302ACb',
-
-  // Optional post-config
-  farmingCenter: '0x658E287E9C820484f5808f687dC4863B552de37D',
-
-  // Reflex defaults (optional; leave zero/bytes32(0) to skip)
-  reflexRouter: '0x0000000000000000000000000000000000000000',
-  reflexConfigId: '0x0000000000000000000000000000000000000000000000000000000000000000',
-
-  // Default fee config
+const config = {
+  // Algebra Core Factory address
+  algebraFactory: "0x51a744E9FEdb15842c3080d0937C99A365C6c358",
+  
+  // Farming center address (optional, can be set later)
+  farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
+  
+  // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
     alpha2: 12000,
@@ -23,125 +19,157 @@ const CONFIG = {
     beta2: 60000,
     gamma1: 59,
     gamma2: 8500,
-    baseFee: 100,
-  },
+    baseFee: 100
+  }
 };
 
-function requireConfiguredAddress(value: string, label: string): string {
-  if (!ethers.isAddress(value)) throw new Error(`Invalid ${label}: ${value}`);
-  if (value === ethers.ZeroAddress) throw new Error(`${label} is not configured (still zero address)`);
-  return value;
-}
+// ============= MODULE IMPLEMENTATIONS =============
+// Deploy all module implementation contracts
 
-async function main() {
-  const algebraFactory = requireConfiguredAddress(CONFIG.algebraFactory, 'CONFIG.algebraFactory');
-
-  const [deployer] = await ethers.getSigners();
-  const deployerAddress = await deployer.getAddress();
-
-  const network = await ethers.provider.getNetwork();
-  console.log('Network:', { chainId: network.chainId.toString(), name: network.name });
-  console.log('Deployer:', deployerAddress);
-  console.log('AlgebraFactory:', algebraFactory);
-
-  // ----------------------------
-  // 1) Deploy module implementations
-  // ----------------------------
-  const VolatilityOracleImpl = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
-  const volatilityOracleImpl = await VolatilityOracleImpl.deploy();
-  await volatilityOracleImpl.waitForDeployment();
-
-  const DynamicFeeImpl = await ethers.getContractFactory('DynamicFeePluginImplementation');
-  const dynamicFeeImpl = await DynamicFeeImpl.deploy();
-  await dynamicFeeImpl.waitForDeployment();
-
-  const FarmingProxyImpl = await ethers.getContractFactory('FarmingProxyPluginImplementation');
-  const farmingProxyImpl = await FarmingProxyImpl.deploy();
-  await farmingProxyImpl.waitForDeployment();
-
-  const AlmImpl = await ethers.getContractFactory('AlmPluginImplementation');
-  const almImpl = await AlmImpl.deploy();
-  await almImpl.waitForDeployment();
-
-  const SecurityImpl = await ethers.getContractFactory('SecurityPluginImplementation');
-  const securityImpl = await SecurityImpl.deploy();
-  await securityImpl.waitForDeployment();
-
-  const ReflexImpl = await ethers.getContractFactory('ReflexPluginImplementation');
-  const reflexImpl = await ReflexImpl.deploy();
-  await reflexImpl.waitForDeployment();
-
-  console.log('Implementations:', {
-    volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-    dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
-    farmingProxyImpl: await farmingProxyImpl.getAddress(),
-    almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress(),
-    reflexImpl: await reflexImpl.getAddress(),
+const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => {
+  const volatilityOracleImpl = m.contract("VolatilityOraclePluginImplementation", [], {
+    id: "VolatilityOracleImpl"
   });
 
-  // ----------------------------
-  // 2) Deploy ProxyAdmin
-  // ----------------------------
-  const ProxyAdmin = await ethers.getContractFactory('ProxyAdmin');
-  const proxyAdmin = await ProxyAdmin.deploy();
-  await proxyAdmin.waitForDeployment();
-  console.log('ProxyAdmin:', await proxyAdmin.getAddress());
+  const dynamicFeeImpl = m.contract("DynamicFeePluginImplementation", [], {
+    id: "DynamicFeeImpl"
+  });
 
-  // ----------------------------
-  // 3) Deploy factory proxy placeholder
-  // ----------------------------
-  // We need the proxy address before deploying the plugin implementation.
-  // So we deploy a TransparentUpgradeableProxy with a temporary implementation, then upgrade+initialize later.
-  const TransparentUpgradeableProxy = await ethers.getContractFactory('TransparentUpgradeableProxy');
-  const factoryProxy = await TransparentUpgradeableProxy.deploy(
-    await proxyAdmin.getAddress(), // temporary implementation
-    await proxyAdmin.getAddress(), // admin
-    '0x' // no init
-  );
-  await factoryProxy.waitForDeployment();
-  const factoryProxyAddress = await factoryProxy.getAddress();
-  console.log('FactoryProxy:', factoryProxyAddress);
+  const farmingProxyImpl = m.contract("FarmingProxyPluginImplementation", [], {
+    id: "FarmingProxyImpl"
+  });
 
-  // ----------------------------
-  // 4) Deploy plugin implementation (needs factoryProxy address)
-  // ----------------------------
-  const PluginImpl = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
-  const pluginImpl = await PluginImpl.deploy(
-    algebraFactory,
-    factoryProxyAddress,
-    await volatilityOracleImpl.getAddress(),
-    await dynamicFeeImpl.getAddress(),
-    await farmingProxyImpl.getAddress(),
-    await almImpl.getAddress(),
-    await securityImpl.getAddress(),
-    await reflexImpl.getAddress()
-  );
-  await pluginImpl.waitForDeployment();
-  console.log('PluginImplementation:', await pluginImpl.getAddress());
+  const almImpl = m.contract("AlmPluginImplementation", [], {
+    id: "AlmImpl"
+  });
 
-  // ----------------------------
-  // 5) Deploy factory implementation
-  // ----------------------------
-  const FactoryImpl = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
-  const factoryImpl = await FactoryImpl.deploy();
-  await factoryImpl.waitForDeployment();
-  console.log('FactoryImplementation:', await factoryImpl.getAddress());
+  const securityImpl = m.contract("SecurityPluginImplementation", [], {
+    id: "SecurityImpl"
+  });
 
-  // ----------------------------
-  // 6) Upgrade proxy -> factoryImpl and initialize
-  // ----------------------------
-  const initData = FactoryImpl.interface.encodeFunctionData('initialize', [
-    algebraFactory,
-    await pluginImpl.getAddress(),
-    CONFIG.defaultFeeConfig,
-  ]);
+  return {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl
+  };
+});
 
-  const upgradeTx = await proxyAdmin.upgradeAndCall(factoryProxyAddress, await factoryImpl.getAddress(), initData);
-  console.log('upgradeAndCall tx:', upgradeTx.hash);
-  await upgradeTx.wait();
+// ============= PROXY ADMIN =============
 
-  const factory = await ethers.getContractAt('AlgebraUpgradeablePluginFactory', factoryProxyAddress, deployer);
+const ProxyAdminModule = buildModule("ProxyAdmin", (m) => {
+  const proxyAdmin = m.contract("ProxyAdmin", [], {
+    id: "ProxyAdmin"
+  });
+
+  return { proxyAdmin };
+});
+
+// ============= FACTORY IMPLEMENTATION =============
+
+const FactoryImplementationModule = buildModule("FactoryImplementation", (m) => {
+  // Deploy factory implementation (for Transparent Proxy)
+  const factoryImpl = m.contract("AlgebraUpgradeablePluginFactory", [], {
+    id: "FactoryImplementation"
+  });
+
+  return { factoryImpl };
+});
+
+// ============= FACTORY PROXY =============
+
+const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
+  const { proxyAdmin } = m.useModule(ProxyAdminModule);
+
+  // Deploy TransparentUpgradeableProxy
+  // We use ProxyAdmin as a placeholder 
+  // The proxy is later upgraded to the real factory implementation and initialized
+  // via ProxyAdmin.upgradeAndCall.
+  const factoryProxy = m.contract("TransparentUpgradeableProxy", [
+    proxyAdmin,
+    proxyAdmin,
+    "0x"
+  ], {
+    id: "FactoryProxy"
+  });
+
+  return { factoryProxy };
+});
+
+// ============= PLUGIN IMPLEMENTATION =============
+
+const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
+  const { 
+    volatilityOracleImpl, 
+    dynamicFeeImpl, 
+    farmingProxyImpl, 
+    almImpl, 
+    securityImpl 
+  } = m.useModule(ModuleImplementationsModule);
+  const { factoryProxy } = m.useModule(FactoryProxyModule);
+
+  const pluginImpl = m.contract("AlgebraUpgradeablePlugin", [
+    config.algebraFactory,
+    factoryProxy,
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl
+  ], {
+    id: "PluginImplementation"
+  });
+
+  return { 
+    pluginImpl,
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl
+  };
+});
+
+// ============= MAIN DEPLOYMENT =============
+
+export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
+  // 1. Deploy all module implementations first
+  const moduleImpls = m.useModule(ModuleImplementationsModule);
+  
+  // 2. Deploy ProxyAdmin
+  const { proxyAdmin } = m.useModule(ProxyAdminModule);
+
+  // 3. Deploy factory proxy (placeholder implementation)
+  const { factoryProxy } = m.useModule(FactoryProxyModule);
+  
+  // 4. Deploy plugin implementation (needs factoryProxy address)
+  const { pluginImpl } = m.useModule(PluginImplementationModule);
+
+  // 5. Deploy factory implementation
+  const { factoryImpl } = m.useModule(FactoryImplementationModule);
+
+  // 6. Upgrade proxy to the real implementation and initialize it in one tx
+  const initData = m.encodeFunctionCall(factoryImpl, "initialize", [
+    config.algebraFactory,
+    pluginImpl,
+    config.defaultFeeConfig
+  ], {
+    id: "FactoryInitData"
+  });
+
+  const upgradeAndInitialize = m.call(proxyAdmin, "upgradeAndCall", [
+    factoryProxy,
+    factoryImpl,
+    initData
+  ], {
+    id: "UpgradeAndInitializeFactory"
+  });
+
+  const factory = m.contractAt("AlgebraUpgradeablePluginFactory", factoryProxy, {
+    id: "Factory",
+    after: [upgradeAndInitialize]
+  });
 
   // ----------------------------
   // 7) Deploy SecurityRegistry
@@ -152,13 +180,15 @@ async function main() {
   const securityRegistryAddress = await securityRegistry.getAddress();
   console.log('SecurityRegistry:', securityRegistryAddress);
 
-  // ----------------------------
-  // 8) Post-deploy configuration
-  // ----------------------------
-  if (CONFIG.farmingCenter !== ethers.ZeroAddress) {
-    const tx = await factory.setFarmingAddress(CONFIG.farmingCenter);
-    console.log('setFarmingAddress tx:', tx.hash);
-    await tx.wait();
+
+  // ============= POST-DEPLOYMENT CONFIGURATION =============
+
+  // Set farming address if provided
+  if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
+    m.call(factory, "setFarmingAddress", [config.farmingCenter], {
+      id: "SetFarmingAddress",
+      after: [upgradeAndInitialize]
+    });
   }
 
   {
@@ -173,34 +203,17 @@ async function main() {
     ['function setDefaultPluginFactory(address newDefaultPluginFactory) external'],
     deployer
   );
+  
   {
     const tx = await algebraFactoryContract.setDefaultPluginFactory(factoryProxyAddress);
     console.log('setDefaultPluginFactory tx:', tx.hash);
     await tx.wait();
   }
 
-  if (CONFIG.reflexRouter !== ethers.ZeroAddress) {
-    const tx = await factory.setRouter(CONFIG.reflexRouter);
-    console.log('setRouter tx:', tx.hash);
-    await tx.wait();
-  }
-
-  if (CONFIG.reflexConfigId !== ethers.ZeroHash) {
-    const tx = await factory.setConfigId(CONFIG.reflexConfigId);
-    console.log('setConfigId tx:', tx.hash);
-    await tx.wait();
-  }
-
-  console.log('Done:', {
-    factoryProxy: factoryProxyAddress,
-    proxyAdmin: await proxyAdmin.getAddress(),
-    factoryImpl: await factoryImpl.getAddress(),
-    pluginImpl: await pluginImpl.getAddress(),
-    securityRegistry: securityRegistryAddress,
-  });
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
+  return {
+    factory,
+    factoryImpl,
+    factoryProxy,
+    ...m.useModule(PluginImplementationModule)
+  };
 });

@@ -108,6 +108,11 @@ export default {
       chainId: 80085,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    baseTestnet: {
+      url: `https://base-sepolia-public.nodies.app`,
+      chainId: 84532,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
     maticMainnet: {
       url: `https://rpc-mainnet.matic.quiknode.pro`,
       chainId: 137,
@@ -155,6 +160,14 @@ export default {
         urls: {
           apiURL: 'https://explorer.mantle.xyz/api',
           browserURL: 'https://explorer.mantle.xyz/',
+        },
+      },
+      {
+        network: "baseTestnet",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=84532",
+          browserURL: "https://sepolia.basescan.org",
         },
       },
       {

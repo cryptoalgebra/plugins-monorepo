@@ -287,6 +287,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
   }
 
   function afterSwap(address pool, bool zeroToOne, int24 tick) external override onlyPlugin(pool) {
+    if (!initialized[pool]) return;
     int24 tickSpacing = getTickSpacing(pool);
     (int24 tickLower, int24 lower, int24 upper) = _getCrossedTicks(pool, tick, tickSpacing);
 

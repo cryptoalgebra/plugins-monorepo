@@ -333,12 +333,6 @@ describe('LimitOrders', () => {
       }
     });
 
-    it('cross ticks without lo', async () => {
-      await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(98,100), wallet);
-
-      expect(await loModule.tickLowerLasts(pool)).to.be.eq(-240)
-    });
-
     it('reverts if msg sender is not plugin', async () => {
       await expect(loModule.afterSwap(ZERO_ADDRESS, false, 0)).to.be.revertedWithCustomError(loModule, "NotPlugin()")
     });

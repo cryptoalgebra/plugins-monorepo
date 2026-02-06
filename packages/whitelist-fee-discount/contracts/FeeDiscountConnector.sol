@@ -49,7 +49,7 @@ abstract contract FeeDiscountConnector is IFeeDiscountPlugin, BaseConnector {
   }
 
   /// @inheritdoc IFeeDiscountPlugin
-  function feeDiscountRegistry() external view override returns (address) {
+  function feeDiscountRegistry() public view override returns (address) {
     return FeeDiscountStorage.layout().feeDiscountRegistry;
   }
 }

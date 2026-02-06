@@ -90,7 +90,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   function timepoints(
     uint256 index
   )
-    external
+    public
     view
     override
     returns (
@@ -109,7 +109,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @inheritdoc IVolatilityOracle
-  function timepointIndex() external view override returns (uint16) {
+  function timepointIndex() public view override returns (uint16) {
     return VolatilityOracleStorage.layout().timepointIndex;
   }
 

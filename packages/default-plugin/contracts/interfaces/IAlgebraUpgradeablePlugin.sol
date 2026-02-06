@@ -12,5 +12,20 @@ interface IAlgebraUpgradeablePlugin {
   /// @notice Initialize plugin with fee configuration and security registry
   /// @param feeConfig The initial fee configuration
   /// @param securityRegistry The security registry address
-  function initialize(AlgebraFeeConfiguration calldata feeConfig, address securityRegistry) external;
+  /// @param mevxRouter MEVX router address (optional)
+  /// @param mevxExecutor MEVX executor address (optional)
+  /// @param profitDistributor Profit distributor address (optional)
+  /// @param mevxConfigId MEVX config identifier
+  /// @param feeDiscountRegistry Fee discount registry address (optional)
+  /// @param limitOrderManager Limit order manager address (optional)
+  function initialize(
+    AlgebraFeeConfiguration calldata feeConfig,
+    address securityRegistry,
+    address mevxRouter,
+    address mevxExecutor,
+    address profitDistributor,
+    bytes32 mevxConfigId,
+    address feeDiscountRegistry,
+    address limitOrderManager
+  ) external;
 }

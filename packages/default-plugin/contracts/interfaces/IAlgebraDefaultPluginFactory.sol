@@ -5,10 +5,21 @@ pragma abicoder v2;
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+import '@cryptoalgebra/mevx-plugin/contracts/interfaces/IMevxPluginFactory.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/interfaces/IFeeDiscountPluginFactory.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 /// @title The interface for the AlgebraDefaultPluginFactory
 /// @notice This contract creates Algebra default plugins for Algebra liquidity pools
-interface IAlgebraDefaultPluginFactory is IBasePluginFactory, IFarmingPluginFactory, IDynamicFeePluginFactory, ISecurityPluginFactory {
+interface IAlgebraDefaultPluginFactory is
+  IBasePluginFactory,
+  IFarmingPluginFactory,
+  IDynamicFeePluginFactory,
+  ISecurityPluginFactory,
+  IMevxPluginFactory,
+  IFeeDiscountPluginFactory,
+  ILimitOrderPluginFactory
+{
   error OnlyAdministrator();
   error OnlyAlgebraFactory();
   error OnlyPoolsAdministrator();

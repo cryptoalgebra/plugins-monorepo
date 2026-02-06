@@ -11,6 +11,9 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
+import '@cryptoalgebra/mevx-plugin/contracts/interfaces/IMevxPluginFactory.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/interfaces/IFeeDiscountPluginFactory.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
@@ -35,6 +38,18 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
+
+    // MevX
+    address mevxRouter;
+    address mevxExecutor;
+    address profitDistributor;
+    bytes32 mevxConfigId;
+
+    // Fee Discount
+    address feeDiscountRegistry;
+
+    // Limit Orders
+    address limitOrderManager;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -127,7 +142,16 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      s.defaultFeeConfiguration,
+      s.securityRegistry,
+      s.mevxRouter,
+      s.mevxExecutor,
+      s.profitDistributor,
+      s.mevxConfigId,
+      s.feeDiscountRegistry,
+      s.limitOrderManager
+    );
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -156,6 +180,36 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
   }
 
+  /// @inheritdoc IMevxPluginFactory
+  function defaultMevxRouter() external view override returns (address) {
+    return _getStorage().mevxRouter;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultMevxExecutor() external view override returns (address) {
+    return _getStorage().mevxExecutor;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultProfitDistributor() external view override returns (address) {
+    return _getStorage().profitDistributor;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultConfigId() external view override returns (bytes32) {
+    return _getStorage().mevxConfigId;
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function feeDiscountRegistry() external view override returns (address) {
+    return _getStorage().feeDiscountRegistry;
+  }
+
+  /// @notice Default limit order manager address
+  function limitOrderManager() external view returns (address) {
+    return _getStorage().limitOrderManager;
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -177,6 +231,42 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxRouter(address newMevxRouter) external override onlyAdministrator {
+    _getStorage().mevxRouter = newMevxRouter;
+    emit DefaultMevxRouter(newMevxRouter);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxExecutor(address newMevxExecutor) external override onlyAdministrator {
+    _getStorage().mevxExecutor = newMevxExecutor;
+    emit DefaultMevxExecutor(newMevxExecutor);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setProfitDistributor(address newProfitDistributor) external override onlyAdministrator {
+    _getStorage().profitDistributor = newProfitDistributor;
+    emit DefaultProfitDistributor(newProfitDistributor);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setConfigId(bytes32 newConfigId) external override onlyAdministrator {
+    _getStorage().mevxConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override onlyAdministrator {
+    _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
+    emit FeeDiscountRegistry(newFeeDiscountRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
   // ========== Upgrade Management ==========

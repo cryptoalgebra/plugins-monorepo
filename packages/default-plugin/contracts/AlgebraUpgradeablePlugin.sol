@@ -141,7 +141,7 @@ contract AlgebraUpgradeablePlugin is
   ) external override onlyPool returns (bytes4, uint24) {
     // Security check
     // onlyPool guarantees msg.sender is the pool
-    if (desiredLiquidityDelta < 0) {
+    if (desiredLiquidityDelta <= 0) {
       _checkStatusOnBurn(msg.sender);
     } else {
       _checkStatus(msg.sender);

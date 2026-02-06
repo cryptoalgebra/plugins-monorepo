@@ -38,6 +38,21 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
     return abi.decode(returnData, (uint16));
   }
 
+  /// @notice Get fee and update factors using an explicit baseFee (e.g. dynamic fee)
+  /// @dev This avoids writing baseFee to storage on each swap.
+  function _getFeeAndUpdateFactorsWithBaseFee(
+    bool zeroToOne,
+    int24 currentTick,
+    int24 lastTick,
+    uint16 baseFee
+  ) internal returns (uint16) {
+    bytes memory returnData = _delegateCall(
+      slidingFeeImplementation,
+      abi.encodeCall(ISlidingFeePluginImplementation.getFeeAndUpdateFactorsWithBaseFee, (zeroToOne, currentTick, lastTick, baseFee))
+    );
+    return abi.decode(returnData, (uint16));
+  }
+
   /// @notice Set price change factor via delegatecall
   function _setPriceChangeFactor(uint16 newPriceChangeFactor) internal {
     _delegateCall(slidingFeeImplementation, abi.encodeCall(ISlidingFeePluginImplementation.setPriceChangeFactor, (newPriceChangeFactor)));
@@ -46,6 +61,10 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   /// @notice Set base fee via delegatecall
   function _setBaseFee(uint16 newBaseFee) internal {
     _delegateCall(slidingFeeImplementation, abi.encodeCall(ISlidingFeePluginImplementation.setBaseFee, (newBaseFee)));
+  }
+
+  function _setSlidingFeeEnabled(bool enabled) internal {
+    _delegateCall(slidingFeeImplementation, abi.encodeCall(ISlidingFeePluginImplementation.setSlidingFeeEnabled, (enabled)));
   }
 
   // ###### View Methods (Direct Storage Access) ######
@@ -84,6 +103,11 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   }
 
   /// @inheritdoc ISlidingFeePlugin
+  function slidingFeeEnabled() public view override returns (bool) {
+    return SlidingFeeStorage.layout().slidingFeeEnabled;
+  }
+
+  /// @inheritdoc ISlidingFeePlugin
   function setPriceChangeFactor(uint16 newPriceChangeFactor) external override {
     _authorize();
     _setPriceChangeFactor(newPriceChangeFactor);
@@ -95,5 +119,12 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
     _authorize();
     _setBaseFee(newBaseFee);
     emit BaseFee(newBaseFee);
+  }
+
+  /// @inheritdoc ISlidingFeePlugin
+  function setSlidingFeeEnabled(bool enabled) external override {
+    _authorize();
+    _setSlidingFeeEnabled(enabled);
+    emit SlidingFeeEnabled(enabled);
   }
 }

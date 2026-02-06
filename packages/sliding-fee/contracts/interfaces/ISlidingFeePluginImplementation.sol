@@ -7,8 +7,17 @@ pragma solidity =0.8.20;
 interface ISlidingFeePluginImplementation {
   function initializeSlidingFee(uint16 baseFee) external;
   function getFeeAndUpdateFactors(bool zeroToOne, int24 currentTick, int24 lastTick) external returns (uint16 fee);
+
+  function getFeeAndUpdateFactorsWithBaseFee(
+    bool zeroToOne,
+    int24 currentTick,
+    int24 lastTick,
+    uint16 baseFee
+  ) external returns (uint16 fee);
+
   function setPriceChangeFactor(uint16 newPriceChangeFactor) external;
   function setBaseFee(uint16 newBaseFee) external;
+  function setSlidingFeeEnabled(bool enabled) external;
   function getPriceChangeFactor() external view returns (uint16);
   function getBaseFee() external view returns (uint16);
   function getFeeFactors() external view returns (uint128 zeroToOneFeeFactor, uint128 oneToZeroFeeFactor);

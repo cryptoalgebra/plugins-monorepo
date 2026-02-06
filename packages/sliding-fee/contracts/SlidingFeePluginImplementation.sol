@@ -20,6 +20,7 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
     layout.feeFactors = SlidingFeeStorage.FeeFactors(uint128(1 << FEE_FACTOR_SHIFT), uint128(1 << FEE_FACTOR_SHIFT));
     layout.priceChangeFactor = 1000;
     layout.baseFee = baseFee;
+    layout.slidingFeeEnabled = false;
   }
 
   /// @notice Get fee and update factors
@@ -29,11 +30,32 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
   /// @return fee The calculated fee
   function getFeeAndUpdateFactors(bool zeroToOne, int24 currentTick, int24 lastTick) external returns (uint16 fee) {
     SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
-    SlidingFeeStorage.FeeFactors memory currentFeeFactors;
+    return _getFeeAndUpdateFactors(layout, zeroToOne, currentTick, lastTick, layout.baseFee);
+  }
 
+  function getFeeAndUpdateFactorsWithBaseFee(
+    bool zeroToOne,
+    int24 currentTick,
+    int24 lastTick,
+    uint16 baseFee
+  ) external returns (uint16 fee) {
+    SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
+    return _getFeeAndUpdateFactors(layout, zeroToOne, currentTick, lastTick, baseFee);
+  }
+
+  function _getFeeAndUpdateFactors(
+    SlidingFeeStorage.Layout storage layout,
+    bool zeroToOne,
+    int24 currentTick,
+    int24 lastTick,
+    uint16 baseFee
+  ) internal returns (uint16) {
     uint16 priceChangeFactor = layout.priceChangeFactor;
-    uint16 baseFee = layout.baseFee;
+    if (priceChangeFactor == 0) {
+      return baseFee == 0 ? uint16(1) : baseFee;
+    }
 
+    SlidingFeeStorage.FeeFactors memory currentFeeFactors;
     if (currentTick != lastTick) {
       currentFeeFactors = _calculateFeeFactors(layout, currentTick, lastTick, priceChangeFactor);
       layout.feeFactors = currentFeeFactors;
@@ -51,6 +73,10 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
       adjustedFee = 1;
     }
     return uint16(adjustedFee);
+  }
+
+  function setSlidingFeeEnabled(bool enabled) external {
+    SlidingFeeStorage.layout().slidingFeeEnabled = enabled;
   }
 
   /// @notice Set price change factor

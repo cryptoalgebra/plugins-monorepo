@@ -15,6 +15,7 @@ library SlidingFeeStorage {
     FeeFactors feeFactors;
     uint16 priceChangeFactor;
     uint16 baseFee;
+    bool slidingFeeEnabled;
   }
 
   function layout() internal pure returns (Layout storage l) {

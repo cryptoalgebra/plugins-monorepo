@@ -13,36 +13,70 @@ const config = {
 };
 
 // ============= MODULE IMPLEMENTATIONS =============
-// Deploy fresh module implementations for the new plugin version
+// Each module implementation is deployed separately for better resilience.
+// If deployment fails, Ignition can resume from the last successful module.
 
-const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => {
+const VolatilityOracleImplModule = buildModule("VolatilityOracleImpl", (m) => {
   const volatilityOracleImpl = m.contract("VolatilityOraclePluginImplementation", [], {
     id: "VolatilityOracleImpl"
   });
+  return { volatilityOracleImpl };
+});
 
+const DynamicFeeImplModule = buildModule("DynamicFeeImpl", (m) => {
   const dynamicFeeImpl = m.contract("DynamicFeePluginImplementation", [], {
     id: "DynamicFeeImpl"
   });
+  return { dynamicFeeImpl };
+});
 
+const FarmingProxyImplModule = buildModule("FarmingProxyImpl", (m) => {
   const farmingProxyImpl = m.contract("FarmingProxyPluginImplementation", [], {
     id: "FarmingProxyImpl"
   });
+  return { farmingProxyImpl };
+});
 
+const AlmImplModule = buildModule("AlmImpl", (m) => {
   const almImpl = m.contract("AlmPluginImplementation", [], {
     id: "AlmImpl"
   });
+  return { almImpl };
+});
 
+const SecurityImplModule = buildModule("SecurityImpl", (m) => {
   const securityImpl = m.contract("SecurityPluginImplementation", [], {
     id: "SecurityImpl"
   });
+  return { securityImpl };
+});
 
-  return { 
-    volatilityOracleImpl,
-    dynamicFeeImpl,
-    farmingProxyImpl,
-    almImpl,
-    securityImpl
-  };
+const MevxImplModule = buildModule("MevxImpl", (m) => {
+  const mevxImpl = m.contract("MevxPluginImplementation", [], {
+    id: "MevxImpl"
+  });
+  return { mevxImpl };
+});
+
+const FeeDiscountImplModule = buildModule("FeeDiscountImpl", (m) => {
+  const feeDiscountImpl = m.contract("FeeDiscountPluginImplementation", [], {
+    id: "FeeDiscountImpl"
+  });
+  return { feeDiscountImpl };
+});
+
+const LimitOrderImplModule = buildModule("LimitOrderImpl", (m) => {
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
+  });
+  return { limitOrderImpl };
+});
+
+const SlidingFeeImplModule = buildModule("SlidingFeeImpl", (m) => {
+  const slidingFeeImpl = m.contract("SlidingFeePluginImplementation", [], {
+    id: "SlidingFeeImpl"
+  });
+  return { slidingFeeImpl };
 });
 
 // ============= PLUGIN UPGRADE MODULE =============
@@ -54,24 +88,32 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
 
 export default buildModule("UpgradePlugins", (m) => {
   
-  // Deploy new module implementations
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
-  } = m.useModule(ModuleImplementationsModule);
+  // Deploy new module implementations (each in its own module for resilience)
+  const { volatilityOracleImpl } = m.useModule(VolatilityOracleImplModule);
+  const { dynamicFeeImpl } = m.useModule(DynamicFeeImplModule);
+  const { farmingProxyImpl } = m.useModule(FarmingProxyImplModule);
+  const { almImpl } = m.useModule(AlmImplModule);
+  const { securityImpl } = m.useModule(SecurityImplModule);
+  const { mevxImpl } = m.useModule(MevxImplModule);
+  const { feeDiscountImpl } = m.useModule(FeeDiscountImplModule);
+  const { limitOrderImpl } = m.useModule(LimitOrderImplModule);
+  const { slidingFeeImpl } = m.useModule(SlidingFeeImplModule);
 
   // Deploy new plugin implementation
   const newPluginImpl = m.contract("AlgebraUpgradeablePlugin", [
     config.algebraFactory,
     config.factoryProxyAddress,
-    volatilityOracleImpl,
-    dynamicFeeImpl,
-    farmingProxyImpl,
-    almImpl,
-    securityImpl
+    [
+      volatilityOracleImpl,
+      dynamicFeeImpl,
+      farmingProxyImpl,
+      almImpl,
+      securityImpl,
+      mevxImpl,
+      feeDiscountImpl,
+      limitOrderImpl,
+      slidingFeeImpl
+    ]
   ], {
     id: "NewPluginImplementation"
   });
@@ -92,6 +134,10 @@ export default buildModule("UpgradePlugins", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl,
+    feeDiscountImpl,
+    limitOrderImpl,
+    slidingFeeImpl
   };
 });

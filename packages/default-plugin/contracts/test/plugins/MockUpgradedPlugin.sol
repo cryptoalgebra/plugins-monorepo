@@ -17,7 +17,21 @@ contract MockUpgradedPlugin is AlgebraUpgradeablePlugin {
     address _almImpl,
     address _securityImpl
   )
-    AlgebraUpgradeablePlugin(_factory, _pluginFactory, _volatilityOracleImpl, _dynamicFeeImpl, _farmingProxyImpl, _almImpl, _securityImpl)
+    AlgebraUpgradeablePlugin(
+      _factory,
+      _pluginFactory,
+      ConnectorImplementations({
+        volatilityOracle: _volatilityOracleImpl,
+        dynamicFee: _dynamicFeeImpl,
+        farmingProxy: _farmingProxyImpl,
+        alm: _almImpl,
+        security: _securityImpl,
+        mevx: address(0),
+        feeDiscount: address(0),
+        limitOrder: address(0),
+        slidingFee: address(0)
+      })
+    )
   {}
 
   /// @notice New function only available in upgraded version

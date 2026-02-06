@@ -50,6 +50,18 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Security registry address
   address public securityRegistry;
 
+  /// @notice Fee discount registry (optional)
+  address public feeDiscountRegistry;
+
+  /// @notice Limit order manager (optional)
+  address public limitOrderManager;
+
+  /// @notice MEVX defaults (optional)
+  address public mevxRouter;
+  address public mevxExecutor;
+  address public profitDistributor;
+  bytes32 public mevxConfigId;
+
   constructor(
     address _algebraFactory,
     address _volatilityOracleImpl,
@@ -76,7 +88,11 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      address(0),
+      address(0),
+      address(0),
+      address(0)
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -112,7 +128,16 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      defaultFeeConfiguration,
+      securityRegistry,
+      mevxRouter,
+      mevxExecutor,
+      profitDistributor,
+      mevxConfigId,
+      feeDiscountRegistry,
+      limitOrderManager
+    );
 
     pluginByPool[pool] = plugin;
     return plugin;
@@ -127,6 +152,21 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
 
   function setSecurityRegistry(address _securityRegistry) external {
     securityRegistry = _securityRegistry;
+  }
+
+  function setFeeDiscountRegistry(address _feeDiscountRegistry) external {
+    feeDiscountRegistry = _feeDiscountRegistry;
+  }
+
+  function setLimitOrderManager(address _limitOrderManager) external {
+    limitOrderManager = _limitOrderManager;
+  }
+
+  function setMevxConfig(address _mevxRouter, address _mevxExecutor, address _profitDistributor, bytes32 _mevxConfigId) external {
+    mevxRouter = _mevxRouter;
+    mevxExecutor = _mevxExecutor;
+    profitDistributor = _profitDistributor;
+    mevxConfigId = _mevxConfigId;
   }
 
   // ========== Upgrade Management ==========

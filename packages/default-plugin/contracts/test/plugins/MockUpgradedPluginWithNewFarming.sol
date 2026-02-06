@@ -26,7 +26,11 @@ contract MockUpgradedPluginWithNewFarming is MockTimeAlgebraUpgradeablePlugin {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      address(0),
+      address(0),
+      address(0),
+      address(0)
     )
   {}
 

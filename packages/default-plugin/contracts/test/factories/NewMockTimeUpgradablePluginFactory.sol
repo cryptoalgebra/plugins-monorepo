@@ -36,6 +36,18 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address farmingAddress;
     // Security
     address securityRegistry;
+
+    // MevX
+    address mevxRouter;
+    address mevxExecutor;
+    address profitDistributor;
+    bytes32 mevxConfigId;
+
+    // Fee Discount
+    address feeDiscountRegistry;
+
+    // Limit Orders
+    address limitOrderManager;
     // ALM
     address defaultRebalanceManager;
     uint32 defaultSlowTwapPeriod;
@@ -135,7 +147,16 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      s.defaultFeeConfiguration,
+      s.securityRegistry,
+      s.mevxRouter,
+      s.mevxExecutor,
+      s.profitDistributor,
+      s.mevxConfigId,
+      s.feeDiscountRegistry,
+      s.limitOrderManager
+    );
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -199,6 +220,58 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
   function setSecurityRegistry(address newSecurityRegistry) external override {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  // ========== MevX / Whitelist / Limit Orders (Mock) ==========
+
+  function defaultMevxRouter() external view override returns (address) {
+    return _getStorage().mevxRouter;
+  }
+
+  function defaultMevxExecutor() external view override returns (address) {
+    return _getStorage().mevxExecutor;
+  }
+
+  function defaultProfitDistributor() external view override returns (address) {
+    return _getStorage().profitDistributor;
+  }
+
+  function defaultConfigId() external view override returns (bytes32) {
+    return _getStorage().mevxConfigId;
+  }
+
+  function setMevxRouter(address newMevxRouter) external override {
+    _getStorage().mevxRouter = newMevxRouter;
+    emit DefaultMevxRouter(newMevxRouter);
+  }
+
+  function setMevxExecutor(address newMevxExecutor) external override {
+    _getStorage().mevxExecutor = newMevxExecutor;
+    emit DefaultMevxExecutor(newMevxExecutor);
+  }
+
+  function setProfitDistributor(address newProfitDistributor) external override {
+    _getStorage().profitDistributor = newProfitDistributor;
+    emit DefaultProfitDistributor(newProfitDistributor);
+  }
+
+  function setConfigId(bytes32 newConfigId) external override {
+    _getStorage().mevxConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
+  }
+
+  function feeDiscountRegistry() external view override returns (address) {
+    return _getStorage().feeDiscountRegistry;
+  }
+
+  function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override {
+    _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
+    emit FeeDiscountRegistry(newFeeDiscountRegistry);
+  }
+
+  function setLimitOrderManager(address newLimitOrderManager) external override {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
   /// @notice Set the default ALM rebalance manager

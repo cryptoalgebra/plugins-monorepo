@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
-
 /// @title Fee Auction Plugin Factory Interface
 /// @notice Interface for the Fee Auction Plugin Factory
-interface IFeeAuctionPluginFactory is IBasePluginFactory {
+interface IFeeAuctionPluginFactory{
   /// @notice Emitted when a new plugin is created
   /// @param pool The pool address
   /// @param plugin The created plugin address

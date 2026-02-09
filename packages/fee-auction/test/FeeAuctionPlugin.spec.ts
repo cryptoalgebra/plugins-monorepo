@@ -2,12 +2,21 @@ import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import {
+  FeeAuctionPluginTest,
+  FeeAuctionPluginImplementation,
+  MockFactory,
+  MockPluginFactory,
+  MockPool,
+} from '../typechain';
 
 describe('FeeAuctionPlugin', () => {
   let wallet: Wallet, other: Wallet;
-  let feeAuctionPlugin: any;
-  let mockPool: any;
-  let mockFactory: any;
+  let feeAuctionImplementation: FeeAuctionPluginImplementation;
+  let pluginProxy: FeeAuctionPluginTest;
+  let mockPool: MockPool;
+  let mockFactory: MockFactory;
+  let mockPluginFactory: MockPluginFactory;
 
   const DEFAULT_BASE_FEE = 3000; // 0.3%
   const DEFAULT_MEV_TAX_MULTIPLIER = 1000; // multiplier for priority fee
@@ -17,149 +26,200 @@ describe('FeeAuctionPlugin', () => {
   async function feeAuctionPluginFixture() {
     const [deployer] = await ethers.getSigners();
 
-    // Deploy mock factory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
+    // Deploy MockFactory
+    const MockFactoryFactory = await ethers.getContractFactory('MockFactory');
+    const mockFactory = await MockFactoryFactory.deploy() as any as MockFactory;
 
-    // Deploy mock pool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
+    // Deploy MockPluginFactory
+    const MockPluginFactoryFactory = await ethers.getContractFactory('MockPluginFactory');
+    const mockPluginFactory = await MockPluginFactoryFactory.deploy() as any as MockPluginFactory;
 
-    // Deploy FeeAuctionPluginTest
-    const FeeAuctionPluginTest = await ethers.getContractFactory('FeeAuctionPluginTest');
-    const plugin = await FeeAuctionPluginTest.deploy(
-      mockPool.target,
-      mockFactory.target,
-      deployer.address, // pluginFactory
-      DEFAULT_BASE_FEE,
-      DEFAULT_MEV_TAX_MULTIPLIER,
-      DEFAULT_MAX_MEV_TAX,
-      DEFAULT_MEV_TAX_ENABLED
+    // Deploy MockPool
+    const MockPoolFactory = await ethers.getContractFactory('MockPool');
+    const mockPool = await MockPoolFactory.deploy() as any as MockPool;
+
+    // Deploy FeeAuction Implementation (shared logic contract)
+    const implFactory = await ethers.getContractFactory('FeeAuctionPluginImplementation');
+    const feeAuctionImplementation = await implFactory.deploy() as any as FeeAuctionPluginImplementation;
+
+    // Deploy Plugin Logic (with factory, pluginFactory, and implementation address as immutables)
+    const pluginLogicFactory = await ethers.getContractFactory('FeeAuctionPluginTest');
+    const pluginLogic = await pluginLogicFactory.deploy(
+      await mockFactory.getAddress(),
+      await mockPluginFactory.getAddress(),
+      await feeAuctionImplementation.getAddress()
     );
 
-    // Set plugin in mock pool
-    await mockPool.setPlugin(plugin.target);
+    // Deploy Beacon
+    const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
+    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    return { plugin, mockPool, mockFactory };
+    // Deploy Proxy
+    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const proxy = await AlgebraPluginProxyFactory.deploy(
+      await beacon.getAddress(),
+      await mockPool.getAddress(),
+      '0x' // Empty data - we'll call initialize separately
+    );
+
+    // Get proxy as FeeAuctionPluginTest interface
+    const pluginProxy = await ethers.getContractAt('FeeAuctionPluginTest', await proxy.getAddress()) as any as FeeAuctionPluginTest;
+
+    // Set plugin in mockPool to proxy address
+    await mockPool.setPlugin(await pluginProxy.getAddress());
+
+    // Initialize plugin via pluginFactory (onlyPluginFactory modifier)
+    await mockPluginFactory.setDefaultImplementation(await pluginProxy.getAddress());
+
+    return { pluginProxy, mockPool, mockFactory, mockPluginFactory, feeAuctionImplementation };
   }
 
-  async function feeAuctionPluginFactoryFixture() {
-    const [deployer] = await ethers.getSigners();
-
-    // Deploy mock factory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
-
-    // Deploy mock pool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy FeeAuctionPluginFactory
-    const FeeAuctionPluginFactory = await ethers.getContractFactory('FeeAuctionPluginFactory');
-    const pluginFactory = await FeeAuctionPluginFactory.deploy(
-      mockFactory.target,
+  async function initializePlugin(pluginProxy: FeeAuctionPluginTest) {
+    await pluginProxy.initialize(
       DEFAULT_BASE_FEE,
       DEFAULT_MEV_TAX_MULTIPLIER,
       DEFAULT_MAX_MEV_TAX,
       DEFAULT_MEV_TAX_ENABLED
     );
-
-    return { pluginFactory, mockPool, mockFactory };
   }
 
   beforeEach('deploy FeeAuctionPlugin', async () => {
     [wallet, other] = await (ethers as any).getSigners();
     const fixture = await loadFixture(feeAuctionPluginFixture);
-    feeAuctionPlugin = fixture.plugin;
+    pluginProxy = fixture.pluginProxy;
     mockPool = fixture.mockPool;
     mockFactory = fixture.mockFactory;
+    mockPluginFactory = fixture.mockPluginFactory;
+    feeAuctionImplementation = fixture.feeAuctionImplementation;
   });
 
   describe('#initialization', () => {
     it('should initialize with correct base fee', async () => {
-      expect(await feeAuctionPlugin.baseFee()).to.equal(DEFAULT_BASE_FEE);
+      await initializePlugin(pluginProxy);
+      expect(await pluginProxy.baseFee()).to.equal(DEFAULT_BASE_FEE);
     });
 
     it('should initialize with correct MEV tax multiplier', async () => {
-      expect(await feeAuctionPlugin.mevTaxMultiplier()).to.equal(DEFAULT_MEV_TAX_MULTIPLIER);
+      await initializePlugin(pluginProxy);
+      expect(await pluginProxy.mevTaxMultiplier()).to.equal(DEFAULT_MEV_TAX_MULTIPLIER);
     });
 
     it('should initialize with correct max MEV tax', async () => {
-      expect(await feeAuctionPlugin.maxMevTax()).to.equal(DEFAULT_MAX_MEV_TAX);
+      await initializePlugin(pluginProxy);
+      expect(await pluginProxy.maxMevTax()).to.equal(DEFAULT_MAX_MEV_TAX);
     });
 
     it('should initialize with MEV tax enabled', async () => {
-      expect(await feeAuctionPlugin.mevTaxEnabled()).to.equal(DEFAULT_MEV_TAX_ENABLED);
+      await initializePlugin(pluginProxy);
+      expect(await pluginProxy.mevTaxEnabled()).to.equal(DEFAULT_MEV_TAX_ENABLED);
     });
 
     it('should have correct default plugin config', async () => {
-      const pluginConfig = await feeAuctionPlugin.defaultPluginConfig();
+      const pluginConfig = await pluginProxy.defaultPluginConfig();
       // BEFORE_SWAP_FLAG (1) | DYNAMIC_FEE (128) = 129
       expect(pluginConfig).to.equal(129);
+    });
+
+    it('should not allow double initialization', async () => {
+      await initializePlugin(pluginProxy);
+      await expect(
+        initializePlugin(pluginProxy)
+      ).to.be.reverted;
+    });
+
+    it('should only allow admin to initialize', async () => {
+      await expect(
+        pluginProxy.connect(other).initialize(DEFAULT_BASE_FEE, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED)
+      ).to.be.reverted;
     });
   });
 
   describe('#setBaseFee', () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
+    });
+
     it('should update base fee', async () => {
       const newBaseFee = 5000;
-      await expect(feeAuctionPlugin.setBaseFee(newBaseFee))
-        .to.emit(feeAuctionPlugin, 'BaseFeeChanged')
+      await expect(pluginProxy.setBaseFee(newBaseFee))
+        .to.emit(pluginProxy, 'BaseFeeChanged')
         .withArgs(newBaseFee);
-      expect(await feeAuctionPlugin.baseFee()).to.equal(newBaseFee);
+      expect(await pluginProxy.baseFee()).to.equal(newBaseFee);
     });
 
     it('should revert if base fee exceeds maximum', async () => {
       const invalidFee = 1000001; // > 100%
-      await expect(feeAuctionPlugin.setBaseFee(invalidFee)).to.be.revertedWith('Base fee too high');
+      await expect(pluginProxy.setBaseFee(invalidFee)).to.be.revertedWith('Base fee too high');
+    });
+
+    it('should revert if called by non-admin', async () => {
+      await expect(pluginProxy.connect(other).setBaseFee(5000)).to.be.reverted;
     });
   });
 
   describe('#setMevTaxParameters', () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
+    });
+
     it('should update MEV tax parameters', async () => {
       const newMultiplier = 2000;
       const newMaxTax = 20000;
-      await expect(feeAuctionPlugin.setMevTaxParameters(newMultiplier, newMaxTax))
-        .to.emit(feeAuctionPlugin, 'MevTaxParametersChanged')
+      await expect(pluginProxy.setMevTaxParameters(newMultiplier, newMaxTax))
+        .to.emit(pluginProxy, 'MevTaxParametersChanged')
         .withArgs(newMultiplier, newMaxTax);
-      expect(await feeAuctionPlugin.mevTaxMultiplier()).to.equal(newMultiplier);
-      expect(await feeAuctionPlugin.maxMevTax()).to.equal(newMaxTax);
+      expect(await pluginProxy.mevTaxMultiplier()).to.equal(newMultiplier);
+      expect(await pluginProxy.maxMevTax()).to.equal(newMaxTax);
     });
 
     it('should revert if max MEV tax exceeds maximum', async () => {
       const newMultiplier = 2000;
       const invalidMaxTax = 1000001; // > 100%
-      await expect(feeAuctionPlugin.setMevTaxParameters(newMultiplier, invalidMaxTax)).to.be.revertedWith(
+      await expect(pluginProxy.setMevTaxParameters(newMultiplier, invalidMaxTax)).to.be.revertedWith(
         'Max MEV tax too high'
       );
+    });
+
+    it('should revert if called by non-admin', async () => {
+      await expect(pluginProxy.connect(other).setMevTaxParameters(2000, 20000)).to.be.reverted;
     });
   });
 
   describe('#setMevTaxEnabled', () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
+    });
+
     it('should enable MEV tax', async () => {
-      await feeAuctionPlugin.setMevTaxEnabled(false);
-      await expect(feeAuctionPlugin.setMevTaxEnabled(true))
-        .to.emit(feeAuctionPlugin, 'MevTaxEnabledChanged')
+      await pluginProxy.setMevTaxEnabled(false);
+      await expect(pluginProxy.setMevTaxEnabled(true))
+        .to.emit(pluginProxy, 'MevTaxEnabledChanged')
         .withArgs(true);
-      expect(await feeAuctionPlugin.mevTaxEnabled()).to.equal(true);
+      expect(await pluginProxy.mevTaxEnabled()).to.equal(true);
     });
 
     it('should disable MEV tax', async () => {
-      await expect(feeAuctionPlugin.setMevTaxEnabled(false))
-        .to.emit(feeAuctionPlugin, 'MevTaxEnabledChanged')
+      await expect(pluginProxy.setMevTaxEnabled(false))
+        .to.emit(pluginProxy, 'MevTaxEnabledChanged')
         .withArgs(false);
-      expect(await feeAuctionPlugin.mevTaxEnabled()).to.equal(false);
+      expect(await pluginProxy.mevTaxEnabled()).to.equal(false);
+    });
+
+    it('should revert if called by non-admin', async () => {
+      await expect(pluginProxy.connect(other).setMevTaxEnabled(false)).to.be.reverted;
     });
   });
 
   describe('#beforeSwap', () => {
-    beforeEach('initialize pool', async () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
       // Initialize the pool first to set plugin config
       await mockPool.initialize(BigInt('79228162514264337593543950336')); // sqrt(1) * 2^96
     });
 
     it('should return base fee as feeOverride', async () => {
       // When MEV tax is disabled, only base fee should be returned
-      await feeAuctionPlugin.setMevTaxEnabled(false);
+      await pluginProxy.setMevTaxEnabled(false);
 
       // Use swapToTick which calls beforeSwap internally
       await mockPool.swapToTick(0);
@@ -186,6 +246,10 @@ describe('FeeAuctionPlugin', () => {
   });
 
   describe('#beforeInitialize', () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
+    });
+
     it('should update plugin config in pool', async () => {
       // Initialize the pool through the plugin
       await mockPool.initialize(BigInt('79228162514264337593543950336')); // sqrt(1) * 2^96
@@ -196,57 +260,18 @@ describe('FeeAuctionPlugin', () => {
     });
   });
 
-  describe('FeeAuctionPluginFactory', () => {
-    let pluginFactory: any;
-
-    beforeEach('deploy factory', async () => {
-      const fixture = await loadFixture(feeAuctionPluginFactoryFixture);
-      pluginFactory = fixture.pluginFactory;
-      mockFactory = fixture.mockFactory;
-      mockPool = fixture.mockPool;
+  describe('#getActiveModuleNames', () => {
+    it('should return correct module names', async () => {
+      const moduleNames = await pluginProxy.getActiveModuleNames();
+      expect(moduleNames).to.have.lengthOf(1);
+      expect(moduleNames[0]).to.equal('Fee Auction Plugin');
     });
+  });
 
-    it('should have correct default parameters', async () => {
-      expect(await pluginFactory.defaultBaseFee()).to.equal(DEFAULT_BASE_FEE);
-      expect(await pluginFactory.defaultMevTaxMultiplier()).to.equal(DEFAULT_MEV_TAX_MULTIPLIER);
-      expect(await pluginFactory.defaultMaxMevTax()).to.equal(DEFAULT_MAX_MEV_TAX);
-      expect(await pluginFactory.defaultMevTaxEnabled()).to.equal(DEFAULT_MEV_TAX_ENABLED);
-    });
-
-    it('should create plugin via beforeCreatePoolHook', async () => {
-      // Grant factory role to test wallet
-      const ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = ethers.keccak256(
-        ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR')
-      );
-      await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR, wallet.address);
-
-      // Call beforeCreatePoolHook as if from factory
-      // This should fail because msg.sender is not algebraFactory
-      await expect(
-        pluginFactory.beforeCreatePoolHook(mockPool.target, wallet.address, wallet.address, wallet.address, wallet.address, '0x')
-      ).to.be.revertedWith('Only Algebra factory');
-    });
-
-    it('should update default parameters', async () => {
-      const newBaseFee = 5000;
-      const newMultiplier = 2000;
-      const newMaxTax = 20000;
-      const newEnabled = false;
-
-      // This should fail because 'other' doesn't have admin role and is not owner
-      await expect(
-        pluginFactory.connect(other).setDefaultParameters(newBaseFee, newMultiplier, newMaxTax, newEnabled)
-      ).to.be.revertedWith('Only administrator');
-
-      // wallet is the owner, so it should work directly
-      await expect(pluginFactory.setDefaultParameters(newBaseFee, newMultiplier, newMaxTax, newEnabled))
-        .to.emit(pluginFactory, 'DefaultParametersChanged')
-        .withArgs(newBaseFee, newMultiplier, newMaxTax, newEnabled);
-
-      expect(await pluginFactory.defaultBaseFee()).to.equal(newBaseFee);
-      expect(await pluginFactory.defaultMevTaxMultiplier()).to.equal(newMultiplier);
-      expect(await pluginFactory.defaultMaxMevTax()).to.equal(newMaxTax);
-      expect(await pluginFactory.defaultMevTaxEnabled()).to.equal(newEnabled);
+  describe('#implementation', () => {
+    it('should have correct implementation address', async () => {
+      const implAddress = await pluginProxy.getFeeAuctionImplementation();
+      expect(implAddress).to.equal(await feeAuctionImplementation.getAddress());
     });
   });
 });

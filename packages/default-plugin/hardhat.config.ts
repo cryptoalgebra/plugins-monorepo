@@ -43,7 +43,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/alm-plugin/contracts/AlmPluginImplementation.sol',
       '@cryptoalgebra/mevx-plugin/contracts/MevxPluginImplementation.sol',
       '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountPluginImplementation.sol',
-      '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountPluginImplementation.sol',
+      '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountRegistry.sol',
       '@cryptoalgebra/sliding-fee-plugin/contracts/SlidingFeePluginImplementation.sol',
       '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPluginImplementation.sol',
       '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderManager.sol',

@@ -630,7 +630,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        ethers.ZeroAddress
       );
       
       const superPluginAddress = await superPlugin.getAddress();
@@ -721,7 +722,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        ethers.ZeroAddress
       );
       
       const superPluginAddress = await superPlugin.getAddress();

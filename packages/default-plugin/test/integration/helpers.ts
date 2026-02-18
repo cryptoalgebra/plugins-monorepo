@@ -118,6 +118,7 @@ export async function deployNewPluginImplementation(
     farming?: string;
     alm?: string;
     security?: string;
+    mevx?: string;
   }
 ) {
   const mockFactoryAddress = await algebraFactory.getAddress();
@@ -131,7 +132,8 @@ export async function deployNewPluginImplementation(
     moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
     moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
     moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
+    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
+    moduleOverrides?.mevx ?? MODULE_IMPLEMENTATIONS.MEVX
   );
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };

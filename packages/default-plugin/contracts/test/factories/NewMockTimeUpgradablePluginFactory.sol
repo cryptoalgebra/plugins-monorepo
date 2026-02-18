@@ -9,6 +9,7 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+import '@cryptoalgebra/mevx-plugin/contracts/interfaces/IMevxPluginFactory.sol';
 
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
@@ -36,6 +37,11 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address farmingAddress;
     // Security
     address securityRegistry;
+    // MevX
+    address mevxRouter;
+    address mevxExecutor;
+    address profitDistributor;
+    bytes32 mevxConfigId;
     // ALM
     address defaultRebalanceManager;
     uint32 defaultSlowTwapPeriod;
@@ -135,7 +141,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.mevxRouter, s.mevxExecutor, s.profitDistributor, s.mevxConfigId);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -214,6 +220,52 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     s.defaultSlowTwapPeriod = slowPeriod;
     s.defaultFastTwapPeriod = fastPeriod;
     emit AlmTwapPeriods(slowPeriod, fastPeriod);
+  }
+
+  // ========== IMevxPluginFactory Implementation ==========
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultMevxRouter() external view override returns (address) {
+    return _getStorage().mevxRouter;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultMevxExecutor() external view override returns (address) {
+    return _getStorage().mevxExecutor;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultProfitDistributor() external view override returns (address) {
+    return _getStorage().profitDistributor;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function defaultConfigId() external view override returns (bytes32) {
+    return _getStorage().mevxConfigId;
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxRouter(address newMevxRouter) external override {
+    _getStorage().mevxRouter = newMevxRouter;
+    emit DefaultMevxRouter(newMevxRouter);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxExecutor(address newMevxExecutor) external override {
+    _getStorage().mevxExecutor = newMevxExecutor;
+    emit DefaultMevxExecutor(newMevxExecutor);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setProfitDistributor(address newProfitDistributor) external override {
+    _getStorage().profitDistributor = newProfitDistributor;
+    emit DefaultProfitDistributor(newProfitDistributor);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setConfigId(bytes32 newConfigId) external override {
+    _getStorage().mevxConfigId = newConfigId;
+    emit DefaultConfigId(newConfigId);
   }
 
   // ========== Upgrade Management ==========

@@ -38,6 +38,9 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Address of Security implementation
   address public immutable securityImplementation;
 
+  /// @notice Address of MevX implementation
+  address public immutable mevxImplementation;
+
   /// @notice Default fee configuration
   AlgebraFeeConfiguration public defaultFeeConfiguration;
 
@@ -50,6 +53,18 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Security registry address
   address public securityRegistry;
 
+  /// @notice MevX router address
+  address public mevxRouter;
+
+  /// @notice MevX executor address
+  address public mevxExecutor;
+
+  /// @notice Profit distributor address
+  address public profitDistributor;
+
+  /// @notice MevX config ID
+  bytes32 public mevxConfigId;
+
   constructor(
     address _algebraFactory,
     address _volatilityOracleImpl,
@@ -57,6 +72,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl,
+    address _mevxImpl,
     AlgebraFeeConfiguration memory _defaultFeeConfig
   ) {
     algebraFactory = _algebraFactory;
@@ -65,6 +81,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     farmingProxyImplementation = _farmingProxyImpl;
     almImplementation = _almImpl;
     securityImplementation = _securityImpl;
+    mevxImplementation = _mevxImpl;
     defaultFeeConfiguration = _defaultFeeConfig;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
@@ -76,7 +93,8 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      _mevxImpl
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -112,7 +130,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, mevxRouter, mevxExecutor, profitDistributor, mevxConfigId);
 
     pluginByPool[pool] = plugin;
     return plugin;

@@ -11,11 +11,12 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
+import '@cryptoalgebra/mevx-plugin/contracts/MevxConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM, MevX and Security
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -24,7 +25,8 @@ contract AlgebraUpgradeablePlugin is
   DynamicFeeConnector,
   FarmingProxyConnector,
   AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  MevxConnector
 {
   using Plugins for uint8;
 
@@ -36,6 +38,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _mevxImpl MEVX implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -43,7 +46,8 @@ contract AlgebraUpgradeablePlugin is
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _mevxImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -51,27 +55,34 @@ contract AlgebraUpgradeablePlugin is
     FarmingProxyConnector(_farmingProxyImpl)
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    MevxConnector(_mevxImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry
+    address securityRegistry,
+    address mevxRouter,
+    address mevxExecutor,
+    address profitDistributor,
+    bytes32 mevxConfigId
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
+    _initializeMevx(mevxRouter, mevxExecutor, profitDistributor, mevxConfigId);
 
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](6);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[5] = MEVX_MODULE_NAME;
     return activeModules;
   }
 
@@ -81,7 +92,8 @@ contract AlgebraUpgradeablePlugin is
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      MEVX_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -125,8 +137,10 @@ contract AlgebraUpgradeablePlugin is
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
+  function afterInitialize(address, uint160 sqrtPriceX96, int24 tick) external override onlyPool returns (bytes4) {
     _initialize_TWAP(tick);
+    // mevx
+    _initializePool(msg.sender, sqrtPriceX96);
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
@@ -167,33 +181,38 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function beforeSwap(
-    address,
+    address sender,
     address,
     bool,
     int256,
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (bytes4, uint24, uint24 finalFee) {
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
 
     _writeTimepoint();
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee = _getCurrentFee(volatilityAverage);
-    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
+    address router = getMevxRouter();
+    if (sender == router || tx.origin == router) {
+      finalFee = 1;
+    } else {
+      uint88 volatilityAverage = _getAverageVolatilityLast();
+      finalFee = _getCurrentFee(volatilityAverage);
+    }
+    return (IAlgebraPlugin.beforeSwap.selector, finalFee, 0);
   }
 
   /// @inheritdoc IAlgebraPlugin
   function afterSwap(
     address,
-    address,
+    address recipient,
     bool zeroToOne,
     int256,
     uint160,
-    int256,
-    int256,
+    int256 amount0Delta,
+    int256 amount1Delta,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();
@@ -203,6 +222,11 @@ contract AlgebraUpgradeablePlugin is
 
     // Obtain TWAP and trigger rebalance
     _triggerAlmRebalance(tick);
+
+    // MEVX
+    if (getMevxRouter() != address(0)) {
+      _mevxAfterSwap(msg.sender, zeroToOne, amount0Delta, amount1Delta, recipient);
+    }
 
     return IAlgebraPlugin.afterSwap.selector;
   }

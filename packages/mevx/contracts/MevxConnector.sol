@@ -49,7 +49,7 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   // ###### View Methods (Direct Storage Access) ######
 
   /// @notice Get mevx router
-  function getMevxRouter() external view override returns (address) {
+  function getMevxRouter() public view override returns (address) {
     return MevxStorage.layout().mevxRouter;
   }
 

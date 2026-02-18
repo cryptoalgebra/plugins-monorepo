@@ -42,6 +42,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPluginImplementation.sol',
       '@cryptoalgebra/alm-plugin/contracts/AlmPluginImplementation.sol',
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPluginImplementation.sol',
+      '@cryptoalgebra/mevx-plugin/contracts/MevxPluginImplementation.sol',
     ],
   },
   solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,

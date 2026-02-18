@@ -36,12 +36,17 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
+  const mevxImpl = m.contract("MevxPluginImplementation", [], {
+    id: "MevxImpl"
+  });
+
   return { 
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl
   };
 });
 
@@ -60,7 +65,8 @@ export default buildModule("UpgradePlugins", (m) => {
     dynamicFeeImpl, 
     farmingProxyImpl, 
     almImpl, 
-    securityImpl 
+    securityImpl,
+    mevxImpl
   } = m.useModule(ModuleImplementationsModule);
 
   // Deploy new plugin implementation
@@ -71,7 +77,8 @@ export default buildModule("UpgradePlugins", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl
   ], {
     id: "NewPluginImplementation"
   });
@@ -92,6 +99,7 @@ export default buildModule("UpgradePlugins", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl
   };
 });

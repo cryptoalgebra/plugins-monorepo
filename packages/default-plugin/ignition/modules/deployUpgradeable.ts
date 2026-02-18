@@ -11,6 +11,9 @@ const config = {
   // Farming center address (optional, can be set later)
   farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
   
+  // New owner address for ProxyAdmin (set to zero address to skip transfer)
+  newOwner: "0x0000000000000000000000000000000000000000",
+
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
@@ -47,12 +50,17 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
+  const mevxImpl = m.contract("MevxPluginImplementation", [], {
+    id: "MevxImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl
   };
 });
 
@@ -105,7 +113,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl, 
     farmingProxyImpl, 
     almImpl, 
-    securityImpl 
+    securityImpl,
+    mevxImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -116,7 +125,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl
   ], {
     id: "PluginImplementation"
   });
@@ -127,7 +137,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    mevxImpl
   };
 });
 
@@ -178,6 +189,16 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // ============= SECURITY REGISTRY =============
   // Always deploy SecurityRegistry for the target AlgebraFactory.
   const securityRegistry = m.contract("SecurityRegistry", [config.algebraFactory], { id: "SecurityRegistry" });
+
+  // ============= TRANSFER PROXY ADMIN OWNERSHIP =============
+  // Transfer ProxyAdmin ownership to the new owner (e.g. multisig)
+  // ProxyAdmin controls factory proxy upgrades
+  if (config.newOwner !== "0x0000000000000000000000000000000000000000") {
+    m.call(proxyAdmin, "transferOwnership", [config.newOwner], {
+      id: "TransferProxyAdminOwnership",
+      after: [upgradeAndInitialize]
+    });
+  }
 
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 

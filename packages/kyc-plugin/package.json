@@ -1,0 +1,24 @@
+{
+  "name": "@cryptoalgebra/kyc-plugin",
+  "version": "2.2.0",
+  "description": "KYC-gated pools plugin for Algebra Integral (tx.origin whitelist + surcharge)",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "remove-node-modules": "rm -rf node_modules",
+    "clean": "rm -rf node_modules artifacts cache typechain"
+  },
+  "dependencies": {
+    "@cryptoalgebra/abstract-plugin": "workspace:^",
+    "@cryptoalgebra/integral-core": "1.2.9",
+    "@cryptoalgebra/integral-periphery": "1.2.4",
+    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts-upgradeable": "^4.9.3"
+  },
+  "devDependencies": {
+    "@cryptoalgebra/test-utils": "workspace:^"
+  }
+}

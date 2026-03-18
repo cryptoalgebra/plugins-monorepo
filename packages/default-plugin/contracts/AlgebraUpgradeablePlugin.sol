@@ -194,8 +194,8 @@ contract AlgebraUpgradeablePlugin is
     _checkStatus(msg.sender);
 
     _writeTimepoint();
-    address router = getMevxRouter();
-    if (sender == router || tx.origin == router) {
+    address executor = getMevxExecutor();
+    if (sender == executor || tx.origin == executor) {
       finalFee = 1;
     } else {
       uint88 volatilityAverage = _getAverageVolatilityLast();

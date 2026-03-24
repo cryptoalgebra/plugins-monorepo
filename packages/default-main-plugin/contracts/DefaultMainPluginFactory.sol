@@ -22,6 +22,9 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
   /// @notice Address of the limit order manager contract
   address public limitOrderManager;
 
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   address public router;
 
   /// @inheritdoc IBasePluginFactory
@@ -60,7 +63,7 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager);
+    IVolatilityOracle volatilityOracle = new DefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager, securityRegistry);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -81,5 +84,12 @@ contract DefaultMainPluginFactory is IDefaultMainPluginFactory {
 
   function setRouter(address _router) external onlyAdministrator {
     router = _router;
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
+    require(securityRegistry != newSecurityRegistry);
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 }

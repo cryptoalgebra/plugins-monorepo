@@ -1,9 +1,9 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-const factory = "0x49a390a3dFd2d01389f799965F3af5961f87d228"; 
-const farmingCenterAddress = "0x161C886a5ef51c4B20f2F4ca2caDB20c93245705"; 
-const wNativeToken = "0x3bC8f037691Ce1d28c0bB224BD33563b49F99dE8"; // WETH address
-const poolDeployer = "0x37A4950b4ea0C46596404895c5027B088B0e70e7"; // Set actual pool deployer address
+const factory = "0x10253594A832f967994b44f33411940533302ACb"; 
+const farmingCenterAddress = "0xB4F9b6b019E75CBe51af4425b2Fc12797e2Ee2a1"; 
+const wNativeToken = "0xcc788DC0486CD2BaacFf287eea1902cc09FbA570";
+const poolDeployer = "0xd7cB0E0692f2D55A17bA81c1fE5501D66774fC4A";
 
 const dynamicFeeConfig = [
   2500, 
@@ -19,11 +19,14 @@ export default buildModule("DefaultMainPluginFactory", (m) => {
   const pluginFactory = m.contract("DefaultMainPluginFactory", [factory]);
   const oracle = m.contract("DynamicFeeOracle", [dynamicFeeConfig]);
   const limitOrderManager = m.contract("LimitOrderManager", [wNativeToken, poolDeployer, pluginFactory, factory]);
+  const securityRegistry = m.contract("SecurityRegistry", [factory]);
 
   m.call(pluginFactory, "setFarmingAddress", [farmingCenterAddress]);
 
   m.call(pluginFactory, "setLimitOrderManager", [limitOrderManager]);
 
-  return { pluginFactory, oracle, limitOrderManager };
+  m.call(pluginFactory, "setSecurityRegistry", [securityRegistry]);
+
+  return { pluginFactory, oracle, limitOrderManager, securityRegistry };
 });
 

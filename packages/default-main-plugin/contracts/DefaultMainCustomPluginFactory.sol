@@ -3,12 +3,13 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoolEntryPoint.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
 import './interfaces/IDefaultMainCustomPluginFactory.sol';
 
 import './DefaultMainPlugin.sol';
 
 /// @title Algebra Integral 1.2.2 main custom plugin deployer
-contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
+contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory, ISecurityPluginFactory {
   /// @inheritdoc IDefaultMainCustomPluginFactory
   bytes32 public constant override ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR = keccak256('ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR');
 
@@ -23,6 +24,9 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
 
   /// @notice Address of the limit order manager contract
   address public limitOrderManager;
+
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
 
   /// @inheritdoc IDefaultMainCustomPluginFactory
   mapping(address poolAddress => address pluginAddress) public override pluginByPool;
@@ -50,7 +54,7 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager));
+    address plugin = address(new DefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager, securityRegistry));
     pluginByPool[pool] = plugin;
     return address(plugin);
   }
@@ -72,5 +76,12 @@ contract DefaultMainCustomPluginFactory is IDefaultMainCustomPluginFactory {
     require(limitOrderManager != newLimitOrderManager);
     limitOrderManager = newLimitOrderManager;
     emit LimitOrderManager(newLimitOrderManager);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
+    require(securityRegistry != newSecurityRegistry);
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 }

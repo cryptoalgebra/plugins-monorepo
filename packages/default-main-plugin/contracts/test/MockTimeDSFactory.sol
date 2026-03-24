@@ -18,6 +18,9 @@ contract MockTimeDSFactory is IDefaultMainPluginFactory {
   /// @notice Address of the limit order manager contract
   address public limitOrderManager;
 
+  /// @inheritdoc ISecurityPluginFactory
+  address public override securityRegistry;
+
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
 
@@ -51,7 +54,7 @@ contract MockTimeDSFactory is IDefaultMainPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeDefaultMainPlugin volatilityOracle = new MockTimeDefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager);
+    MockTimeDefaultMainPlugin volatilityOracle = new MockTimeDefaultMainPlugin(pool, algebraFactory, address(this), limitOrderManager, securityRegistry);
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
   }
@@ -68,5 +71,12 @@ contract MockTimeDSFactory is IDefaultMainPluginFactory {
     require(limitOrderManager != newLimitOrderManager);
     limitOrderManager = newLimitOrderManager;
     emit LimitOrderManager(newLimitOrderManager);
+  }
+
+  /// @inheritdoc ISecurityPluginFactory
+  function setSecurityRegistry(address newSecurityRegistry) external override {
+    require(securityRegistry != newSecurityRegistry);
+    securityRegistry = newSecurityRegistry;
+    emit SecurityRegistry(newSecurityRegistry);
   }
 }

@@ -3,6 +3,7 @@ pragma solidity =0.8.20;
 
 import '../DefaultMainPlugin.sol';
 import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderManager.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol';
 
 // used for testing time dependent behavior
 contract MockTimeDefaultMainPlugin is DefaultMainPlugin {
@@ -15,8 +16,9 @@ contract MockTimeDefaultMainPlugin is DefaultMainPlugin {
     address _pool,
     address _factory,
     address _pluginFactory,
-    address _limitOrderManager
-  ) DefaultMainPlugin(_pool, _factory, _pluginFactory, _limitOrderManager) {}
+    address _limitOrderManager,
+    address _securityRegistry
+  ) DefaultMainPlugin(_pool, _factory, _pluginFactory, _limitOrderManager, _securityRegistry) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

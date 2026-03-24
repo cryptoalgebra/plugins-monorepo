@@ -98,6 +98,11 @@ export default {
       chainId: 80085,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    kite: {
+      url: `https://rpc-virginia.gokite.ai/`,
+      chainId: 2366,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
     maticMainnet: {
       url: `https://rpc-mainnet.matic.quiknode.pro`,
       chainId: 137,
@@ -145,11 +150,11 @@ export default {
         },
       },
       {
-        network: 'mantle',
-        chainId: 5000,
+        network: 'kite',
+        chainId: 2366,
         urls: {
-          apiURL: 'https://explorer.mantle.xyz/api',
-          browserURL: 'https://explorer.mantle.xyz/',
+          apiURL: 'https://explorer.kite.ai/api',
+          browserURL: 'https://explorer.kite.ai/',
         },
       },
       {

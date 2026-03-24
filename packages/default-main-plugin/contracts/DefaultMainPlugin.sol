@@ -7,13 +7,14 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin
 import '@cryptoalgebra/managed-fee-plugin/contracts/ManagedSwapFeePlugin.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderPlugin.sol';
+import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
 
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol';
 
 import './interfaces/IDefaultMainPlugin.sol';
 
 /// @title Algebra Integral 1.2.2 default main plugin
-contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, FarmingProxyPlugin, LimitOrderPlugin, IDefaultMainPlugin {
+contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, FarmingProxyPlugin, LimitOrderPlugin, SecurityPlugin, IDefaultMainPlugin {
   using Plugins for uint8;
 
   uint24 public defaultFee;
@@ -22,8 +23,10 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, Farm
     address _pool,
     address _factory,
     address _pluginFactory,
-    address _limitOrderManager
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) ManagedSwapFeePlugin() LimitOrderPlugin(_limitOrderManager) {}
+    address _limitOrderManager,
+    address _securityRegistry
+  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) ManagedSwapFeePlugin() LimitOrderPlugin(_limitOrderManager) SecurityPlugin(_securityRegistry) {
+ }
 
   // ###### HOOKS ######
 
@@ -37,9 +40,12 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, Farm
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
-  /// @dev unused
-  function beforeModifyPosition(address, address, int24, int24, int128, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+  function beforeModifyPosition(address, address, int24, int24, int128 liquidityDelta, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
+    if (liquidityDelta < 0) {
+      _checkStatusOnBurn();
+    } else {
+      _checkStatus();
+    }
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
   }
 
@@ -50,6 +56,8 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, Farm
   }
 
   function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata swapCallbackData) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24, uint24) {    
+    _checkStatus();
+
     uint24 fee;
 
     _writeTimepoint();
@@ -80,9 +88,8 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, Farm
     return IAlgebraPlugin.afterSwap.selector;
   }
 
-  /// @dev unused
   function beforeFlash(address, address, uint256, uint256, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
-    _updatePluginConfigInPool(defaultPluginConfig); // should not be called, reset config
+    _checkStatus();
     return IAlgebraPlugin.beforeFlash.selector;
   }
 

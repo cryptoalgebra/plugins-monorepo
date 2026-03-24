@@ -41,7 +41,7 @@ contract DefaultMainPlugin is VolatilityOraclePlugin, ManagedSwapFeePlugin, Farm
   }
 
   function beforeModifyPosition(address, address, int24, int24, int128 liquidityDelta, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4, uint24) {
-    if (liquidityDelta < 0) {
+    if (liquidityDelta <= 0) {
       _checkStatusOnBurn();
     } else {
       _checkStatus();

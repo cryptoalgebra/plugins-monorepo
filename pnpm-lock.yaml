@@ -64,6 +64,28 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
 
+  packages/access-list:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: workspace:^
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.9
+        version: 1.2.9
+      '@cryptoalgebra/integral-periphery':
+        specifier: 1.2.4
+        version: 1.2.4
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
+      '@openzeppelin/contracts-upgradeable':
+        specifier: ^4.9.3
+        version: 4.9.6
+    devDependencies:
+      '@cryptoalgebra/test-utils':
+        specifier: workspace:^
+        version: link:../test-utils
+
   packages/alm:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
@@ -177,28 +199,6 @@ importers:
         version: link:../test-utils
 
   packages/fee-auction:
-    dependencies:
-      '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
-        version: link:../abstract-plugin
-      '@cryptoalgebra/integral-core':
-        specifier: 1.2.9
-        version: 1.2.9
-      '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.4
-        version: 1.2.4
-      '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
-    devDependencies:
-      '@cryptoalgebra/test-utils':
-        specifier: workspace:^
-        version: link:../test-utils
-
-  packages/kyc-plugin:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^

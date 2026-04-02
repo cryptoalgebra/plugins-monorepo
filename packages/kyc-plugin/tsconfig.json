@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "typeRoots": ["./typechain"],
-    "types": ["hardhat-ethers", "hardhat-network-helpers", "hardhat-chai-matchers"]
-  }
-}

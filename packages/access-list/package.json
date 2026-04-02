@@ -1,7 +1,7 @@
 {
-  "name": "@cryptoalgebra/kyc-plugin",
+  "name": "@cryptoalgebra/access-list-plugin",
   "version": "2.2.0",
-  "description": "KYC plugin for Algebra Integral(tx.origin whitelist)",
+  "description": "Access List plugin for Algebra Integral (tx.origin whitelist)",
   "publishConfig": {
     "access": "public"
   },

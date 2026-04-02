@@ -45,15 +45,13 @@ contract KycPluginImplementation is IKycPluginImplementation {
     _requireWhitelisted(pool);
   }
 
-  // ========== Internal ==========
-
   /// @dev Check that tx.origin is whitelisted, revert if not
   function _requireWhitelisted(address) internal view {
     address kycRegistry = KycStorage.layout().kycRegistry;
-    if (kycRegistry == address(0)) return; // KYC not configured — allow
+    if (kycRegistry == address(0)) return;
 
     IKycRegistry registry = IKycRegistry(kycRegistry);
-    if (registry.isPaused()) return; // KYC paused — allow
+    if (registry.isPaused()) return;
 
     if (!registry.isWhitelisted(tx.origin)) revert IKycPlugin.KycNotWhitelisted();
   }

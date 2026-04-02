@@ -1,7 +1,7 @@
 {
   "name": "@cryptoalgebra/kyc-plugin",
   "version": "2.2.0",
-  "description": "KYC-gated pools plugin for Algebra Integral (tx.origin whitelist + surcharge)",
+  "description": "KYC plugin for Algebra Integral(tx.origin whitelist)",
   "publishConfig": {
     "access": "public"
   },

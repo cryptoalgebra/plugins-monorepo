@@ -29,6 +29,9 @@ async function deployImplementations() {
   const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
   const feeDiscountImpl = await feeDiscountImplFactory.deploy();
 
+  const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+  const limitOrderImpl = await limitOrderImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
@@ -37,6 +40,7 @@ async function deployImplementations() {
     securityImpl: await securityImpl.getAddress(),
     reflexImpl: await reflexImpl.getAddress(),
     feeDiscountImpl: await feeDiscountImpl.getAddress(),
+    limitOrderImpl: await limitOrderImpl.getAddress(),
   };
 }
 
@@ -63,6 +67,7 @@ describe('OracleTWAP', () => {
       implementations.securityImpl,
       implementations.reflexImpl,
       implementations.feeDiscountImpl,
+      implementations.limitOrderImpl,
       DEFAULT_FEE_CONFIGURATION
     );
 

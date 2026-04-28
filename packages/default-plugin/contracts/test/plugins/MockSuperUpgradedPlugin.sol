@@ -17,25 +17,9 @@ contract MockSuperUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
   constructor(
     address _factory,
     address _pluginFactory,
-    address _volatilityOracleImpl, // ← V2 VolatilityOracle
-    address _dynamicFeeImpl, // ← V2 DynamicFee
-    address _farmingProxyImpl, // ← V2 FarmingProxy
-    address _almImpl, // ← V2 ALM
-    address _securityImpl, // ← V2 Security
-    address _reflexImpl,
-    address _feeDiscountImpl
+    PluginImplementations memory _impls
   )
-    MockTimeAlgebraUpgradeablePlugin(
-      _factory,
-      _pluginFactory,
-      _volatilityOracleImpl,
-      _dynamicFeeImpl,
-      _farmingProxyImpl,
-      _almImpl,
-      _securityImpl,
-      _reflexImpl,
-      _feeDiscountImpl
-    )
+    MockTimeAlgebraUpgradeablePlugin(_factory, _pluginFactory, _impls)
   {}
 
   // ========== V2 VOLATILITY ORACLE FUNCTIONS ==========

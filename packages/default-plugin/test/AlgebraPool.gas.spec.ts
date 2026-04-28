@@ -61,6 +61,9 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
     const feeDiscountImpl = await feeDiscountImplFactory.deploy();
 
+    const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+    const limitOrderImpl = await limitOrderImplFactory.deploy();
+
     return {
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
       dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
@@ -69,6 +72,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       securityImpl: await securityImpl.getAddress(),
       reflexImpl: await reflexImpl.getAddress(),
       feeDiscountImpl: await feeDiscountImpl.getAddress(),
+      limitOrderImpl: await limitOrderImpl.getAddress(),
     };
   }
 
@@ -87,6 +91,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       implementations.securityImpl,
       implementations.reflexImpl,
       implementations.feeDiscountImpl,
+      implementations.limitOrderImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
 

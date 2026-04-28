@@ -2,6 +2,18 @@
 pragma solidity >=0.5.0;
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 
+/// @dev Groups all module implementation addresses to avoid stack-too-deep in the constructor
+struct PluginImplementations {
+  address volatilityOracle;
+  address dynamicFee;
+  address farmingProxy;
+  address alm;
+  address security;
+  address reflex;
+  address feeDiscount;
+  address limitOrder;
+}
+
 /// @title The interface for Algebra Upgradeable Plugin
 /// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
 interface IAlgebraUpgradeablePlugin {

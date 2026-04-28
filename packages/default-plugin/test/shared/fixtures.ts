@@ -56,6 +56,10 @@ async function deployImplementations() {
   const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
   const feeDiscountImpl = await feeDiscountImplFactory.deploy();
 
+  // 8. LimitOrder Implementation
+  const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+  const limitOrderImpl = await limitOrderImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
@@ -64,6 +68,7 @@ async function deployImplementations() {
     securityImpl: await securityImpl.getAddress(),
     reflexImpl: await reflexImpl.getAddress(),
     feeDiscountImpl: await feeDiscountImpl.getAddress(),
+    limitOrderImpl: await limitOrderImpl.getAddress(),
   };
 }
 
@@ -92,6 +97,7 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
     implementations.securityImpl,
     implementations.reflexImpl,
     implementations.feeDiscountImpl,
+    implementations.limitOrderImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeDSFactory;
 
@@ -156,13 +162,16 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
   const pluginImpl = await pluginImplFactory.deploy(
     mockFactoryAddress,
     proxyAddress, // Use real proxy address as pluginFactory
-    implementations.volatilityOracleImpl,
-    implementations.dynamicFeeImpl,
-    implementations.farmingProxyImpl,
-    implementations.almImpl,
-    implementations.securityImpl,
-    implementations.reflexImpl,
-    implementations.feeDiscountImpl
+    {
+      volatilityOracle: implementations.volatilityOracleImpl,
+      dynamicFee: implementations.dynamicFeeImpl,
+      farmingProxy: implementations.farmingProxyImpl,
+      alm: implementations.almImpl,
+      security: implementations.securityImpl,
+      reflex: implementations.reflexImpl,
+      feeDiscount: implementations.feeDiscountImpl,
+      limitOrder: implementations.limitOrderImpl,
+    }
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
@@ -212,6 +221,7 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
     implementations.securityImpl,
     implementations.reflexImpl,
     implementations.feeDiscountImpl,
+    implementations.limitOrderImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeUpgradeablePluginFactory;
 
@@ -251,6 +261,7 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     securityImpl: string;
     reflexImpl: string;
     feeDiscountImpl: string;
+    limitOrderImpl: string;
   };
 }
 
@@ -284,13 +295,16 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
   const pluginImpl = await pluginImplFactory.deploy(
     mockFactoryAddress,
     proxyAddress,  
-    implementations.volatilityOracleImpl,
-    implementations.dynamicFeeImpl,
-    implementations.farmingProxyImpl,
-    implementations.almImpl,
-    implementations.securityImpl,
-    implementations.reflexImpl,
-    implementations.feeDiscountImpl
+    {
+      volatilityOracle: implementations.volatilityOracleImpl,
+      dynamicFee: implementations.dynamicFeeImpl,
+      farmingProxy: implementations.farmingProxyImpl,
+      alm: implementations.almImpl,
+      security: implementations.securityImpl,
+      reflex: implementations.reflexImpl,
+      feeDiscount: implementations.feeDiscountImpl,
+      limitOrder: implementations.limitOrderImpl,
+    }
   );
 
   // Attach factory interface to proxy

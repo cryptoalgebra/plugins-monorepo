@@ -24,25 +24,9 @@ contract MockTimeUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
   constructor(
     address _factory,
     address _pluginFactory,
-    address _volatilityOracleImpl,
-    address _dynamicFeeImpl,
-    address _farmingProxyImpl,
-    address _almImpl,
-    address _securityImpl,
-    address _reflexImpl,
-    address _feeDiscountImpl
+    PluginImplementations memory _impls
   )
-    MockTimeAlgebraUpgradeablePlugin(
-      _factory,
-      _pluginFactory,
-      _volatilityOracleImpl,
-      _dynamicFeeImpl,
-      _farmingProxyImpl,
-      _almImpl,
-      _securityImpl,
-      _reflexImpl,
-      _feeDiscountImpl
-    )
+    MockTimeAlgebraUpgradeablePlugin(_factory, _pluginFactory, _impls)
   {}
 
   function newUpgradeableFunction() external pure returns (uint256) {

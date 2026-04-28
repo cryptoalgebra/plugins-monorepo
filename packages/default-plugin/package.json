@@ -17,6 +17,7 @@
     "@cryptoalgebra/integral-core": "1.2.9",
     "@cryptoalgebra/integral-periphery": "1.2.4",
     "@cryptoalgebra/reflex-plugin": "workspace:^",
+    "@cryptoalgebra/limit-order-plugin": "workspace:^",
     "@cryptoalgebra/safety-switch-plugin": "workspace:^",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
     "@cryptoalgebra/whitelist-fee-discount-plugin": "workspace:^",

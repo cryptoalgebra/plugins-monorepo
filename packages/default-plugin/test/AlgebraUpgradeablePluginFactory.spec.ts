@@ -284,13 +284,16 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         pluginFactoryAddress,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        await reflexImpl.getAddress(),
-        await feeDiscountImpl.getAddress()
+        {
+          volatilityOracle: ZERO_ADDRESS,
+          dynamicFee: ZERO_ADDRESS,
+          farmingProxy: ZERO_ADDRESS,
+          alm: ZERO_ADDRESS,
+          security: ZERO_ADDRESS,
+          reflex: await reflexImpl.getAddress(),
+          feeDiscount: await feeDiscountImpl.getAddress(),
+          limitOrder: ZERO_ADDRESS,
+        }
       );
 
       await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWithCustomError(
@@ -319,9 +322,16 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         pluginFactoryAddress,
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS,
-        await reflexImpl.getAddress(),
-        await feeDiscountImpl.getAddress()
+        {
+          volatilityOracle: ZERO_ADDRESS,
+          dynamicFee: ZERO_ADDRESS,
+          farmingProxy: ZERO_ADDRESS,
+          alm: ZERO_ADDRESS,
+          security: ZERO_ADDRESS,
+          reflex: await reflexImpl.getAddress(),
+          feeDiscount: await feeDiscountImpl.getAddress(),
+          limitOrder: ZERO_ADDRESS,
+        }
       );
 
       // Should succeed (wallet is owner)
@@ -347,9 +357,16 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         await mockAlgebraFactory.getAddress(),
         await pluginFactory.getAddress(),
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS,
-        await reflexImpl.getAddress(),
-        await feeDiscountImpl.getAddress()
+        {
+          volatilityOracle: ZERO_ADDRESS,
+          dynamicFee: ZERO_ADDRESS,
+          farmingProxy: ZERO_ADDRESS,
+          alm: ZERO_ADDRESS,
+          security: ZERO_ADDRESS,
+          reflex: await reflexImpl.getAddress(),
+          feeDiscount: await feeDiscountImpl.getAddress(),
+          limitOrder: ZERO_ADDRESS,
+        }
       );
 
       await pluginFactory.upgradePlugins(await newImpl.getAddress());

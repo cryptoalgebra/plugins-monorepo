@@ -140,7 +140,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.defaultRouter, s.defaultConfigId, s.feeDiscountRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.defaultRouter, s.defaultConfigId, s.feeDiscountRegistry, address(0));
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -215,6 +215,11 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
   function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override {
     _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
     emit FeeDiscountRegistry(newFeeDiscountRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override {
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
   /// @notice Set the default ALM rebalance manager

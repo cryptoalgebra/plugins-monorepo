@@ -43,6 +43,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
     const feeDiscountImpl = await feeDiscountImplFactory.deploy();
 
+    const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+    const limitOrderImpl = await limitOrderImplFactory.deploy();
+
     // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
     const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const pluginFactory = (await pluginFactoryFactory.deploy(
@@ -54,6 +57,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       securityImpl,
       reflexImpl,
       feeDiscountImpl,
+      limitOrderImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
 
@@ -86,13 +90,16 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const upgradedImplementation = await upgradedImplFactory.deploy(
       mockFactory,
       pluginFactory,
-      volatilityOracleImpl,
-      dynamicFeeImpl,
-      farmingProxyImpl,
-      almImpl,
-      securityImpl,
-      reflexImpl,
-      feeDiscountImpl
+      {
+        volatilityOracle: await volatilityOracleImpl.getAddress(),
+        dynamicFee: await dynamicFeeImpl.getAddress(),
+        farmingProxy: await farmingProxyImpl.getAddress(),
+        alm: await almImpl.getAddress(),
+        security: await securityImpl.getAddress(),
+        reflex: await reflexImpl.getAddress(),
+        feeDiscount: await feeDiscountImpl.getAddress(),
+        limitOrder: await limitOrderImpl.getAddress(),
+      }
     );
 
     return {
@@ -112,6 +119,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       securityImpl: await securityImpl.getAddress(),
       reflexImpl: await reflexImpl.getAddress(),
       feeDiscountImpl: await feeDiscountImpl.getAddress(),
+      limitOrderImpl: await limitOrderImpl.getAddress(),
     };
   }
 

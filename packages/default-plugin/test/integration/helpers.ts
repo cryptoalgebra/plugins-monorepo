@@ -120,6 +120,7 @@ export async function deployNewPluginImplementation(
     security?: string;
     reflex?: string;
     feeDiscount?: string;
+    limitOrder?: string;
   }
 ) {
   const mockFactoryAddress = await algebraFactory.getAddress();
@@ -139,17 +140,27 @@ export async function deployNewPluginImplementation(
     feeDiscountImplAddress = await feeDiscountImpl.getAddress();
   }
 
+  let limitOrderImplAddress = moduleOverrides?.limitOrder;
+  if (!limitOrderImplAddress) {
+    const LimitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+    const limitOrderImpl = await LimitOrderImplFactory.deploy();
+    limitOrderImplAddress = await limitOrderImpl.getAddress();
+  }
+
   const NewPluginFactory = await ethers.getContractFactory(contractName);
   const newPluginImpl = await NewPluginFactory.deploy(
     mockFactoryAddress,
     pluginFactoryAddress,
-    moduleOverrides?.volatility ?? MODULE_IMPLEMENTATIONS.VOLATILITY_ORACLE,
-    moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
-    moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
-    moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
-    reflexImplAddress,
-    feeDiscountImplAddress
+    {
+      volatilityOracle: moduleOverrides?.volatility ?? MODULE_IMPLEMENTATIONS.VOLATILITY_ORACLE,
+      dynamicFee: moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
+      farmingProxy: moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
+      alm: moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
+      security: moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
+      reflex: reflexImplAddress,
+      feeDiscount: feeDiscountImplAddress,
+      limitOrder: limitOrderImplAddress,
+    }
   );
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };

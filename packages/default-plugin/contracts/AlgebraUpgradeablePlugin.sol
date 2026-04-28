@@ -37,35 +37,21 @@ contract AlgebraUpgradeablePlugin is
   /// @notice Constructor sets immutable values shared across ALL proxies
   /// @param _factory The Algebra factory address
   /// @param _pluginFactory The plugin factory address
-  /// @param _volatilityOracleImpl VolatilityOracle implementation address
-  /// @param _dynamicFeeImpl DynamicFee implementation address
-  /// @param _farmingProxyImpl FarmingProxy implementation address
-  /// @param _almImpl ALM implementation address
-  /// @param _securityImpl Security implementation address
-  /// @param _reflexImpl Reflex implementation address
-  /// @param _feeDiscountImpl FeeDiscount implementation address
-  /// @param _limitOrderImpl LimitOrder implementation address
+  /// @param _impls All module implementation addresses
   constructor(
     address _factory,
     address _pluginFactory,
-    address _volatilityOracleImpl,
-    address _dynamicFeeImpl,
-    address _farmingProxyImpl,
-    address _almImpl,
-    address _securityImpl,
-    address _reflexImpl,
-    address _feeDiscountImpl,
-    address _limitOrderImpl
+    PluginImplementations memory _impls
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
-    VolatilityOracleConnector(_volatilityOracleImpl)
-    DynamicFeeConnector(_dynamicFeeImpl)
-    FarmingProxyConnector(_farmingProxyImpl)
-    AlmConnector(_almImpl)
-    SecurityConnector(_securityImpl)
-    ReflexConnector(_reflexImpl)
-    FeeDiscountConnector(_feeDiscountImpl)
-    LimitOrderConnector(_limitOrderImpl)
+    VolatilityOracleConnector(_impls.volatilityOracle)
+    DynamicFeeConnector(_impls.dynamicFee)
+    FarmingProxyConnector(_impls.farmingProxy)
+    AlmConnector(_impls.alm)
+    SecurityConnector(_impls.security)
+    ReflexConnector(_impls.reflex)
+    FeeDiscountConnector(_impls.feeDiscount)
+    LimitOrderConnector(_impls.limitOrder)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin

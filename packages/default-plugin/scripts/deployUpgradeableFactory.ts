@@ -157,28 +157,32 @@ async function main() {
   const pluginImpl = await PluginImpl.deploy(
     algebraFactory,
     factoryProxyAddress,
-    await volatilityOracleImpl.getAddress(),
-    await dynamicFeeImpl.getAddress(),
-    await farmingProxyImpl.getAddress(),
-    await almImpl.getAddress(),
-    await securityImpl.getAddress(),
-    await reflexImpl.getAddress(),
-    await feeDiscountImpl.getAddress(),
-    await limitOrderImpl.getAddress()
+    {
+      volatilityOracle: await volatilityOracleImpl.getAddress(),
+      dynamicFee: await dynamicFeeImpl.getAddress(),
+      farmingProxy: await farmingProxyImpl.getAddress(),
+      alm: await almImpl.getAddress(),
+      security: await securityImpl.getAddress(),
+      reflex: await reflexImpl.getAddress(),
+      feeDiscount: await feeDiscountImpl.getAddress(),
+      limitOrder: await limitOrderImpl.getAddress(),
+    }
   );
   await pluginImpl.waitForDeployment();
   console.log('PluginImplementation:', await pluginImpl.getAddress());
   record('AlgebraUpgradeablePlugin', await pluginImpl.getAddress(), [
     algebraFactory,
     factoryProxyAddress,
-    await volatilityOracleImpl.getAddress(),
-    await dynamicFeeImpl.getAddress(),
-    await farmingProxyImpl.getAddress(),
-    await almImpl.getAddress(),
-    await securityImpl.getAddress(),
-    await reflexImpl.getAddress(),
-    await feeDiscountImpl.getAddress(),
-    await limitOrderImpl.getAddress(),
+    [
+      await volatilityOracleImpl.getAddress(),
+      await dynamicFeeImpl.getAddress(),
+      await farmingProxyImpl.getAddress(),
+      await almImpl.getAddress(),
+      await securityImpl.getAddress(),
+      await reflexImpl.getAddress(),
+      await feeDiscountImpl.getAddress(),
+      await limitOrderImpl.getAddress(),
+    ],
   ]);
 
   // ----------------------------

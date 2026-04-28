@@ -22,6 +22,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     securityImpl: string;
     reflexImpl: string;
     feeDiscountImpl: string;
+    limitOrderImpl: string;
   };
 
   before('prepare signers', async () => {
@@ -217,13 +218,16 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl,
-        implementations.reflexImpl,
-        implementations.feeDiscountImpl
+        {
+          volatilityOracle: implementations.volatilityOracleImpl,
+          dynamicFee: implementations.dynamicFeeImpl,
+          farmingProxy: implementations.farmingProxyImpl,
+          alm: implementations.almImpl,
+          security: implementations.securityImpl,
+          reflex: implementations.reflexImpl,
+          feeDiscount: implementations.feeDiscountImpl,
+          limitOrder: implementations.limitOrderImpl,
+        }
       );
 
       // Upgrade
@@ -247,13 +251,16 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl,
-        implementations.reflexImpl,
-        implementations.feeDiscountImpl
+        {
+          volatilityOracle: implementations.volatilityOracleImpl,
+          dynamicFee: implementations.dynamicFeeImpl,
+          farmingProxy: implementations.farmingProxyImpl,
+          alm: implementations.almImpl,
+          security: implementations.securityImpl,
+          reflex: implementations.reflexImpl,
+          feeDiscount: implementations.feeDiscountImpl,
+          limitOrder: implementations.limitOrderImpl,
+        }
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -424,13 +431,16 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl,
-        implementations.reflexImpl,
-        implementations.feeDiscountImpl
+        {
+          volatilityOracle: implementations.volatilityOracleImpl,
+          dynamicFee: implementations.dynamicFeeImpl,
+          farmingProxy: implementations.farmingProxyImpl,
+          alm: implementations.almImpl,
+          security: implementations.securityImpl,
+          reflex: implementations.reflexImpl,
+          feeDiscount: implementations.feeDiscountImpl,
+          limitOrder: implementations.limitOrderImpl,
+        }
       );
 
       // Single upgrade call affects ALL plugins
@@ -461,13 +471,16 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl,
-        implementations.reflexImpl,
-        implementations.feeDiscountImpl
+        {
+          volatilityOracle: implementations.volatilityOracleImpl,
+          dynamicFee: implementations.dynamicFeeImpl,
+          farmingProxy: implementations.farmingProxyImpl,
+          alm: implementations.almImpl,
+          security: implementations.securityImpl,
+          reflex: implementations.reflexImpl,
+          feeDiscount: implementations.feeDiscountImpl,
+          limitOrder: implementations.limitOrderImpl,
+        }
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -505,13 +518,16 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl,
-        implementations.reflexImpl,
-        implementations.feeDiscountImpl
+        {
+          volatilityOracle: implementations.volatilityOracleImpl,
+          dynamicFee: implementations.dynamicFeeImpl,
+          farmingProxy: implementations.farmingProxyImpl,
+          alm: implementations.almImpl,
+          security: implementations.securityImpl,
+          reflex: implementations.reflexImpl,
+          feeDiscount: implementations.feeDiscountImpl,
+          limitOrder: implementations.limitOrderImpl,
+        }
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());

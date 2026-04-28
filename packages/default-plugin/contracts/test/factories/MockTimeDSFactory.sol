@@ -68,6 +68,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     address _securityImpl,
     address _reflexImpl,
     address _feeDiscountImpl,
+    address _limitOrderImpl,
     AlgebraFeeConfiguration memory _defaultFeeConfig
   ) {
     algebraFactory = _algebraFactory;
@@ -85,13 +86,16 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     MockTimeAlgebraUpgradeablePlugin impl = new MockTimeAlgebraUpgradeablePlugin(
       _algebraFactory,
       address(this),
-      _volatilityOracleImpl,
-      _dynamicFeeImpl,
-      _farmingProxyImpl,
-      _almImpl,
-      _securityImpl,
-      _reflexImpl,
-      _feeDiscountImpl
+      PluginImplementations({
+        volatilityOracle: _volatilityOracleImpl,
+        dynamicFee: _dynamicFeeImpl,
+        farmingProxy: _farmingProxyImpl,
+        alm: _almImpl,
+        security: _securityImpl,
+        reflex: _reflexImpl,
+        feeDiscount: _feeDiscountImpl,
+        limitOrder: _limitOrderImpl
+      })
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -127,7 +131,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, address(0), bytes32(0), feeDiscountRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, address(0), bytes32(0), feeDiscountRegistry, address(0));
 
     pluginByPool[pool] = plugin;
     return plugin;

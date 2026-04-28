@@ -6,16 +6,20 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: "0x10253594A832f967994b44f33411940533302ACb",
+  algebraFactory: "0xd9A0ffa58143CdC5C1767208dDdB64a1889D78ae",
   
   // Farming center address (optional, can be set later)
-  farmingCenter: "0x658E287E9C820484f5808f687dC4863B552de37D",
+  farmingCenter: "0xCf5d80378efC08b20aCAB1Ee5F296E5cB5a8E8C2",
 
   // Reflex router (optional, can be set later)
   reflexRouter: "0x0000000000000000000000000000000000000000",
 
   // Reflex config id (optional, bytes32(0) keeps router default)
   reflexConfigId: "0x0000000000000000000000000000000000000000000000000000000000000000",
+
+  // LimitOrderManager constructor args
+  wNativeToken: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+  poolDeployer: "0x6207Dc4f7f0632d8e90034be5E04dfa3A731b564",
   
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
@@ -61,6 +65,10 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "FeeDiscountImpl"
   });
 
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
@@ -68,7 +76,8 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     almImpl,
     securityImpl,
     reflexImpl,
-    feeDiscountImpl
+    feeDiscountImpl,
+    limitOrderImpl
   };
 });
 
@@ -123,7 +132,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     almImpl, 
     securityImpl,
     reflexImpl,
-    feeDiscountImpl
+    feeDiscountImpl,
+    limitOrderImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -136,7 +146,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     almImpl,
     securityImpl,
     reflexImpl,
-    feeDiscountImpl
+    feeDiscountImpl,
+    limitOrderImpl
   ], {
     id: "PluginImplementation"
   });
@@ -149,7 +160,8 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     almImpl,
     securityImpl,
     reflexImpl,
-    feeDiscountImpl
+    feeDiscountImpl,
+    limitOrderImpl
   };
 });
 
@@ -205,6 +217,14 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // Always deploy FeeDiscountRegistry for the target AlgebraFactory.
   const feeDiscountRegistry = m.contract("FeeDiscountRegistry", [config.algebraFactory], { id: "FeeDiscountRegistry" });
 
+  // ============= LIMIT ORDER MANAGER =============
+  const limitOrderManager = m.contract("LimitOrderManager", [
+    config.wNativeToken,
+    config.poolDeployer,
+    factoryProxy,
+    config.algebraFactory
+  ], { id: "LimitOrderManager" });
+
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
   // Set farming address if provided
@@ -225,6 +245,12 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   m.call(factory, "setFeeDiscountRegistry", [feeDiscountRegistry], {
     id: "SetFeeDiscountRegistry",
     after: [upgradeAndInitialize, feeDiscountRegistry]
+  });
+
+  // Set LimitOrderManager
+  m.call(factory, "setLimitOrderManager", [limitOrderManager], {
+    id: "SetLimitOrderManager",
+    after: [upgradeAndInitialize, limitOrderManager]
   });
 
   // Set DefaultPluginFactory in AlgebraFactory
@@ -254,6 +280,7 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     factoryProxy,
     securityRegistry,
     feeDiscountRegistry,
+    limitOrderManager,
     ...m.useModule(PluginImplementationModule)
   };
 });

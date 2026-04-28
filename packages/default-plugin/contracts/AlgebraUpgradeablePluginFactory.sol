@@ -11,6 +11,7 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 
 /// @title Algebra Upgradeable Plugin Factory
 /// @notice Factory for deploying upgradeable plugins using Beacon Proxy pattern
@@ -37,6 +38,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     bytes32 defaultConfigId;
     // Fee discount
     address feeDiscountRegistry;
+    // Limit Order
+    address limitOrderManager;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -134,7 +137,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
       s.securityRegistry,
       s.defaultRouter,
       s.defaultConfigId,
-      s.feeDiscountRegistry
+      s.feeDiscountRegistry,
+      s.limitOrderManager
     );
 
     s.pluginByPool[pool] = plugin;
@@ -179,6 +183,11 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return _getStorage().feeDiscountRegistry;
   }
 
+  /// @notice Returns the limit order manager address
+  function limitOrderManager() external view returns (address) {
+    return _getStorage().limitOrderManager;
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -206,6 +215,12 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override onlyAdministrator {
     _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
     emit FeeDiscountRegistry(newFeeDiscountRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
   /// @inheritdoc IReflexPluginFactory

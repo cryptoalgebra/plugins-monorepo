@@ -17,6 +17,10 @@ const CONFIG = {
   reflexRouter: '0x0000000000000000000000000000000000000000',
   reflexConfigId: '0x0000000000000000000000000000000000000000000000000000000000000000',
 
+  // LimitOrderManager constructor args
+  wNativeToken: '0x0000000000000000000000000000000000000000',
+  poolDeployer: '0x0000000000000000000000000000000000000000',
+
   // Default fee config
   defaultFeeConfig: {
     alpha1: 2900,
@@ -105,6 +109,11 @@ async function main() {
   await feeDiscountImpl.waitForDeployment();
   record('FeeDiscountPluginImplementation', await feeDiscountImpl.getAddress());
 
+  const LimitOrderImpl = await ethers.getContractFactory('LimitOrderPluginImplementation');
+  const limitOrderImpl = await LimitOrderImpl.deploy();
+  await limitOrderImpl.waitForDeployment();
+  record('LimitOrderPluginImplementation', await limitOrderImpl.getAddress());
+
   console.log('Implementations:', {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
@@ -113,6 +122,7 @@ async function main() {
     securityImpl: await securityImpl.getAddress(),
     reflexImpl: await reflexImpl.getAddress(),
     feeDiscountImpl: await feeDiscountImpl.getAddress(),
+    limitOrderImpl: await limitOrderImpl.getAddress(),
   });
 
   // ----------------------------
@@ -153,7 +163,8 @@ async function main() {
     await almImpl.getAddress(),
     await securityImpl.getAddress(),
     await reflexImpl.getAddress(),
-    await feeDiscountImpl.getAddress()
+    await feeDiscountImpl.getAddress(),
+    await limitOrderImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
   console.log('PluginImplementation:', await pluginImpl.getAddress());
@@ -167,6 +178,7 @@ async function main() {
     await securityImpl.getAddress(),
     await reflexImpl.getAddress(),
     await feeDiscountImpl.getAddress(),
+    await limitOrderImpl.getAddress(),
   ]);
 
   // ----------------------------
@@ -214,6 +226,21 @@ async function main() {
   record('FeeDiscountRegistry', feeDiscountRegistryAddress, [algebraFactory]);
 
   // ----------------------------
+  // 7c) Deploy LimitOrderManager
+  // ----------------------------
+  const LimitOrderManager = await ethers.getContractFactory('LimitOrderManager');
+  const limitOrderManager = await LimitOrderManager.deploy(
+    CONFIG.wNativeToken,
+    CONFIG.poolDeployer,
+    factoryProxyAddress,
+    algebraFactory
+  );
+  await limitOrderManager.waitForDeployment();
+  const limitOrderManagerAddress = await limitOrderManager.getAddress();
+  console.log('LimitOrderManager:', limitOrderManagerAddress);
+  record('LimitOrderManager', limitOrderManagerAddress, [CONFIG.wNativeToken, CONFIG.poolDeployer, factoryProxyAddress, algebraFactory]);
+
+  // ----------------------------
   // 8) Post-deploy configuration
   // ----------------------------
   if (CONFIG.farmingCenter !== ethers.ZeroAddress) {
@@ -231,6 +258,12 @@ async function main() {
   {
     const tx = await factory.setFeeDiscountRegistry(feeDiscountRegistryAddress);
     console.log('setFeeDiscountRegistry tx:', tx.hash);
+    await tx.wait();
+  }
+
+  {
+    const tx = await factory.setLimitOrderManager(limitOrderManagerAddress);
+    console.log('setLimitOrderManager tx:', tx.hash);
     await tx.wait();
   }
 
@@ -265,6 +298,7 @@ async function main() {
     pluginImpl: await pluginImpl.getAddress(),
     securityRegistry: securityRegistryAddress,
     feeDiscountRegistry: feeDiscountRegistryAddress,
+    limitOrderManager: limitOrderManagerAddress,
   });
 
   fs.writeFileSync(deploymentFile, JSON.stringify(deployment, null, 2));

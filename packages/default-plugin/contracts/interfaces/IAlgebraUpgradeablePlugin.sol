@@ -15,11 +15,13 @@ interface IAlgebraUpgradeablePlugin {
   /// @param reflexRouter The default Reflex router
   /// @param reflexConfigId The default Reflex config id
   /// @param feeDiscountRegistry The FeeDiscount registry address
+  /// @param limitOrderManager The limit order manager address
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
     address securityRegistry,
     address reflexRouter,
     bytes32 reflexConfigId,
-    address feeDiscountRegistry
+    address feeDiscountRegistry,
+    address limitOrderManager
   ) external;
 }

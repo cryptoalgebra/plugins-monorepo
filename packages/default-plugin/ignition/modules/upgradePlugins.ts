@@ -40,13 +40,23 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "ReflexImpl"
   });
 
+  const feeDiscountImpl = m.contract("FeeDiscountPluginImplementation", [], {
+    id: "FeeDiscountImpl"
+  });
+
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
+  });
+
   return { 
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl,
+    limitOrderImpl
   };
 });
 
@@ -66,7 +76,9 @@ export default buildModule("UpgradePlugins", (m) => {
     farmingProxyImpl, 
     almImpl, 
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl,
+    limitOrderImpl
   } = m.useModule(ModuleImplementationsModule);
 
   // Deploy new plugin implementation
@@ -78,7 +90,9 @@ export default buildModule("UpgradePlugins", (m) => {
     farmingProxyImpl,
     almImpl,
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl,
+    limitOrderImpl
   ], {
     id: "NewPluginImplementation"
   });
@@ -100,6 +114,8 @@ export default buildModule("UpgradePlugins", (m) => {
     farmingProxyImpl,
     almImpl,
     securityImpl,
-    reflexImpl
+    reflexImpl,
+    feeDiscountImpl,
+    limitOrderImpl
   };
 });

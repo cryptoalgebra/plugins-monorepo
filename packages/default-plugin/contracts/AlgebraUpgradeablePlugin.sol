@@ -13,6 +13,7 @@ import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 import '@cryptoalgebra/reflex-plugin/contracts/ReflexConnector.sol';
 import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountConnector.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
@@ -28,7 +29,8 @@ contract AlgebraUpgradeablePlugin is
   AlmConnector,
   SecurityConnector,
   ReflexConnector,
-  FeeDiscountConnector
+  FeeDiscountConnector,
+  LimitOrderConnector
 {
   using Plugins for uint8;
 
@@ -42,6 +44,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _securityImpl Security implementation address
   /// @param _reflexImpl Reflex implementation address
   /// @param _feeDiscountImpl FeeDiscount implementation address
+  /// @param _limitOrderImpl LimitOrder implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -51,7 +54,8 @@ contract AlgebraUpgradeablePlugin is
     address _almImpl,
     address _securityImpl,
     address _reflexImpl,
-    address _feeDiscountImpl
+    address _feeDiscountImpl,
+    address _limitOrderImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -61,6 +65,7 @@ contract AlgebraUpgradeablePlugin is
     SecurityConnector(_securityImpl)
     ReflexConnector(_reflexImpl)
     FeeDiscountConnector(_feeDiscountImpl)
+    LimitOrderConnector(_limitOrderImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
@@ -69,7 +74,8 @@ contract AlgebraUpgradeablePlugin is
     address securityRegistry,
     address reflexRouter,
     bytes32 reflexConfigId,
-    address feeDiscountRegistry
+    address feeDiscountRegistry,
+    address limitOrderManager
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
@@ -83,11 +89,14 @@ contract AlgebraUpgradeablePlugin is
     // FeeDiscount 
     _initializeFeeDiscount(feeDiscountRegistry);
 
+    // LimitOrder
+    _initializeLimitOrder(limitOrderManager);
+
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](7);
+    string[] memory activeModules = new string[](8);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
@@ -95,6 +104,7 @@ contract AlgebraUpgradeablePlugin is
     activeModules[4] = SECURITY_MODULE_NAME;
     activeModules[5] = REFLEX_MODULE_NAME;
     activeModules[6] = FEE_DISCOUNT_MODULE_NAME;
+    activeModules[7] = LIMIT_ORDER_MODULE_NAME;
     return activeModules;
   }
 
@@ -106,7 +116,8 @@ contract AlgebraUpgradeablePlugin is
       ALM_PLUGIN_CONFIG |
       SECURITY_PLUGIN_CONFIG |
       REFLEX_PLUGIN_CONFIG |
-      FEE_DISCOUNT_PLUGIN_CONFIG;
+      FEE_DISCOUNT_PLUGIN_CONFIG |
+      LIMIT_ORDER_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -166,7 +177,7 @@ contract AlgebraUpgradeablePlugin is
   ) external override onlyPool returns (bytes4, uint24) {
     // Security check
     // onlyPool guarantees msg.sender is the pool
-    if (desiredLiquidityDelta < 0) {
+    if (desiredLiquidityDelta <= 0) {
       _checkStatusOnBurn(msg.sender);
     } else {
       _checkStatus(msg.sender);
@@ -242,6 +253,9 @@ contract AlgebraUpgradeablePlugin is
     // Reflex  
     bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
     _reflexAfterSwapDelegate(triggerPoolId, amount0Delta, amount1Delta, zeroToOne, tx.origin);
+
+    // Update limit order manager state
+    _updateLimitOrderManagerState(_getPool(), zeroToOne, tick);
 
     return IAlgebraPlugin.afterSwap.selector;
   }

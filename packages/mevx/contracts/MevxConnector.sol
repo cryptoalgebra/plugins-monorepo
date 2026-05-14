@@ -14,7 +14,7 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   using Plugins for uint8;
 
   string internal constant MEVX_MODULE_NAME = 'MEVX Plugin';
-  uint8 internal constant MEVX_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG);
+  uint8 internal constant MEVX_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable mevxImplementation;
@@ -35,14 +35,30 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   /// @notice Execute mevx after swap via delegatecall
   function _mevxAfterSwap(
     address pool,
+    address sender,
+    address recipient,
     bool zeroToOne,
     int256 amount0,
-    int256 amount1,
-    address recipient
+    int256 amount1
   ) internal {
     _delegateCall(
       mevxImplementation,
-      abi.encodeCall(IMevxPluginImplementation.mevxAfterSwap, (pool, zeroToOne, amount0, amount1, recipient))
+      abi.encodeCall(IMevxPluginImplementation.mevxAfterSwap, (pool, sender, recipient, zeroToOne, amount0, amount1))
+    );
+  }
+
+  /// @notice Self-call entry point used to cap the gas spent by route construction and execution
+  function runArbitrage(
+    bytes32 poolId,
+    bool zeroToOne,
+    int256 amount0,
+    int256 amount1,
+    address sender,
+    address recipient
+  ) external {
+    _delegateCall(
+      mevxImplementation,
+      abi.encodeCall(IMevxPluginImplementation.runArbitrage, (poolId, zeroToOne, amount0, amount1, sender, recipient))
     );
   }
 
@@ -57,6 +73,10 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
     return MevxStorage.layout().mevxExecutor;
   }
 
+  function _getMevxExecutor() internal view returns (address) {
+    return MevxStorage.layout().mevxExecutor;
+  }
+
   function getProfitDistributor() external view override returns (address) {
     return MevxStorage.layout().mevxProfitDistributor;
   }
@@ -64,6 +84,14 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   /// @notice Get mevx config ID
   function getConfigId() external view override returns (bytes32) {
     return MevxStorage.layout().mevxConfigId;
+  }
+
+  function getMinGasLeft() external view override returns (uint256) {
+    return MevxStorage.layout().minGasLeft;
+  }
+
+  function getCallGasBudget() external view override returns (uint256) {
+    return MevxStorage.layout().callGasBudget;
   }
 
   // ###### Public Interface ######
@@ -86,5 +114,15 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   function setMevxRouter(address _mevxRouter) external override {
     _authorize();
     _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setMevxRouter, (_mevxRouter)));
+  }
+
+  function setMinGasLeft(uint256 _minGasLeft) external override {
+    _authorize();
+    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setMinGasLeft, (_minGasLeft)));
+  }
+
+  function setCallGasBudget(uint256 _callGasBudget) external override {
+    _authorize();
+    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setCallGasBudget, (_callGasBudget)));
   }
 }

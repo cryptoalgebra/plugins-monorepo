@@ -16,6 +16,12 @@ interface IMevxPlugin {
   /// @notice Returns the current configuration ID for profit distribution
   function getConfigId() external view returns (bytes32);
 
+  /// @notice Returns the minimum gas required before entering the MEVX after-swap path
+  function getMinGasLeft() external view returns (uint256);
+
+  /// @notice Returns the gas budget used for MEVX external calls
+  function getCallGasBudget() external view returns (uint256);
+
   /// @notice Updates the configuration ID for profit distribution
   function setConfigId(bytes32 configId) external;
 
@@ -27,4 +33,10 @@ interface IMevxPlugin {
 
   /// @notice Updates the MEVX router address
   function setMevxRouter(address mevxRouter) external;
+
+  /// @notice Updates the minimum gas required before entering the MEVX after-swap path
+  function setMinGasLeft(uint256 minGasLeft) external;
+
+  /// @notice Updates the gas budget used for MEVX external calls
+  function setCallGasBudget(uint256 callGasBudget) external;
 }

@@ -11,6 +11,8 @@ library MevxStorage {
     address mevxExecutor;
     address mevxProfitDistributor;
     bytes32 mevxConfigId;
+    uint256 minGasLeft;
+    uint256 callGasBudget;
   }
 
   function layout() internal pure returns (Layout storage l) {

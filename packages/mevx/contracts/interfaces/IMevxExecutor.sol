@@ -6,6 +6,7 @@ interface IMevxExecutor {
 		bytes calldata encodedRoute,
 		address[] memory pools,
 		uint256 amountIn,
+		address profitToken,
 		address profitRecipient
 	) external;
 }

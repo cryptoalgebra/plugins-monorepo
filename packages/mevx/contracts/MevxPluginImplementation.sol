@@ -13,6 +13,8 @@ import './libraries/MevxStorage.sol';
 contract MevxPluginImplementation is IMevxPluginImplementation {
 
   uint16 internal constant ALGEBRA_POOL_TYPE = 2;
+  uint256 public constant MAX_MIN_GAS_LEFT = 2_500_000;
+  uint256 public constant MAX_CALL_GAS_BUDGET = 5_000_000;
 
   function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external {
     MevxStorage.Layout storage layout = MevxStorage.layout();
@@ -20,6 +22,7 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     layout.mevxExecutor = mevxExecutor;
     layout.mevxProfitDistributor = profitDistributor;
     layout.mevxConfigId = configId;
+    layout.callGasBudget = MAX_CALL_GAS_BUDGET;
   }
 
   function initializePool(address pool, uint160 sqrtPriceX96) external {
@@ -30,8 +33,10 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     bytes32 poolId = bytes32(uint256(uint160(pool)));
     bytes memory data = abi.encode(sqrtPriceX96);
 
+    bytes memory initData = abi.encodeCall(IMevxRouter.initializePoolExternally, (poolId, ALGEBRA_POOL_TYPE, data));
+
     // Failsafe: keep pool initialization non-blocking for the main flow.
-    try IMevxRouter(router).initializePool(poolId, ALGEBRA_POOL_TYPE, data) {} catch {}
+    address(router).call{gas: layout.callGasBudget}(initData);
   }
 
   function setConfigId(bytes32 configId) external {
@@ -65,54 +70,119 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     emit MevxRouterSet(oldMevxRouter, mevxRouter);
   }
 
+  function setMinGasLeft(uint256 minGasLeft) external {
+    require(minGasLeft <= MAX_MIN_GAS_LEFT, 'minGasLeft too high');
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+    uint256 oldMinGasLeft = layout.minGasLeft;
+    layout.minGasLeft = minGasLeft;
+    emit MinGasLeftSet(oldMinGasLeft, minGasLeft);
+  }
+
+  function setCallGasBudget(uint256 callGasBudget) external {
+    require(callGasBudget <= MAX_CALL_GAS_BUDGET, 'callGasBudget too high');
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+    uint256 oldCallGasBudget = layout.callGasBudget;
+    layout.callGasBudget = callGasBudget;
+    emit CallGasBudgetSet(oldCallGasBudget, callGasBudget);
+  }
+
   function mevxAfterSwap(
     address pool,
+    address sender,
+    address recipient,
     bool zeroToOne,
     int256 amount0,
-    int256 amount1,
-    address recipient
+    int256 amount1
   ) external {
     MevxStorage.Layout storage layout = MevxStorage.layout();
 
-    bytes32 poolId = bytes32(uint256(uint160(pool)));
+    if (sender != layout.mevxExecutor) {
+      require(gasleft() >= layout.minGasLeft, 'Insufficient gas for afterSwap hook');
+    }
+
+    bytes memory branchData = abi.encodeCall(
+      IMevxPluginImplementation.runArbitrage,
+      (bytes32(uint256(uint160(pool))), zeroToOne, amount0, amount1, sender, recipient)
+    );
+
+    address(this).call{gas: layout.callGasBudget}(branchData);
+  }
+
+  function runArbitrage(
+    bytes32 poolId,
+    bool zeroToOne,
+    int256 amount0,
+    int256 amount1,
+    address sender,
+    address recipient
+  ) external {
+    require(msg.sender == address(this), 'self only');
+
+    bytes memory initialArbCheckCallData = abi.encodeWithSelector(
+      IMevxRouter.initialArbCheck.selector,
+      poolId,
+      !zeroToOne
+    );
+
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+
+    (bool successInitialArbCheck, bytes memory returnDataInitialArbCheck) = address(layout.mevxRouter).call(
+      initialArbCheckCallData
+    );
+
+    if (sender == layout.mevxExecutor) {
+      return;
+    }
+
+    if (!successInitialArbCheck || returnDataInitialArbCheck.length != 64) {
+      return;
+    }
+
+    (bool isArbPossible, bytes16 arbData) = abi.decode(returnDataInitialArbCheck, (bool, bytes16));
+
+    if (!isArbPossible) {
+      return;
+    }
 
     bytes memory callData = abi.encodeWithSelector(
         IMevxRouter.constructArbitrageRoute.selector,
         poolId,
         zeroToOne,
+        arbData,
         amount0,
         amount1
     );
 
-    (bool success, bytes memory returnData) = address(layout.mevxRouter).call(
-        callData
-    );
+    (bool success, bytes memory returnData) = address(layout.mevxRouter).call(callData);
 
-    bool isArbPossible;
     address profitToken;
     address[] memory pools;
     uint256 amountIn;
     bytes memory encodedRoute;
 
-    if (success && returnData.length > 0) {
+    if (success && returnData.length >= 224) {
         (isArbPossible, profitToken, pools, amountIn, encodedRoute) = abi
             .decode(returnData, (bool, address, address[], uint256, bytes));
     }
-
+    
+    //add variables to avoid stack too deep error
+    address _recipient = recipient; 
+    address _mevxProfitDistributor = layout.mevxProfitDistributor;
     if (isArbPossible) {
         try
             IMevxExecutor(layout.mevxExecutor).executeRoute(
                 encodedRoute,
                 pools,
                 amountIn,
-                address(layout.mevxProfitDistributor)
+                profitToken,
+                address(_mevxProfitDistributor)
             )
         {
             try
-                IProfitDistributor(layout.mevxProfitDistributor).distributeProfit(
+                IProfitDistributor(_mevxProfitDistributor).distributeProfit(
                     layout.mevxConfigId,
                     profitToken,
-                    recipient
+                    _recipient
                 )
             {} catch {}
         } catch {}

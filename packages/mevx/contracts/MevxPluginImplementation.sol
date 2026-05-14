@@ -12,7 +12,7 @@ import './libraries/MevxStorage.sol';
 /// @dev Executed via delegatecall from MevxConnector
 contract MevxPluginImplementation is IMevxPluginImplementation {
 
-  uint16 internal constant ALGEBRA_POOL_TYPE = 2;
+  uint16 internal constant ALGEBRA_POOL_TYPE = 3;
   uint256 public constant MAX_MIN_GAS_LEFT = 2_500_000;
   uint256 public constant MAX_CALL_GAS_BUDGET = 5_000_000;
 

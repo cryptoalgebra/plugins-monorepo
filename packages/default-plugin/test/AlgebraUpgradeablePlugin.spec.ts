@@ -281,7 +281,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
         expect(moduleNames).to.be.an('array');
-        expect(moduleNames.length).to.eq(5);
+        expect(moduleNames.length).to.eq(6);
         
         // Check each module name is a non-empty string
         for (const moduleName of moduleNames) {
@@ -299,9 +299,10 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect(moduleNames).to.include('Farming Proxy Plugin');
         expect(moduleNames).to.include('Security Plugin');
         expect(moduleNames).to.include('ALM Plugin');
+        expect(moduleNames).to.include('MEVX Plugin');
         
         // Verify module count
-        expect(moduleNames).to.have.lengthOf(5);
+        expect(moduleNames).to.have.lengthOf(6);
       });
 
     });

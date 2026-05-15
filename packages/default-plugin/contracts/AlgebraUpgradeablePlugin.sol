@@ -194,8 +194,7 @@ contract AlgebraUpgradeablePlugin is
     _checkStatus(msg.sender);
 
     _writeTimepoint();
-    address executor = getMevxExecutor();
-    if (sender == executor || tx.origin == executor) {
+    if (sender == getMevxExecutor()) {
       finalFee = 1;
     } else {
       uint88 volatilityAverage = _getAverageVolatilityLast();
@@ -206,7 +205,7 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function afterSwap(
-    address,
+    address sender,
     address recipient,
     bool zeroToOne,
     int256,
@@ -224,8 +223,8 @@ contract AlgebraUpgradeablePlugin is
     _triggerAlmRebalance(tick);
 
     // MEVX
-    if (getMevxRouter() != address(0)) {
-      _mevxAfterSwap(msg.sender, zeroToOne, amount0Delta, amount1Delta, recipient);
+    if (getMevxExecutor() != address(0)) {
+      _mevxAfterSwap(msg.sender, sender, recipient, zeroToOne, amount0Delta, amount1Delta);
     }
 
     return IAlgebraPlugin.afterSwap.selector;

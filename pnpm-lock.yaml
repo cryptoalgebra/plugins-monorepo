@@ -110,8 +110,8 @@ importers:
         specifier: 1.2.4
         version: 1.2.4
       '@cryptoalgebra/mevx-plugin':
-        specifier: 2.2.2
-        version: 2.2.2
+        specifier: 2.2.4
+        version: 2.2.4
       '@cryptoalgebra/safety-switch-plugin':
         specifier: workspace:^
         version: link:../safety-switch
@@ -574,9 +574,6 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@cryptoalgebra/abstract-plugin@2.1.0':
-    resolution: {integrity: sha512-H7m6P6Dlr/yyUJnY3LOeKXVHBZsaN7r77cCT5w8ofqWlE8ieWA1qecYeNE0D4DmGwvUp3HFN76XOciaHqdn3TA==}
-
   '@cryptoalgebra/abstract-plugin@2.2.0':
     resolution: {integrity: sha512-qf7OeyDFE8PMQ197Ik+nqDNn9zvbLb7IcxizyCgrSJEfAi4VmyICr0AlXpsNPkesn8VidGDFQ6QavnHuwbtP5A==}
 
@@ -602,8 +599,8 @@ packages:
     resolution: {integrity: sha512-gaVKaZ7EWMkbzS6z7tzTB3C2r9vdupfGbAscWNEXB57A47b3uWo7hElfsxg/gfb0FmBFpfaamqVW+Q8FHZatLg==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
-  '@cryptoalgebra/mevx-plugin@2.2.2':
-    resolution: {integrity: sha512-cz7/zlETyd9DAQmQVKD8rfi53rmBNTZ539RFgp5najvGKoym7IBjm+IZkpbzcVB2/tYogdvappStz8ITy/EEjg==}
+  '@cryptoalgebra/mevx-plugin@2.2.4':
+    resolution: {integrity: sha512-V0yECDEbo+99pcyNAkSM6AiEMxcTd6fn9+ihzSUNzwDZl/wVRSVuFXHFXL5Ig8j4xPyiwZQkjGx35xSAJFgs4Q==}
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
     resolution: {integrity: sha512-iE2CL8is1ra6WKyW79u75haw12/iAHjuIWdSkxfUTlbRMAb7XuDTAyiWT+x370zQiXJZeCmxoQmVqlT7+US3UA==}
@@ -5084,11 +5081,6 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@cryptoalgebra/abstract-plugin@2.1.0':
-    dependencies:
-      '@cryptoalgebra/integral-core': 1.2.9
-      '@cryptoalgebra/integral-periphery': 1.2.4
-
   '@cryptoalgebra/abstract-plugin@2.2.0':
     dependencies:
       '@cryptoalgebra/integral-core': 1.2.9
@@ -5107,7 +5099,7 @@ snapshots:
 
   '@cryptoalgebra/farming-proxy-plugin@2.1.0':
     dependencies:
-      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/abstract-plugin': 2.2.0
       '@cryptoalgebra/integral-core': 1.2.9
       '@cryptoalgebra/integral-periphery': 1.2.4
 
@@ -5133,7 +5125,7 @@ snapshots:
       '@openzeppelin/contracts': 4.9.3
       '@uniswap/v2-core': 1.0.1
 
-  '@cryptoalgebra/mevx-plugin@2.2.2':
+  '@cryptoalgebra/mevx-plugin@2.2.4':
     dependencies:
       '@cryptoalgebra/abstract-plugin': 2.2.0
       '@cryptoalgebra/integral-core': 1.2.9
@@ -5141,7 +5133,7 @@ snapshots:
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
     dependencies:
-      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/abstract-plugin': 2.2.0
       '@cryptoalgebra/integral-core': 1.2.9
       '@cryptoalgebra/integral-periphery': 1.2.4
 

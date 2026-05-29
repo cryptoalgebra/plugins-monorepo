@@ -104,7 +104,7 @@ contract AlgebraUpgradeablePlugin is
   }
 
   /// @dev Required by FarmingProxyConnector
-  function _getPool() internal view override(UpgradeableAbstractPlugin, FarmingProxyConnector) returns (address) {
+  function _getPool() internal view override(UpgradeableAbstractPlugin, FarmingProxyConnector, MevxConnector) returns (address) {
     return UpgradeableAbstractPlugin._getPool();
   }
 
@@ -188,19 +188,21 @@ contract AlgebraUpgradeablePlugin is
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24 finalFee) {
+  ) external override onlyPool returns (bytes4, uint24 overrideFee, uint24 pluginFee) {
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
 
     _writeTimepoint();
-    if (sender == getMevxExecutor()) {
-      finalFee = 1;
-    } else {
-      uint88 volatilityAverage = _getAverageVolatilityLast();
-      finalFee = _getCurrentFee(volatilityAverage);
+    if (_isMevxExecutor(sender)) {
+      return (IAlgebraPlugin.beforeSwap.selector, 1, 0);
     }
-    return (IAlgebraPlugin.beforeSwap.selector, finalFee, 0);
+
+    uint88 volatilityAverage = _getAverageVolatilityLast();
+    overrideFee = _getCurrentFee(volatilityAverage);
+    pluginFee = _getMevxPluginFee(uint16(overrideFee));
+
+    return (IAlgebraPlugin.beforeSwap.selector, overrideFee, pluginFee);
   }
 
   /// @inheritdoc IAlgebraPlugin
@@ -245,11 +247,16 @@ contract AlgebraUpgradeablePlugin is
     return IAlgebraPlugin.afterFlash.selector;
   }
 
+  /// @inheritdoc IAlgebraPlugin
+  function handlePluginFee(uint256 pluginFee0, uint256 pluginFee1) external override onlyPool returns (bytes4) {
+    _handleMevxPluginFee(pluginFee0, pluginFee1);
+    return IAlgebraPlugin.handlePluginFee.selector;
+  }
+
   // ========== Fee Getter ==========
 
-  /// @notice Returns current fee based on current volatility
-  /// @return fee The current fee value
-  function getCurrentFee() external view override returns (uint16 fee) {
+  /// @inheritdoc IAlgebraDynamicFeePlugin
+  function getCurrentFee() external view override(IAlgebraDynamicFeePlugin) returns (uint16 fee) {
     uint88 volatilityAverage = _getAverageVolatilityLast();
     fee = _getCurrentFee(volatilityAverage);
   }

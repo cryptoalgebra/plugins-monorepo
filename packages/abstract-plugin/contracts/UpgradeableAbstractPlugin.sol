@@ -93,7 +93,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   }
 
   /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external view virtual override onlyPool returns (bytes4) {
+  function handlePluginFee(uint256, uint256) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.handlePluginFee.selector;
   }
 

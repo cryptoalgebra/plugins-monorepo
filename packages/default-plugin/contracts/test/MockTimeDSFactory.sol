@@ -4,7 +4,7 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 
-import './MockTimeAlgebraDefaultPlugin.sol';
+import './MockTimeAlgebraDefaultPluginDeployer.sol';
 import '@cryptoalgebra/mevx-plugin/contracts/MevxPlugin.sol';
 import '../interfaces/IAlgebraDefaultPluginFactory.sol';
 
@@ -68,11 +68,12 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   }
 
   function _createPlugin(address pool) internal returns (address) {
-    MockTimeAlgebraDefaultPlugin volatilityOracle = new MockTimeAlgebraDefaultPlugin(
+    AlgebraFeeConfiguration memory defaultFeeConfiguration_ = defaultFeeConfiguration;
+    address pluginAddress = MockTimeAlgebraDefaultPluginDeployer.deploy(
       pool,
       algebraFactory,
       address(this),
-      defaultFeeConfiguration,
+      defaultFeeConfiguration_,
       securityRegistry,
       MevxPlugin.MevxConfig({
         mevxRouter: defaultMevxRouter,
@@ -82,8 +83,8 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
         mevProtectionFeeEnabled: defaultMevProtectionFeeEnabled
       })
     );
-    pluginByPool[pool] = address(volatilityOracle);
-    return address(volatilityOracle);
+    pluginByPool[pool] = pluginAddress;
+    return pluginAddress;
   }
 
   /// @inheritdoc IDynamicFeePluginFactory

@@ -22,7 +22,7 @@ import {
   MaxUint128,
   SwapToPriceFunction,
 } from '@cryptoalgebra/integral-core/test-utils';
-import { ZERO_ADDRESS } from './shared/fixtures';
+import { mockTimeDSFactoryFactory, ZERO_ADDRESS } from './shared/fixtures';
 
 xdescribe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let wallet: Wallet, other: Wallet;
@@ -42,7 +42,7 @@ xdescribe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const fix = await algebraPoolDeployerMockFixture();
     const pool = await fix.createPool();
 
-    const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
+    const mockPluginFactoryFactory = await mockTimeDSFactoryFactory();
     const mockPluginFactory = (await mockPluginFactoryFactory.deploy(fix.factory)) as any as MockTimeDSFactory;
 
     await mockPluginFactory.createPlugin(pool, ZERO_ADDRESS, ZERO_ADDRESS);

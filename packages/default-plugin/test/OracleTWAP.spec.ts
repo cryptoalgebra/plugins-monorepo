@@ -4,7 +4,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ContractFactory } from 'ethers';
 import { OracleTWAP, MockPool, MockTimeDSFactory, TestERC20 } from '../typechain';
 import { tokensFixture } from 'test-utils/externalFixtures';
-import { ZERO_ADDRESS } from './shared/fixtures';
+import { mockTimeDSFactoryFactory, ZERO_ADDRESS } from './shared/fixtures';
 
 describe('OracleTWAP', () => {
   let tokens: TestERC20[];
@@ -15,7 +15,7 @@ describe('OracleTWAP', () => {
     const tokensFixtureRes = await tokensFixture();
     tokens = [tokensFixtureRes.token0, tokensFixtureRes.token1];
 
-    const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
+    const mockPluginFactoryFactory = await mockTimeDSFactoryFactory();
     const _mockPluginFactory = await mockPluginFactoryFactory.deploy(ZERO_ADDRESS);
 
     const oracleTWAPFactory = await ethers.getContractFactory('OracleTWAP');

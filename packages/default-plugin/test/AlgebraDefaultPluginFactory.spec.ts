@@ -2,7 +2,7 @@ import { Wallet } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
-import { ZERO_ADDRESS, pluginFactoryFixture } from './shared/fixtures';
+import { algebraDefaultPluginFactoryFactory, ZERO_ADDRESS, pluginFactoryFixture } from './shared/fixtures';
 
 import { AlgebraDefaultPluginFactory, AlgebraDefaultPlugin, MockFactory } from '../typechain';
 
@@ -27,7 +27,7 @@ describe('AlgebraDefaultPluginFactory', () => {
     });
 
     xit('factory can create plugin', async () => {
-      const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
+      const pluginFactoryFactory = await algebraDefaultPluginFactoryFactory();
       const pluginFactoryMock = (await pluginFactoryFactory.deploy(wallet.address)) as any as AlgebraDefaultPluginFactory;
 
       const pluginAddress = await pluginFactoryMock.createPlugin.staticCall(

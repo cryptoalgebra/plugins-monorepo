@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
-import './AlgebraDefaultPlugin.sol';
+import './AlgebraDefaultPluginDeployer.sol';
 import '@cryptoalgebra/mevx-plugin/contracts/MevxPlugin.sol';
 
 /// @title Algebra Integral 1.2.2 default plugin factory
@@ -73,11 +73,12 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
 
   function _createPlugin(address pool) internal returns (address) {
     require(pluginByPool[pool] == address(0), 'Already created');
-    IDynamicFeeManager volatilityOracle = new AlgebraDefaultPlugin(
+    AlgebraFeeConfiguration memory defaultFeeConfiguration_ = defaultFeeConfiguration;
+    address pluginAddress = AlgebraDefaultPluginDeployer.deploy(
       pool,
       algebraFactory,
       address(this),
-      defaultFeeConfiguration,
+      defaultFeeConfiguration_,
       securityRegistry,
       MevxPlugin.MevxConfig({
         mevxRouter: defaultMevxRouter,
@@ -87,8 +88,8 @@ contract AlgebraDefaultPluginFactory is IAlgebraDefaultPluginFactory {
         mevProtectionFeeEnabled: defaultMevProtectionFeeEnabled
       })
     );
-    pluginByPool[pool] = address(volatilityOracle);
-    return address(volatilityOracle);
+    pluginByPool[pool] = pluginAddress;
+    return pluginAddress;
   }
 
   /// @inheritdoc IDynamicFeePluginFactory

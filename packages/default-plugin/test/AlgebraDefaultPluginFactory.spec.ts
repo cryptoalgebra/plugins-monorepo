@@ -27,14 +27,8 @@ describe('AlgebraDefaultPluginFactory', () => {
     });
 
     xit('factory can create plugin', async () => {
-      const mockReflexRouterFactory = await ethers.getContractFactory('MockReflexRouter');
-      const mockReflexRouter = await mockReflexRouterFactory.deploy();
-
       const pluginFactoryFactory = await ethers.getContractFactory('AlgebraDefaultPluginFactory');
       const pluginFactoryMock = (await pluginFactoryFactory.deploy(wallet.address)) as any as AlgebraDefaultPluginFactory;
-
-      // Set router and config before creating plugin
-      await pluginFactoryMock.setRouter(mockReflexRouter);
 
       const pluginAddress = await pluginFactoryMock.createPlugin.staticCall(
         wallet.address,

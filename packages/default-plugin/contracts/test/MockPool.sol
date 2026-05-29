@@ -71,9 +71,6 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   mapping(bytes32 => Position) public override positions;
 
   address owner;
-  uint24 public overrideFee;
-  uint24 public pluginFee;
-
   /// @inheritdoc IAlgebraPoolState
   function getCommunityFeePending() external pure override returns (uint128, uint128) {
     revert('not implemented');

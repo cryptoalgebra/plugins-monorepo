@@ -120,6 +120,4 @@ Array [
 ]
 `;
 
-exports[`AlgebraDefaultPlugin #ModuleIdentification #Gas costs getActiveModulesCount gas cost [ @skip-on-coverage ] 1`] = `3`;
-
-exports[`AlgebraDefaultPlugin AlgebraDefaultPlugin external methods #changeFeeConfiguration feeConfig getter gas cost [ @skip-on-coverage ] 1`] = `23816`;
+exports[`AlgebraDefaultPlugin AlgebraDefaultPlugin external methods #changeFeeConfiguration feeConfig getter gas cost [ @skip-on-coverage ] 1`] = `23838`;

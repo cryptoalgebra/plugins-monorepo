@@ -9,10 +9,10 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePlugin.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePlugin.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPlugin.sol';
-import '@cryptoalgebra/reflex-plugin/contracts/ReflexAfterSwap.sol';
+import '@cryptoalgebra/mevx-plugin/contracts/MevxPlugin.sol';
 
-/// @title Algebra Integral 1.0 adaptive fee, security and reflex plugin
-contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, SecurityPlugin, ReflexAfterSwap {
+/// @title Algebra Integral 1.0 adaptive fee, security and MEV-X plugin
+contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, VolatilityOraclePlugin, SecurityPlugin, MevxPlugin {
   using Plugins for uint8;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
@@ -22,9 +22,13 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     address _pluginFactory,
     AlgebraFeeConfiguration memory _config,
     address _securityRegistry,
-    address _reflexRouter,
-    bytes32 _configId
-  ) BaseAbstractPlugin(_pool, _factory, _pluginFactory) DynamicFeePlugin(_config) SecurityPlugin(_securityRegistry) ReflexAfterSwap(_reflexRouter, _configId) {}
+    MevxConfig memory _mevxConfig
+  )
+    BaseAbstractPlugin(_pool, _factory, _pluginFactory)
+    DynamicFeePlugin(_config)
+    SecurityPlugin(_securityRegistry)
+    MevxPlugin(_mevxConfig)
+  {}
 
   // ###### HOOKS ######
 
@@ -33,8 +37,9 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterInitialize(address, uint160, int24 tick) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  function afterInitialize(address, uint160 sqrtPriceX96, int24 tick) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _initialize_TWAP(tick);
+    _initializeMevxPool(pool, sqrtPriceX96);
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
@@ -54,17 +59,18 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
     _writeTimepoint();
     _checkStatus();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint16 fee = _getCurrentFee(volatilityAverage);
+    fee = _getFeeWithMevProtection(sender, fee);
     IAlgebraPool(pool).setFee(fee);
     return (IAlgebraPlugin.beforeSwap.selector);
   }
 
   function afterSwap(
-    address,
+    address sender,
     address,
     bool zeroToOne,
     int256,
@@ -76,9 +82,8 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     // farming
     _updateVirtualPoolTick(zeroToOne);
 
-    // reflex
-    bytes32 triggerPoolId = bytes32(uint256(uint160(msg.sender)));
-    _reflexAfterSwap(triggerPoolId, amount0Out, amount1Out, zeroToOne, tx.origin);
+    // MEV-X
+    _runMevxAfterSwap(msg.sender, sender, zeroToOne, amount0Out, amount1Out);
 
     return IAlgebraPlugin.afterSwap.selector;
   }
@@ -98,10 +103,8 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
   function getCurrentFee() external view override returns (uint16 fee) {
     uint88 volatilityAverage = _getAverageVolatilityLast();
     fee = _getCurrentFee(volatilityAverage);
-  }
-
-  /// @inheritdoc ReflexAfterSwap
-  function _onlyReflexAdmin() internal view override {
-    _authorize();
+    if (mevProtectionFeeEnabled) {
+      fee = _getFeeWithMevProtection(fee);
+    }
   }
 }

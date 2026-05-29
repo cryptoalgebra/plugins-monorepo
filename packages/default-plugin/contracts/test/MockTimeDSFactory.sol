@@ -5,6 +5,7 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 
 import './MockTimeAlgebraDefaultPlugin.sol';
+import '@cryptoalgebra/mevx-plugin/contracts/MevxPlugin.sol';
 import '../interfaces/IAlgebraDefaultPluginFactory.sol';
 
 contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
@@ -26,11 +27,20 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
   /// @inheritdoc ISecurityPluginFactory
   address public override securityRegistry;
 
-  /// @notice Default router address used for new plugins
-  address public override defaultRouter;
+  /// @inheritdoc IMevxPluginFactory
+  address public override defaultMevxRouter;
 
-  /// @notice Default config ID used for new plugins
-  bytes32 public override defaultConfigId;
+  /// @inheritdoc IMevxPluginFactory
+  address public override defaultMevxExecutor;
+
+  /// @inheritdoc IMevxPluginFactory
+  address public override defaultProfitDistributor;
+
+  /// @inheritdoc IMevxPluginFactory
+  bytes32 public override defaultMevxConfigId;
+
+  /// @inheritdoc IMevxPluginFactory
+  bool public override defaultMevProtectionFeeEnabled;
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
@@ -64,8 +74,13 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
       address(this),
       defaultFeeConfiguration,
       securityRegistry,
-      defaultRouter,
-      defaultConfigId
+      MevxPlugin.MevxConfig({
+        mevxRouter: defaultMevxRouter,
+        mevxExecutor: defaultMevxExecutor,
+        profitDistributor: defaultProfitDistributor,
+        configId: defaultMevxConfigId,
+        mevProtectionFeeEnabled: defaultMevProtectionFeeEnabled
+      })
     );
     pluginByPool[pool] = address(volatilityOracle);
     return address(volatilityOracle);
@@ -91,17 +106,33 @@ contract MockTimeDSFactory is IAlgebraDefaultPluginFactory {
     emit SecurityRegistry(newSecurityRegistry);
   }
 
-  /// @notice Sets the default router address for new plugins
-  /// @param newRouter The new router address to set
-  function setRouter(address newRouter) external {
-    defaultRouter = newRouter;
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxRouter(address newMevxRouter) external override {
+    defaultMevxRouter = newMevxRouter;
+    emit DefaultMevxRouter(newMevxRouter);
   }
 
-  /// @notice Sets the default config ID for new plugins
-  /// @param newConfigId The new config ID to set
-  function setConfigId(bytes32 newConfigId) external {
-    require(defaultConfigId != newConfigId, 'Same config ID');
-    defaultConfigId = newConfigId;
-    emit DefaultConfigId(newConfigId);
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxExecutor(address newMevxExecutor) external override {
+    defaultMevxExecutor = newMevxExecutor;
+    emit DefaultMevxExecutor(newMevxExecutor);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setProfitDistributor(address newProfitDistributor) external override {
+    defaultProfitDistributor = newProfitDistributor;
+    emit DefaultProfitDistributor(newProfitDistributor);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setMevxConfigId(bytes32 newConfigId) external override {
+    defaultMevxConfigId = newConfigId;
+    emit DefaultMevxConfigId(newConfigId);
+  }
+
+  /// @inheritdoc IMevxPluginFactory
+  function setDefaultMevProtectionFeeEnabled(bool enabled) external override {
+    defaultMevProtectionFeeEnabled = enabled;
+    emit DefaultMevProtectionFeeEnabled(enabled);
   }
 }

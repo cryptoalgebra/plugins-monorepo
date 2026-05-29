@@ -791,6 +791,7 @@ describe('AlgebraDefaultPlugin', () => {
         expect(moduleNames).to.include('Farming Proxy Plugin');  
         expect(moduleNames).to.include('Volatility Oracle Plugin');
         expect(moduleNames).to.include('Security Plugin');
+        expect(moduleNames).to.include('MEV-X Plugin');
       });
     });
 

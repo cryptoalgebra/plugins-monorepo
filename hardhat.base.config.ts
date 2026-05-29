@@ -93,9 +93,9 @@ export default {
       chainId: 41,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
-    beraTestnet: {
-      url: `https://artio.rpc.berachain.com/`,
-      chainId: 80085,
+    hype: {
+      url: `https://rpc.hyperliquid.xyz/evm`,
+      chainId: 999,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
     maticMainnet: {
@@ -113,7 +113,9 @@ export default {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: `${ETHERSCAN_API_KEY}`,
+    apiKey: {
+      hype: ETHERSCAN_API_KEY || '',
+    },
     customChains: [
       {
         network: 'seiTestnet',
@@ -140,11 +142,11 @@ export default {
         },
       },
       {
-        network: 'mantle',
-        chainId: 5000,
+        network: 'hype',
+        chainId: 999,
         urls: {
-          apiURL: 'https://explorer.mantle.xyz/api',
-          browserURL: 'https://explorer.mantle.xyz/',
+          apiURL: 'https://api.etherscan.io/v2/api?chainid=999',
+          browserURL: 'https://explorer.hyperliquid.xyz/',
         },
       },
       {

@@ -19,17 +19,14 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
   uint16 internal constant ALGEBRA_POOL_TYPE = 3;
   uint256 public constant MAX_MIN_GAS_LEFT = 2_500_000;
   uint256 public constant MAX_CALL_GAS_BUDGET = 5_000_000;
-  /// @dev Maximum allowed value for defaultFee (matches Algebra's MAX_DEFAULT_FEE = type(uint16).max)
-  uint16 public constant MAX_DEFAULT_FEE = type(uint16).max;
 
-  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId, uint16 defaultFee) external {
+  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external {
     MevxStorage.Layout storage layout = MevxStorage.layout();
     layout.mevxRouter = mevxRouter;
     layout.mevxExecutor = mevxExecutor;
     layout.mevxProfitDistributor = profitDistributor;
     layout.mevxConfigId = configId;
     layout.callGasBudget = MAX_CALL_GAS_BUDGET;
-    layout.defaultFee = defaultFee;
   }
 
   function initializePool(address pool, uint160 sqrtPriceX96) external {
@@ -91,13 +88,6 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     uint256 oldCallGasBudget = layout.callGasBudget;
     layout.callGasBudget = callGasBudget;
     emit CallGasBudgetSet(oldCallGasBudget, callGasBudget);
-  }
-
-  function setDefaultFee(uint16 defaultFee) external {
-    MevxStorage.Layout storage layout = MevxStorage.layout();
-    uint16 oldDefaultFee = layout.defaultFee;
-    layout.defaultFee = defaultFee;
-    emit DefaultFeeSet(oldDefaultFee, defaultFee);
   }
 
   function setMevProtectionFeeEnabled(bool enabled) external {

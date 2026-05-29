@@ -12,11 +12,10 @@ interface IMevxPluginImplementation {
   event MevxRouterSet(address oldMevxRouter, address newMevxRouter);
   event MinGasLeftSet(uint256 oldMinGasLeft, uint256 newMinGasLeft);
   event CallGasBudgetSet(uint256 oldCallGasBudget, uint256 newCallGasBudget);
-  event DefaultFeeSet(uint16 oldDefaultFee, uint16 newDefaultFee);
   event AuthorizedHandlePluginFeeCallerSet(address indexed caller, bool authorized);
   event MevProtectionFeeEnabledSet(bool oldEnabled, bool newEnabled);
 
-  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId, uint16 defaultFee) external;
+  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external;
   function initializePool(address pool, uint160 sqrtPriceX96) external;
 
   function setConfigId(bytes32 configId) external;
@@ -25,7 +24,6 @@ interface IMevxPluginImplementation {
   function setMevxRouter(address mevxRouter) external;
   function setMinGasLeft(uint256 minGasLeft) external;
   function setCallGasBudget(uint256 callGasBudget) external;
-  function setDefaultFee(uint16 defaultFee) external;
   function setMevProtectionFeeEnabled(bool enabled) external;
   function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external;
 

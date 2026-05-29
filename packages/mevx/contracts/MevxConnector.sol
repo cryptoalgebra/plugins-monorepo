@@ -29,8 +29,8 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   function _getPool() internal view virtual returns (address);
 
   /// @notice Initialize MEVX plugin via delegatecall
-  function _initializeMevx(address _router, address _executor, address _distributor, bytes32 _configId, uint16 _defaultFee) internal {
-    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.initializeMevx, (_router, _executor, _distributor, _configId, _defaultFee)));
+  function _initializeMevx(address _router, address _executor, address _distributor, bytes32 _configId) internal {
+    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.initializeMevx, (_router, _executor, _distributor, _configId)));
   }
 
   function _initializePool(address pool, uint160 sqrtPriceX96) internal {
@@ -115,33 +115,8 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
     return MevxStorage.layout().callGasBudget;
   }
 
-  function getDefaultFee() external view override returns (uint16) {
-    return MevxStorage.layout().defaultFee;
-  }
-
   function getMevProtectionFeeEnabled() external view override returns (bool) {
     return MevxStorage.layout().mevProtectionFeeEnabled;
-  }
-
-  /// @notice Returns the current total fee (defaultFee + MEV protection fee from router)
-  /// @dev Queries the router via staticcall; falls back to defaultFee if the call fails
-  function getCurrentFee() external view override returns (uint16) {
-    MevxStorage.Layout storage layout = MevxStorage.layout();
-    uint16 currentFee = layout.defaultFee;
-    address router = layout.mevxRouter;
-    if (router == address(0)) return currentFee;
-
-    (bool success, bytes memory returnData) = router.staticcall{gas: layout.callGasBudget}(
-      abi.encodeWithSelector(IMevxRouter.getMevProtectionFee.selector, currentFee)
-    );
-    if (success && returnData.length == 32) {
-      uint24 pluginFee = abi.decode(returnData, (uint24));
-      uint256 total = uint256(currentFee) + pluginFee;
-      if (total <= type(uint16).max) {
-        return uint16(total);
-      }
-    }
-    return currentFee;
   }
 
   // ###### Internal Helpers for beforeSwap ######
@@ -151,16 +126,16 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
     return sender == MevxStorage.layout().mevxExecutor;
   }
 
-  /// @notice Returns the MEV protection plugin fee if enabled, or 0 otherwise
+  /// @notice Returns the MEV protection plugin fee for a given base fee, or 0 if disabled
   /// @dev Queries the router via staticcall; fails silently and returns 0
-  function _getMevxPluginFee() internal view returns (uint24 pluginFee) {
+  /// @param currentFee The base dynamic fee provided by the concrete plugin
+  function _getMevxPluginFee(uint16 currentFee) internal view returns (uint24 pluginFee) {
     MevxStorage.Layout storage layout = MevxStorage.layout();
     if (!layout.mevProtectionFeeEnabled) return 0;
     address router = layout.mevxRouter;
     if (router == address(0)) return 0;
-
     (bool success, bytes memory returnData) = router.staticcall{gas: layout.callGasBudget}(
-      abi.encodeWithSelector(IMevxRouter.getMevProtectionFee.selector, layout.defaultFee)
+      abi.encodeWithSelector(IMevxRouter.getMevProtectionFee.selector, currentFee)
     );
     if (success && returnData.length == 32) {
       pluginFee = abi.decode(returnData, (uint24));
@@ -198,11 +173,6 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   function setCallGasBudget(uint256 _callGasBudget) external override {
     _authorize();
     _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setCallGasBudget, (_callGasBudget)));
-  }
-
-  function setDefaultFee(uint16 _defaultFee) external override {
-    _authorize();
-    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setDefaultFee, (_defaultFee)));
   }
 
   function setMevProtectionFeeEnabled(bool _enabled) external override {

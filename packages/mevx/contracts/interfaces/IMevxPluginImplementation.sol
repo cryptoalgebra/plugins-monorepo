@@ -12,8 +12,11 @@ interface IMevxPluginImplementation {
   event MevxRouterSet(address oldMevxRouter, address newMevxRouter);
   event MinGasLeftSet(uint256 oldMinGasLeft, uint256 newMinGasLeft);
   event CallGasBudgetSet(uint256 oldCallGasBudget, uint256 newCallGasBudget);
+  event DefaultFeeSet(uint16 oldDefaultFee, uint16 newDefaultFee);
+  event AuthorizedHandlePluginFeeCallerSet(address indexed caller, bool authorized);
+  event MevProtectionFeeEnabledSet(bool oldEnabled, bool newEnabled);
 
-  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external;
+  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId, uint16 defaultFee) external;
   function initializePool(address pool, uint160 sqrtPriceX96) external;
 
   function setConfigId(bytes32 configId) external;
@@ -22,6 +25,9 @@ interface IMevxPluginImplementation {
   function setMevxRouter(address mevxRouter) external;
   function setMinGasLeft(uint256 minGasLeft) external;
   function setCallGasBudget(uint256 callGasBudget) external;
+  function setDefaultFee(uint16 defaultFee) external;
+  function setMevProtectionFeeEnabled(bool enabled) external;
+  function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external;
 
   function mevxAfterSwap(address pool, address sender, address recipient, bool zeroToOne, int256 amount0, int256 amount1) external;
   function runArbitrage(
@@ -32,4 +38,10 @@ interface IMevxPluginImplementation {
     address sender,
     address recipient
   ) external;
+
+  /// @notice Distributes collected plugin fees to the profit distributor
+  /// @param pool The pool address (to read token0/token1)
+  /// @param pluginFee0 Amount of token0 fees collected
+  /// @param pluginFee1 Amount of token1 fees collected
+  function handlePluginFee(address pool, uint256 pluginFee0, uint256 pluginFee1) external;
 }

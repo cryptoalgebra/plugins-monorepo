@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './interfaces/IMevxExecutor.sol';
 import './interfaces/IMevxPluginImplementation.sol';
 import './interfaces/IMevxRouter.sol';
@@ -11,18 +14,22 @@ import './libraries/MevxStorage.sol';
 /// @notice This contract contains MEVX plugin logic using namespaced storage
 /// @dev Executed via delegatecall from MevxConnector
 contract MevxPluginImplementation is IMevxPluginImplementation {
+  using SafeERC20 for IERC20;
 
   uint16 internal constant ALGEBRA_POOL_TYPE = 3;
   uint256 public constant MAX_MIN_GAS_LEFT = 2_500_000;
   uint256 public constant MAX_CALL_GAS_BUDGET = 5_000_000;
+  /// @dev Maximum allowed value for defaultFee (matches Algebra's MAX_DEFAULT_FEE = type(uint16).max)
+  uint16 public constant MAX_DEFAULT_FEE = type(uint16).max;
 
-  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external {
+  function initializeMevx(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId, uint16 defaultFee) external {
     MevxStorage.Layout storage layout = MevxStorage.layout();
     layout.mevxRouter = mevxRouter;
     layout.mevxExecutor = mevxExecutor;
     layout.mevxProfitDistributor = profitDistributor;
     layout.mevxConfigId = configId;
     layout.callGasBudget = MAX_CALL_GAS_BUDGET;
+    layout.defaultFee = defaultFee;
   }
 
   function initializePool(address pool, uint160 sqrtPriceX96) external {
@@ -84,6 +91,48 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     uint256 oldCallGasBudget = layout.callGasBudget;
     layout.callGasBudget = callGasBudget;
     emit CallGasBudgetSet(oldCallGasBudget, callGasBudget);
+  }
+
+  function setDefaultFee(uint16 defaultFee) external {
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+    uint16 oldDefaultFee = layout.defaultFee;
+    layout.defaultFee = defaultFee;
+    emit DefaultFeeSet(oldDefaultFee, defaultFee);
+  }
+
+  function setMevProtectionFeeEnabled(bool enabled) external {
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+    bool oldEnabled = layout.mevProtectionFeeEnabled;
+    layout.mevProtectionFeeEnabled = enabled;
+    emit MevProtectionFeeEnabledSet(oldEnabled, enabled);
+  }
+
+  function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external {
+    require(caller != address(0), 'Invalid caller');
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+    layout.authorizedHandlePluginFeeCallers[caller] = authorized;
+    emit AuthorizedHandlePluginFeeCallerSet(caller, authorized);
+  }
+
+  /// @notice Distributes collected plugin fees to the profit distributor
+  /// @dev Called via delegatecall from MevxConnector.handlePluginFee; address(this) is the proxy
+  function handlePluginFee(address pool, uint256 pluginFee0, uint256 pluginFee1) external {
+    MevxStorage.Layout storage layout = MevxStorage.layout();
+    address recipient = layout.mevxProfitDistributor;
+    if (recipient == address(0)) return;
+
+    bytes32 configId = layout.mevxConfigId;
+    address token0 = IAlgebraPool(pool).token0();
+    address token1 = IAlgebraPool(pool).token1();
+
+    if (pluginFee0 > 0) {
+      IERC20(token0).safeTransfer(recipient, pluginFee0);
+      try IProfitDistributor(recipient).distributeProfit(configId, token0, address(0)) {} catch {}
+    }
+    if (pluginFee1 > 0) {
+      IERC20(token1).safeTransfer(recipient, pluginFee1);
+      try IProfitDistributor(recipient).distributeProfit(configId, token1, address(0)) {} catch {}
+    }
   }
 
   function mevxAfterSwap(

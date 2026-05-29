@@ -22,6 +22,15 @@ interface IMevxPlugin {
   /// @notice Returns the gas budget used for MEVX external calls
   function getCallGasBudget() external view returns (uint256);
 
+  /// @notice Returns the default fee charged to regular swappers (in hundredths of a bip)
+  function getDefaultFee() external view returns (uint16);
+
+  /// @notice Returns whether MEV protection fee is enabled
+  function getMevProtectionFeeEnabled() external view returns (bool);
+
+  /// @notice Returns the current total fee (defaultFee + MEV protection fee from router)
+  function getCurrentFee() external view returns (uint16);
+
   /// @notice Updates the configuration ID for profit distribution
   function setConfigId(bytes32 configId) external;
 
@@ -39,4 +48,14 @@ interface IMevxPlugin {
 
   /// @notice Updates the gas budget used for MEVX external calls
   function setCallGasBudget(uint256 callGasBudget) external;
+
+  /// @notice Updates the default fee charged to regular swappers
+  /// @param defaultFee The new default fee (in hundredths of a bip, max type(uint16).max)
+  function setDefaultFee(uint16 defaultFee) external;
+
+  /// @notice Enables or disables the MEV protection fee
+  function setMevProtectionFeeEnabled(bool enabled) external;
+
+  /// @notice Grants or revokes authorization for an address to call handlePluginFee
+  function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external;
 }

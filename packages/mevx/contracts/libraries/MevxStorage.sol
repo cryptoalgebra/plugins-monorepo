@@ -13,6 +13,10 @@ library MevxStorage {
     bytes32 mevxConfigId;
     uint256 minGasLeft;
     uint256 callGasBudget;
+    // MEV protection fee fields
+    uint16 defaultFee;
+    bool mevProtectionFeeEnabled;
+    mapping(address => bool) authorizedHandlePluginFeeCallers;
   }
 
   function layout() internal pure returns (Layout storage l) {

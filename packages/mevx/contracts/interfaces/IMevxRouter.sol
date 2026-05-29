@@ -22,4 +22,9 @@ interface IMevxRouter {
 			uint256 optimalAmountIn,
 			bytes memory encodedRoute
 		);
+
+	/// @notice Returns the MEV protection plugin fee for a given base fee
+	/// @param currentFee The current base fee (in hundredths of a bip)
+	/// @return pluginFee The additional plugin fee to charge as MEV protection
+	function getMevProtectionFee(uint16 currentFee) external view returns (uint24 pluginFee);
 }

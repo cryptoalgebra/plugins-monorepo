@@ -64,6 +64,8 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     _checkStatus();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint16 fee = _getCurrentFee(volatilityAverage);
+    feeWithoutMevProtection = fee;
+    feeWithoutMevProtectionCached = true;
     fee = _getFeeWithMevProtection(sender, fee);
     IAlgebraPool(pool).setFee(fee);
     return (IAlgebraPlugin.beforeSwap.selector);
@@ -79,11 +81,18 @@ contract AlgebraDefaultPlugin is DynamicFeePlugin, FarmingProxyPlugin, Volatilit
     int256 amount1Out,
     bytes calldata
   ) external override(AbstractPlugin, IAlgebraPlugin) onlyPool returns (bytes4) {
+
     // farming
     _updateVirtualPoolTick(zeroToOne);
 
     // MEV-X
     _runMevxAfterSwap(msg.sender, sender, zeroToOne, amount0Out, amount1Out);
+
+    if (feeWithoutMevProtectionCached) {
+      IAlgebraPool(pool).setFee(feeWithoutMevProtection);
+      feeWithoutMevProtection = 0;
+      feeWithoutMevProtectionCached = false;
+    }
 
     return IAlgebraPlugin.afterSwap.selector;
   }

@@ -36,6 +36,8 @@ abstract contract MevxPlugin is BaseAbstractPlugin {
 
   uint256 public minGasLeft;
   uint256 public callGasBudget;
+  uint16 internal feeWithoutMevProtection;
+  bool internal feeWithoutMevProtectionCached;
 
   event MevxConfigIdSet(bytes32 oldConfigId, bytes32 newConfigId);
   event ProfitDistributorSet(address oldProfitDistributor, address newProfitDistributor);
@@ -118,6 +120,8 @@ abstract contract MevxPlugin is BaseAbstractPlugin {
   }
 
   function _initializeMevxPool(address pool, uint160 sqrtPriceX96) internal {
+    if (address(mevxRouter) == address(0)) return;
+
     bytes32 poolId = bytes32(uint256(uint160(pool)));
     bytes memory initData = abi.encodeCall(IMevxRouter.initializePoolExternally, (poolId, ALGEBRA_INTEGRAL_POOL_TYPE, abi.encode(sqrtPriceX96)));
 
@@ -127,6 +131,7 @@ abstract contract MevxPlugin is BaseAbstractPlugin {
 
   function _runMevxAfterSwap(address pool, address sender, bool zeroToOne, int256 amount0, int256 amount1) internal {
     IMevxExecutor executor = mevxExecutor;
+    if (address(mevxRouter) == address(0) || address(executor) == address(0) || address(profitDistributor) == address(0)) return;
 
     if (sender != address(executor)) {
       require(gasleft() >= minGasLeft, 'Insufficient gas for afterSwap hook');

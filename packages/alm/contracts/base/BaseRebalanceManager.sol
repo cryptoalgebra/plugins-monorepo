@@ -232,15 +232,18 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
     require(gasleft() >= 1600000, 'Not enough gas left');
-    bool success = _tryExternalPriceVaultRebalance(ranges, targetSqrtPriceX96, swapPayer, maxSwapInput);
-    if (success) {
-      lastRebalanceTimestamp = _blockTimestamp();
-      lastRebalanceCurrentPrice = twapResult.currentPriceAccountingDecimals;
-      state = newState;
-    } else {
-      state = State.Special;
-      _pause();
-    }
+    IExternalPriceAlgebraVault(vault).rebalanceToExternalPrice(
+      ranges.baseLower,
+      ranges.baseUpper,
+      ranges.limitLower,
+      ranges.limitUpper,
+      targetSqrtPriceX96,
+      swapPayer,
+      maxSwapInput
+    );
+    lastRebalanceTimestamp = _blockTimestamp();
+    lastRebalanceCurrentPrice = twapResult.currentPriceAccountingDecimals;
+    state = newState;
   }
 
   function _rebalance(TwapResult memory obtainTWAPsResult) internal {
@@ -291,29 +294,6 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     } else {
       lastRebalanceTimestamp = _blockTimestamp();
       lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
-    }
-  }
-
-  function _tryExternalPriceVaultRebalance(
-    Ranges memory ranges,
-    uint160 targetSqrtPriceX96,
-    address swapPayer,
-    uint256 maxSwapInput
-  ) private returns (bool success) {
-    try
-      IExternalPriceAlgebraVault(vault).rebalanceToExternalPrice(
-        ranges.baseLower,
-        ranges.baseUpper,
-        ranges.limitLower,
-        ranges.limitUpper,
-        targetSqrtPriceX96,
-        swapPayer,
-        maxSwapInput
-      )
-    {
-      return true;
-    } catch {
-      return false;
     }
   }
 

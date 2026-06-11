@@ -15,7 +15,7 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy and Security
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -66,12 +66,11 @@ contract AlgebraUpgradeablePlugin is
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](4);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
-    activeModules[3] = ALM_MODULE_NAME;
-    activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[3] = SECURITY_MODULE_NAME;
     return activeModules;
   }
 
@@ -80,7 +79,6 @@ contract AlgebraUpgradeablePlugin is
       VOLATILITY_ORACLE_PLUGIN_CONFIG |
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
-      ALM_PLUGIN_CONFIG |
       SECURITY_PLUGIN_CONFIG;
   }
 
@@ -201,9 +199,6 @@ contract AlgebraUpgradeablePlugin is
     // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
 
-    // Obtain TWAP and trigger rebalance
-    _triggerAlmRebalance(tick);
-
     return IAlgebraPlugin.afterSwap.selector;
   }
 
@@ -231,19 +226,4 @@ contract AlgebraUpgradeablePlugin is
     fee = _getCurrentFee(volatilityAverage);
   }
 
-  // ========== ALM Helper Functions ==========
-
-  /// @dev Trigger ALM rebalance with TWAP data
-  function _triggerAlmRebalance(int24 currentTick) internal {
-    // Get TWAP periods from ALM
-    uint32 slowPeriod = slowTwapPeriod();
-    uint32 fastPeriod = fastTwapPeriod();
-
-    // rebalance happens only if rebalanceManager != 0 and we have enough history for slowTwapPeriod.
-    if (rebalanceManager() != address(0) && _canGetTwap(slowPeriod)) {
-      int24 slowTwapTick = _getTwapTick(slowPeriod);
-      int24 fastTwapTick = _getTwapTick(fastPeriod);
-      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastTimepointTimestamp());
-    }
-  }
 }

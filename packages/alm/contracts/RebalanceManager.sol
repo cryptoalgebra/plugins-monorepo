@@ -8,12 +8,12 @@ contract RebalanceManager is BaseRebalanceManager {
     require(_vault != address(0), 'Invalid vault address');
     paused = false;
     vault = _vault;
-    pool = IAlgebraVault(vault).pool();
+    pool = IExternalPriceAlgebraVault(vault).pool();
     factory = IAlgebraPool(pool).factory();
 
     tickSpacing = IAlgebraPool(pool).tickSpacing();
 
-    bool _allowToken1 = IAlgebraVault(vault).allowToken1();
+    bool _allowToken1 = IExternalPriceAlgebraVault(vault).allowToken1();
 
     minTimeBetweenRebalances = _minTimeBetweenRebalances;
 
@@ -25,8 +25,8 @@ contract RebalanceManager is BaseRebalanceManager {
     _validateThresholds(_thresholds);
     thresholds = _thresholds;
 
-    address token0 = IAlgebraVault(_vault).token0();
-    address token1 = IAlgebraVault(_vault).token1();
+    address token0 = IExternalPriceAlgebraVault(_vault).token0();
+    address token1 = IExternalPriceAlgebraVault(_vault).token1();
 
     address _pairedToken = _allowToken1 ? token0 : token1;
     pairedToken = _pairedToken;

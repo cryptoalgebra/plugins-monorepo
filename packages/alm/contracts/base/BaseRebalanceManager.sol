@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import '@cryptoalgebra/alm-vault/contracts/interfaces/IAlgebraVault.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
@@ -13,9 +12,18 @@ import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
 import '../interfaces/IRebalanceManager.sol';
+import '../interfaces/IExternalPriceAlgebraVault.sol';
+
+interface IChainlinkAggregatorV3 {
+  function decimals() external view returns (uint8);
+  function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80);
+}
 
 abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
+
+  uint256 private constant Q192 = uint256(1) << 192;
+  uint256 public constant MAX_CHAINLINK_PRICE_AGE = 1 days;
 
   struct TwapResult {
     uint256 currentPriceAccountingDecimals;
@@ -175,6 +183,22 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     emit SetVault(_vault);
   }
 
+  /// @notice Keeper-driven rebalance to a trusted externally supplied Algebra sqrt price.
+  /// @dev Keeper auth, target freshness and max deviation checks should be added before production use.
+  function rebalanceToExternalPrice(uint160 targetSqrtPriceX96, int24 targetTick, address swapPayer, uint256 maxSwapInput) external {
+    _rebalanceToExternalTarget(targetTick, targetSqrtPriceX96, swapPayer, maxSwapInput);
+  }
+
+  /// @notice Keeper-driven rebalance to a price derived on-chain from a Chainlink feed.
+  /// @dev targetTick is used for range and inventory calculations. The manager reads and converts
+  /// the feed price, then calls the vault with the derived sqrtPriceX96.
+  /// Keeper auth, target freshness and max deviation checks should be added before production use.
+  function rebalanceToChainlinkPrice(address chainlinkFeed, int24 targetTick, address swapPayer, uint256 maxSwapInput) external {
+    require(chainlinkFeed != address(0), 'Invalid Chainlink feed');
+    uint160 targetSqrtPriceX96 = _getChainlinkSqrtPriceX96(chainlinkFeed);
+    _rebalanceToExternalTarget(targetTick, targetSqrtPriceX96, swapPayer, maxSwapInput);
+  }
+
   function unpause() external {
     _authorize();
     require(paused, 'Already unpaused');
@@ -187,6 +211,60 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     if (vault == address(0)) return;
     TwapResult memory twapResult = _obtainTWAPs(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
     _rebalance(twapResult);
+  }
+
+  function _rebalanceToExternalTarget(
+    int24 targetTick,
+    uint160 targetSqrtPriceX96,
+    address swapPayer,
+    uint256 maxSwapInput
+  ) internal {
+    if (vault == address(0)) return;
+    TwapResult memory twapResult = _obtainTWAPs(targetTick, targetTick, targetTick, type(uint32).max);
+    _rebalance(twapResult, targetSqrtPriceX96, swapPayer, maxSwapInput);
+  }
+
+  function _rebalance(
+    TwapResult memory obtainTWAPsResult,
+    uint160 targetSqrtPriceX96,
+    address swapPayer,
+    uint256 maxSwapInput
+  ) internal {
+    if (paused) return;
+    if (obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit == 0) return;
+    if (obtainTWAPsResult.currentPriceAccountingDecimals == 0) return;
+
+    (DecideStatus decideStatus, State newState) = _decideRebalance(obtainTWAPsResult);
+
+    if (decideStatus == DecideStatus.NoNeed || decideStatus == DecideStatus.TooSoon) return;
+    if (decideStatus == DecideStatus.NoNeedWithPending) {
+      lastRebalanceTimestamp = _blockTimestamp();
+      lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
+      return;
+    }
+
+    if (decideStatus == DecideStatus.ExtremeVolatility) {
+      IExternalPriceAlgebraVault(vault).setDepositMax(0, 0);
+      state = State.Special;
+      _pause();
+      return;
+    }
+
+    Ranges memory ranges = decideStatus == DecideStatus.Normal
+      ? _getRangesWithState(newState, obtainTWAPsResult)
+      : _getRangesWithoutState(obtainTWAPsResult);
+    if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
+
+    require(gasleft() >= 1600000, 'Not enough gas left');
+    bool success = _tryExternalPriceVaultRebalance(ranges, targetSqrtPriceX96, swapPayer, maxSwapInput);
+    if (success) {
+      lastRebalanceTimestamp = _blockTimestamp();
+      lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
+      state = newState;
+    } else {
+      state = State.Special;
+      _pause();
+    }
   }
 
   function _rebalance(TwapResult memory obtainTWAPsResult) internal {
@@ -221,7 +299,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
         if (ranges.baseUpper - ranges.baseLower <= 300 || ranges.limitUpper - ranges.limitLower <= 300) return;
 
         require(gasleft() >= 1600000, 'Not enough gas left');
-        try IAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
+        try IExternalPriceAlgebraVault(vault).rebalance(ranges.baseLower, ranges.baseUpper, ranges.limitLower, ranges.limitUpper, 0) {
           lastRebalanceTimestamp = _blockTimestamp();
           lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
           state = newState;
@@ -230,13 +308,36 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
           _pause();
         }
       } else {
-        IAlgebraVault(vault).setDepositMax(0, 0);
+        IExternalPriceAlgebraVault(vault).setDepositMax(0, 0);
         state = State.Special;
         _pause();
       }
     } else {
       lastRebalanceTimestamp = _blockTimestamp();
       lastRebalanceCurrentPrice = obtainTWAPsResult.currentPriceAccountingDecimals;
+    }
+  }
+
+  function _tryExternalPriceVaultRebalance(
+    Ranges memory ranges,
+    uint160 targetSqrtPriceX96,
+    address swapPayer,
+    uint256 maxSwapInput
+  ) private returns (bool success) {
+    try
+      IExternalPriceAlgebraVault(vault).rebalanceToExternalPrice(
+        ranges.baseLower,
+        ranges.baseUpper,
+        ranges.limitLower,
+        ranges.limitUpper,
+        targetSqrtPriceX96,
+        swapPayer,
+        maxSwapInput
+      )
+    {
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -251,11 +352,11 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     bool _allowToken1 = allowToken1;
 
     if (_allowToken1) {
-      (uint256 amount0, uint256 amount1) = IAlgebraVault(vault).getTotalAmounts();
+      (uint256 amount0, uint256 amount1) = IExternalPriceAlgebraVault(vault).getTotalAmounts();
       twapResult.totalPairedToken = amount0;
       twapResult.totalDepositToken = amount1;
     } else {
-      (uint256 amount0, uint256 amount1) = IAlgebraVault(vault).getTotalAmounts();
+      (uint256 amount0, uint256 amount1) = IExternalPriceAlgebraVault(vault).getTotalAmounts();
       twapResult.totalPairedToken = amount1;
       twapResult.totalDepositToken = amount0;
     }
@@ -549,6 +650,29 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
   function _authorize() internal view {
     require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender));
+  }
+
+  /// @notice Reads a Chainlink AggregatorV3 feed (token1 per token0) and converts to sqrtPriceX96.
+  function _getChainlinkSqrtPriceX96(address feed) internal view returns (uint160 sqrtPriceX96) {
+    IChainlinkAggregatorV3 aggregator = IChainlinkAggregatorV3(feed);
+    (uint80 roundId, int256 answer, , uint256 updatedAt, uint80 answeredInRound) = aggregator.latestRoundData();
+    require(answer > 0, 'Invalid Chainlink price');
+    require(
+      updatedAt != 0 && answeredInRound >= roundId && block.timestamp - updatedAt <= MAX_CHAINLINK_PRICE_AGE,
+      'Stale Chainlink price'
+    );
+
+    uint256 answerScale = 10 ** aggregator.decimals();
+    uint256 token0Scale = 10 ** IERC20Metadata(depositToken).decimals();
+    uint256 token1Scale = 10 ** IERC20Metadata(pairedToken).decimals();
+
+    uint256 numerator = uint256(answer) * token0Scale;
+    uint256 denominator = answerScale * token1Scale;
+    sqrtPriceX96 = uint160(Math.sqrt(Math.mulDiv(numerator, Q192, denominator)));
+    require(
+      sqrtPriceX96 > TickMath.MIN_SQRT_RATIO && sqrtPriceX96 < TickMath.MAX_SQRT_RATIO,
+      'Chainlink price out of range'
+    );
   }
 
   function _getTwapPrices(

@@ -12,5 +12,5 @@ interface IPriceConvergencePluginImplementation {
 
   function setPositionWidth(int24 _positionWidth) external;
 
-  function rebalance(uint160 limitSqrtPrice, address algebraFactory) external;
+  function rebalance(int256 swapQuantity, uint160 limitSqrtPrice, address algebraFactory) external;
 }

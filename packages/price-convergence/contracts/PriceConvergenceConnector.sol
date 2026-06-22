@@ -59,10 +59,10 @@ abstract contract PriceConvergenceConnector is BaseConnector, IPriceConvergenceP
   }
 
   /// @inheritdoc IPriceConvergencePlugin
-  function rebalance(uint160 limitSqrtPrice) external override {
+  function rebalance(int256 swapQuantity, uint160 limitSqrtPrice) external override {
     _delegateCall(
       priceConvergenceImplementation,
-      abi.encodeCall(IPriceConvergencePluginImplementation.rebalance, (limitSqrtPrice, _getFactory()))
+      abi.encodeCall(IPriceConvergencePluginImplementation.rebalance, (swapQuantity, limitSqrtPrice, _getFactory()))
     );
   }
 

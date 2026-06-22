@@ -17,7 +17,7 @@ interface IPriceConvergencePlugin {
 
   function setPositionWidth(int24 _positionWidth) external;
 
-  function rebalance(uint160 limitSqrtPrice) external;
+  function rebalance(int256 swapQuantity, uint160 limitSqrtPrice) external;
 
   function vault() external view returns (address);
 

@@ -35,7 +35,7 @@ contract PriceConvergencePluginImplementation is IPriceConvergencePluginImplemen
   }
 
   /// @inheritdoc IPriceConvergencePluginImplementation
-  function rebalance(uint160 limitSqrtPrice, address algebraFactory) external {
+  function rebalance(int256 swapQuantity, uint160 limitSqrtPrice, address algebraFactory) external {
     PriceConvergenceStorage.Layout storage layout = PriceConvergenceStorage.layout();
     bool allowed = msg.sender == layout.rebalanceManager ||
       IAlgebraFactory(algebraFactory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender);
@@ -44,7 +44,7 @@ contract PriceConvergencePluginImplementation is IPriceConvergencePluginImplemen
     address _vault = layout.vault;
     require(_vault != address(0), 'Vault not set');
 
-    IPriceConvergenceVault(_vault).rebalance(limitSqrtPrice, layout.positionWidth);
+    IPriceConvergenceVault(_vault).rebalance(swapQuantity, limitSqrtPrice, layout.positionWidth);
   }
 
   function _setVault(address _vault) private {

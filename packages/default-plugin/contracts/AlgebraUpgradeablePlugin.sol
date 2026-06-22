@@ -5,26 +5,23 @@ import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeeConnector.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnector.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
-import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
+import '@cryptoalgebra/price-convergence-plugin/contracts/PriceConvergenceConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security and Price Convergence
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
   IAlgebraUpgradeablePlugin,
   VolatilityOracleConnector,
-  DynamicFeeConnector,
   FarmingProxyConnector,
-  AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  PriceConvergenceConnector
 {
   using Plugins for uint8;
 
@@ -32,56 +29,47 @@ contract AlgebraUpgradeablePlugin is
   /// @param _factory The Algebra factory address
   /// @param _pluginFactory The plugin factory address
   /// @param _volatilityOracleImpl VolatilityOracle implementation address
-  /// @param _dynamicFeeImpl DynamicFee implementation address
   /// @param _farmingProxyImpl FarmingProxy implementation address
-  /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _priceConvergenceImpl Price Convergence implementation address
   constructor(
     address _factory,
     address _pluginFactory,
     address _volatilityOracleImpl,
-    address _dynamicFeeImpl,
     address _farmingProxyImpl,
-    address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _priceConvergenceImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
-    DynamicFeeConnector(_dynamicFeeImpl)
     FarmingProxyConnector(_farmingProxyImpl)
-    AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    PriceConvergenceConnector(_priceConvergenceImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
-  function initialize(
-    AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry
-  ) external override initializer onlyPluginFactory {
+  function initialize(address securityRegistry) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
-    _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
 
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](4);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
-    activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
-    activeModules[2] = FARMING_PROXY_MODULE_NAME;
-    activeModules[3] = ALM_MODULE_NAME;
-    activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[1] = FARMING_PROXY_MODULE_NAME;
+    activeModules[2] = SECURITY_MODULE_NAME;
+    activeModules[3] = PRICE_CONVERGENCE_MODULE_NAME;
     return activeModules;
   }
 
   function defaultPluginConfig() public pure override returns (uint8) {
     return
       VOLATILITY_ORACLE_PLUGIN_CONFIG |
-      DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
-      ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      PRICE_CONVERGENCE_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -91,14 +79,28 @@ contract AlgebraUpgradeablePlugin is
     return pluginFactory;
   }
 
-  /// @dev Required by FarmingProxyConnector
-  function _getPool() internal view override(UpgradeableAbstractPlugin, FarmingProxyConnector) returns (address) {
+  /// @dev Required by FarmingProxyConnector and PriceConvergenceConnector
+  function _getPool()
+    internal
+    view
+    override(UpgradeableAbstractPlugin, FarmingProxyConnector, PriceConvergenceConnector)
+    returns (address)
+  {
     return UpgradeableAbstractPlugin._getPool();
   }
 
-  /// @dev Required by DynamicFeeConnector, AlmConnector, SecurityConnector - use base class implementation
+  /// @dev Required by module connectors - use base class implementation
   function _authorize() internal view override(UpgradeableAbstractPlugin, BaseConnector) {
     UpgradeableAbstractPlugin._authorize();
+  }
+
+  /// @dev Required by PriceConvergenceConnector
+  function _getFactory() internal view override returns (address) {
+    return factory;
+  }
+
+  function getPool() external view override(FarmingProxyConnector, PriceConvergenceConnector) returns (address) {
+    return _getPool();
   }
 
   /// @dev Override _getPoolState from UpgradeableAbstractPlugin for VolatilityOracleConnector
@@ -132,7 +134,7 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function beforeModifyPosition(
-    address,
+    address sender,
     address,
     int24,
     int24,
@@ -145,6 +147,7 @@ contract AlgebraUpgradeablePlugin is
       _checkStatusOnBurn(msg.sender);
     } else {
       _checkStatus(msg.sender);
+      _checkModifyPositionCaller(sender);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
@@ -180,9 +183,7 @@ contract AlgebraUpgradeablePlugin is
     _checkStatus(msg.sender);
 
     _writeTimepoint();
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    uint24 fee = _getCurrentFee(volatilityAverage);
-    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
+    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
   }
 
   /// @inheritdoc IAlgebraPlugin
@@ -200,9 +201,6 @@ contract AlgebraUpgradeablePlugin is
 
     // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
-
-    // Obtain TWAP and trigger rebalance
-    _triggerAlmRebalance(tick);
 
     return IAlgebraPlugin.afterSwap.selector;
   }
@@ -222,28 +220,4 @@ contract AlgebraUpgradeablePlugin is
     return IAlgebraPlugin.afterFlash.selector;
   }
 
-  // ========== Fee Getter ==========
-
-  /// @notice Returns current fee based on current volatility
-  /// @return fee The current fee value
-  function getCurrentFee() external view override returns (uint16 fee) {
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    fee = _getCurrentFee(volatilityAverage);
-  }
-
-  // ========== ALM Helper Functions ==========
-
-  /// @dev Trigger ALM rebalance with TWAP data
-  function _triggerAlmRebalance(int24 currentTick) internal {
-    // Get TWAP periods from ALM
-    uint32 slowPeriod = slowTwapPeriod();
-    uint32 fastPeriod = fastTwapPeriod();
-
-    // rebalance happens only if rebalanceManager != 0 and we have enough history for slowTwapPeriod.
-    if (rebalanceManager() != address(0) && _canGetTwap(slowPeriod)) {
-      int24 slowTwapTick = _getTwapTick(slowPeriod);
-      int24 fastTwapTick = _getTwapTick(fastPeriod);
-      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastTimepointTimestamp());
-    }
-  }
 }

@@ -53,7 +53,7 @@ abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
   }
 
   /// @inheritdoc IFarmingPlugin
-  function getPool() external view override returns (address) {
+  function getPool() external view virtual override returns (address) {
     return _getPool();
   }
 

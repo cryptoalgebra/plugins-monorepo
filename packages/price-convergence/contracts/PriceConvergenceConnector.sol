@@ -82,7 +82,7 @@ abstract contract PriceConvergenceConnector is BaseConnector, IPriceConvergenceP
   }
 
   /// @inheritdoc IPriceConvergencePlugin
-  function getPool() external view override returns (address) {
+  function getPool() external view virtual override returns (address) {
     return _getPool();
   }
 

@@ -7,9 +7,6 @@ import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
@@ -29,8 +26,6 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address algebraFactory;
     address beacon;
     mapping(address pool => address plugin) pluginByPool;
-    // Dynamic Fee
-    AlgebraFeeConfiguration defaultFeeConfiguration;
     // Farming
     address farmingAddress;
     // Security
@@ -61,20 +56,10 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   /// @notice Initialize the factory
   /// @param _algebraFactory The Algebra factory address
   /// @param pluginImplementation The initial plugin implementation address
-  /// @param initialFeeConfig The initial fee configuration
-  function initialize(
-    address _algebraFactory,
-    address pluginImplementation,
-    AlgebraFeeConfiguration memory initialFeeConfig
-  ) external initializer {
+  function initialize(address _algebraFactory, address pluginImplementation) external initializer {
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
     s.beacon = address(new UpgradeableBeacon(pluginImplementation));
-
-    // Validate and set initial fee configuration
-    AdaptiveFee.validateFeeConfiguration(initialFeeConfig);
-    s.defaultFeeConfiguration = initialFeeConfig;
-    emit DefaultFeeConfiguration(initialFeeConfig);
   }
 
   // ========== IBasePluginFactory Implementation ==========
@@ -127,7 +112,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -145,25 +130,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return _getStorage().securityRegistry;
   }
 
-  /// @inheritdoc IDynamicFeePluginFactory
-  function defaultFeeConfiguration()
-    external
-    view
-    override
-    returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
-  {
-    AlgebraFeeConfiguration memory config = _getStorage().defaultFeeConfiguration;
-    return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
-  }
-
   // ========== Configuration Setters ==========
-
-  /// @inheritdoc IDynamicFeePluginFactory
-  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override onlyAdministrator {
-    AdaptiveFee.validateFeeConfiguration(newConfig);
-    _getStorage().defaultFeeConfiguration = newConfig;
-    emit DefaultFeeConfiguration(newConfig);
-  }
 
   /// @inheritdoc IFarmingPluginFactory
   function setFarmingAddress(address newFarmingAddress) external override onlyAdministrator {

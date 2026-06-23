@@ -1,22 +1,18 @@
 import { ethers } from 'hardhat';
-import { MockFactory, MockPool, MockTimeDSFactory, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, NewMockTimeUpgradeablePluginFactory } from '../../typechain';
+import {
+  MockFactory,
+  MockPool,
+  MockTimeDSFactory,
+  MockTimeAlgebraUpgradeablePlugin,
+  MockTimeUpgradeablePluginFactory,
+  NewMockTimeUpgradeablePluginFactory,
+} from '../../typechain';
 
 type Fixture<T> = () => Promise<T>;
 interface MockFactoryFixture {
   mockFactory: MockFactory;
 }
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-// Default fee configuration for tests
-export const DEFAULT_FEE_CONFIGURATION = {
-  alpha1: 2900,
-  alpha2: 12000,
-  beta1: 360,
-  beta2: 60000,
-  gamma1: 59,
-  gamma2: 8500,
-  baseFee: 100
-};
 
 async function mockFactoryFixture(): Promise<MockFactoryFixture> {
   const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
@@ -25,39 +21,32 @@ async function mockFactoryFixture(): Promise<MockFactoryFixture> {
   return { mockFactory };
 }
 
-// Deploy all 5 implementation contracts
-// Note: These contracts are imported via TestImports.sol to ensure they are compiled
+// Deploy active implementation contracts.
 async function deployImplementations() {
   // 1. VolatilityOracle Implementation
   const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
   const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
 
-  // 2. DynamicFee Implementation
-  const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-  const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
-
-  // 3. FarmingProxy Implementation
+  // 2. FarmingProxy Implementation
   const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
   const farmingProxyImpl = await farmingProxyImplFactory.deploy();
 
-  // 4. ALM Implementation
-  const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-  const almImpl = await almImplFactory.deploy();
-
-  // 5. Security Implementation
+  // 3. Security Implementation
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
+  const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-    dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
-    almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    priceConvergenceImpl: await priceConvergenceImpl.getAddress(),
   };
 }
 
-// Upgradeable plugin fixture with all 5 modules
+// Upgradeable plugin fixture with active modules.
 interface PluginFixture extends MockFactoryFixture {
   plugin: MockTimeAlgebraUpgradeablePlugin;
   mockPluginFactory: MockTimeDSFactory;
@@ -73,11 +62,9 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   const mockPluginFactory = (await mockPluginFactoryFactory.deploy(
     mockFactory,
     implementations.volatilityOracleImpl,
-    implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
-    implementations.almImpl,
     implementations.securityImpl,
-    DEFAULT_FEE_CONFIGURATION
+    implementations.priceConvergenceImpl
   )) as any as MockTimeDSFactory;
 
   // Deploy MockPool
@@ -91,6 +78,8 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   // Attach to plugin
   const pluginContractFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const plugin = pluginContractFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
+  const [wallet] = await ethers.getSigners();
+  await plugin.setVault(wallet.address);
 
   return {
     plugin,
@@ -140,20 +129,15 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     mockFactoryAddress,
     proxyAddress, // Use real proxy address as pluginFactory
     implementations.volatilityOracleImpl,
-    implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
-    implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.priceConvergenceImpl
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
 
   // Now initialize the factory with the correct plugin implementation
-  await pluginFactory.initialize(
-    mockFactoryAddress,
-    await pluginImpl.getAddress(),
-    DEFAULT_FEE_CONFIGURATION
-  );
+  await pluginFactory.initialize(mockFactoryAddress, await pluginImpl.getAddress());
 
   return {
     pluginFactory,
@@ -175,16 +159,14 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
   const { mockFactory } = await mockFactoryFixture();
   const implementations = await deployImplementations();
 
-  // Deploy MockTimeUpgradeablePluginFactory with all implementations
+  // Deploy MockTimeUpgradeablePluginFactory with active implementations
   const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeUpgradeablePluginFactory');
   const mockPluginFactory = (await mockPluginFactoryFactory.deploy(
     mockFactory,
     implementations.volatilityOracleImpl,
-    implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
-    implementations.almImpl,
     implementations.securityImpl,
-    DEFAULT_FEE_CONFIGURATION
+    implementations.priceConvergenceImpl
   )) as any as MockTimeUpgradeablePluginFactory;
 
   // Deploy MockPool
@@ -198,6 +180,8 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
   // Attach to plugin
   const pluginContractFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const plugin = pluginContractFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
+  const [wallet] = await ethers.getSigners();
+  await plugin.setVault(wallet.address);
 
   return {
     plugin,
@@ -207,7 +191,6 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
   };
 };
 
-
 interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture {
   mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
   factoryImpl: any;
@@ -215,66 +198,57 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
   proxyAdminOwner: any;
   implementations: {
     volatilityOracleImpl: string;
-    dynamicFeeImpl: string;
     farmingProxyImpl: string;
-    almImpl: string;
     securityImpl: string;
+    priceConvergenceImpl: string;
   };
 }
 
 export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgradeablePluginFactoryFixture> = async function (): Promise<NewMockTimeUpgradeablePluginFactoryFixture> {
   const { mockFactory } = await mockFactoryFixture();
-  const implementations = await deployImplementations();
+  const activeImplementations = await deployImplementations();
   const mockFactoryAddress = await mockFactory.getAddress();
 
-  // Deploy ProxyAdmin
-  const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
   const signers = await ethers.getSigners();
   const proxyAdminOwner = signers[signers.length - 1];
+  const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
   const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
 
-  // Deploy factory implementation
   const factoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
   const factoryImpl = await factoryImplFactory.deploy();
 
-  // Deploy TransparentUpgradeableProxy
   const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
   const proxy = await TransparentProxyFactory.deploy(
     await factoryImpl.getAddress(),
     await proxyAdmin.getAddress(),
     '0x'
   );
-
   const proxyAddress = await proxy.getAddress();
 
-  // Deploy MockTimeAlgebraUpgradeablePlugin 
   const pluginImplFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const pluginImpl = await pluginImplFactory.deploy(
     mockFactoryAddress,
-    proxyAddress,  
-    implementations.volatilityOracleImpl,
-    implementations.dynamicFeeImpl,
-    implementations.farmingProxyImpl,
-    implementations.almImpl,
-    implementations.securityImpl
+    proxyAddress,
+    activeImplementations.volatilityOracleImpl,
+    activeImplementations.farmingProxyImpl,
+    activeImplementations.securityImpl,
+    activeImplementations.priceConvergenceImpl
   );
 
-  // Attach factory interface to proxy
   const pluginFactory = factoryImplFactory.attach(proxyAddress);
-
-  // Initialize factory with plugin implementation
-  await pluginFactory.initialize(
-    mockFactoryAddress,
-    await pluginImpl.getAddress(),  
-    DEFAULT_FEE_CONFIGURATION
-  );
+  await pluginFactory.initialize(mockFactoryAddress, await pluginImpl.getAddress());
 
   return {
-    mockPluginFactory: pluginFactory as any as NewMockTimeUpgradeablePluginFactory, 
+    mockPluginFactory: pluginFactory as any as NewMockTimeUpgradeablePluginFactory,
     factoryImpl,
     proxyAdmin,
     proxyAdminOwner,
     mockFactory,
-    implementations
+    implementations: {
+      volatilityOracleImpl: activeImplementations.volatilityOracleImpl,
+      farmingProxyImpl: activeImplementations.farmingProxyImpl,
+      securityImpl: activeImplementations.securityImpl,
+      priceConvergenceImpl: activeImplementations.priceConvergenceImpl,
+    },
   };
 };

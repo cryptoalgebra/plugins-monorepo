@@ -3,11 +3,11 @@ import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
 import { MockTimeAlgebraUpgradeablePlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 
-import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
+import { algebraPoolDeployerMockFixture } from '@cryptoalgebra/test-utils/externalFixtures';
 
-import snapshotGasCost from 'test-utils/snapshotGasCost';
+import snapshotGasCost from '@cryptoalgebra/test-utils/snapshotGasCost';
 
 import {
   expandTo18Decimals,
@@ -22,7 +22,7 @@ import {
   MaxUint128,
   SwapToPriceFunction,
 } from '@cryptoalgebra/integral-core/test-utils';
-import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION } from './shared/fixtures';
+import { ZERO_ADDRESS} from './shared/fixtures';
 
 describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let wallet: Wallet, other: Wallet;
@@ -43,24 +43,21 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
     const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
 
-    const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-    const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
-
     const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
     const farmingProxyImpl = await farmingProxyImplFactory.deploy();
 
-    const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-    const almImpl = await almImplFactory.deploy();
 
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
+    const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
+    const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
+
     return {
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-      dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
-      almImpl: await almImpl.getAddress(),
-      securityImpl: await securityImpl.getAddress()
+      securityImpl: await securityImpl.getAddress(),
+      priceConvergenceImpl: await priceConvergenceImpl.getAddress()
     };
   }
 
@@ -73,11 +70,9 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const mockPluginFactory = (await mockPluginFactoryFactory.deploy(
       fix.factory,
       implementations.volatilityOracleImpl,
-      implementations.dynamicFeeImpl,
       implementations.farmingProxyImpl,
-      implementations.almImpl,
       implementations.securityImpl,
-      DEFAULT_FEE_CONFIGURATION
+      implementations.priceConvergenceImpl
     )) as any as MockTimeDSFactory;
 
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
@@ -85,6 +80,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
 
     const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
     const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
+    await plugin.setVault(await fix.swapTargetCallee.getAddress());
 
     await pool.setPlugin(plugin);
 
@@ -190,15 +186,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
           });
 
           it('first swap in block with no tick movement, static fee', async () => {
-            await plugin.changeFeeConfiguration({
-              alpha1: 0,
-              alpha2: 0,
-              beta1: 0,
-              beta2: 0,
-              gamma1: 1,
-              gamma2: 1,
-              baseFee: 100,
-            });
             await snapshotGasCost(swapExact0For1(2000, wallet.address));
             expect((await pool.globalState()).price).to.not.eq(startingPrice);
             expect((await pool.globalState()).tick).to.eq(startingTick);
@@ -510,15 +497,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
         describe(isDynamicFee ? 'dynamic fee' : 'static fee', async () => {
           beforeEach(async () => {
             if (!isDynamicFee) {
-              await plugin.changeFeeConfiguration({
-                alpha1: 0,
-                alpha2: 0,
-                beta1: 0,
-                beta2: 0,
-                gamma1: 1,
-                gamma2: 1,
-                baseFee: 100,
-              });
               await advanceTime(15);
               await swapExact0For1(1000, wallet.address);
             }

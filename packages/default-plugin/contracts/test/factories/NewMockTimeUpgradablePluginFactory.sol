@@ -5,8 +5,6 @@ import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
 
@@ -30,8 +28,6 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address algebraFactory;
     address beacon;
     mapping(address pool => address plugin) pluginByPool;
-    // Dynamic Fee
-    AlgebraFeeConfiguration defaultFeeConfiguration;
     // Farming
     address farmingAddress;
     // Security
@@ -42,9 +38,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     uint32 defaultFastTwapPeriod;
     // Module implementations (for creating beacon)
     address volatilityOracleImplementation;
-    address dynamicFeeImplementation;
     address farmingProxyImplementation;
-    address almImplementation;
     address securityImplementation;
   }
 
@@ -67,20 +61,15 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
   /// @notice Initialize the factory
   /// @param _algebraFactory The Algebra factory address
   /// @param pluginImplementation The plugin implementation address (MockTimeAlgebraUpgradeablePlugin)
-  /// @param initialFeeConfig The initial fee configuration
   function initialize(
     address _algebraFactory,
-    address pluginImplementation,
-    AlgebraFeeConfiguration memory initialFeeConfig
+    address pluginImplementation
   ) external initializer {
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
 
     // Create beacon with provided implementation
     s.beacon = address(new UpgradeableBeacon(pluginImplementation));
-
-    s.defaultFeeConfiguration = initialFeeConfig;
-    emit DefaultFeeConfiguration(initialFeeConfig);
   }
 
   // ========== IBasePluginFactory Implementation ==========
@@ -135,7 +124,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -153,39 +142,8 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     return _getStorage().securityRegistry;
   }
 
-  /// @notice Default ALM rebalance manager address
-  function defaultRebalanceManager() external view returns (address) {
-    return _getStorage().defaultRebalanceManager;
-  }
-
-  /// @notice Default slow TWAP period for ALM (in seconds)
-  function defaultSlowTwapPeriod() external view returns (uint32) {
-    return _getStorage().defaultSlowTwapPeriod;
-  }
-
-  /// @notice Default fast TWAP period for ALM (in seconds)
-  function defaultFastTwapPeriod() external view returns (uint32) {
-    return _getStorage().defaultFastTwapPeriod;
-  }
-
-  /// @inheritdoc IDynamicFeePluginFactory
-  function defaultFeeConfiguration()
-    external
-    view
-    override
-    returns (uint16 alpha1, uint16 alpha2, uint32 beta1, uint32 beta2, uint16 gamma1, uint16 gamma2, uint16 baseFee)
-  {
-    AlgebraFeeConfiguration memory config = _getStorage().defaultFeeConfiguration;
-    return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
-  }
 
   // ========== Configuration Setters ==========
-
-  /// @inheritdoc IDynamicFeePluginFactory
-  function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override {
-    _getStorage().defaultFeeConfiguration = newConfig;
-    emit DefaultFeeConfiguration(newConfig);
-  }
 
   /// @inheritdoc IFarmingPluginFactory
   function setFarmingAddress(address newFarmingAddress) external override {
@@ -199,21 +157,6 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
   function setSecurityRegistry(address newSecurityRegistry) external override {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
-  }
-
-  /// @notice Set the default ALM rebalance manager
-  function setDefaultRebalanceManager(address newRebalanceManager) external {
-    _getStorage().defaultRebalanceManager = newRebalanceManager;
-    emit RebalanceManager(newRebalanceManager);
-  }
-
-  /// @notice Set the default ALM TWAP periods
-  function setDefaultAlmTwapPeriods(uint32 slowPeriod, uint32 fastPeriod) external {
-    if (slowPeriod < fastPeriod) revert InvalidAlmTwapPeriods();
-    PluginFactoryStorage storage s = _getStorage();
-    s.defaultSlowTwapPeriod = slowPeriod;
-    s.defaultFastTwapPeriod = fastPeriod;
-    emit AlmTwapPeriods(slowPeriod, fastPeriod);
   }
 
   // ========== Upgrade Management ==========

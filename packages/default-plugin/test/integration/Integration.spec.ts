@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { ADDRESSES,  SQRT_RATIO } from './constants';
@@ -332,7 +332,7 @@ describe('Integration Tests - Fork', function() {
       
       // Deploy new plugin with upgraded security
       const result = await deployNewPluginImplementation(
-        'MockUpgradedPluginWithNewSecurity',
+        'MockTimeUpgradedPlugin',
         algebraFactory,
         newPluginFactory,
         { security: upgradedSecurityAddress }
@@ -351,7 +351,7 @@ describe('Integration Tests - Fork', function() {
       const poolPluginAfter = await pool.plugin();
       expect(poolPluginAfter).to.equal(pluginAddress);
       
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', pluginAddress);
+      const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', pluginAddress);
       
       // Verify new security functions available
       expect(await upgradedPlugin.HAS_UPGRADED_SECURITY()).to.equal(true);
@@ -440,7 +440,7 @@ describe('Integration Tests - Fork', function() {
       
       // Deploy new plugin with upgraded security
       const result = await deployNewPluginImplementation(
-        'MockUpgradedPluginWithNewSecurity',
+        'MockTimeUpgradedPlugin',
         algebraFactory,
         newPluginFactory,
         { security: upgradedSecurityAddress }
@@ -449,7 +449,7 @@ describe('Integration Tests - Fork', function() {
       await newPluginFactory.connect(ownerSigner).upgradePlugins(result.address);
       
       
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', pluginAddress);
+      const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', pluginAddress);
       
       const securityRegistryAfter = await upgradedPlugin.getSecurityRegistry();
       expect(securityRegistryAfter).to.equal(securityRegistryBefore);
@@ -524,7 +524,7 @@ describe('Integration Tests - Fork', function() {
       
       // Deploy new plugin with upgraded farming
       const result = await deployNewPluginImplementation(
-        'MockUpgradedPluginWithNewFarming',
+        'MockTimeUpgradedPlugin',
         algebraFactory,
         newPluginFactory,
         { farming: upgradedFarmingAddress }
@@ -541,7 +541,7 @@ describe('Integration Tests - Fork', function() {
       const poolPluginAfter = await pool.plugin();
       expect(poolPluginAfter).to.equal(pluginAddress);
       
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewFarming', pluginAddress);
+      const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', pluginAddress);
       
       // Verify new farming functions
       expect(await upgradedPlugin.HAS_UPGRADED_FARMING()).to.equal(true);

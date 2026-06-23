@@ -7,6 +7,9 @@ import './MockTimeAlgebraUpgradeablePlugin.sol';
 /// @notice Plugin with ALL upgraded implementations for comprehensive testing
 /// @dev Tests that all modules can be upgraded simultaneously without conflicts
 contract MockSuperUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
+  address internal immutable dynamicFeeImplementation;
+  address internal immutable almImplementation;
+
   // Markers for each upgraded module
   bool public constant HAS_UPGRADED_VOLATILITY = true;
   bool public constant HAS_UPGRADED_DYNAMIC_FEE = true;
@@ -27,12 +30,14 @@ contract MockSuperUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
       _factory,
       _pluginFactory,
       _volatilityOracleImpl,
-      _dynamicFeeImpl,
       _farmingProxyImpl,
-      _almImpl,
-      _securityImpl
+      _securityImpl,
+      address(0)
     )
-  {}
+  {
+    dynamicFeeImplementation = _dynamicFeeImpl;
+    almImplementation = _almImpl;
+  }
 
   // ========== V2 VOLATILITY ORACLE FUNCTIONS ==========
 

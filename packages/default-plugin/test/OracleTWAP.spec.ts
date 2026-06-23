@@ -3,32 +3,24 @@ import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ContractFactory } from 'ethers';
 import { OracleTWAP, MockPool, MockTimeDSFactory, TestERC20 } from '../typechain';
-import { tokensFixture } from 'test-utils/externalFixtures';
-import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION } from './shared/fixtures';
+import { tokensFixture } from '@cryptoalgebra/test-utils/externalFixtures';
+import { ZERO_ADDRESS } from './shared/fixtures';
 
-// Deploy all 5 implementations for MockTimeDSFactory
 async function deployImplementations() {
   const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
   const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
 
-  const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-  const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
-
   const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
   const farmingProxyImpl = await farmingProxyImplFactory.deploy();
-
-  const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-  const almImpl = await almImplFactory.deploy();
 
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-    dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
-    almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    priceConvergenceImpl: ZERO_ADDRESS,
   };
 }
 
@@ -49,11 +41,9 @@ describe('OracleTWAP', () => {
     const _mockPluginFactory = await mockPluginFactoryFactory.deploy(
       mockFactory,
       implementations.volatilityOracleImpl,
-      implementations.dynamicFeeImpl,
       implementations.farmingProxyImpl,
-      implementations.almImpl,
       implementations.securityImpl,
-      DEFAULT_FEE_CONFIGURATION
+      implementations.priceConvergenceImpl
     );
 
     const oracleTWAPFactory = await ethers.getContractFactory('OracleTWAP');

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.20;
 
-/// @dev Shared namespaced storage for upgrade test (used by MockUpgradedPlugin).
+/// @dev Shared namespaced storage for upgrade test (used by MockTimeUpgradedPlugin).
 library UpgradeTestStorage {
   bytes32 internal constant NAMESPACE = keccak256('algebra.storage.upgradetest');
 

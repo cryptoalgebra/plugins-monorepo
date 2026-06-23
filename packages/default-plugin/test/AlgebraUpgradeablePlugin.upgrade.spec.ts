@@ -1,16 +1,16 @@
 import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import { expect } from 'test-utils/expect';
-import { encodePriceSqrt } from 'test-utils/utilities';
-import { DEFAULT_FEE_CONFIGURATION, ZERO_ADDRESS } from './shared/fixtures';
+import { expect } from '@cryptoalgebra/test-utils/expect';
+import { encodePriceSqrt } from '@cryptoalgebra/test-utils/utilities';
+import { ZERO_ADDRESS } from './shared/fixtures';
 
 import { 
   MockFactory, 
   MockPool, 
   MockTimeDSFactory,
   MockTimeAlgebraUpgradeablePlugin,
-  MockUpgradedPlugin
+  MockTimeUpgradedPlugin
 } from '../typechain';
 
 describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
@@ -21,32 +21,27 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = (await mockFactoryFactory.deploy()) as any as MockFactory;
 
-    // Deploy all 5 implementations
+    // Deploy active implementations
     const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
     const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
-
-    const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-    const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
 
     const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
     const farmingProxyImpl = await farmingProxyImplFactory.deploy();
 
-    const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-    const almImpl = await almImplFactory.deploy();
-
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
+
+    const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
+    const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
 
     // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
     const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const pluginFactory = (await pluginFactoryFactory.deploy(
       mockFactory,
       volatilityOracleImpl,
-      dynamicFeeImpl,
       farmingProxyImpl,
-      almImpl,
       securityImpl,
-      DEFAULT_FEE_CONFIGURATION
+      priceConvergenceImpl
     )) as any as MockTimeDSFactory;
 
     // Deploy two mock pools
@@ -65,20 +60,22 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const plugin1 = pluginContractFactory.attach(plugin1Address) as any as MockTimeAlgebraUpgradeablePlugin;
     const plugin2 = pluginContractFactory.attach(plugin2Address) as any as MockTimeAlgebraUpgradeablePlugin;
 
+    await plugin1.setVault(wallet.address);
+    await plugin2.setVault(wallet.address);
+
     // Get beacon from factory
     const beacon = await ethers.getContractAt('UpgradeableBeacon', await pluginFactory.beacon());
     const originalImplementation = await beacon.implementation();
 
-    // Deploy upgraded implementation (MockUpgradedPlugin)
-    const upgradedImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
+    // Deploy upgraded implementation (MockTimeUpgradedPlugin)
+    const upgradedImplFactory = await ethers.getContractFactory('MockTimeUpgradedPlugin');
     const upgradedImplementation = await upgradedImplFactory.deploy(
       mockFactory,
       pluginFactory,
       volatilityOracleImpl,
-      dynamicFeeImpl,
       farmingProxyImpl,
-      almImpl,
-      securityImpl
+      securityImpl,
+      priceConvergenceImpl
     );
 
     return {
@@ -92,9 +89,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       originalImplementation,
       upgradedImplementation: await upgradedImplementation.getAddress(),
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-      dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
-      almImpl: await almImpl.getAddress(),
       securityImpl: await securityImpl.getAddress()
     };
   }
@@ -183,8 +178,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
 
       // Both plugins should now have isUpgraded() function
-      const upgradedPlugin1 = await ethers.getContractAt('MockUpgradedPlugin', await fixture.plugin1.getAddress());
-      const upgradedPlugin2 = await ethers.getContractAt('MockUpgradedPlugin', await fixture.plugin2.getAddress());
+      const upgradedPlugin1 = await ethers.getContractAt('MockTimeUpgradedPlugin', await fixture.plugin1.getAddress());
+      const upgradedPlugin2 = await ethers.getContractAt('MockTimeUpgradedPlugin', await fixture.plugin2.getAddress());
 
       expect(await upgradedPlugin1.isUpgraded()).to.eq(true);
       expect(await upgradedPlugin2.isUpgraded()).to.eq(true);
@@ -248,23 +243,6 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       expect(configAfter).to.eq(configBefore);
     });
 
-    it('fee configuration is preserved after upgrade', async () => {
-      const fixture = await loadFixture(upgradeFixture);
-      
-      await fixture.mockPool1.setPlugin(fixture.plugin1);
-
-      const feeConfigBefore = await fixture.plugin1.feeConfig();
-
-      // Upgrade
-      await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
-
-      const feeConfigAfter = await fixture.plugin1.feeConfig();
-      
-      expect(feeConfigAfter.alpha1).to.eq(feeConfigBefore.alpha1);
-      expect(feeConfigAfter.alpha2).to.eq(feeConfigBefore.alpha2);
-      expect(feeConfigAfter.baseFee).to.eq(feeConfigBefore.baseFee);
-    });
-
     it('incentive is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
       
@@ -317,7 +295,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Upgrade
       await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
 
-      const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await fixture.plugin1.getAddress());
+      const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await fixture.plugin1.getAddress());
       
       // New function should work
       expect(await upgradedPlugin.isUpgraded()).to.eq(true);
@@ -378,7 +356,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       );
 
       const newPluginAddress = await fixture.pluginFactory.pluginByPool(newPool);
-      const newPlugin = await ethers.getContractAt('MockUpgradedPlugin', newPluginAddress);
+      const newPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', newPluginAddress);
 
       // New plugin should have isUpgraded() returning true
       expect(await newPlugin.isUpgraded()).to.eq(true);
@@ -404,26 +382,6 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
       const isInitializedAfter = await fixture.plugin1.isInitialized();
       expect(isInitializedAfter).to.eq(isInitializedBefore);
-    });
-
-    it('dynamic fee still works after upgrade', async () => {
-      const fixture = await loadFixture(upgradeFixture);
-      
-      await fixture.mockPool1.setPlugin(fixture.plugin1);
-      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
-
-      await fixture.mockPool1.mint(wallet.address, wallet.address, -120, 120, 1000000, '0x');
-      await fixture.plugin1.advanceTime(100);
-      await fixture.mockPool1.swapToTick(10);
-
-      const feeBefore = await fixture.plugin1.getCurrentFee();
-
-      // Upgrade
-      await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
-
-      const feeAfter = await fixture.plugin1.getCurrentFee();
-      // Fee should be the same or very close (might change slightly due to volatility calculations)
-      expect(feeAfter).to.be.gte(0);
     });
 
     it('farming proxy still works after upgrade', async () => {

@@ -4,7 +4,6 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 
 import '../plugins/MockTimeAlgebraUpgradeablePlugin.sol';
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
@@ -26,20 +25,14 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
   /// @notice Address of VolatilityOracle implementation
   address public immutable volatilityOracleImplementation;
 
-  /// @notice Address of DynamicFee implementation
-  address public immutable dynamicFeeImplementation;
-
   /// @notice Address of FarmingProxy implementation
   address public immutable farmingProxyImplementation;
-
-  /// @notice Address of ALM implementation
-  address public immutable almImplementation;
 
   /// @notice Address of Security implementation
   address public immutable securityImplementation;
 
-  /// @notice Default fee configuration
-  AlgebraFeeConfiguration public defaultFeeConfiguration;
+  /// @notice Address of Price Convergence implementation
+  address public immutable priceConvergenceImplementation;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
@@ -53,29 +46,24 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
   constructor(
     address _algebraFactory,
     address _volatilityOracleImpl,
-    address _dynamicFeeImpl,
     address _farmingProxyImpl,
-    address _almImpl,
     address _securityImpl,
-    AlgebraFeeConfiguration memory _defaultFeeConfig
+    address _priceConvergenceImpl
   ) {
     algebraFactory = _algebraFactory;
     volatilityOracleImplementation = _volatilityOracleImpl;
-    dynamicFeeImplementation = _dynamicFeeImpl;
     farmingProxyImplementation = _farmingProxyImpl;
-    almImplementation = _almImpl;
     securityImplementation = _securityImpl;
-    defaultFeeConfiguration = _defaultFeeConfig;
+    priceConvergenceImplementation = _priceConvergenceImpl;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
     MockTimeAlgebraUpgradeablePlugin impl = new MockTimeAlgebraUpgradeablePlugin(
       _algebraFactory,
       address(this),
       _volatilityOracleImpl,
-      _dynamicFeeImpl,
       _farmingProxyImpl,
-      _almImpl,
-      _securityImpl
+      _securityImpl,
+      _priceConvergenceImpl
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -110,7 +98,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(securityRegistry);
 
     pluginByPool[pool] = plugin;
     return plugin;

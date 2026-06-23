@@ -41,6 +41,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPluginImplementation.sol',
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPluginImplementation.sol',
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol',
+      '@cryptoalgebra/price-convergence-plugin/contracts/PriceConvergencePluginImplementation.sol',
     ],
   },
   solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,

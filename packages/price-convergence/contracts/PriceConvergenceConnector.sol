@@ -25,16 +25,6 @@ abstract contract PriceConvergenceConnector is BaseConnector, IPriceConvergenceP
   }
 
   /// @inheritdoc IPriceConvergencePlugin
-  function initializePriceConvergence(address _vault, address _rebalanceManager, int24 _positionWidth) external override {
-    _authorize();
-    _delegateCall(
-      priceConvergenceImplementation,
-      abi.encodeCall(IPriceConvergencePluginImplementation.initializePriceConvergence, (_vault, _rebalanceManager, _positionWidth))
-    );
-    emit PriceConvergenceInitialized(_vault, _rebalanceManager, _positionWidth);
-  }
-
-  /// @inheritdoc IPriceConvergencePlugin
   function setVault(address _vault) external override {
     _authorize();
     _delegateCall(priceConvergenceImplementation, abi.encodeCall(IPriceConvergencePluginImplementation.setVault, (_vault)));
@@ -42,53 +32,7 @@ abstract contract PriceConvergenceConnector is BaseConnector, IPriceConvergenceP
   }
 
   /// @inheritdoc IPriceConvergencePlugin
-  function setRebalanceManager(address _rebalanceManager) external override {
-    _authorize();
-    _delegateCall(
-      priceConvergenceImplementation,
-      abi.encodeCall(IPriceConvergencePluginImplementation.setRebalanceManager, (_rebalanceManager))
-    );
-    emit RebalanceManager(_rebalanceManager);
-  }
-
-  /// @inheritdoc IPriceConvergencePlugin
-  function setPositionWidth(int24 _positionWidth) external override {
-    _authorize();
-    _delegateCall(priceConvergenceImplementation, abi.encodeCall(IPriceConvergencePluginImplementation.setPositionWidth, (_positionWidth)));
-    emit PositionWidth(_positionWidth);
-  }
-
-  /// @inheritdoc IPriceConvergencePlugin
-  function rebalance(int256 swapQuantity, uint160 limitSqrtPrice) external override {
-    _delegateCall(
-      priceConvergenceImplementation,
-      abi.encodeCall(IPriceConvergencePluginImplementation.rebalance, (swapQuantity, limitSqrtPrice, _getFactory()))
-    );
-  }
-
-  /// @inheritdoc IPriceConvergencePlugin
   function vault() external view override returns (address) {
     return PriceConvergenceStorage.layout().vault;
   }
-
-  /// @inheritdoc IPriceConvergencePlugin
-  function rebalanceManager() external view override returns (address) {
-    return PriceConvergenceStorage.layout().rebalanceManager;
-  }
-
-  /// @inheritdoc IPriceConvergencePlugin
-  function positionWidth() external view override returns (int24) {
-    return PriceConvergenceStorage.layout().positionWidth;
-  }
-
-  /// @inheritdoc IPriceConvergencePlugin
-  function getPool() external view virtual override returns (address) {
-    return _getPool();
-  }
-
-  /// @dev Must be implemented by the inheriting plugin to expose Algebra factory address.
-  function _getFactory() internal view virtual returns (address);
-
-  /// @dev Must be implemented by the inheriting plugin to expose pool address.
-  function _getPool() internal view virtual returns (address);
 }

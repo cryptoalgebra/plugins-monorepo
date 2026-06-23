@@ -46,14 +46,6 @@ contract UpgradeablePriceConvergencePluginTest is UpgradeableAbstractPlugin, Pri
     UpgradeableAbstractPlugin._authorize();
   }
 
-  function _getFactory() internal view override returns (address) {
-    return factory;
-  }
-
-  function _getPool() internal view override(UpgradeableAbstractPlugin, PriceConvergenceConnector) returns (address) {
-    return UpgradeableAbstractPlugin._getPool();
-  }
-
   function getPriceConvergenceImplementation() external view returns (address) {
     return priceConvergenceImplementation;
   }

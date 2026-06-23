@@ -7,8 +7,6 @@ library PriceConvergenceStorage {
 
   struct Layout {
     address vault;
-    address rebalanceManager;
-    int24 positionWidth;
   }
 
   function layout() internal pure returns (Layout storage l) {

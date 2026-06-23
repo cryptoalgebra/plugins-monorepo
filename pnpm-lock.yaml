@@ -141,12 +141,6 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/alm-plugin':
-        specifier: workspace:^
-        version: link:../alm
-      '@cryptoalgebra/dynamic-fee-plugin':
-        specifier: workspace:^
-        version: link:../dynamic-fee
       '@cryptoalgebra/test-utils':
         specifier: workspace:^
         version: link:../test-utils

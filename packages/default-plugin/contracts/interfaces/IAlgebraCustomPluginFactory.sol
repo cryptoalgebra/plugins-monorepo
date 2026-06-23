@@ -3,11 +3,10 @@ pragma solidity >=0.5.0;
 pragma abicoder v2;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
-import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 
 /// @title The interface for the IAlgebraCustomPluginFactory
-interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory {
+interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IFarmingPluginFactory {
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraALMCustomPluginFactory
   function ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR() external pure returns (bytes32);

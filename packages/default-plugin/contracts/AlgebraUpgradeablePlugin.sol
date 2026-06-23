@@ -79,11 +79,11 @@ contract AlgebraUpgradeablePlugin is
     return pluginFactory;
   }
 
-  /// @dev Required by FarmingProxyConnector and PriceConvergenceConnector
+  /// @dev Required by FarmingProxyConnector
   function _getPool()
     internal
     view
-    override(UpgradeableAbstractPlugin, FarmingProxyConnector, PriceConvergenceConnector)
+    override(UpgradeableAbstractPlugin, FarmingProxyConnector)
     returns (address)
   {
     return UpgradeableAbstractPlugin._getPool();
@@ -94,12 +94,7 @@ contract AlgebraUpgradeablePlugin is
     UpgradeableAbstractPlugin._authorize();
   }
 
-  /// @dev Required by PriceConvergenceConnector
-  function _getFactory() internal view override returns (address) {
-    return factory;
-  }
-
-  function getPool() external view override(FarmingProxyConnector, PriceConvergenceConnector) returns (address) {
+  function getPool() external view override(FarmingProxyConnector) returns (address) {
     return _getPool();
   }
 

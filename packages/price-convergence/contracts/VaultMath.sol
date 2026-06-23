@@ -3,33 +3,46 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
 /// @title Price Convergence Vault Math
 /// @notice Stores the configurable main position width and calculates vault rebalance parameters.
-contract VaultMath is Ownable {
+contract VaultMath {
   int24 public constant TICK_SPACING = 1;
+  bytes32 public constant PRICE_CONVERGENCE_VAULT_MANAGER = keccak256('PRICE_CONVERGENCE_VAULT_MANAGER');
 
   uint256 private constant Q64 = 2 ** 64;
   uint256 private constant Q128 = 2 ** 128;
   uint256 private constant Q192 = 2 ** 192;
 
+  address public immutable factory;
   int24 public positionWidth;
 
   event PositionWidth(int24 positionWidth);
 
   error InvalidPositionWidth();
   error InvalidPosition();
+  error OnlyVaultManager();
   error RatioOverflow();
+  error ZeroAddress();
   error ZeroAmounts();
 
-  constructor(int24 _positionWidth) {
+  modifier onlyVaultManager() {
+    if (!IAlgebraFactory(factory).hasRoleOrOwner(PRICE_CONVERGENCE_VAULT_MANAGER, msg.sender)) {
+      revert OnlyVaultManager();
+    }
+    _;
+  }
+
+  constructor(address _factory, int24 _positionWidth) {
+    if (_factory == address(0)) revert ZeroAddress();
+    factory = _factory;
     _setPositionWidth(_positionWidth);
   }
 
-  function setPositionWidth(int24 _positionWidth) external onlyOwner {
+  function setPositionWidth(int24 _positionWidth) external onlyVaultManager {
     _setPositionWidth(_positionWidth);
   }
 
@@ -74,12 +87,7 @@ contract VaultMath is Ownable {
     return _bestCandidate(sqrtPriceX96, amount0, amount1, width, minLower, maxLower, idealLower);
   }
 
-  function _idealLowerTick(
-    uint160 sqrtPriceX96,
-    uint256 amount0,
-    uint256 amount1,
-    int24 width
-  ) private pure returns (int24 lowerTick) {
+  function _idealLowerTick(uint160 sqrtPriceX96, uint256 amount0, uint256 amount1, int24 width) private pure returns (int24 lowerTick) {
     uint256 priceX64 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q128);
     if (priceX64 == 0) revert RatioOverflow();
     uint256 valueRatioX64 = FullMath.mulDiv(amount0, priceX64, amount1);

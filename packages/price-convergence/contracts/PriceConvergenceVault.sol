@@ -2,13 +2,13 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraMintCallback.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraSwapCallback.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -20,19 +20,12 @@ import './interfaces/IVaultMath.sol';
 
 /// @title Price Convergence Vault
 /// @notice Owns direct Algebra pool liquidity for the Price Convergence strategy.
-contract PriceConvergenceVault is
-  IPriceConvergenceVault,
-  IAlgebraMintCallback,
-  IAlgebraSwapCallback,
-  ERC20,
-  Ownable,
-  Pausable,
-  ReentrancyGuard
-{
+contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, IAlgebraSwapCallback, ERC20, Pausable, ReentrancyGuard {
   using SafeERC20 for IERC20;
   int24 public constant TICK_SPACING = 1;
   uint256 public constant PRECISION = 1e18;
   uint256 public constant DEFAULT_HYSTERESIS = 5e15; // 0.5%
+  bytes32 public constant PRICE_CONVERGENCE_VAULT_MANAGER = keccak256('PRICE_CONVERGENCE_VAULT_MANAGER');
   uint256 private constant Q128 = 2 ** 128;
   uint256 private constant Q192 = 2 ** 192;
 
@@ -49,7 +42,7 @@ contract PriceConvergenceVault is
   }
 
   address public immutable override pool;
-  address public immutable factory;
+  address public immutable override factory;
   address public immutable override token0;
   address public immutable override token1;
   uint128 public immutable fullRangeLiquidity;
@@ -67,6 +60,13 @@ contract PriceConvergenceVault is
     _;
   }
 
+  modifier onlyVaultManager() {
+    if (!IAlgebraFactory(factory).hasRoleOrOwner(PRICE_CONVERGENCE_VAULT_MANAGER, msg.sender)) {
+      revert OnlyVaultManager();
+    }
+    _;
+  }
+
   constructor(
     address _pool,
     address _factory,
@@ -78,6 +78,7 @@ contract PriceConvergenceVault is
     if (_fullRangeLiquidity == 0) revert ZeroValue();
     if (_twapPeriod == 0) revert InvalidTwapPeriod();
     if (IAlgebraPool(_pool).factory() != _factory) revert InvalidFactory();
+    if (IVaultMath(_vaultMath).factory() != _factory) revert InvalidFactory();
 
     pool = _pool;
     factory = _factory;
@@ -90,28 +91,28 @@ contract PriceConvergenceVault is
     hysteresis = DEFAULT_HYSTERESIS;
   }
 
-  function setRebalanceEntrypoint(address _rebalanceEntrypoint) external onlyOwner {
+  function setRebalanceEntrypoint(address _rebalanceEntrypoint) external onlyVaultManager {
     if (_rebalanceEntrypoint == address(0)) revert ZeroAddress();
     rebalanceEntrypoint = _rebalanceEntrypoint;
     emit RebalanceEntrypoint(_rebalanceEntrypoint);
   }
 
-  function pause() external onlyOwner {
+  function pause() external onlyVaultManager {
     _pause();
   }
 
-  function unpause() external onlyOwner {
+  function unpause() external onlyVaultManager {
     _unpause();
   }
 
-  function setTwapPeriods(uint32 _twapPeriod, uint32 _auxTwapPeriod) external onlyOwner {
+  function setTwapPeriods(uint32 _twapPeriod, uint32 _auxTwapPeriod) external onlyVaultManager {
     if (_twapPeriod == 0 || _auxTwapPeriod > _twapPeriod) revert InvalidTwapPeriod();
     twapPeriod = _twapPeriod;
     auxTwapPeriod = _auxTwapPeriod;
     emit TwapPeriods(_twapPeriod, _auxTwapPeriod);
   }
 
-  function setHysteresis(uint256 _hysteresis) external onlyOwner {
+  function setHysteresis(uint256 _hysteresis) external onlyVaultManager {
     if (_hysteresis > PRECISION) revert ZeroValue();
     hysteresis = _hysteresis;
     emit Hysteresis(_hysteresis);
@@ -154,7 +155,6 @@ contract PriceConvergenceVault is
       amount1 += main1;
     }
 
-
     _burn(msg.sender, shares);
     if (amount0 > 0) IERC20(token0).safeTransfer(recipient, amount0);
     if (amount1 > 0) IERC20(token1).safeTransfer(recipient, amount1);
@@ -162,9 +162,7 @@ contract PriceConvergenceVault is
     emit Withdraw(msg.sender, recipient, shares, amount0, amount1);
   }
   /// @inheritdoc IPriceConvergenceVault
-  function rebalance(
-    uint160 targetSqrtPriceX96
-  ) external override onlyRebalanceEntrypoint whenNotPaused nonReentrant {
+  function rebalance(uint160 targetSqrtPriceX96) external override onlyRebalanceEntrypoint whenNotPaused nonReentrant {
     if (targetSqrtPriceX96 < TickMath.MIN_SQRT_RATIO || targetSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO) {
       revert InvalidPosition();
     }
@@ -179,13 +177,11 @@ contract PriceConvergenceVault is
       (currentSqrtPriceX96, , , , , ) = IAlgebraPool(pool).globalState();
     }
 
-    (int24 lower, int24 upper, uint128 liquidityActual, uint256 amount0, uint256 amount1) = _mintMainPosition(
-      currentSqrtPriceX96
-    );
+    (int24 lower, int24 upper, uint128 liquidityActual, uint256 amount0, uint256 amount1) = _mintMainPosition(currentSqrtPriceX96);
     emit Rebalance(lower, upper, liquidityActual, targetSqrtPriceX96, amount0, amount1);
   }
 
-  function collectFees() external onlyOwner nonReentrant returns (uint256 fees0, uint256 fees1) {
+  function collectFees() external onlyVaultManager nonReentrant returns (uint256 fees0, uint256 fees1) {
     return _collectAllFees();
   }
 
@@ -237,14 +233,7 @@ contract PriceConvergenceVault is
     if (fullRangePosition.liquidity != 0) revert InvalidPosition();
 
     (int24 lower, int24 upper) = _fullRangeTicks();
-    (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(
-      address(this),
-      address(this),
-      lower,
-      upper,
-      fullRangeLiquidity,
-      bytes('')
-    );
+    (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, fullRangeLiquidity, bytes(''));
 
     fullRangePosition = Position({ lower: lower, upper: upper, liquidity: liquidityActual });
     emit FullRangeInitialized(lower, upper, liquidityActual);
@@ -293,14 +282,7 @@ contract PriceConvergenceVault is
     (lower, upper, liquidity, , ) = vaultMath.calculatePosition(currentSqrtPriceX96, balance0, balance1);
     if (liquidity == 0) revert ZeroValue();
 
-    (amount0, amount1, liquidityActual) = IAlgebraPool(pool).mint(
-      address(this),
-      address(this),
-      lower,
-      upper,
-      liquidity,
-      bytes('')
-    );
+    (amount0, amount1, liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, liquidity, bytes(''));
     mainPosition = Position({ lower: lower, upper: upper, liquidity: liquidityActual });
   }
 

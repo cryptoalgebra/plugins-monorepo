@@ -6,6 +6,8 @@ interface IPriceConvergenceVault {
 
   function pool() external view returns (address);
 
+  function factory() external view returns (address);
+
   function token0() external view returns (address);
 
   function token1() external view returns (address);
@@ -19,6 +21,7 @@ interface IPriceConvergenceVault {
   event Rebalance(int24 lower, int24 upper, uint128 liquidity, uint160 targetSqrtPriceX96, uint256 amount0, uint256 amount1);
 
   error OnlyRebalanceEntrypoint();
+  error OnlyVaultManager();
   error OnlyPool();
   error InvalidFactory();
   error ZeroAddress();

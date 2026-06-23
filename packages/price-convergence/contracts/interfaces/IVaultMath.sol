@@ -2,6 +2,8 @@
 pragma solidity >=0.8.0;
 
 interface IVaultMath {
+  function factory() external view returns (address);
+
   function positionWidth() external view returns (int24);
 
   function calculatePosition(

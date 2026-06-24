@@ -24,6 +24,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   using SafeERC20 for IERC20;
   int24 public constant TICK_SPACING = 1;
   uint256 public constant PRECISION = 1e18;
+  uint256 public constant MIN_SHARES = 1e6;
   uint256 public constant DEFAULT_HYSTERESIS = 5e15; // 0.5%
   bytes32 public constant PRICE_CONVERGENCE_VAULT_MANAGER = keccak256('PRICE_CONVERGENCE_VAULT_MANAGER');
   uint256 private constant Q128 = 2 ** 128;
@@ -119,11 +120,15 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   }
 
   /// @notice Funds the vault with both tokens and mints fungible vault shares.
-  function deposit(uint256 amount0, uint256 amount1, address recipient) external whenNotPaused nonReentrant returns (uint256 shares) {
+  function deposit(
+    uint256 amount0,
+    uint256 amount1,
+    address recipient
+  ) external override whenNotPaused nonReentrant returns (uint256 shares) {
     if (recipient == address(0) || recipient == address(this)) revert ZeroAddress();
     if (amount0 == 0 || amount1 == 0) revert ZeroValue();
 
-    bool firstDeposit = totalSupply() == 0;
+    bool initializeFullRange = fullRangePosition.liquidity == 0;
     Prices memory prices = _getValidatedPrices();
     _collectAllFees();
     shares = _calculateDepositShares(amount0, amount1, prices);
@@ -133,16 +138,17 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     IERC20(token1).safeTransferFrom(msg.sender, address(this), amount1);
     _mint(recipient, shares);
 
-    if (firstDeposit) _initializeFullRange();
+    if (initializeFullRange) _initializeFullRange();
 
     emit Deposit(msg.sender, recipient, shares, amount0, amount1);
   }
   /// @notice Burns shares and returns a proportional share of every vault asset.
-  function withdraw(uint256 shares, address recipient) external nonReentrant returns (uint256 amount0, uint256 amount1) {
+  function withdraw(uint256 shares, address recipient) external override nonReentrant returns (uint256 amount0, uint256 amount1) {
     if (recipient == address(0)) revert ZeroAddress();
     if (shares == 0 || shares > balanceOf(msg.sender)) revert ZeroValue();
 
     uint256 supply = totalSupply();
+    if (shares != supply && supply - shares < MIN_SHARES) revert InvalidShares();
     _collectAllFees();
 
     amount0 = FullMath.mulDiv(IERC20(token0).balanceOf(address(this)), shares, supply);
@@ -315,7 +321,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     shares = _valueInToken1(amount0, amount1, depositPrice);
 
     uint256 supply = totalSupply();
-    if (supply == 0) return shares;
+    if (supply == 0) return shares * MIN_SHARES;
 
     (uint256 total0, uint256 total1) = getShareholderAmounts();
     uint256 totalValue = _valueInToken1(total0, total1, _maxPrice(prices));

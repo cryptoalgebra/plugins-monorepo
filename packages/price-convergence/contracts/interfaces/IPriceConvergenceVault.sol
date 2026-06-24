@@ -2,6 +2,10 @@
 pragma solidity >=0.5.0;
 
 interface IPriceConvergenceVault {
+  function deposit(uint256 amount0, uint256 amount1, address recipient) external returns (uint256 shares);
+
+  function withdraw(uint256 shares, address recipient) external returns (uint256 amount0, uint256 amount1);
+
   function rebalance(uint160 targetSqrtPriceX96) external;
 
   function pool() external view returns (address);
@@ -26,6 +30,7 @@ interface IPriceConvergenceVault {
   error InvalidFactory();
   error ZeroAddress();
   error ZeroValue();
+  error InvalidShares();
   error InvalidPosition();
   error InvalidTwapPeriod();
   error OracleNotConnected();

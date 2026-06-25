@@ -51,6 +51,34 @@ describe("RebalanceEntrypoint", function () {
     expect(await entrypoint.shareDecimals()).to.equal(18);
     expect(await entrypoint.quoteDecimals()).to.equal(18);
   });
+  it("converts square asset prices to expected pool sqrt prices", async function () {
+    const { entrypoint } = await loadFixture(deployNormalFixture);
+    const cases = [
+      { price: 1n, expected: Q96 },
+      { price: 4n, expected: 2n * Q96 },
+      { price: 9n, expected: 3n * Q96 },
+      { price: 16n, expected: 4n * Q96 },
+    ];
+
+    for (const { price, expected } of cases) {
+      const [target] = await entrypoint.preview(price * 10n ** 18n);
+      expect(target).to.equal(expected);
+    }
+  });
+  it("converts square asset prices to inverse pool sqrt prices when share is token1", async function () {
+    const { entrypoint } = await deployFixture(true);
+    const cases = [
+      { price: 1n, expected: Q96 },
+      { price: 4n, expected: Q96 / 2n },
+      { price: 9n, expected: Q96 / 3n },
+      { price: 16n, expected: Q96 / 4n },
+    ];
+
+    for (const { price, expected } of cases) {
+      const [target] = await entrypoint.preview(price * 10n ** 18n);
+      expect(target).to.equal(expected);
+    }
+  });
   it("validates constructor inputs", async function () {
     const { vault, share, asset } = await loadFixture(deployNormalFixture);
     const Entrypoint = await ethers.getContractFactory("RebalanceEntrypoint");

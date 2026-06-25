@@ -39,6 +39,19 @@ describe("VaultMath", function () {
     };
   }
 
+  function expectOneSideNearlyFullyUsed(
+    amount0: bigint,
+    amount1: bigint,
+    used0: bigint,
+    used1: bigint,
+  ) {
+    const tolerance0 = amount0 / 1_000_000n + 10n;
+    const tolerance1 = amount1 / 1_000_000n + 10n;
+    expect(
+      amount0 - used0 <= tolerance0 || amount1 - used1 <= tolerance1,
+    ).to.equal(true);
+  }
+
   it("validates constructor width and factory", async function () {
     const MockFactory = await ethers.getContractFactory("MockFactory");
     const factory = await MockFactory.deploy();
@@ -98,6 +111,34 @@ describe("VaultMath", function () {
     expect(token1Only[1] - token1Only[0]).to.equal(WIDTH);
     expect(token1Only[3]).to.equal(0);
     expect(token1Only[4]).to.be.at.most(BALANCE_SCALE);
+  });
+
+  it("preserves balance bounds and uses a limiting side across a bounded input grid", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    const ticks = [-500_000, -100_000, -1, 0, 1, 100_000, 500_000];
+    const multipliers = [1n, 2n, 5n, 10n, 100n];
+
+    for (const tick of ticks) {
+      const sqrtPriceX96 = await helper.getSqrtRatioAtTick(tick);
+      const balanced = balancedRawAmounts(sqrtPriceX96);
+
+      for (const amount0Multiplier of multipliers) {
+        for (const amount1Multiplier of multipliers) {
+          const amount0 = balanced.amount0 * amount0Multiplier;
+          const amount1 = balanced.amount1 * amount1Multiplier;
+          const [lower, upper, liquidity, used0, used1] =
+            await vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1);
+
+          expect(lower).to.be.lessThan(tick);
+          expect(upper).to.be.greaterThan(tick);
+          expect(upper - lower).to.equal(WIDTH);
+          expect(liquidity).to.be.greaterThan(0);
+          expect(used0).to.be.at.most(amount0);
+          expect(used1).to.be.at.most(amount1);
+          expectOneSideNearlyFullyUsed(amount0, amount1, used0, used1);
+        }
+      }
+    }
   });
 
   for (const tick of [-100_000, 0, 100_000, 800_000, 886_271]) {

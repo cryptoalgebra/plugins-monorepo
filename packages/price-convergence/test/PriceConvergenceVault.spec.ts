@@ -191,6 +191,25 @@ describe("PriceConvergenceVault", function () {
         .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
     ).to.not.emit(f.vault, "FullRangeInitialized");
   });
+  it("does not return more tokens than deposited on immediate withdraw", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+
+    const balance0Before = await f.token0.balanceOf(f.user.address);
+    const balance1Before = await f.token1.balanceOf(f.user.address);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    const shares = await f.vault.balanceOf(f.user.address);
+    await f.vault.connect(f.user).withdraw(shares, f.user.address);
+
+    expect(await f.token0.balanceOf(f.user.address)).to.be.at.most(
+      balance0Before,
+    );
+    expect(await f.token1.balanceOf(f.user.address)).to.be.at.most(
+      balance1Before,
+    );
+  });
   it("enforces MIN_SHARES on partial withdrawals", async function () {
     const f = await loadFixture(deployVaultFixture);
     await approveDeposit(f.vault, f.token0, f.token1, f.user);
@@ -256,5 +275,27 @@ describe("PriceConvergenceVault", function () {
       "Rebalance",
     );
     expect((await f.vault.mainPosition()).liquidity).to.be.greaterThan(0);
+  });
+  it("moves pool price exactly to the rebalance target limit", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    const target = await helper.getSqrtRatioAtTick(100);
+
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.pool.setPluginConfig(0);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+
+    await expect(f.vault.connect(f.rebalancer).rebalance(target)).to.emit(
+      f.vault,
+      "Rebalance",
+    );
+    const [sqrtPriceX96] = await f.pool.globalState();
+    expect(sqrtPriceX96).to.equal(target);
   });
 });

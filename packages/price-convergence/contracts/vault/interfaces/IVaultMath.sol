@@ -2,6 +2,16 @@
 pragma solidity >=0.8.0;
 
 interface IVaultMath {
+
+  event PositionWidth(int24 positionWidth);
+
+  error InvalidPositionWidth();
+  error InvalidPosition();
+  error OnlyVaultManager();
+  error RatioOverflow();
+  error ZeroAddress();
+  error ZeroAmounts();
+
   function factory() external view returns (address);
 
   function positionWidth() external view returns (int24);

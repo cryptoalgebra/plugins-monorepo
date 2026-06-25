@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import '../interfaces/IPriceConvergenceOracle.sol';
+import '../vault/interfaces/IPriceConvergenceOracle.sol';
 
 contract MockPriceConvergenceOracle is IPriceConvergenceOracle {
   int24 public twapTick;

@@ -6,10 +6,11 @@ import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
+import './interfaces/IVaultMath.sol';
 
 /// @title Price Convergence Vault Math
 /// @notice Stores the configurable main position width and calculates vault rebalance parameters.
-contract VaultMath {
+contract VaultMath is IVaultMath {
   struct CandidateSearch {
     uint160 sqrtPriceX96;
     uint256 amount0;
@@ -37,15 +38,6 @@ contract VaultMath {
 
   address public immutable factory;
   int24 public positionWidth;
-
-  event PositionWidth(int24 positionWidth);
-
-  error InvalidPositionWidth();
-  error InvalidPosition();
-  error OnlyVaultManager();
-  error RatioOverflow();
-  error ZeroAddress();
-  error ZeroAmounts();
 
   modifier onlyVaultManager() {
     if (!IAlgebraFactory(factory).hasRoleOrOwner(PRICE_CONVERGENCE_VAULT_MANAGER, msg.sender)) {

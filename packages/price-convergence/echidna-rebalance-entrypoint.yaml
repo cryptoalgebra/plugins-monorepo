@@ -1,0 +1,4 @@
+testMode: assertion
+contract: EchidnaRebalanceEntrypoint
+seqLen: 1
+testLimit: 50000

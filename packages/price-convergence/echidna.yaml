@@ -1,0 +1,4 @@
+testMode: assertion
+contract: EchidnaVaultMath
+seqLen: 1
+testLimit: 50000

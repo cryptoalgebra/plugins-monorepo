@@ -11,16 +11,6 @@ import './interfaces/IVaultMath.sol';
 /// @title Price Convergence Vault Math
 /// @notice Stores the configurable main position width and calculates vault rebalance parameters.
 contract VaultMath is IVaultMath {
-  struct CandidateSearch {
-    uint160 sqrtPriceX96;
-    uint256 amount0;
-    uint256 amount1;
-    int24 width;
-    int24 minLower;
-    int24 maxLower;
-    int24 idealLower;
-  }
-
   /// @dev Price Convergence pools use unit tick spacing, so every integer tick is initializable.
   int24 public constant TICK_SPACING = 1;
   bytes32 public constant PRICE_CONVERGENCE_VAULT_MANAGER = keccak256('PRICE_CONVERGENCE_VAULT_MANAGER');
@@ -31,8 +21,6 @@ contract VaultMath is IVaultMath {
   /// @dev Pool price and reciprocal pool price use Q128.128. Unlike Q64.64, this format
   /// remains non-zero throughout the full TickMath price range [2^-128, 2^128].
   uint256 private constant Q128 = 2 ** 128;
-  /// @dev Native scaling of Algebra sqrt prices.
-  uint256 private constant Q96 = 2 ** 96;
   /// @dev A Q64.96 sqrt price squared is a Q128.192 price.
   uint256 private constant Q192 = 2 ** 192;
 
@@ -75,7 +63,7 @@ contract VaultMath is IVaultMath {
       lower = _ceilTickAtPrice(currentTick, sqrtPriceX96);
       upper = lower + width;
       if (upper > TickMath.MAX_TICK) revert InvalidPosition();
-      (liquidity, used0, used1) = _amountsAtTicks(sqrtPriceX96, amount0, 0, lower, upper);
+      (liquidity, used0, used1) = _liquidityAndUsedAmounts(sqrtPriceX96, amount0, 0, lower, upper);
       return (lower, upper, liquidity, used0, used1);
     }
 
@@ -85,7 +73,7 @@ contract VaultMath is IVaultMath {
       upper = currentTick;
       lower = upper - width;
       if (lower < TickMath.MIN_TICK) revert InvalidPosition();
-      (liquidity, used0, used1) = _amountsAtTicks(sqrtPriceX96, 0, amount1, lower, upper);
+      (liquidity, used0, used1) = _liquidityAndUsedAmounts(sqrtPriceX96, 0, amount1, lower, upper);
       return (lower, upper, liquidity, used0, used1);
     }
 
@@ -98,7 +86,7 @@ contract VaultMath is IVaultMath {
     uint256 amount1,
     int24 width,
     int24 currentTick
-  ) private pure returns (int24, int24, uint128, uint256, uint256) {
+  ) private pure returns (int24 lower, int24 upper, uint128 liquidity, uint256 used0, uint256 used1) {
     // When both tokens are present, the current price must be strictly inside the range.
     // These bounds describe every valid lower tick for a fixed-width position.
     int24 minLower = currentTick - width + TICK_SPACING;
@@ -111,21 +99,12 @@ contract VaultMath is IVaultMath {
     if (maxLower > maxLowerByRange) maxLower = maxLowerByRange;
     if (minLower > maxLower) revert InvalidPosition();
 
-    // First solve the continuous range placement from the wallet value ratio, then evaluate
-    // nearby discrete ticks because converting sqrtLower to a tick rounds it down.
-    int24 idealLower = _idealLowerTick(sqrtPriceX96, amount0, amount1, width);
-    if (idealLower < minLower) idealLower = minLower;
-    if (idealLower > maxLower) idealLower = maxLower;
+    lower = _idealLowerTick(sqrtPriceX96, amount0, amount1, width);
+    if (lower < minLower) lower = minLower;
+    if (lower > maxLower) lower = maxLower;
+    upper = lower + width;
 
-    CandidateSearch memory search;
-    search.sqrtPriceX96 = sqrtPriceX96;
-    search.amount0 = amount0;
-    search.amount1 = amount1;
-    search.width = width;
-    search.minLower = minLower;
-    search.maxLower = maxLower;
-    search.idealLower = idealLower;
-    return _bestCandidate(search);
+    (liquidity, used0, used1) = _liquidityAndUsedAmounts(sqrtPriceX96, amount0, amount1, lower, upper);
   }
 
   /// @dev Solves the continuous fixed-width placement.
@@ -228,42 +207,13 @@ contract VaultMath is IVaultMath {
     return abHigh < cdHigh || (abHigh == cdHigh && abLow <= cdLow);
   }
 
-  function _bestCandidate(
-    CandidateSearch memory search
-  ) private pure returns (int24 lower, int24 upper, uint128 liquidity, uint256 used0, uint256 used1) {
-    // The continuous solution normally lands between ticks. Checking two ticks on either side
-    // covers floor, ceil and their immediate neighbours while keeping rebalance gas bounded.
-    uint256 bestUsedValue;
-
-    for (int24 offset = -2; offset <= 2; ++offset) {
-      int24 candidateLower = search.idealLower + offset * TICK_SPACING;
-      if (candidateLower < search.minLower || candidateLower > search.maxLower) continue;
-
-      int24 candidateUpper = candidateLower + search.width;
-      (uint128 candidateLiquidity, uint256 candidateUsed0, uint256 candidateUsed1) = _amountsAtTicks(
-        search.sqrtPriceX96,
-        search.amount0,
-        search.amount1,
-        candidateLower,
-        candidateUpper
-      );
-      // Compare candidates in token1 value at the current raw pool price.
-      uint256 usedValue = _quoteAtSqrtPrice(search.sqrtPriceX96, candidateUsed0) + candidateUsed1;
-
-      if (usedValue > bestUsedValue) {
-        bestUsedValue = usedValue;
-        lower = candidateLower;
-        upper = candidateUpper;
-        liquidity = candidateLiquidity;
-        used0 = candidateUsed0;
-        used1 = candidateUsed1;
-      }
-    }
-
-    if (liquidity == 0) revert InvalidPosition();
+  function _ceilTickAtPrice(int24 currentTick, uint160 sqrtPriceX96) private pure returns (int24 tick) {
+    tick = currentTick;
+    // getTickAtSqrtRatio returns floor. Move one tick up unless the price is exactly on the tick.
+    if (TickMath.getSqrtRatioAtTick(currentTick) < sqrtPriceX96) tick += TICK_SPACING;
   }
 
-  function _amountsAtTicks(
+  function _liquidityAndUsedAmounts(
     uint160 sqrtPriceX96,
     uint256 amount0,
     uint256 amount1,
@@ -272,73 +222,9 @@ contract VaultMath is IVaultMath {
   ) private pure returns (uint128 liquidity, uint256 used0, uint256 used1) {
     uint160 sqrtLowerX96 = TickMath.getSqrtRatioAtTick(lower);
     uint160 sqrtUpperX96 = TickMath.getSqrtRatioAtTick(upper);
-    // Calculate liquidity from each available side and use min(L0, L1) while in range.
-    // The local implementation preserves token0 precision below price 1; see _getLiquidityForAmount0.
-    liquidity = _getLiquidityForAmounts(sqrtPriceX96, sqrtLowerX96, sqrtUpperX96, amount0, amount1);
-    // Recompute actual consumption after tick and uint128-liquidity rounding. The remainder is dust.
+    liquidity = LiquidityAmounts.getLiquidityForAmounts(sqrtPriceX96, sqrtLowerX96, sqrtUpperX96, amount0, amount1);
+    if (liquidity == 0) revert InvalidPosition();
     (used0, used1) = LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtLowerX96, sqrtUpperX96, liquidity);
-  }
-
-  /// @dev Equivalent to LiquidityAmounts.getLiquidityForAmounts, but routes token0 through
-  /// a full-range implementation that does not round an intermediate product to zero.
-  function _getLiquidityForAmounts(
-    uint160 sqrtPriceX96,
-    uint160 sqrtLowerX96,
-    uint160 sqrtUpperX96,
-    uint256 amount0,
-    uint256 amount1
-  ) private pure returns (uint128 liquidity) {
-    if (sqrtPriceX96 <= sqrtLowerX96) {
-      return _getLiquidityForAmount0(sqrtLowerX96, sqrtUpperX96, amount0);
-    }
-
-    if (sqrtPriceX96 < sqrtUpperX96) {
-      uint128 liquidity0 = _getLiquidityForAmount0(sqrtPriceX96, sqrtUpperX96, amount0);
-      uint128 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(sqrtLowerX96, sqrtPriceX96, amount1);
-      return liquidity0 < liquidity1 ? liquidity0 : liquidity1;
-    }
-
-    liquidity = LiquidityAmounts.getLiquidityForAmount1(sqrtLowerX96, sqrtUpperX96, amount1);
-  }
-
-  /// @dev Calculates L = amount0 * sqrtA * sqrtB / (Q96 * (sqrtB - sqrtA)).
-  ///
-  /// The periphery implementation first calculates sqrtA*sqrtB/Q96. That value becomes zero
-  /// when both boundaries are far below price 1, even though the final liquidity is non-zero.
-  /// In that region use the algebraically equivalent reciprocal-price form:
-  ///
-  ///   L = amount0 * Q96 / (Q192/sqrtA - Q192/sqrtB).
-  ///
-  /// At and above price 1 the standard form has more useful fractional precision.
-  function _getLiquidityForAmount0(uint160 sqrtLowerX96, uint160 sqrtUpperX96, uint256 amount0) private pure returns (uint128 liquidity) {
-    uint256 liquidity256;
-    if (sqrtLowerX96 < Q96) {
-      uint256 reciprocalLowerX96 = Q192 / sqrtLowerX96;
-      uint256 reciprocalUpperX96 = Q192 / sqrtUpperX96;
-      liquidity256 = FullMath.mulDiv(amount0, Q96, reciprocalLowerX96 - reciprocalUpperX96);
-    } else {
-      uint256 intermediateX96 = FullMath.mulDiv(sqrtLowerX96, sqrtUpperX96, Q96);
-      liquidity256 = FullMath.mulDiv(amount0, intermediateX96, sqrtUpperX96 - sqrtLowerX96);
-    }
-
-    if (liquidity256 > type(uint128).max) revert RatioOverflow();
-    liquidity = uint128(liquidity256);
-  }
-
-  function _ceilTickAtPrice(int24 currentTick, uint160 sqrtPriceX96) private pure returns (int24 tick) {
-    tick = currentTick;
-    // getTickAtSqrtRatio returns floor. Move one tick up unless the price is exactly on the tick.
-    if (TickMath.getSqrtRatioAtTick(currentTick) < sqrtPriceX96) tick += TICK_SPACING;
-  }
-
-  function _quoteAtSqrtPrice(uint160 sqrtPriceX96, uint256 amount0) private pure returns (uint256) {
-    if (sqrtPriceX96 <= type(uint128).max) {
-      uint256 ratioX192 = uint256(sqrtPriceX96) * sqrtPriceX96;
-      return FullMath.mulDiv(ratioX192, amount0, Q192);
-    }
-
-    uint256 ratioX128 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, 2 ** 64);
-    return FullMath.mulDiv(ratioX128, amount0, Q128);
   }
 
   function _setPositionWidth(int24 _positionWidth) private {

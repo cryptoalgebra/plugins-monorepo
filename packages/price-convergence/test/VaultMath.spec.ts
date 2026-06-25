@@ -37,7 +37,7 @@ describe("VaultMath", function () {
     };
   }
 
-  for (const tick of [-886_272, -800_000, 0, 800_000, 886_271]) {
+  for (const tick of [-100_000, 0, 100_000, 800_000, 886_271]) {
     it(`supports a balanced position at tick ${tick}`, async function () {
       const { vaultMath, helper } = await loadFixture(deployFixture);
       const sqrtPriceX96 = await helper.getSqrtRatioAtTick(tick);
@@ -55,9 +55,9 @@ describe("VaultMath", function () {
     });
   }
 
-  it("moves the range in the expected direction for skewed balances at a low price", async function () {
+  it("moves the range in the expected direction for skewed balances", async function () {
     const { vaultMath, helper } = await loadFixture(deployFixture);
-    const sqrtPriceX96 = await helper.getSqrtRatioAtTick(-800_000);
+    const sqrtPriceX96 = await helper.getSqrtRatioAtTick(-100_000);
     const { amount0, amount1 } = balancedRawAmounts(sqrtPriceX96);
 
     const balanced = await vaultMath.calculatePosition(
@@ -78,5 +78,15 @@ describe("VaultMath", function () {
 
     expect(token0Heavy[0]).to.be.greaterThan(balanced[0]);
     expect(token1Heavy[0]).to.be.lessThan(balanced[0]);
+  });
+
+  it("rejects ranges where the standard LiquidityAmounts helper rounds liquidity to zero", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    const sqrtPriceX96 = await helper.getSqrtRatioAtTick(-800_000);
+    const { amount0, amount1 } = balancedRawAmounts(sqrtPriceX96);
+
+    await expect(
+      vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1),
+    ).to.be.revertedWithCustomError(vaultMath, "InvalidPosition");
   });
 });

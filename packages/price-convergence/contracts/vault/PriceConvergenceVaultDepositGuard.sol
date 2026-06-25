@@ -4,24 +4,17 @@ pragma solidity =0.8.20;
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import './interfaces/IPriceConvergenceVaultDepositGuard.sol';
 import './interfaces/IPriceConvergenceVault.sol';
 
 /// @title Price Convergence Vault Deposit Guard
 /// @notice Adds minimum-output checks to deposits into and withdrawals from one immutable vault.
-contract PriceConvergenceVaultDepositGuard is ReentrancyGuard {
+contract PriceConvergenceVaultDepositGuard is IPriceConvergenceVaultDepositGuard, ReentrancyGuard {
   using SafeERC20 for IERC20;
 
   IPriceConvergenceVault public immutable vault;
   IERC20 public immutable token0;
   IERC20 public immutable token1;
-
-  event DepositForwarded(address indexed sender, address indexed recipient, uint256 amount0, uint256 amount1, uint256 shares);
-  event WithdrawForwarded(address indexed sender, address indexed recipient, uint256 shares, uint256 amount0, uint256 amount1);
-
-  error ZeroAddress();
-  error InvalidRecipient();
-  error InsufficientShares();
-  error InsufficientAmounts();
 
   constructor(address _vault) {
     if (_vault == address(0)) revert ZeroAddress();

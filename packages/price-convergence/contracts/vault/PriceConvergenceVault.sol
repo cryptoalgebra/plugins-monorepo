@@ -51,7 +51,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   address public rebalanceEntrypoint;
   Position public mainPosition;
-  Position public fullRangePosition;
   uint32 public twapPeriod;
   uint32 public auxTwapPeriod;
   uint256 public hysteresis;
@@ -128,9 +127,9 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (recipient == address(0) || recipient == address(this)) revert ZeroAddress();
     if (amount0 == 0 || amount1 == 0) revert ZeroValue();
 
-    bool initializeFullRange = fullRangePosition.liquidity == 0;
+    bool initializeFullRange = !_hasFullRangePosition();
     Prices memory prices = _getValidatedPrices();
-    _collectAllFees();
+    if (mainPosition.liquidity != 0) _collectAllFees();
     shares = _calculateDepositShares(amount0, amount1, prices);
     if (shares == 0) revert ZeroValue();
 
@@ -149,12 +148,13 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
     uint256 supply = totalSupply();
     if (shares != supply && supply - shares < MIN_SHARES) revert InvalidShares();
-    _collectAllFees();
+
+    uint128 mainLiquidityToBurn = _proportionalLiquidity(mainPosition.liquidity, shares, supply);
+    if (mainLiquidityToBurn > 0) _collectAllFees();
 
     amount0 = FullMath.mulDiv(IERC20(token0).balanceOf(address(this)), shares, supply);
     amount1 = FullMath.mulDiv(IERC20(token1).balanceOf(address(this)), shares, supply);
 
-    uint128 mainLiquidityToBurn = _proportionalLiquidity(mainPosition.liquidity, shares, supply);
     if (mainLiquidityToBurn > 0) {
       (uint256 main0, uint256 main1) = _burnPosition(mainPosition, mainLiquidityToBurn);
       amount0 += main0;
@@ -192,10 +192,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   }
 
   function getTotalAmounts() public view returns (uint256 total0, uint256 total1) {
-    (total0, total1) = getShareholderAmounts();
-    (, uint256 full0, uint256 full1) = getFullRangePosition();
-    total0 += full0;
-    total1 += full1;
+    return getShareholderAmounts();
   }
 
   function getShareholderAmounts() public view returns (uint256 total0, uint256 total1) {
@@ -206,10 +203,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   function getMainPosition() public view returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
     return _getPositionAmounts(mainPosition);
-  }
-
-  function getFullRangePosition() public view returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-    return _getPositionAmounts(fullRangePosition);
   }
 
   function algebraMintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata) external override {
@@ -231,17 +224,15 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
       return;
     }
 
-    if (balance != 0) IERC20(token).safeTransfer(pool, balance);
-    IERC20(token).safeTransferFrom(tx.origin, pool, amount - balance);
+    IERC20(token).safeTransferFrom(tx.origin, pool, amount);
   }
 
   function _initializeFullRange() private {
-    if (fullRangePosition.liquidity != 0) revert InvalidPosition();
+    if (_hasFullRangePosition()) revert InvalidPosition();
 
     (int24 lower, int24 upper) = _fullRangeTicks();
     (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, fullRangeLiquidity, bytes(''));
 
-    fullRangePosition = Position({ lower: lower, upper: upper, liquidity: liquidityActual });
     emit FullRangeInitialized(lower, upper, liquidityActual);
   }
 
@@ -269,9 +260,8 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   function _collectAllFees() private returns (uint256 fees0, uint256 fees1) {
     (uint128 main0, uint128 main1) = _collectPosition(mainPosition);
-    (uint128 full0, uint128 full1) = _collectPosition(fullRangePosition);
-    fees0 = uint256(main0) + full0;
-    fees1 = uint256(main1) + full1;
+    fees0 = uint256(main0);
+    fees1 = uint256(main1);
   }
 
   function _proportionalLiquidity(uint128 liquidity, uint256 shares, uint256 supply) private pure returns (uint128) {
@@ -314,6 +304,12 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   function _fullRangeTicks() private pure returns (int24 lower, int24 upper) {
     lower = TickMath.MIN_TICK;
     upper = TickMath.MAX_TICK;
+  }
+
+  function _hasFullRangePosition() private view returns (bool) {
+    (int24 lower, int24 upper) = _fullRangeTicks();
+    (uint256 liquidity, , , , ) = IAlgebraPool(pool).positions(_positionKey(address(this), lower, upper));
+    return liquidity != 0;
   }
 
   function _calculateDepositShares(uint256 amount0, uint256 amount1, Prices memory prices) private view returns (uint256 shares) {

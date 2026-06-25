@@ -3,7 +3,6 @@ import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import {
   DEPOSIT_AMOUNT,
-  FULL_RANGE_LIQUIDITY,
   MIN_SHARES,
   Q96,
   deployVaultFixture,
@@ -25,14 +24,11 @@ describe("PriceConvergenceVault", function () {
     const { user, token0, token1, vault } =
       await loadFixture(deployVaultFixture);
     await approveDeposit(vault, token0, token1, user);
-    await vault
-      .connect(user)
-      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, user.address);
+    await expect(
+      vault.connect(user).deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, user.address),
+    ).to.emit(vault, "FullRangeInitialized");
     expect(await vault.balanceOf(user.address)).to.equal(
       DEPOSIT_AMOUNT * 2n * MIN_SHARES,
-    );
-    expect((await vault.fullRangePosition()).liquidity).to.equal(
-      FULL_RANGE_LIQUIDITY,
     );
   });
 
@@ -47,13 +43,12 @@ describe("PriceConvergenceVault", function () {
       f.vault.connect(f.user).withdraw(shares, f.user.address),
     ).to.emit(f.vault, "Withdraw");
     expect(await f.vault.totalSupply()).to.equal(0);
-    expect((await f.vault.fullRangePosition()).liquidity).to.equal(
-      FULL_RANGE_LIQUIDITY,
-    );
     await approveDeposit(f.vault, f.token0, f.token1, f.user);
-    await f.vault
-      .connect(f.user)
-      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await expect(
+      f.vault
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
+    ).to.not.emit(f.vault, "FullRangeInitialized");
   });
   it("enforces MIN_SHARES on partial withdrawals", async function () {
     const f = await loadFixture(deployVaultFixture);

@@ -4,10 +4,12 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("VaultMath", function () {
   const WIDTH = 100n;
+  const Q96 = 1n << 96n;
   const Q192 = 1n << 192n;
   const BALANCE_SCALE = 10n ** 12n;
 
   async function deployFixture() {
+    const [, other] = await ethers.getSigners();
     const MockFactory = await ethers.getContractFactory("MockFactory");
     const factory = await MockFactory.deploy();
 
@@ -19,7 +21,7 @@ describe("VaultMath", function () {
     );
     const helper = await VaultMathTestHelper.deploy();
 
-    return { vaultMath, helper };
+    return { factory, vaultMath, helper, other };
   }
 
   function balancedRawAmounts(sqrtPriceX96: bigint) {
@@ -36,6 +38,67 @@ describe("VaultMath", function () {
       amount1: (priceNumerator * BALANCE_SCALE) / Q192,
     };
   }
+
+  it("validates constructor width and factory", async function () {
+    const MockFactory = await ethers.getContractFactory("MockFactory");
+    const factory = await MockFactory.deploy();
+    const VaultMath = await ethers.getContractFactory("VaultMath");
+
+    await expect(
+      VaultMath.deploy(ethers.ZeroAddress, WIDTH),
+    ).to.be.revertedWithCustomError(VaultMath, "ZeroAddress");
+    await expect(
+      VaultMath.deploy(factory.target, 0),
+    ).to.be.revertedWithCustomError(VaultMath, "InvalidPositionWidth");
+    await expect(
+      VaultMath.deploy(factory.target, 887_273),
+    ).to.be.revertedWithCustomError(VaultMath, "InvalidPositionWidth");
+  });
+
+  it("gates position width updates through the factory role", async function () {
+    const { vaultMath, other } = await loadFixture(deployFixture);
+
+    await expect(
+      vaultMath.connect(other).setPositionWidth(200),
+    ).to.be.revertedWithCustomError(vaultMath, "OnlyVaultManager");
+    await expect(vaultMath.setPositionWidth(200))
+      .to.emit(vaultMath, "PositionWidth")
+      .withArgs(200);
+    expect(await vaultMath.positionWidth()).to.equal(200);
+  });
+
+  it("rejects empty balances", async function () {
+    const { vaultMath } = await loadFixture(deployFixture);
+
+    await expect(
+      vaultMath.calculatePosition(Q96, 0, 0),
+    ).to.be.revertedWithCustomError(vaultMath, "ZeroAmounts");
+  });
+
+  it("places one-sided balances on the correct side of the current price", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    const sqrtPriceX96 = await helper.getSqrtRatioAtTick(0);
+
+    const token0Only = await vaultMath.calculatePosition(
+      sqrtPriceX96,
+      BALANCE_SCALE,
+      0,
+    );
+    expect(token0Only[0]).to.be.at.least(0);
+    expect(token0Only[1] - token0Only[0]).to.equal(WIDTH);
+    expect(token0Only[3]).to.be.at.most(BALANCE_SCALE);
+    expect(token0Only[4]).to.equal(0);
+
+    const token1Only = await vaultMath.calculatePosition(
+      sqrtPriceX96,
+      0,
+      BALANCE_SCALE,
+    );
+    expect(token1Only[1]).to.be.at.most(0);
+    expect(token1Only[1] - token1Only[0]).to.equal(WIDTH);
+    expect(token1Only[3]).to.equal(0);
+    expect(token1Only[4]).to.be.at.most(BALANCE_SCALE);
+  });
 
   for (const tick of [-100_000, 0, 100_000, 800_000, 886_271]) {
     it(`supports a balanced position at tick ${tick}`, async function () {

@@ -6,7 +6,7 @@ import { Q96 } from "./helpers/priceConvergenceFixture";
 
 describe("RebalanceEntrypoint", function () {
   async function deployFixture(reversed = false) {
-    const [, priceManager, other] = await ethers.getSigners();
+    const [owner, priceManager, other] = await ethers.getSigners();
     const core = await algebraPoolDeployerMockFixture();
     const pool = await core.createPool();
     await pool.initialize(Q96);
@@ -28,7 +28,16 @@ describe("RebalanceEntrypoint", function () {
     const entrypoint = await Entrypoint.deploy(vault.target, share.target);
     const role = await entrypoint.REBALANCER_ROLE();
     await core.factory.grantRole(role, priceManager.address);
-    return { priceManager, other, pool, vault, entrypoint };
+    return {
+      owner,
+      priceManager,
+      other,
+      pool,
+      vault,
+      entrypoint,
+      asset,
+      share,
+    };
   }
   async function deployNormalFixture() {
     return deployFixture(false);
@@ -42,6 +51,20 @@ describe("RebalanceEntrypoint", function () {
     expect(await entrypoint.shareDecimals()).to.equal(18);
     expect(await entrypoint.quoteDecimals()).to.equal(18);
   });
+  it("validates constructor inputs", async function () {
+    const { vault, share, asset } = await loadFixture(deployNormalFixture);
+    const Entrypoint = await ethers.getContractFactory("RebalanceEntrypoint");
+
+    await expect(
+      Entrypoint.deploy(ethers.ZeroAddress, share.target),
+    ).to.be.revertedWithCustomError(Entrypoint, "ZeroAddress");
+    await expect(
+      Entrypoint.deploy(vault.target, ethers.ZeroAddress),
+    ).to.be.revertedWithCustomError(Entrypoint, "ZeroAddress");
+    await expect(
+      Entrypoint.deploy(vault.target, asset.target),
+    ).to.be.revertedWithCustomError(Entrypoint, "InvalidERC4626Vault");
+  });
   it("inverts price when the ERC4626 share is token1", async function () {
     const { entrypoint } = await deployFixture(true);
     const [target] = await entrypoint.preview(4n * 10n ** 18n);
@@ -49,9 +72,12 @@ describe("RebalanceEntrypoint", function () {
     expect(await entrypoint.erc4626IsToken0()).to.equal(false);
   });
   it("requires the rebalancer role and forwards the target", async function () {
-    const { priceManager, other, vault, entrypoint } =
+    const { owner, priceManager, other, vault, entrypoint } =
       await loadFixture(deployNormalFixture);
     const target = 2n * Q96;
+    expect(await entrypoint.isAuthorizedRebalancer(owner.address)).to.equal(
+      true,
+    );
     expect(
       await entrypoint.isAuthorizedRebalancer(priceManager.address),
     ).to.equal(true);

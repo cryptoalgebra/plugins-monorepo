@@ -18,6 +18,15 @@ describe("PriceConvergenceVaultDepositGuard", function () {
     await f.token1.connect(f.user).approve(guard.target, DEPOSIT_AMOUNT);
     return { ...f, guard };
   }
+  it("rejects a zero vault", async function () {
+    const Guard = await ethers.getContractFactory(
+      "PriceConvergenceVaultDepositGuard",
+    );
+
+    await expect(
+      Guard.deploy(ethers.ZeroAddress),
+    ).to.be.revertedWithCustomError(Guard, "ZeroAddress");
+  });
   it("forwards deposits into the real pool", async function () {
     const f = await loadFixture(deployFixture);
     const shares = DEPOSIT_AMOUNT * 2n * MIN_SHARES;
@@ -35,6 +44,20 @@ describe("PriceConvergenceVaultDepositGuard", function () {
         shares,
       );
     expect(await f.vault.balanceOf(f.user.address)).to.equal(shares);
+  });
+  it("rejects invalid deposit recipients before moving tokens", async function () {
+    const f = await loadFixture(deployFixture);
+
+    await expect(
+      f.guard
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, 0, ethers.ZeroAddress),
+    ).to.be.revertedWithCustomError(f.guard, "InvalidRecipient");
+    await expect(
+      f.guard
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, 0, f.guard.target),
+    ).to.be.revertedWithCustomError(f.guard, "InvalidRecipient");
   });
   it("reverts atomically below minimum shares", async function () {
     const f = await loadFixture(deployFixture);
@@ -59,6 +82,16 @@ describe("PriceConvergenceVaultDepositGuard", function () {
       f.guard.connect(f.user).withdraw(shares, f.user.address, 0, 0),
     ).to.emit(f.guard, "WithdrawForwarded");
     expect(await f.vault.balanceOf(f.user.address)).to.equal(0);
+  });
+  it("rejects invalid withdrawal recipients before moving shares", async function () {
+    const f = await loadFixture(deployFixture);
+
+    await expect(
+      f.guard.connect(f.user).withdraw(1, ethers.ZeroAddress, 0, 0),
+    ).to.be.revertedWithCustomError(f.guard, "InvalidRecipient");
+    await expect(
+      f.guard.connect(f.user).withdraw(1, f.guard.target, 0, 0),
+    ).to.be.revertedWithCustomError(f.guard, "InvalidRecipient");
   });
   it("reverts atomically below withdrawal minimums", async function () {
     const f = await loadFixture(deployFixture);

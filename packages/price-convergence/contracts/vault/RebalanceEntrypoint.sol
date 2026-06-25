@@ -10,13 +10,14 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import './interfaces/IPriceConvergenceVault.sol';
+import './interfaces/IRebalanceEntrypoint.sol';
 
 /// @title Price Convergence Rebalance Entrypoint
 /// @notice Converts a backend-supplied underlying asset price to the pool price used by the vault.
-contract RebalanceEntrypoint is ReentrancyGuard {
+contract RebalanceEntrypoint is IRebalanceEntrypoint, ReentrancyGuard {
   uint256 private constant Q96 = 2 ** 96;
   uint256 public constant PRICE_PRECISION = 1e18;
-  bytes32 public constant PRICE_CONVERGENCE_PRICE_MANAGER = keccak256('PRICE_CONVERGENCE_PRICE_MANAGER');
+  bytes32 public constant REBALANCER_ROLE = keccak256('PRICE_CONVERGENCE_REBALANCER');
 
   IPriceConvergenceVault public immutable vault;
   address public immutable factory;
@@ -26,16 +27,9 @@ contract RebalanceEntrypoint is ReentrancyGuard {
   uint8 public immutable assetDecimals;
   uint8 public immutable quoteDecimals;
 
-  event Rebalance(uint160 newPoolSqrtPriceX96, uint160 previousPoolSqrtPriceX96);
-
-  error InvalidERC4626Vault();
-  error InvalidPrice();
-  error OnlyPriceManager();
-  error ZeroAddress();
-
-  modifier onlyPriceManager() {
-    if (!IAlgebraFactory(factory).hasRoleOrOwner(PRICE_CONVERGENCE_PRICE_MANAGER, msg.sender)) {
-      revert OnlyPriceManager();
+  modifier onlyRebalancer() {
+    if (!isAuthorizedRebalancer(msg.sender)) {
+      revert OnlyRebalancer();
     }
     _;
   }
@@ -57,17 +51,20 @@ contract RebalanceEntrypoint is ReentrancyGuard {
     shareDecimals = IERC20Metadata(_erc4626Vault).decimals();
     assetDecimals = IERC20Metadata(asset).decimals();
     quoteDecimals = IERC20Metadata(quoteToken).decimals();
-    if (shareDecimals > 38 || assetDecimals > 38 || quoteDecimals > 38) revert InvalidPrice();
+  }
+
+  function isAuthorizedRebalancer(address account) public view override returns (bool) {
+    return IAlgebraFactory(factory).hasRoleOrOwner(REBALANCER_ROLE, account);
   }
 
   /// @notice Converts a quote-per-underlying-asset price scaled by 1e18 to the pool sqrt price.
-  function preview(uint256 priceX18) external view returns (uint160 newPoolSqrtPriceX96, uint160 poolSqrtPriceX96) {
+  function preview(uint256 priceX18) external view override returns (uint160 newPoolSqrtPriceX96, uint160 poolSqrtPriceX96) {
     newPoolSqrtPriceX96 = _getPoolSqrtPriceX96(priceX18);
     (poolSqrtPriceX96, , , , , ) = IAlgebraPool(vault.pool()).globalState();
   }
 
   /// @notice Rebalances the vault to a pool-native sqrt price supplied by the backend.
-  function rebalance(uint160 newPoolSqrtPriceX96) external onlyPriceManager nonReentrant {
+  function rebalance(uint160 newPoolSqrtPriceX96) external override onlyRebalancer nonReentrant {
     if (newPoolSqrtPriceX96 < TickMath.MIN_SQRT_RATIO || newPoolSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO) {
       revert InvalidPrice();
     }

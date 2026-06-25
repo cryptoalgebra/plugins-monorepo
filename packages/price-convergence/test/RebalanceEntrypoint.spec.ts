@@ -26,9 +26,7 @@ describe("RebalanceEntrypoint", function () {
     );
     const Entrypoint = await ethers.getContractFactory("RebalanceEntrypoint");
     const entrypoint = await Entrypoint.deploy(vault.target, share.target);
-    const role = ethers.keccak256(
-      ethers.toUtf8Bytes("PRICE_CONVERGENCE_PRICE_MANAGER"),
-    );
+    const role = await entrypoint.REBALANCER_ROLE();
     await core.factory.grantRole(role, priceManager.address);
     return { priceManager, other, pool, vault, entrypoint };
   }
@@ -50,13 +48,19 @@ describe("RebalanceEntrypoint", function () {
     expect(target).to.equal(Q96 / 2n);
     expect(await entrypoint.erc4626IsToken0()).to.equal(false);
   });
-  it("requires the price-manager role and forwards the target", async function () {
+  it("requires the rebalancer role and forwards the target", async function () {
     const { priceManager, other, vault, entrypoint } =
       await loadFixture(deployNormalFixture);
     const target = 2n * Q96;
+    expect(
+      await entrypoint.isAuthorizedRebalancer(priceManager.address),
+    ).to.equal(true);
+    expect(await entrypoint.isAuthorizedRebalancer(other.address)).to.equal(
+      false,
+    );
     await expect(
       entrypoint.connect(other).rebalance(target),
-    ).to.be.revertedWithCustomError(entrypoint, "OnlyPriceManager");
+    ).to.be.revertedWithCustomError(entrypoint, "OnlyRebalancer");
     await expect(entrypoint.connect(priceManager).rebalance(target))
       .to.emit(entrypoint, "Rebalance")
       .withArgs(target, Q96);

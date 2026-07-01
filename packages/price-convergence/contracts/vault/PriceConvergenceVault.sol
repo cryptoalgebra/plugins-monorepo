@@ -51,6 +51,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   address public rebalanceEntrypoint;
   Position public mainPosition;
+  bool public fullRangeInitialized;
   uint32 public twapPeriod;
   uint32 public auxTwapPeriod;
   uint256 public hysteresis;
@@ -118,26 +119,28 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     emit Hysteresis(_hysteresis);
   }
 
-  /// @notice Funds the vault with both tokens and mints fungible vault shares.
+  /// @notice Funds the vault with one or both tokens and mints fungible vault shares.
+  /// @dev The bootstrapping deposit that seeds the full-range position must supply both tokens.
   function deposit(
     uint256 amount0,
     uint256 amount1,
     address recipient
   ) external override whenNotPaused nonReentrant returns (uint256 shares) {
     if (recipient == address(0) || recipient == address(this)) revert ZeroAddress();
-    if (amount0 == 0 || amount1 == 0) revert ZeroValue();
+    if (amount0 == 0 && amount1 == 0) revert ZeroValue();
 
-    bool initializeFullRange = !_hasFullRangePosition();
     Prices memory prices = _getValidatedPrices();
     if (mainPosition.liquidity != 0) _collectAllFees();
     shares = _calculateDepositShares(amount0, amount1, prices);
     if (shares == 0) revert ZeroValue();
 
-    IERC20(token0).safeTransferFrom(msg.sender, address(this), amount0);
-    IERC20(token1).safeTransferFrom(msg.sender, address(this), amount1);
+    if (amount0 > 0) IERC20(token0).safeTransferFrom(msg.sender, address(this), amount0);
+    if (amount1 > 0) IERC20(token1).safeTransferFrom(msg.sender, address(this), amount1);
     _mint(recipient, shares);
 
-    if (initializeFullRange) _initializeFullRange();
+    // A single-sided bootstrap cannot pay the second side owed by the full-range mint, so this
+    // reverts inside the callback. No explicit guard: the mint enforces the two-sided requirement.
+    if (!fullRangeInitialized) _initializeFullRange();
 
     emit Deposit(msg.sender, recipient, shares, amount0, amount1);
   }
@@ -167,6 +170,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
     emit Withdraw(msg.sender, recipient, shares, amount0, amount1);
   }
+
   /// @inheritdoc IPriceConvergenceVault
   function rebalance(uint160 targetSqrtPriceX96) external override onlyRebalanceEntrypoint whenNotPaused nonReentrant {
     if (targetSqrtPriceX96 < TickMath.MIN_SQRT_RATIO || targetSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO) {
@@ -228,7 +232,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   }
 
   function _initializeFullRange() private {
-    if (_hasFullRangePosition()) revert InvalidPosition();
+    fullRangeInitialized = true;
 
     (int24 lower, int24 upper) = _fullRangeTicks();
     (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, fullRangeLiquidity, bytes(''));
@@ -309,11 +313,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     upper = TickMath.MAX_TICK;
   }
 
-  function _hasFullRangePosition() private view returns (bool) {
-    (int24 lower, int24 upper) = _fullRangeTicks();
-    (uint256 liquidity, , , , ) = IAlgebraPool(pool).positions(_positionKey(address(this), lower, upper));
-    return liquidity != 0;
-  }
 
   function _calculateDepositShares(uint256 amount0, uint256 amount1, Prices memory prices) private view returns (uint256 shares) {
     uint160 depositPrice = _minPrice(prices);
@@ -384,6 +383,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     price = prices.spot > prices.twap ? prices.spot : prices.twap;
     if (prices.auxTwap > price) price = prices.auxTwap;
   }
+  
   function _valueInToken1(uint256 amount0, uint256 amount1, uint160 sqrtPrice) private pure returns (uint256) {
     return _quoteAtSqrtPrice(sqrtPrice, amount0, true) + amount1;
   }

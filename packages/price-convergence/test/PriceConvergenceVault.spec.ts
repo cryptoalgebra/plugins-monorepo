@@ -133,15 +133,50 @@ describe("PriceConvergenceVault", function () {
       DEPOSIT_AMOUNT * 2n * MIN_SHARES,
     );
   });
+  it("allows single-sided deposits after the full range is initialized", async function () {
+    const { user, token0, token1, vault } =
+      await loadFixture(deployVaultFixture);
+    // Bootstrap with a two-sided deposit so the full-range seed is in place.
+    await approveDeposit(vault, token0, token1, user);
+    await vault
+      .connect(user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, user.address);
+    const afterBootstrap = await vault.balanceOf(user.address);
+
+    // token0-only deposit now succeeds and mints additional shares.
+    await token0.connect(user).approve(vault.target, DEPOSIT_AMOUNT);
+    await expect(
+      vault.connect(user).deposit(DEPOSIT_AMOUNT, 0, user.address),
+    ).to.emit(vault, "Deposit");
+    const afterToken0 = await vault.balanceOf(user.address);
+    expect(afterToken0).to.be.greaterThan(afterBootstrap);
+
+    // token1-only deposit also succeeds.
+    await token1.connect(user).approve(vault.target, DEPOSIT_AMOUNT);
+    await expect(
+      vault.connect(user).deposit(0, DEPOSIT_AMOUNT, user.address),
+    ).to.emit(vault, "Deposit");
+    expect(await vault.balanceOf(user.address)).to.be.greaterThan(afterToken0);
+  });
+  it("rejects a single-sided bootstrapping deposit", async function () {
+    const { user, token0, vault } = await loadFixture(deployVaultFixture);
+    // Before the full range exists both tokens are required: the full-range mint owes both sides, so
+    // a single-sided bootstrap reverts inside the mint callback (token0 is approved to isolate that).
+    await token0.connect(user).approve(vault.target, DEPOSIT_AMOUNT);
+    await expect(vault.connect(user).deposit(DEPOSIT_AMOUNT, 0, user.address)).to
+      .be.reverted;
+  });
   it("rejects invalid deposit inputs", async function () {
     const f = await loadFixture(deployVaultFixture);
 
+    // Both-zero is rejected explicitly; single-sided is rejected by the bootstrap mint (no guard).
     await expect(
-      f.vault.connect(f.user).deposit(0, DEPOSIT_AMOUNT, f.user.address),
+      f.vault.connect(f.user).deposit(0, 0, f.user.address),
     ).to.be.revertedWithCustomError(f.vault, "ZeroValue");
-    await expect(
-      f.vault.connect(f.user).deposit(DEPOSIT_AMOUNT, 0, f.user.address),
-    ).to.be.revertedWithCustomError(f.vault, "ZeroValue");
+    await expect(f.vault.connect(f.user).deposit(0, DEPOSIT_AMOUNT, f.user.address))
+      .to.be.reverted;
+    await expect(f.vault.connect(f.user).deposit(DEPOSIT_AMOUNT, 0, f.user.address))
+      .to.be.reverted;
     await expect(
       f.vault
         .connect(f.user)

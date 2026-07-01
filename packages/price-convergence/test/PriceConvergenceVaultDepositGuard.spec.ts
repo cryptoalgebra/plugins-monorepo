@@ -45,6 +45,25 @@ describe("PriceConvergenceVaultDepositGuard", function () {
       );
     expect(await f.vault.balanceOf(f.user.address)).to.equal(shares);
   });
+  it("forwards single-sided deposits after the full range exists", async function () {
+    const f = await loadFixture(deployFixture);
+    // Bootstrap with a two-sided deposit through the guard.
+    await f.guard
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, 0, f.user.address);
+
+    // token0-only deposit is forwarded (token1 is neither pulled nor approved).
+    await f.token0.connect(f.user).approve(f.guard.target, DEPOSIT_AMOUNT);
+    await expect(
+      f.guard.connect(f.user).deposit(DEPOSIT_AMOUNT, 0, 0, f.user.address),
+    ).to.emit(f.guard, "DepositForwarded");
+
+    // token1-only deposit is forwarded.
+    await f.token1.connect(f.user).approve(f.guard.target, DEPOSIT_AMOUNT);
+    await expect(
+      f.guard.connect(f.user).deposit(0, DEPOSIT_AMOUNT, 0, f.user.address),
+    ).to.emit(f.guard, "DepositForwarded");
+  });
   it("rejects invalid deposit recipients before moving tokens", async function () {
     const f = await loadFixture(deployFixture);
 

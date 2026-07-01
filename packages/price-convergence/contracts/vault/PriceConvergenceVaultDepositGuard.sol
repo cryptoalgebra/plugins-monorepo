@@ -32,10 +32,14 @@ contract PriceConvergenceVaultDepositGuard is IPriceConvergenceVaultDepositGuard
   ) external nonReentrant returns (uint256 shares) {
     if (recipient == address(0) || recipient == address(this)) revert InvalidRecipient();
 
-    token0.safeTransferFrom(msg.sender, address(this), amount0);
-    token1.safeTransferFrom(msg.sender, address(this), amount1);
-    token0.forceApprove(address(vault), amount0);
-    token1.forceApprove(address(vault), amount1);
+    if (amount0 > 0) {
+      token0.safeTransferFrom(msg.sender, address(this), amount0);
+      token0.forceApprove(address(vault), amount0);
+    }
+    if (amount1 > 0) {
+      token1.safeTransferFrom(msg.sender, address(this), amount1);
+      token1.forceApprove(address(vault), amount1);
+    }
 
     shares = vault.deposit(amount0, amount1, recipient);
     if (shares < minimumShares) revert InsufficientShares();

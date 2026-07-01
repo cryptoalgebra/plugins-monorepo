@@ -10,17 +10,6 @@ const config = {
   
   // Farming center address (optional, can be set later)
   farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
-  
-  // Default fee configuration for dynamic fee module
-  defaultFeeConfig: {
-    alpha1: 2900,
-    alpha2: 12000,
-    beta1: 360,
-    beta2: 60000,
-    gamma1: 59,
-    gamma2: 8500,
-    baseFee: 100
-  }
 };
 
 // ============= MODULE IMPLEMENTATIONS =============
@@ -31,28 +20,23 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "VolatilityOracleImpl"
   });
 
-  const dynamicFeeImpl = m.contract("DynamicFeePluginImplementation", [], {
-    id: "DynamicFeeImpl"
-  });
-
   const farmingProxyImpl = m.contract("FarmingProxyPluginImplementation", [], {
     id: "FarmingProxyImpl"
-  });
-
-  const almImpl = m.contract("AlmPluginImplementation", [], {
-    id: "AlmImpl"
   });
 
   const securityImpl = m.contract("SecurityPluginImplementation", [], {
     id: "SecurityImpl"
   });
 
+  const priceConvergenceImpl = m.contract("PriceConvergencePluginImplementation", [], {
+    id: "PriceConvergenceImpl"
+  });
+
   return {
     volatilityOracleImpl,
-    dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
-    securityImpl
+    securityImpl,
+    priceConvergenceImpl
   };
 });
 
@@ -100,12 +84,11 @@ const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
 // ============= PLUGIN IMPLEMENTATION =============
 
 const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    farmingProxyImpl,
+    securityImpl,
+    priceConvergenceImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -113,21 +96,19 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     config.algebraFactory,
     factoryProxy,
     volatilityOracleImpl,
-    dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
-    securityImpl
+    securityImpl,
+    priceConvergenceImpl
   ], {
     id: "PluginImplementation"
   });
 
-  return { 
+  return {
     pluginImpl,
     volatilityOracleImpl,
-    dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
-    securityImpl
+    securityImpl,
+    priceConvergenceImpl
   };
 });
 
@@ -152,8 +133,7 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // 6. Upgrade proxy to the real implementation and initialize it in one tx
   const initData = m.encodeFunctionCall(factoryImpl, "initialize", [
     config.algebraFactory,
-    pluginImpl,
-    config.defaultFeeConfig
+    pluginImpl
   ], {
     id: "FactoryInitData"
   });

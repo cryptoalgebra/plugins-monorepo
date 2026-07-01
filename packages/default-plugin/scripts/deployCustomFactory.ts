@@ -3,15 +3,19 @@ import { ethers } from "hardhat";
 // ============= CONFIGURATION =============
 // Update these addresses for your deployment network
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-
 const config = {
-  // Algebra Core Factory address
-  algebraFactory: ZERO_ADDRESS,
+  // Algebra Core Factory address (used for role checks)
+  algebraFactory: "0x0000000000000000000000000000000000000000",
+
+  // AlgebraCustomPoolEntryPoint address (from integral-periphery).
+  // Must already hold CUSTOM_POOL_DEPLOYER and POOLS_ADMINISTRATOR roles in the AlgebraFactory.
+  entryPoint: "0x0000000000000000000000000000000000000000",
 
   // Farming center address (optional, can be set later)
-  farmingCenter: ZERO_ADDRESS,
+  farmingCenter: "0x0000000000000000000000000000000000000000",
 };
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -19,8 +23,8 @@ async function main() {
   console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
   console.log("");
 
-  if (config.algebraFactory === ZERO_ADDRESS) {
-    throw new Error("Set config.algebraFactory before deploying");
+  if (config.algebraFactory === ZERO_ADDRESS || config.entryPoint === ZERO_ADDRESS) {
+    throw new Error("Set config.algebraFactory and config.entryPoint before deploying");
   }
 
   // ============= 1. DEPLOY MODULE IMPLEMENTATIONS =============
@@ -45,7 +49,7 @@ async function main() {
   const priceConvergenceImpl = await PriceConvergenceImpl.deploy();
   await priceConvergenceImpl.waitForDeployment();
   console.log("PriceConvergenceImpl:", await priceConvergenceImpl.getAddress());
-
+  console.log("");
 
   // ============= 2. DEPLOY PROXY ADMIN =============
   console.log("=== Deploying ProxyAdmin ===");
@@ -61,7 +65,8 @@ async function main() {
   console.log("=== Deploying Factory Proxy ===");
 
   const TransparentProxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
-  // Use ProxyAdmin as placeholder implementation, empty init data
+  // ProxyAdmin is used as a placeholder implementation; the proxy is upgraded to the real
+  // factory implementation and initialized via ProxyAdmin.upgradeAndCall below.
   const factoryProxy = await TransparentProxy.deploy(proxyAdminAddress, proxyAdminAddress, "0x");
   await factoryProxy.waitForDeployment();
   const factoryProxyAddress = await factoryProxy.getAddress();
@@ -71,6 +76,7 @@ async function main() {
   // ============= 4. DEPLOY PLUGIN IMPLEMENTATION =============
   console.log("=== Deploying Plugin Implementation ===");
 
+  // pluginFactory is bound to the proxy address (known before initialization).
   const PluginImpl = await ethers.getContractFactory("AlgebraUpgradeablePlugin");
   const pluginImpl = await PluginImpl.deploy(
     config.algebraFactory,
@@ -86,9 +92,9 @@ async function main() {
   console.log("");
 
   // ============= 5. DEPLOY FACTORY IMPLEMENTATION =============
-  console.log("=== Deploying Factory Implementation ===");
+  console.log("=== Deploying Custom Factory Implementation ===");
 
-  const FactoryImpl = await ethers.getContractFactory("AlgebraUpgradeablePluginFactory");
+  const FactoryImpl = await ethers.getContractFactory("AlgebraCustomPluginFactory");
   const factoryImpl = await FactoryImpl.deploy();
   await factoryImpl.waitForDeployment();
   const factoryImplAddress = await factoryImpl.getAddress();
@@ -98,21 +104,18 @@ async function main() {
   // ============= 6. UPGRADE PROXY & INITIALIZE =============
   console.log("=== Upgrading Proxy & Initializing Factory ===");
 
-  // Encode initialize calldata
-  const factoryInterface = FactoryImpl.interface;
-  const initData = factoryInterface.encodeFunctionData("initialize", [
+  const initData = FactoryImpl.interface.encodeFunctionData("initialize", [
     config.algebraFactory,
+    config.entryPoint,
     pluginImplAddress,
   ]);
 
-  // upgradeAndCall via ProxyAdmin
   const tx = await proxyAdmin.upgradeAndCall(factoryProxyAddress, factoryImplAddress, initData);
   await tx.wait();
   console.log("Factory proxy upgraded and initialized");
   console.log("");
 
-  // Get factory instance at proxy address
-  const factory = await ethers.getContractAt("AlgebraUpgradeablePluginFactory", factoryProxyAddress);
+  const factory = await ethers.getContractAt("AlgebraCustomPluginFactory", factoryProxyAddress);
 
   // ============= 7. DEPLOY AUXILIARY CONTRACTS =============
   console.log("=== Deploying Auxiliary Contracts ===");
@@ -121,41 +124,36 @@ async function main() {
   const securityRegistry = await SecurityRegistryFactory.deploy(config.algebraFactory);
   await securityRegistry.waitForDeployment();
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
-
+  console.log("");
 
   // ============= 8. POST-DEPLOYMENT CONFIGURATION =============
   console.log("=== Post-Deployment Configuration ===");
 
-  // Set farming address
   if (config.farmingCenter !== ZERO_ADDRESS) {
     const tx1 = await factory.setFarmingAddress(config.farmingCenter);
     await tx1.wait();
     console.log("Set farming address:", config.farmingCenter);
   }
 
-  // Set SecurityRegistry
   const tx2 = await factory.setSecurityRegistry(await securityRegistry.getAddress());
   await tx2.wait();
   console.log("Set SecurityRegistry");
-
-
-
-  // Set DefaultPluginFactory in AlgebraFactory
-  const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
-  const tx9 = await algebraFactory.setDefaultPluginFactory(factoryProxyAddress);
-  await tx9.wait();
-  console.log("Set DefaultPluginFactory in AlgebraFactory");
   console.log("");
+
+  // Note: this is a custom-pool deployer, not the default plugin factory. Pools are created via
+  // factory.createCustomPool(...) which routes through the entry point, so there is no
+  // setDefaultPluginFactory step. The entry point must already hold the CUSTOM_POOL_DEPLOYER role.
 
   // ============= SUMMARY =============
   console.log("========================================");
   console.log("=== DEPLOYMENT COMPLETE ===");
   console.log("========================================");
   console.log("");
-  console.log("Factory (proxy):", factoryProxyAddress);
-  console.log("Factory (impl):", factoryImplAddress);
+  console.log("CustomFactory (proxy):", factoryProxyAddress);
+  console.log("CustomFactory (impl):", factoryImplAddress);
   console.log("ProxyAdmin:", proxyAdminAddress);
   console.log("Plugin (impl):", pluginImplAddress);
+  console.log("EntryPoint:", config.entryPoint);
   console.log("");
   console.log("--- Module Implementations ---");
   console.log("VolatilityOracle:", await volatilityOracleImpl.getAddress());

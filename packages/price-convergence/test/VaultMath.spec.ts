@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { encodePriceSqrt } from "@cryptoalgebra/test-utils/utilities";
 
 describe("VaultMath", function () {
   const WIDTH = 100n;
@@ -113,6 +114,45 @@ describe("VaultMath", function () {
     expect(token1Only[4]).to.be.at.most(BALANCE_SCALE);
   });
 
+  describe("minimum full-range mint amounts for 6/18 decimal pairs", function () {
+    const cases = [
+      { label: "0.01", priceNumerator: 1n, priceDenominator: 100n, token0Raw: 10_000_001n, token1Raw: 10_000_000n },
+      { label: "1", priceNumerator: 1n, priceDenominator: 1n, token0Raw: 1_000_001n, token1Raw: 1_000_000n },
+      { label: "1000", priceNumerator: 1_000n, priceDenominator: 1n, token0Raw: 31_623n, token1Raw: 31_623n },
+      { label: "10000", priceNumerator: 10_000n, priceDenominator: 1n, token0Raw: 10_000n, token1Raw: 10_000n },
+    ];
+
+    for (const testCase of cases) {
+      it(`requires minimum rounded-up amounts at ${testCase.label} USDC per token`, async function () {
+        const { helper } = await loadFixture(deployFixture);
+
+        // token0 has 18 decimals; token1 is USDC with 6 decimals.
+        const sqrtPriceX96 = encodePriceSqrt(
+          testCase.priceNumerator * 10n ** 6n,
+          testCase.priceDenominator * 10n ** 18n,
+        );
+        const [amount0, amount1] = await helper.getFullRangeMintAmounts(sqrtPriceX96, 1);
+
+        expect(amount0).to.equal(testCase.token0Raw);
+        expect(amount1).to.equal(1n); // one micro-USDC
+      });
+
+      it(`handles reversed token order at ${testCase.label} USDC per token`, async function () {
+        const { helper } = await loadFixture(deployFixture);
+
+        // token0 is USDC; token1 has 18 decimals.
+        const sqrtPriceX96 = encodePriceSqrt(
+          testCase.priceDenominator * 10n ** 18n,
+          testCase.priceNumerator * 10n ** 6n,
+        );
+        const [amount0, amount1] = await helper.getFullRangeMintAmounts(sqrtPriceX96, 1);
+
+        expect(amount0).to.equal(1n); // one micro-USDC
+        expect(amount1).to.equal(testCase.token1Raw);
+      });
+    }
+  });
+
   it("preserves balance bounds and uses a limiting side across a bounded input grid", async function () {
     const { vaultMath, helper } = await loadFixture(deployFixture);
     const ticks = [-500_000, -100_000, -1, 0, 1, 100_000, 500_000];
@@ -184,6 +224,31 @@ describe("VaultMath", function () {
     expect(token1Heavy[0]).to.be.lessThan(balanced[0]);
   });
 
+  it("selects a range at least as liquid as either neighboring lower tick", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    const sqrtPriceX96 = await helper.getSqrtRatioAtTick(-100_000);
+    const { amount0, amount1 } = balancedRawAmounts(sqrtPriceX96);
+    const [lower, , liquidity] = await vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1);
+
+    const previousLiquidity = await helper.getLiquidityForAmounts(
+      sqrtPriceX96,
+      lower - 1n,
+      lower - 1n + WIDTH,
+      amount0,
+      amount1,
+    );
+    const nextLiquidity = await helper.getLiquidityForAmounts(
+      sqrtPriceX96,
+      lower + 1n,
+      lower + 1n + WIDTH,
+      amount0,
+      amount1,
+    );
+
+    expect(liquidity).to.be.at.least(previousLiquidity);
+    expect(liquidity).to.be.at.least(nextLiquidity);
+  });
+
   it("rejects ranges where the standard LiquidityAmounts helper rounds liquidity to zero", async function () {
     const { vaultMath, helper } = await loadFixture(deployFixture);
     const sqrtPriceX96 = await helper.getSqrtRatioAtTick(-800_000);
@@ -192,5 +257,88 @@ describe("VaultMath", function () {
     await expect(
       vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1),
     ).to.be.revertedWithCustomError(vaultMath, "InvalidPosition");
+  });
+
+  it("reverts at geometrically impossible endpoints", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+
+    // token0-only cannot fit a width-WIDTH range above a tick beyond MAX_TICK - width.
+    const highTick = 887_172 + 50;
+    const sqrtHigh = await helper.getSqrtRatioAtTick(highTick);
+    await expect(
+      vaultMath.calculatePosition(sqrtHigh, BALANCE_SCALE, 0),
+    ).to.be.revertedWithCustomError(vaultMath, "InvalidPosition");
+
+    // token1-only cannot fit a width-WIDTH range below a tick beyond MIN_TICK + width.
+    const lowTick = -887_172 - 50;
+    const sqrtLow = await helper.getSqrtRatioAtTick(lowTick);
+    await expect(
+      vaultMath.calculatePosition(sqrtLow, 0, BALANCE_SCALE),
+    ).to.be.revertedWithCustomError(vaultMath, "InvalidPosition");
+
+    // Two-sided: no range can contain the price strictly inside at exactly MIN_TICK.
+    const sqrtMin = await helper.getSqrtRatioAtTick(-887_272);
+    await expect(
+      vaultMath.calculatePosition(sqrtMin, BALANCE_SCALE, BALANCE_SCALE),
+    ).to.be.revertedWithCustomError(vaultMath, "InvalidPosition");
+  });
+
+  it("handles prices between ticks for one-sided balances", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    const sqrtAt0 = await helper.getSqrtRatioAtTick(0);
+    const sqrtAt1 = await helper.getSqrtRatioAtTick(1);
+    const sqrtMid = (sqrtAt0 + sqrtAt1) / 2n;
+
+    // token0-only: the lower tick is ceil(price), i.e. one tick above the current tick.
+    const token0 = await vaultMath.calculatePosition(sqrtMid, BALANCE_SCALE, 0);
+    expect(token0[0]).to.equal(1n);
+    expect(token0[1] - token0[0]).to.equal(WIDTH);
+    expect(token0[4]).to.equal(0);
+
+    // token1-only: the upper tick is floor(price), i.e. the current tick.
+    const token1 = await vaultMath.calculatePosition(sqrtMid, 0, BALANCE_SCALE);
+    expect(token1[1]).to.equal(0n);
+    expect(token1[1] - token1[0]).to.equal(WIDTH);
+    expect(token1[3]).to.equal(0);
+  });
+
+  it("handles prices between ticks for two-sided balances", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    const sqrtAt0 = await helper.getSqrtRatioAtTick(0);
+    const sqrtAt1 = await helper.getSqrtRatioAtTick(1);
+    const sqrtMid = (sqrtAt0 + sqrtAt1) / 2n;
+    const { amount0, amount1 } = balancedRawAmounts(sqrtMid);
+
+    const [lower, upper, liquidity, used0, used1] =
+      await vaultMath.calculatePosition(sqrtMid, amount0, amount1);
+
+    expect(upper - lower).to.equal(WIDTH);
+    expect(liquidity).to.be.greaterThan(0);
+    expect(used0).to.be.at.most(amount0);
+    expect(used1).to.be.at.most(amount1);
+
+    // Strict sqrt-price containment is the exact check for off-tick prices.
+    const sqrtLower = await helper.getSqrtRatioAtTick(lower);
+    const sqrtUpper = await helper.getSqrtRatioAtTick(upper);
+    expect(sqrtLower).to.be.lessThan(sqrtMid);
+    expect(sqrtMid).to.be.lessThan(sqrtUpper);
+  });
+
+  it("applies an updated position width to calculations", async function () {
+    const { vaultMath, helper } = await loadFixture(deployFixture);
+    await vaultMath.setPositionWidth(3000);
+
+    const sqrtPriceX96 = await helper.getSqrtRatioAtTick(0);
+    const { amount0, amount1 } = balancedRawAmounts(sqrtPriceX96);
+    const [lower, upper, liquidity] = await vaultMath.calculatePosition(
+      sqrtPriceX96,
+      amount0,
+      amount1,
+    );
+
+    expect(upper - lower).to.equal(3000n);
+    expect(lower).to.be.lessThan(0);
+    expect(upper).to.be.greaterThan(0);
+    expect(liquidity).to.be.greaterThan(0);
   });
 });

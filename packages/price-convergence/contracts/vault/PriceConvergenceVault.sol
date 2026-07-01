@@ -233,6 +233,9 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     (int24 lower, int24 upper) = _fullRangeTicks();
     (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, fullRangeLiquidity, bytes(''));
 
+    (uint256 vaultBalance0, uint256 vaultBalance1) = getShareholderAmounts();
+    if (vaultBalance0 == 0 && vaultBalance1 == 0) revert ZeroValue();
+
     emit FullRangeInitialized(lower, upper, liquidityActual);
   }
 

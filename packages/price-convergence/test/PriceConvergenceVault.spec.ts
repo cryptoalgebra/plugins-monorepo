@@ -4,6 +4,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import {
   BEFORE_SWAP_FLAG,
   DEPOSIT_AMOUNT,
+  FULL_RANGE_LIQUIDITY,
   MIN_SHARES,
   Q96,
   deployVaultFixture,
@@ -151,6 +152,26 @@ describe("PriceConvergenceVault", function () {
         .connect(f.user)
         .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.vault.target),
     ).to.be.revertedWithCustomError(f.vault, "ZeroAddress");
+  });
+  it("rejects a first deposit fully consumed by the full-range seed", async function () {
+    const { user, token0, token1, vault } =
+      await loadFixture(deployVaultFixture);
+    // At sqrtPrice = Q96 the full-range seed (FULL_RANGE_LIQUIDITY) owes ~1000 of each token, so a
+    // first deposit of exactly that leaves zero shareholder value. Without the guard this would
+    // brick every future deposit (NAV == 0) and strand the minted shares.
+    await token0.connect(user).approve(vault.target, FULL_RANGE_LIQUIDITY);
+    await token1.connect(user).approve(vault.target, FULL_RANGE_LIQUIDITY);
+    await expect(
+      vault
+        .connect(user)
+        .deposit(FULL_RANGE_LIQUIDITY, FULL_RANGE_LIQUIDITY, user.address),
+    ).to.be.revertedWithCustomError(vault, "ZeroValue");
+
+    // A subsequent healthy deposit still works: the failed attempt left no state behind.
+    await approveDeposit(vault, token0, token1, user);
+    await expect(
+      vault.connect(user).deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, user.address),
+    ).to.emit(vault, "FullRangeInitialized");
   });
   it("rejects deposits when oracle checks fail", async function () {
     const f = await loadFixture(deployVaultFixture);

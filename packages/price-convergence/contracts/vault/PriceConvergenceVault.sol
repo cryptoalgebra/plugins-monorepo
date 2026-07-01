@@ -152,7 +152,10 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     uint256 supply = totalSupply();
     if (shares != supply && supply - shares < MIN_SHARES) revert InvalidShares();
 
-    uint128 mainLiquidityToBurn = _proportionalLiquidity(mainPosition.liquidity, shares, supply);
+    // Burn the caller's proportional share of the main position 
+    uint128 mainLiquidityToBurn = shares == supply
+      ? mainPosition.liquidity
+      : uint128(FullMath.mulDiv(mainPosition.liquidity, shares, supply));
     if (mainLiquidityToBurn > 0) _collectAllFees();
 
     amount0 = FullMath.mulDiv(IERC20(token0).balanceOf(address(this)), shares, supply);
@@ -234,13 +237,19 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   function _initializeFullRange() private {
     fullRangeInitialized = true;
 
-    (int24 lower, int24 upper) = _fullRangeTicks();
-    (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, fullRangeLiquidity, bytes(''));
+    (, , uint128 liquidityActual) = IAlgebraPool(pool).mint(
+      address(this),
+      address(this),
+      TickMath.MIN_TICK,
+      TickMath.MAX_TICK,
+      fullRangeLiquidity,
+      bytes('')
+    );
 
     (uint256 vaultBalance0, uint256 vaultBalance1) = getShareholderAmounts();
     if (vaultBalance0 == 0 && vaultBalance1 == 0) revert ZeroValue();
 
-    emit FullRangeInitialized(lower, upper, liquidityActual);
+    emit FullRangeInitialized(TickMath.MIN_TICK, TickMath.MAX_TICK, liquidityActual);
   }
 
   function _burnPosition(Position storage position, uint128 liquidityToBurn) private returns (uint256 amount0, uint256 amount1) {
@@ -269,11 +278,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     (uint128 main0, uint128 main1) = _collectPosition(mainPosition);
     fees0 = uint256(main0);
     fees1 = uint256(main1);
-  }
-
-  function _proportionalLiquidity(uint128 liquidity, uint256 shares, uint256 supply) private pure returns (uint128) {
-    if (shares == supply) return liquidity;
-    return uint128(FullMath.mulDiv(liquidity, shares, supply));
   }
 
   function _mintMainPosition(
@@ -308,21 +312,21 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     amount1 += fees1;
   }
 
-  function _fullRangeTicks() private pure returns (int24 lower, int24 upper) {
-    lower = TickMath.MIN_TICK;
-    upper = TickMath.MAX_TICK;
-  }
-
 
   function _calculateDepositShares(uint256 amount0, uint256 amount1, Prices memory prices) private view returns (uint256 shares) {
-    uint160 depositPrice = _minPrice(prices);
-    shares = _valueInToken1(amount0, amount1, depositPrice);
+    // Value the deposit in token1 at the lowest of the three prices
+    uint160 depositPrice = prices.spot < prices.twap ? prices.spot : prices.twap;
+    if (prices.auxTwap < depositPrice) depositPrice = prices.auxTwap;
+    shares = _quoteAtSqrtPrice(depositPrice, amount0, true) + amount1;
 
     uint256 supply = totalSupply();
     if (supply == 0) return shares * MIN_SHARES;
 
+    // Value existing holdings at the highest of the three prices
+    uint160 totalPrice = prices.spot > prices.twap ? prices.spot : prices.twap;
+    if (prices.auxTwap > totalPrice) totalPrice = prices.auxTwap;
     (uint256 total0, uint256 total1) = getShareholderAmounts();
-    uint256 totalValue = _valueInToken1(total0, total1, _maxPrice(prices));
+    uint256 totalValue = _quoteAtSqrtPrice(totalPrice, total0, true) + total1;
     if (totalValue == 0) revert ZeroValue();
     shares = FullMath.mulDiv(shares, supply, totalValue);
   }
@@ -372,20 +376,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (denominator == 0) return PRECISION;
     uint256 difference = a > b ? a - b : b - a;
     return FullMath.mulDiv(difference, PRECISION, denominator);
-  }
-
-  function _minPrice(Prices memory prices) private pure returns (uint160 price) {
-    price = prices.spot < prices.twap ? prices.spot : prices.twap;
-    if (prices.auxTwap < price) price = prices.auxTwap;
-  }
-
-  function _maxPrice(Prices memory prices) private pure returns (uint160 price) {
-    price = prices.spot > prices.twap ? prices.spot : prices.twap;
-    if (prices.auxTwap > price) price = prices.auxTwap;
-  }
-  
-  function _valueInToken1(uint256 amount0, uint256 amount1, uint160 sqrtPrice) private pure returns (uint256) {
-    return _quoteAtSqrtPrice(sqrtPrice, amount0, true) + amount1;
   }
 
   function _quoteAtSqrtPrice(uint160 sqrtPrice, uint256 amount, bool zeroToOne) private pure returns (uint256) {

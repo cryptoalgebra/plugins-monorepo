@@ -98,7 +98,7 @@ contract AlgebraCustomPluginFactory is Initializable, IAlgebraCustomPluginFactor
     address tokenB,
     uint160 sqrtPriceX96,
     bytes calldata data
-  ) external override returns (address customPool) {
+  ) external override onlyAdministrator returns (address customPool) {
     address entryPointAddress = _getStorage().entryPoint;
     customPool = IAlgebraCustomPoolEntryPoint(entryPointAddress).createCustomPool(address(this), creator, tokenA, tokenB, data);
     IAlgebraPool(customPool).initialize(sqrtPriceX96);

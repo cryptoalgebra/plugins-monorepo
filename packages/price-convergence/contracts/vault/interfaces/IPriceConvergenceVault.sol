@@ -17,6 +17,7 @@ interface IPriceConvergenceVault {
   function token1() external view returns (address);
 
   event RebalanceEntrypoint(address indexed rebalanceEntrypoint);
+  event VaultMath(address indexed vaultMath);
   event TwapPeriods(uint32 twapPeriod, uint32 auxTwapPeriod);
   event Hysteresis(uint256 hysteresis);
   event Deposit(address indexed sender, address indexed recipient, uint256 shares, uint256 amount0, uint256 amount1);

@@ -122,6 +122,54 @@ describe("PriceConvergenceVault", function () {
     expect(await f.vault.hysteresis()).to.equal(10n ** 16n);
   });
 
+  it("gates and validates vault math replacement", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    const VaultMath = await ethers.getContractFactory("VaultMath");
+    const newMath = await VaultMath.deploy(f.factory.target, 500);
+
+    await expect(
+      f.vault.connect(f.other).setVaultMath(newMath.target),
+    ).to.be.revertedWithCustomError(f.vault, "OnlyVaultManager");
+    await expect(
+      f.vault.connect(f.vaultManager).setVaultMath(ethers.ZeroAddress),
+    ).to.be.revertedWithCustomError(f.vault, "ZeroAddress");
+
+    // A math module wired to a different factory cannot be attached.
+    const MockFactory = await ethers.getContractFactory("MockFactory");
+    const foreignFactory = await MockFactory.deploy();
+    const foreignMath = await VaultMath.deploy(foreignFactory.target, 500);
+    await expect(
+      f.vault.connect(f.vaultManager).setVaultMath(foreignMath.target),
+    ).to.be.revertedWithCustomError(f.vault, "InvalidFactory");
+
+    await expect(f.vault.connect(f.vaultManager).setVaultMath(newMath.target))
+      .to.emit(f.vault, "VaultMath")
+      .withArgs(newMath.target);
+    expect(await f.vault.vaultMath()).to.equal(newMath.target);
+  });
+  it("applies a replaced vault math at the next rebalance", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+
+    // Position minted with the original math keeps its width (fixture deploys width 100).
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+    let position = await f.vault.mainPosition();
+    expect(position.upper - position.lower).to.equal(100n);
+
+    const VaultMath = await ethers.getContractFactory("VaultMath");
+    const newMath = await VaultMath.deploy(f.factory.target, 500);
+    await f.vault.connect(f.vaultManager).setVaultMath(newMath.target);
+
+    // The replacement takes effect at the next rebalance: the new width is applied.
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+    position = await f.vault.mainPosition();
+    expect(position.upper - position.lower).to.equal(500n);
+    expect(position.liquidity).to.be.greaterThan(0n);
+  });
   it("deposits into the real pool", async function () {
     const { user, token0, token1, vault } =
       await loadFixture(deployVaultFixture);

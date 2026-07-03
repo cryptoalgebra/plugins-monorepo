@@ -47,8 +47,8 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   address public immutable override token0;
   address public immutable override token1;
   uint128 public immutable fullRangeLiquidity;
-  IVaultMath public immutable vaultMath;
-
+  
+  IVaultMath public vaultMath;
   address public rebalanceEntrypoint;
   Position public mainPosition;
   bool public fullRangeInitialized;
@@ -96,6 +96,13 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (_rebalanceEntrypoint == address(0)) revert ZeroAddress();
     rebalanceEntrypoint = _rebalanceEntrypoint;
     emit RebalanceEntrypoint(_rebalanceEntrypoint);
+  }
+
+  function setVaultMath(address _vaultMath) external onlyVaultManager {
+    if (_vaultMath == address(0)) revert ZeroAddress();
+    if (IVaultMath(_vaultMath).factory() != factory) revert InvalidFactory();
+    vaultMath = IVaultMath(_vaultMath);
+    emit VaultMath(_vaultMath);
   }
 
   function pause() external onlyVaultManager {

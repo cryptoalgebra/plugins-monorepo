@@ -87,8 +87,7 @@ contract VaultMath is IVaultMath {
     int24 width,
     int24 currentTick
   ) private pure returns (int24 lower, int24 upper, uint128 liquidity, uint256 used0, uint256 used1) {
-    // When both tokens are present, the current price must be strictly inside the range.
-    // These bounds describe every valid lower tick for a fixed-width position.
+    // Bounds for every lower tick that keeps the current price strictly inside a fixed-width range.
     int24 minLower = currentTick - width + TICK_SPACING;
     if (minLower < TickMath.MIN_TICK) minLower = TickMath.MIN_TICK;
 
@@ -102,9 +101,69 @@ contract VaultMath is IVaultMath {
     lower = _idealLowerTick(sqrtPriceX96, amount0, amount1, width);
     if (lower < minLower) lower = minLower;
     if (lower > maxLower) lower = maxLower;
+
+    // The candidate window steps one tick beyond the strictly-inside bounds
+    int24 candidateMin = minLower - TICK_SPACING;
+    if (candidateMin < TickMath.MIN_TICK) candidateMin = TickMath.MIN_TICK;
+    int24 candidateMax = maxLower + TICK_SPACING;
+    if (candidateMax > maxLowerByRange) candidateMax = maxLowerByRange;
+
+    (lower, liquidity) = _bestLowerTick(sqrtPriceX96, amount0, amount1, width, lower, candidateMin, candidateMax);
+    if (liquidity == 0) revert InvalidPosition();
+
     upper = lower + width;
 
-    (liquidity, used0, used1) = _liquidityAndUsedAmounts(sqrtPriceX96, amount0, amount1, lower, upper);
+    if (lower > currentTick + TICK_SPACING || upper < currentTick) revert InvalidPosition();
+    (used0, used1) = LiquidityAmounts.getAmountsForLiquidity(
+      sqrtPriceX96,
+      TickMath.getSqrtRatioAtTick(lower),
+      TickMath.getSqrtRatioAtTick(upper),
+      liquidity
+    );
+  }
+
+  /// @dev Compares the floored solution with its neighbours and keeps the most liquid range
+  function _bestLowerTick(
+    uint160 sqrtPriceX96,
+    uint256 amount0,
+    uint256 amount1,
+    int24 width,
+    int24 idealLower,
+    int24 candidateMin,
+    int24 candidateMax
+  ) private pure returns (int24 bestLower, uint128 bestLiquidity) {
+    bestLower = idealLower;
+    bestLiquidity = _liquidityForRange(sqrtPriceX96, amount0, amount1, idealLower, idealLower + width);
+
+    int24 candidate = idealLower - TICK_SPACING;
+    if (candidate >= candidateMin) {
+      uint128 candidateLiquidity = _liquidityForRange(sqrtPriceX96, amount0, amount1, candidate, candidate + width);
+      if (candidateLiquidity > bestLiquidity) (bestLower, bestLiquidity) = (candidate, candidateLiquidity);
+    }
+
+    candidate = idealLower + TICK_SPACING;
+    if (candidate <= candidateMax) {
+      uint128 candidateLiquidity = _liquidityForRange(sqrtPriceX96, amount0, amount1, candidate, candidate + width);
+      if (candidateLiquidity > bestLiquidity) (bestLower, bestLiquidity) = (candidate, candidateLiquidity);
+    }
+  }
+
+  /// @dev LiquidityAmounts.getLiquidityForAmounts handles every price-range configuration
+  function _liquidityForRange(
+    uint160 sqrtPriceX96,
+    uint256 amount0,
+    uint256 amount1,
+    int24 lower,
+    int24 upper
+  ) private pure returns (uint128) {
+    return
+      LiquidityAmounts.getLiquidityForAmounts(
+        sqrtPriceX96,
+        TickMath.getSqrtRatioAtTick(lower),
+        TickMath.getSqrtRatioAtTick(upper),
+        amount0,
+        amount1
+      );
   }
 
   /// @dev Solves the continuous fixed-width placement.

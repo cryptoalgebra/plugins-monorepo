@@ -169,8 +169,12 @@ describe("VaultMath", function () {
           const [lower, upper, liquidity, used0, used1] =
             await vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1);
 
-          expect(lower).to.be.lessThan(tick);
-          expect(upper).to.be.greaterThan(tick);
+          // The most liquid placement may be a tight one-sided range with the price
+          // exactly on a boundary; then only the corresponding single token is used.
+          expect(lower).to.be.at.most(tick);
+          expect(upper).to.be.at.least(tick);
+          if (lower === BigInt(tick)) expect(used1).to.equal(0n);
+          if (upper === BigInt(tick)) expect(used0).to.equal(0n);
           expect(upper - lower).to.equal(WIDTH);
           expect(liquidity).to.be.greaterThan(0);
           expect(used0).to.be.at.most(amount0);
@@ -222,6 +226,174 @@ describe("VaultMath", function () {
 
     expect(token0Heavy[0]).to.be.greaterThan(balanced[0]);
     expect(token1Heavy[0]).to.be.lessThan(balanced[0]);
+  });
+
+  describe("dust balances select tight one-sided placements", function () {
+    const DUST = 10n;
+
+    async function midTickPrice(helper: any) {
+      const sqrtAt0 = await helper.getSqrtRatioAtTick(0);
+      const sqrtAt1 = await helper.getSqrtRatioAtTick(1);
+      return (sqrtAt0 + sqrtAt1) / 2n;
+    }
+
+    it("ignores token1 dust between ticks and deploys token0 above the price", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+      const sqrtMid = await midTickPrice(helper);
+      const { amount0 } = balancedRawAmounts(sqrtMid);
+
+      const [lower, upper, liquidity, used0, used1] =
+        await vaultMath.calculatePosition(sqrtMid, amount0, DUST);
+
+      // Tight token0-only placement: the range starts at ceil(price), the dust is left idle.
+      expect(lower).to.equal(1n);
+      expect(upper - lower).to.equal(WIDTH);
+      expect(used1).to.equal(0n);
+      expect(amount0 - used0).to.be.at.most(amount0 / 1_000_000n + 10n);
+      expect(liquidity).to.equal(
+        await helper.getLiquidityForAmounts(sqrtMid, 1n, 1n + WIDTH, amount0, 0n),
+      );
+    });
+
+    it("ignores token0 dust between ticks and deploys token1 below the price", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+      const sqrtMid = await midTickPrice(helper);
+      const { amount1 } = balancedRawAmounts(sqrtMid);
+
+      const [lower, upper, liquidity, used0, used1] =
+        await vaultMath.calculatePosition(sqrtMid, DUST, amount1);
+
+      // Tight token1-only placement: the range ends at floor(price).
+      expect(upper).to.equal(0n);
+      expect(lower).to.equal(-WIDTH);
+      expect(used0).to.equal(0n);
+      expect(amount1 - used1).to.be.at.most(amount1 / 1_000_000n + 10n);
+      expect(liquidity).to.equal(
+        await helper.getLiquidityForAmounts(sqrtMid, -WIDTH, 0n, 0n, amount1),
+      );
+    });
+
+    it("puts the boundary exactly on an on-tick price for token1 dust", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+      const sqrtPriceX96 = await helper.getSqrtRatioAtTick(0);
+      const { amount0 } = balancedRawAmounts(sqrtPriceX96);
+
+      const [lower, upper, liquidity, used0, used1] =
+        await vaultMath.calculatePosition(sqrtPriceX96, amount0, DUST);
+
+      // Price exactly on the lower boundary is a valid pure-token0 placement.
+      expect(lower).to.equal(0n);
+      expect(upper).to.equal(WIDTH);
+      expect(used1).to.equal(0n);
+      expect(amount0 - used0).to.be.at.most(amount0 / 1_000_000n + 10n);
+      expect(liquidity).to.equal(
+        await helper.getLiquidityForAmounts(sqrtPriceX96, 0n, WIDTH, amount0, 0n),
+      );
+    });
+
+    it("puts the boundary exactly on an on-tick price for token0 dust", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+      const sqrtPriceX96 = await helper.getSqrtRatioAtTick(0);
+      const { amount1 } = balancedRawAmounts(sqrtPriceX96);
+
+      const [lower, upper, liquidity, used0, used1] =
+        await vaultMath.calculatePosition(sqrtPriceX96, DUST, amount1);
+
+      // Price exactly on the upper boundary is a valid pure-token1 placement.
+      expect(upper).to.equal(0n);
+      expect(lower).to.equal(-WIDTH);
+      expect(used0).to.equal(0n);
+      expect(amount1 - used1).to.be.at.most(amount1 / 1_000_000n + 10n);
+      expect(liquidity).to.equal(
+        await helper.getLiquidityForAmounts(sqrtPriceX96, -WIDTH, 0n, 0n, amount1),
+      );
+    });
+
+    it("keeps a two-sided position for moderate imbalance", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+      const sqrtMid = await midTickPrice(helper);
+      const balanced = balancedRawAmounts(sqrtMid);
+      // 2% of value on token1 is several times the sub-tick sliver threshold (~0.5% for a
+      // mid-tick price), so the two-sided placement must stay strictly around the price.
+      const amount1 = balanced.amount1 / 50n;
+
+      const [lower, upper, , used0, used1] =
+        await vaultMath.calculatePosition(sqrtMid, balanced.amount0, amount1);
+
+      const sqrtLower = await helper.getSqrtRatioAtTick(lower);
+      const sqrtUpper = await helper.getSqrtRatioAtTick(upper);
+      expect(sqrtLower).to.be.lessThan(sqrtMid);
+      expect(sqrtUpper).to.be.greaterThan(sqrtMid);
+      expect(used0).to.be.greaterThan(0n);
+      expect(used1).to.be.greaterThan(0n);
+    });
+
+    it("never picks a range less liquid than one-sided placements or neighbours across dust magnitudes", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+
+      for (const baseTick of [-100_000n, 0n, 100_000n]) {
+        const sqrtA = await helper.getSqrtRatioAtTick(baseTick);
+        const sqrtB = await helper.getSqrtRatioAtTick(baseTick + 1n);
+        const sqrtPriceX96 = sqrtA + ((sqrtB - sqrtA) * 25n) / 100n;
+        const balanced = balancedRawAmounts(sqrtPriceX96);
+
+        for (const dust of [1n, 100n, 10n ** 6n, 10n ** 9n]) {
+          for (const dustSide of [0, 1]) {
+            const amount0 = dustSide === 0 ? dust : balanced.amount0;
+            const amount1 = dustSide === 0 ? balanced.amount1 : dust;
+
+            const [lower, upper, liquidity, used0, used1] =
+              await vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1);
+
+            expect(upper - lower).to.equal(WIDTH);
+            expect(liquidity).to.be.greaterThan(0n);
+            expect(used0).to.be.at.most(amount0);
+            expect(used1).to.be.at.most(amount1);
+
+            // The result is never less liquid than the tight one-sided placements or the
+            // immediate neighbours, restricted to the allowed window around the price.
+            const candidates = [baseTick + 1n, baseTick - WIDTH, lower - 1n, lower + 1n];
+            for (const candidate of candidates) {
+              if (candidate < baseTick - WIDTH || candidate > baseTick + 1n) continue;
+              const candidateLiquidity = await helper.getLiquidityForAmounts(
+                sqrtPriceX96,
+                candidate,
+                candidate + WIDTH,
+                amount0,
+                amount1,
+              );
+              expect(liquidity).to.be.at.least(candidateLiquidity);
+            }
+          }
+        }
+      }
+    });
+
+    it("regression: live vault dust state deploys the dominant token", async function () {
+      const { vaultMath, helper } = await loadFixture(deployFixture);
+      await vaultMath.setPositionWidth(3640);
+
+      // Base Sepolia incident: ~49,598.58 USDC idle against 13036 wei of token1, price ~6% of a
+      // tick above 197904. The dust used to force a two-sided mint of only ~220k liquidity.
+      const sqrtAtTick = await helper.getSqrtRatioAtTick(197_904);
+      const sqrtAtNext = await helper.getSqrtRatioAtTick(197_905);
+      const sqrtPriceX96 = sqrtAtTick + ((sqrtAtNext - sqrtAtTick) * 6n) / 100n;
+      const amount0 = 49_598_584_404n;
+      const amount1 = 13_036n;
+
+      const [lower, upper, liquidity, used0, used1] =
+        await vaultMath.calculatePosition(sqrtPriceX96, amount0, amount1);
+
+      expect(lower).to.equal(197_905n);
+      expect(upper).to.equal(197_905n + 3_640n);
+      expect(used1).to.equal(0n);
+      expect(amount0 - used0).to.be.at.most(amount0 / 1_000n);
+      expect(liquidity).to.equal(
+        await helper.getLiquidityForAmounts(sqrtPriceX96, 197_905n, 197_905n + 3_640n, amount0, 0n),
+      );
+      // Ten orders of magnitude above the dust-throttled two-sided result.
+      expect(liquidity).to.be.greaterThan(10n ** 15n);
+    });
   });
 
   it("selects a range at least as liquid as either neighboring lower tick", async function () {

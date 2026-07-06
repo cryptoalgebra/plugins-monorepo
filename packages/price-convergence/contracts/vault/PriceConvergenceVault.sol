@@ -46,6 +46,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   address public immutable override factory;
   address public immutable override token0;
   address public immutable override token1;
+  address public immutable deployer;
   uint128 public immutable fullRangeLiquidity;
   
   IVaultMath public vaultMath;
@@ -62,9 +63,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   }
 
   modifier onlyVaultManager() {
-    if (!IAlgebraFactory(factory).hasRoleOrOwner(PRICE_CONVERGENCE_VAULT_MANAGER, msg.sender)) {
-      revert OnlyVaultManager();
-    }
+    _checkVaultManager();
     _;
   }
 
@@ -83,6 +82,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
     pool = _pool;
     factory = _factory;
+    deployer = msg.sender;
     token0 = IAlgebraPool(_pool).token0();
     token1 = IAlgebraPool(_pool).token1();
     fullRangeLiquidity = _fullRangeLiquidity;
@@ -92,7 +92,10 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     hysteresis = DEFAULT_HYSTERESIS;
   }
 
-  function setRebalanceEntrypoint(address _rebalanceEntrypoint) external onlyVaultManager {
+  /// @notice Sets the entrypoint allowed to call rebalance.
+  /// @dev While the entrypoint is unset, the deployer can set it once without role
+  function setRebalanceEntrypoint(address _rebalanceEntrypoint) external {
+    if (rebalanceEntrypoint != address(0) || msg.sender != deployer) _checkVaultManager();
     if (_rebalanceEntrypoint == address(0)) revert ZeroAddress();
     rebalanceEntrypoint = _rebalanceEntrypoint;
     emit RebalanceEntrypoint(_rebalanceEntrypoint);
@@ -229,6 +232,12 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (msg.sender != pool) revert OnlyPool();
     if (amount0Delta > 0) _paySwap(token0, uint256(amount0Delta));
     if (amount1Delta > 0) _paySwap(token1, uint256(amount1Delta));
+  }
+
+  function _checkVaultManager() private view {
+    if (!IAlgebraFactory(factory).hasRoleOrOwner(PRICE_CONVERGENCE_VAULT_MANAGER, msg.sender)) {
+      revert OnlyVaultManager();
+    }
   }
 
   function _paySwap(address token, uint256 amount) private {

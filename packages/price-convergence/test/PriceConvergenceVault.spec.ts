@@ -122,6 +122,45 @@ describe("PriceConvergenceVault", function () {
     expect(await f.vault.hysteresis()).to.equal(10n ** 16n);
   });
 
+  it("lets the deployer bootstrap the rebalance entrypoint once", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    const Vault = await ethers.getContractFactory(
+      "PriceConvergenceVault",
+      f.other,
+    );
+    const vault = await Vault.deploy(
+      f.pool.target,
+      f.factory.target,
+      FULL_RANGE_LIQUIDITY,
+      f.vaultMath.target,
+      60,
+    );
+    expect(await vault.deployer()).to.equal(f.other.address);
+
+    // Only the deployer may bootstrap; a roleless third party cannot.
+    await expect(
+      vault.connect(f.user).setRebalanceEntrypoint(f.rebalancer.address),
+    ).to.be.revertedWithCustomError(vault, "OnlyVaultManager");
+
+    // The deployer holds no factory roles but wires the entrypoint while it is unset.
+    await expect(
+      vault.connect(f.other).setRebalanceEntrypoint(f.rebalancer.address),
+    )
+      .to.emit(vault, "RebalanceEntrypoint")
+      .withArgs(f.rebalancer.address);
+
+    // Once set, the deployer has no further authority over the entrypoint.
+    await expect(
+      vault.connect(f.other).setRebalanceEntrypoint(f.other.address),
+    ).to.be.revertedWithCustomError(vault, "OnlyVaultManager");
+
+    // A vault manager can still change it later.
+    await expect(
+      vault.connect(f.vaultManager).setRebalanceEntrypoint(f.user.address),
+    )
+      .to.emit(vault, "RebalanceEntrypoint")
+      .withArgs(f.user.address);
+  });
   it("gates and validates vault math replacement", async function () {
     const f = await loadFixture(deployVaultFixture);
     const VaultMath = await ethers.getContractFactory("VaultMath");

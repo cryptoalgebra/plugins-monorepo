@@ -11,11 +11,12 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
+import '@cryptoalgebra/kyc-plugin/contracts/KycConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM, Security and KYC
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -24,7 +25,8 @@ contract AlgebraUpgradeablePlugin is
   DynamicFeeConnector,
   FarmingProxyConnector,
   AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  KycConnector
 {
   using Plugins for uint8;
 
@@ -36,6 +38,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _kycImpl KYC implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -43,7 +46,8 @@ contract AlgebraUpgradeablePlugin is
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _kycImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -51,6 +55,7 @@ contract AlgebraUpgradeablePlugin is
     FarmingProxyConnector(_farmingProxyImpl)
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    KycConnector(_kycImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
@@ -66,12 +71,13 @@ contract AlgebraUpgradeablePlugin is
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](6);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[5] = KYC_MODULE_NAME;
     return activeModules;
   }
 
@@ -81,7 +87,8 @@ contract AlgebraUpgradeablePlugin is
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      KYC_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -126,6 +133,8 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function afterInitialize(address, uint160, int24 tick) external override onlyPool returns (bytes4) {
+    _kycVerify(tx.origin);
+
     _initialize_TWAP(tick);
     return IAlgebraPlugin.afterInitialize.selector;
   }
@@ -145,6 +154,8 @@ contract AlgebraUpgradeablePlugin is
       _checkStatusOnBurn(msg.sender);
     } else {
       _checkStatus(msg.sender);
+      // KYC check on add liquidity only, remove is always allowed
+      _kycVerify(tx.origin);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
@@ -179,6 +190,9 @@ contract AlgebraUpgradeablePlugin is
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
 
+    // KYC check
+    _kycVerify(tx.origin);
+
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint24 fee = _getCurrentFee(volatilityAverage);
@@ -212,6 +226,9 @@ contract AlgebraUpgradeablePlugin is
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
+
+    // KYC check
+    _kycVerify(tx.origin);
 
     return IAlgebraPlugin.beforeFlash.selector;
   }

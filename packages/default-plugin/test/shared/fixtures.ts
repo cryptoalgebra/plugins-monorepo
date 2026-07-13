@@ -25,7 +25,7 @@ async function mockFactoryFixture(): Promise<MockFactoryFixture> {
   return { mockFactory };
 }
 
-// Deploy all 5 implementation contracts
+// Deploy all 6 implementation contracts
 // Note: These contracts are imported via TestImports.sol to ensure they are compiled
 async function deployImplementations() {
   // 1. VolatilityOracle Implementation
@@ -48,12 +48,17 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  // 6. KYC Implementation
+  const kycImplFactory = await ethers.getContractFactory('KycPluginImplementation');
+  const kycImpl = await kycImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    kycImpl: await kycImpl.getAddress()
   };
 }
 
@@ -77,6 +82,7 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
     implementations.farmingProxyImpl,
     implementations.almImpl,
     implementations.securityImpl,
+    implementations.kycImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeDSFactory;
 
@@ -143,7 +149,8 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
     implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.kycImpl
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
@@ -184,6 +191,7 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
     implementations.farmingProxyImpl,
     implementations.almImpl,
     implementations.securityImpl,
+    implementations.kycImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeUpgradeablePluginFactory;
 
@@ -219,6 +227,7 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     farmingProxyImpl: string;
     almImpl: string;
     securityImpl: string;
+    kycImpl: string;
   };
 }
 
@@ -251,12 +260,13 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
   const pluginImplFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const pluginImpl = await pluginImplFactory.deploy(
     mockFactoryAddress,
-    proxyAddress,  
+    proxyAddress,
     implementations.volatilityOracleImpl,
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
     implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.kycImpl
   );
 
   // Attach factory interface to proxy

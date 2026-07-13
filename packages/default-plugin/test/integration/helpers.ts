@@ -118,10 +118,19 @@ export async function deployNewPluginImplementation(
     farming?: string;
     alm?: string;
     security?: string;
+    kyc?: string;
   }
 ) {
   const mockFactoryAddress = await algebraFactory.getAddress();
   const pluginFactoryAddress = await pluginFactory.getAddress();
+
+  // KYC implementation is not deployed on the fork yet — deploy a fresh one by default
+  let kycImplAddress = moduleOverrides?.kyc;
+  if (!kycImplAddress) {
+    const KycImplFactory = await ethers.getContractFactory('KycPluginImplementation');
+    const kycImpl = await KycImplFactory.deploy();
+    kycImplAddress = await kycImpl.getAddress();
+  }
 
   const NewPluginFactory = await ethers.getContractFactory(contractName);
   const newPluginImpl = await NewPluginFactory.deploy(
@@ -131,7 +140,8 @@ export async function deployNewPluginImplementation(
     moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
     moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
     moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
+    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
+    kycImplAddress
   );
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };

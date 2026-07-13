@@ -55,12 +55,16 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
+    const kycImplFactory = await ethers.getContractFactory('KycPluginImplementation');
+    const kycImpl = await kycImplFactory.deploy();
+
     return {
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
       dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
       almImpl: await almImpl.getAddress(),
-      securityImpl: await securityImpl.getAddress()
+      securityImpl: await securityImpl.getAddress(),
+      kycImpl: await kycImpl.getAddress()
     };
   }
 
@@ -77,6 +81,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       implementations.farmingProxyImpl,
       implementations.almImpl,
       implementations.securityImpl,
+      implementations.kycImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
 

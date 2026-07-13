@@ -617,11 +617,14 @@ describe('Integration Tests - Fork', function() {
       
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
-      
+
+      const KycImplFactory = await ethers.getContractFactory('KycPluginImplementation');
+      const kycImpl = await KycImplFactory.deploy();
+
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
       const pluginFactoryAddress = await newPluginFactory.getAddress();
-      
+
       const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
       const superPlugin = await SuperPluginFactory.deploy(
         mockFactoryAddress,
@@ -630,7 +633,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        await kycImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();
@@ -708,11 +712,14 @@ describe('Integration Tests - Fork', function() {
       
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
-      
+
+      const KycImplFactory = await ethers.getContractFactory('KycPluginImplementation');
+      const kycImpl = await KycImplFactory.deploy();
+
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
       const pluginFactoryAddress = await newPluginFactory.getAddress();
-      
+
       const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
       const superPlugin = await SuperPluginFactory.deploy(
         mockFactoryAddress,
@@ -721,7 +728,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        await kycImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();

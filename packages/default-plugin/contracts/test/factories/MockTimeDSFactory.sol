@@ -38,6 +38,9 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Address of Security implementation
   address public immutable securityImplementation;
 
+  /// @notice Address of KYC implementation
+  address public immutable kycImplementation;
+
   /// @notice Default fee configuration
   AlgebraFeeConfiguration public defaultFeeConfiguration;
 
@@ -57,6 +60,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl,
+    address _kycImpl,
     AlgebraFeeConfiguration memory _defaultFeeConfig
   ) {
     algebraFactory = _algebraFactory;
@@ -65,6 +69,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     farmingProxyImplementation = _farmingProxyImpl;
     almImplementation = _almImpl;
     securityImplementation = _securityImpl;
+    kycImplementation = _kycImpl;
     defaultFeeConfiguration = _defaultFeeConfig;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
@@ -76,7 +81,8 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      _kycImpl
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }

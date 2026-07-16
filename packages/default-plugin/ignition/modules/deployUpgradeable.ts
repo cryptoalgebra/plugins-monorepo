@@ -47,12 +47,17 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
+  const kycImpl = m.contract("KycPluginImplementation", [], {
+    id: "KycImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    kycImpl
   };
 });
 
@@ -100,12 +105,13 @@ const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
 // ============= PLUGIN IMPLEMENTATION =============
 
 const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl,
+    kycImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -116,18 +122,20 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    kycImpl
   ], {
     id: "PluginImplementation"
   });
 
-  return { 
+  return {
     pluginImpl,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    kycImpl
   };
 });
 

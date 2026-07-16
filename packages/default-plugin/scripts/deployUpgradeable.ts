@@ -5,10 +5,10 @@ import { ethers } from "hardhat";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: "0x000000000000000000000000000000000000000000",
+  algebraFactory: "0x285C74f3d01296F96c5d3858ab482f707e8Bfdfc",
 
   // Farming center address (optional, can be set later)
-  farmingCenter: "0x000000000000000000000000000000000000000000",
+  farmingCenter: "0x92E4eaCD3b49fa85D13E4B6E8d6bfd0CFafaeD75",
 
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
@@ -26,6 +26,15 @@ const config = {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 async function main() {
+  // Validate config early: malformed/unset addresses otherwise surface as
+  // cryptic "HardhatEthersProvider.resolveName is not implemented" errors
+  if (!ethers.isAddress(config.algebraFactory) || config.algebraFactory === ZERO_ADDRESS) {
+    throw new Error(`config.algebraFactory is not set to a valid address: "${config.algebraFactory}"`);
+  }
+  if (!ethers.isAddress(config.farmingCenter)) {
+    throw new Error(`config.farmingCenter is not a valid address: "${config.farmingCenter}" (use zero address to skip)`);
+  }
+
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
   console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
@@ -58,6 +67,11 @@ async function main() {
   const securityImpl = await SecurityImpl.deploy();
   await securityImpl.waitForDeployment();
   console.log("SecurityImpl:", await securityImpl.getAddress());
+
+  const KycImpl = await ethers.getContractFactory("KycPluginImplementation");
+  const kycImpl = await KycImpl.deploy();
+  await kycImpl.waitForDeployment();
+  console.log("KycImpl:", await kycImpl.getAddress());
 
 
   // ============= 2. DEPLOY PROXY ADMIN =============
@@ -92,7 +106,8 @@ async function main() {
     await dynamicFeeImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await almImpl.getAddress(),
-    await securityImpl.getAddress()
+    await securityImpl.getAddress(),
+    await kycImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
   const pluginImplAddress = await pluginImpl.getAddress();
@@ -178,6 +193,7 @@ async function main() {
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
   console.log("ALM:", await almImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
+  console.log("KYC:", await kycImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");
   console.log("SecurityRegistry:", await securityRegistry.getAddress());

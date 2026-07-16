@@ -36,12 +36,17 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
-  return { 
+  const kycImpl = m.contract("KycPluginImplementation", [], {
+    id: "KycImpl"
+  });
+
+  return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    kycImpl
   };
 });
 
@@ -55,12 +60,13 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
 export default buildModule("UpgradePlugins", (m) => {
   
   // Deploy new module implementations
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl,
+    kycImpl
   } = m.useModule(ModuleImplementationsModule);
 
   // Deploy new plugin implementation
@@ -71,7 +77,8 @@ export default buildModule("UpgradePlugins", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    kycImpl
   ], {
     id: "NewPluginImplementation"
   });
@@ -86,12 +93,13 @@ export default buildModule("UpgradePlugins", (m) => {
     id: "UpgradeAllPlugins"
   });
 
-  return { 
+  return {
     newPluginImpl,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    kycImpl
   };
 });

@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/access-list-plugin",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Access List plugin for Algebra Integral (tx.origin whitelist)",
   "publishConfig": {
     "access": "public"

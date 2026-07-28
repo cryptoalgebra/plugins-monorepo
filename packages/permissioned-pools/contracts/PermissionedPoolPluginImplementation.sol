@@ -75,7 +75,7 @@ contract PermissionedPoolPluginImplementation is IPermissionedPoolPluginImplemen
 
   function _verifyToken(IPermissionsAdapterFactory factory, address token, address sender, bool checkSwappingEnabled) internal view {
     address adapterAddress = factory.getAdapter(token);
-    if (adapterAddress == address(0)) return;
+    if (adapterAddress == address(0) || !factory.isVerified(token)) return;
 
     IPermissionsAdapter adapter = IPermissionsAdapter(adapterAddress);
     if (checkSwappingEnabled && !adapter.swappingEnabled()) revert IPermissionedPoolPlugin.SwappingDisabled(token);

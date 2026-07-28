@@ -10,8 +10,8 @@ import './libraries/PermissionedPoolStorage.sol';
 /// @title Permissioned Pool Connector
 /// @notice Delegatecall interface to Permissioned Pool plugin implementation
 /// @dev Replaces tx.origin-based gating with a two-level real-sender resolution
-/// (allowedWrappers + IMsgSender self-report). See PermissionedPoolPluginImplementation for the
-/// actual verification logic and PermissionsAdapterFactory for the adapter/wrapper registries.
+/// (allowedRouters + IMsgSender self-report). See PermissionedPoolPluginImplementation for the
+/// actual verification logic and PermissionsAdapterFactory for the adapter/router registries.
 abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolPlugin {
   using Plugins for uint8;
 

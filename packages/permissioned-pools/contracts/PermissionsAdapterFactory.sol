@@ -7,9 +7,9 @@ import './interfaces/IPermissionsAdapter.sol';
 
 /// @title Permissions Adapter Factory
 /// @notice Registered-vs-verified registry of per-token PermissionsAdapters, plus the shared
-/// trusted-wrapper (router/relayer) registry used across all permissioned pools.
+/// trusted-router (router/relayer) registry used across all permissioned pools.
 /// @dev Access control via AlgebraFactory roles:
-///   - PERMISSIONED_POOL_MANAGER: verify/unverify adapters, manage allowedWrappers
+///   - PERMISSIONED_POOL_MANAGER: verify/unverify adapters, manage allowedRouters
 contract PermissionsAdapterFactory is IPermissionsAdapterFactory {
   address public immutable override algebraFactory;
 
@@ -22,7 +22,7 @@ contract PermissionsAdapterFactory is IPermissionsAdapterFactory {
   mapping(address => bool) public override isVerified;
 
   /// @notice router/relayer => trusted
-  mapping(address => bool) public override allowedWrappers;
+  mapping(address => bool) public override allowedRouters;
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
@@ -49,10 +49,10 @@ contract PermissionsAdapterFactory is IPermissionsAdapterFactory {
   }
 
   /// @inheritdoc IPermissionsAdapterFactory
-  function setWrapperAllowed(address wrapper, bool allowed) external override {
+  function setRouterAllowed(address router, bool allowed) external override {
     _checkManager();
-    allowedWrappers[wrapper] = allowed;
-    emit WrapperAllowedUpdated(wrapper, allowed);
+    allowedRouters[router] = allowed;
+    emit RouterAllowedUpdated(router, allowed);
   }
 
   function _checkManager() internal view {

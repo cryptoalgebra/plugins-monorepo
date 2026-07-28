@@ -137,13 +137,13 @@ describe('PermissionedPoolPlugin', function () {
 
   // ---------------------------------------------------------------------------------------------
   describe('Pool initialization', function () {
-    it('succeeds when one currency has a verified adapter and the other has none', async function () {
+    it('succeeds when one token has a verified adapter and the other has none', async function () {
       const { mockPool, owner } = await loadFixture(deployFixture);
 
       await expect(mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0)).to.not.be.reverted;
     });
 
-    it('reverts with NoVerifiedCurrency when neither currency has an adapter', async function () {
+    it('reverts with NoVerifiedToken when neither token has an adapter', async function () {
       const {
         mockFactory,
         proxyDeployer,
@@ -168,11 +168,11 @@ describe('PermissionedPoolPlugin', function () {
 
       await expect(freshPool.connect(owner).initialize(SQRT_PRICE_TICK_0)).to.be.revertedWithCustomError(
         freshPlugin,
-        'NoVerifiedCurrency'
+        'NoVerifiedToken'
       );
     });
 
-    it('reverts with UnverifiedCurrencyAdapter when a currency has a registered-but-unverified adapter', async function () {
+    it('reverts with UnverifiedTokenAdapter when a token has a registered-but-unverified adapter', async function () {
       const {
         mockFactory,
         proxyDeployer,
@@ -202,7 +202,7 @@ describe('PermissionedPoolPlugin', function () {
       await freshPool.setPlugin(proxyAddress);
 
       await expect(freshPool.connect(owner).initialize(SQRT_PRICE_TICK_0))
-        .to.be.revertedWithCustomError(freshPlugin, 'UnverifiedCurrencyAdapter')
+        .to.be.revertedWithCustomError(freshPlugin, 'UnverifiedTokenAdapter')
         .withArgs(token1.target);
     });
 
@@ -247,7 +247,7 @@ describe('PermissionedPoolPlugin', function () {
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
       const router = await MockRouter.deploy(allowedUser.address);
-      await adapterFactory.connect(permissionedManager).setWrapperAllowed(router.target, true);
+      await adapterFactory.connect(permissionedManager).setRouterAllowed(router.target, true);
 
       await expect(router.callSwap(mockPool.target, 10)).to.not.be.reverted;
     });
@@ -259,7 +259,7 @@ describe('PermissionedPoolPlugin', function () {
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
       const router = await MockRouter.deploy(disallowedUser.address);
-      await adapterFactory.connect(permissionedManager).setWrapperAllowed(router.target, true);
+      await adapterFactory.connect(permissionedManager).setRouterAllowed(router.target, true);
 
       await expect(router.callSwap(mockPool.target, 10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
@@ -270,7 +270,7 @@ describe('PermissionedPoolPlugin', function () {
       const { mockPool, owner, allowedUser, MockRouter, plugin1, token0 } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
-      // Router lies that the real sender is `allowedUser`, but is NOT a registered wrapper.
+      // Router lies that the real sender is `allowedUser`, but is NOT a registered router.
       const router = await MockRouter.deploy(allowedUser.address);
 
       await expect(router.callSwap(mockPool.target, 10))
@@ -363,7 +363,7 @@ describe('PermissionedPoolPlugin', function () {
   });
 
   // ---------------------------------------------------------------------------------------------
-  describe('Both currencies checked independently', function () {
+  describe('Both tokens checked independently', function () {
     it('gates on token1 too when token1 has its own verified adapter with a different allowlist', async function () {
       const {
         mockPool,

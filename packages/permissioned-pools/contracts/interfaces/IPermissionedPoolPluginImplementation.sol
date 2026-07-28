@@ -8,13 +8,13 @@ interface IPermissionedPoolPluginImplementation {
   function initializePermissionedPool(address _permissionsAdapterFactory) external;
   function setPermissionsAdapterFactory(address _permissionsAdapterFactory) external;
 
-  /// @notice Verify pool initialization - reverts unless at least one currency has a verified
-  /// adapter, and any currency that has an adapter at all has a verified one
+  /// @notice Verify pool initialization - reverts unless at least one token has a verified
+  /// adapter, and any token that has an adapter at all has a verified one
   /// @param pool The pool address
   function verifyInitialize(address pool) external view;
 
-  /// @notice Verify a swap for both currencies independently - reverts if either currency has
-  /// swapping disabled, or if the resolved real sender is not allowed for that currency
+  /// @notice Verify a swap for both tokens independently - reverts if either token has
+  /// swapping disabled, or if the resolved real sender is not allowed for that token
   /// @param pool The pool address
   /// @param sender The raw hook sender (the router/caller of the pool, not necessarily the real user)
   function verifySwap(address pool, address sender) external view;

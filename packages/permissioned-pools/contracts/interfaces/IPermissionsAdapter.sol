@@ -3,8 +3,8 @@ pragma solidity >=0.5.0;
 
 /// @title IPermissionsAdapter
 /// @notice Per-token allowlist + emergency kill switch, managed by the token issuer.
-/// @dev Registered against a specific `token` in PermissionsAdapterFactory. The trusted-wrapper
-/// registry (`allowedWrappers`) is intentionally NOT here - it lives on the shared factory,
+/// @dev Registered against a specific `token` in PermissionsAdapterFactory. The trusted-router
+/// registry (`allowedRouters`) is intentionally NOT here - it lives on the shared factory,
 /// governed once for the whole ecosystem instead of per-issuer.
 interface IPermissionsAdapter {
   event AccountAllowedUpdated(address indexed account, bool allowed);

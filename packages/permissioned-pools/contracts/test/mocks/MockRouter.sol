@@ -5,7 +5,7 @@ import '../../interfaces/IMsgSender.sol';
 
 /// @title Mock Router
 /// @notice Simulates a router that self-reports the real end-user via IMsgSender.
-/// @dev Used both as a "trusted" router (registered in PermissionsAdapterFactory.allowedWrappers)
+/// @dev Used both as a "trusted" router (registered in PermissionsAdapterFactory.allowedRouters)
 /// and as an "untrusted" one (same code, simply never registered) to prove the two-level check:
 /// an unregistered contract's report is ignored entirely, and its own address is checked instead.
 contract MockRouter is IMsgSender {

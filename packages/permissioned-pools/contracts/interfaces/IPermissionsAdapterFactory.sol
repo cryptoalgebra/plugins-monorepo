@@ -4,12 +4,12 @@ pragma solidity >=0.5.0;
 /// @title IPermissionsAdapterFactory
 /// @notice Registry distinguishing a *registered* PermissionsAdapter (self-serve, permissionless)
 /// from a *verified* one (governance-approved) - a pool may only be initialized with a permissioned
-/// currency once its adapter has been verified. Also holds the shared allowedWrappers registry used
+/// token once its adapter has been verified. Also holds the shared allowedRouters registry used
 /// by every permissioned pool to resolve the real sender behind a router.
 interface IPermissionsAdapterFactory {
   event AdapterRegistered(address indexed token, address indexed adapter, address indexed registrar);
   event AdapterVerified(address indexed token, bool verified);
-  event WrapperAllowedUpdated(address indexed wrapper, bool allowed);
+  event RouterAllowedUpdated(address indexed router, bool allowed);
 
   /// @notice The Algebra factory used for role-based access control
   function algebraFactory() external view returns (address);
@@ -20,9 +20,9 @@ interface IPermissionsAdapterFactory {
   /// @notice Whether the adapter currently registered for `token` has been governance-verified
   function isVerified(address token) external view returns (bool);
 
-  /// @notice Whether `wrapper` is a governance-approved trusted router/relayer
+  /// @notice Whether `router` is a governance-approved trusted router/relayer
   /// @dev Shared across all permissioned pools/adapters - approving a router once approves it everywhere.
-  function allowedWrappers(address wrapper) external view returns (bool);
+  function allowedRouters(address router) external view returns (bool);
 
   /// @notice Register (or replace) the adapter for `token`
   /// @dev Callable only by the adapter's own admin (proves control of the adapter, not that the
@@ -34,5 +34,5 @@ interface IPermissionsAdapterFactory {
   function verifyAdapter(address token, bool verified) external;
 
   /// @notice Governance approval/revocation of a trusted router/relayer
-  function setWrapperAllowed(address wrapper, bool allowed) external;
+  function setRouterAllowed(address router, bool allowed) external;
 }

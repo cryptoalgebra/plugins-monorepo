@@ -2,5 +2,10 @@
   "packages": ["packages/*"],
   "version": "independent",
   "npmClient": "pnpm",
-  "exact": true
+  "exact": true,
+  "command": {
+    "version": {
+      "ignoreChanges": ["**/test-utils/**"]
+    }
+  }
 }

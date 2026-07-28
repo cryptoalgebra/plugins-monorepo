@@ -200,7 +200,7 @@ describe('UpgradeableAccessListPlugin', function () {
 
       await mockPool.initialize(BigInt('79228162514264337593543950336'));
 
-      // burn triggers beforeModifyPosition with negative liquidityDelta — should always be allowed
+      // burn triggers beforeModifyPosition with negative liquidityDelta - should always be allowed
       await expect(
         mockPool.connect(nonWhitelistedUser).burn(-60, 60, 1000, '0x')
       ).to.not.be.reverted;
@@ -233,7 +233,7 @@ describe('UpgradeableAccessListPlugin', function () {
     it('should allow whitelisted user to initialize pool', async function () {
       const { mockPool, whitelistedUser } = await loadFixture(deployFixture);
 
-      // whitelistedUser initializes the pool — afterInitialize hook checks tx.origin
+      // whitelistedUser initializes the pool - afterInitialize hook checks tx.origin
       await expect(
         mockPool.connect(whitelistedUser).initialize(BigInt('79228162514264337593543950336'))
       ).to.not.be.reverted;
@@ -266,7 +266,7 @@ describe('UpgradeableAccessListPlugin', function () {
     it('should allow all operations when accessListRegistry is zero address', async function () {
       const { plugin1, mockPool, manager, nonWhitelistedUser } = await loadFixture(deployFixture);
 
-      // Set registry to zero — disables Access List
+      // Set registry to zero - disables Access List
       await plugin1.connect(manager).setAccessListRegistry(ethers.ZeroAddress);
 
       await mockPool.initialize(BigInt('79228162514264337593543950336'));

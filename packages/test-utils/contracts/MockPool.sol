@@ -75,6 +75,15 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   uint24 public overrideFee;
   uint24 public pluginFee;
 
+  /// @notice Optional token0/token1, settable for plugins that need pool currencies (e.g. permissioned-pool)
+  address public token0;
+  address public token1;
+
+  function setTokens(address _token0, address _token1) external {
+    token0 = _token0;
+    token1 = _token1;
+  }
+
   /// @inheritdoc IAlgebraPoolState
   function getCommunityFeePending() external pure override returns (uint128, uint128) {
     revert('not implemented');

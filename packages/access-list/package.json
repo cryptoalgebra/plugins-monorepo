@@ -19,7 +19,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
-    "@cryptoalgebra/test-utils": "^1.0.0"
+    "@cryptoalgebra/test-utils": "workspace:^"
   },
   "gitHead": "3014dc7c63f4944b3d3c6fd64782b294cff4f529"
 }

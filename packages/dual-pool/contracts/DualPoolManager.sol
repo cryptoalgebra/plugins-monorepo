@@ -9,12 +9,16 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolImmut
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraMintCallback.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
+import '@cryptoalgebra/integral-core/contracts/libraries/LiquidityMath.sol';
+import '@cryptoalgebra/integral-core/contracts/libraries/SafeCast.sol';
+import '@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol';
 
 // One shared contract for every pool, keyed by pool address; only each pool's registered plugin may call in.
 // KNOWN GAP: balanceOf(this) reads below are aggregate across pools, need per-pool erc20/shares counters.
 // KNOWN GAP: setDistribution has no JIT-in-progress lock yet, needed before onBeforeSwap/onAfterSwap go live.
 contract DualPoolManager is IAlgebraMintCallback {
   using SafeERC20 for IERC20;
+  using SafeCast for uint128;
 
   error OnlyFactory();
   error OnlyPlugin();
@@ -140,9 +144,38 @@ contract DualPoolManager is IAlgebraMintCallback {
     vault.withdraw(amount, address(this), address(this));
   }
 
+  // weightedBal per bucket, liq via getLiquidityForAmounts, totalNeed via the pool's own getAmountsForLiquidity (same rounding mint() will charge)
+  function _computeAllocations(
+    address pool,
+    uint160 sqrtPriceX96,
+    int24 currentTick,
+    uint256 bal0,
+    uint256 bal1
+  ) internal view returns (uint128[] memory liqs, uint256 totalNeed0, uint256 totalNeed1) {
+    LiquidityBucket[] memory buckets = poolState[pool].buckets;
+    uint256 n = buckets.length;
+    liqs = new uint128[](n);
+
+    for (uint256 i; i < n; ++i) {
+      LiquidityBucket memory b = buckets[i];
+      uint160 sqrtLower = TickMath.getSqrtRatioAtTick(b.tickLower);
+      uint160 sqrtUpper = TickMath.getSqrtRatioAtTick(b.tickUpper);
+
+      uint256 weightedBal0 = (bal0 * b.weightBps) / TOTAL_WEIGHT_BPS;
+      uint256 weightedBal1 = (bal1 * b.weightBps) / TOTAL_WEIGHT_BPS;
+      uint128 liq = LiquidityAmounts.getLiquidityForAmounts(sqrtPriceX96, sqrtLower, sqrtUpper, weightedBal0, weightedBal1);
+      liqs[i] = liq;
+      if (liq == 0) continue;
+
+      (uint256 need0, uint256 need1, ) = LiquidityMath.getAmountsForLiquidity(b.tickLower, b.tickUpper, liq.toInt128(), currentTick, sqrtPriceX96);
+      totalNeed0 += need0;
+      totalNeed1 += need1;
+    }
+  }
+
   function onBeforeSwap(address pool, bool zeroToOne, int256 amountRequired, uint160 limitSqrtPrice) external onlyPoolPlugin(pool) {
     // TODO: gate on a per-pool `live` flag, flipped true by bootstrap() once it exists
-    // JIT deploy — loop buckets, computeAllocations, _mintPosition, _storeActiveLiquidity — added next
+    // JIT deploy — call _computeAllocations, withdrawFromVault the shortfall, loop _mintPosition/_storeActiveLiquidity — added next
   }
 
   function onAfterSwap(address pool, bool zeroToOne, int256 amount0, int256 amount1) external onlyPoolPlugin(pool) {

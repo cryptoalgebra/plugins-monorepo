@@ -3,15 +3,18 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
+import './interfaces/IAllowlistChecker.sol';
+import './interfaces/IAllowlistCheckerRegistry.sol';
 import './interfaces/IPermissionedPoolPlugin.sol';
 import './interfaces/IPermissionedPoolPluginImplementation.sol';
 import './libraries/PermissionedPoolStorage.sol';
+import './libraries/PermissionFlags.sol';
 
 /// @title Permissioned Pool Connector
 /// @notice Delegatecall interface to Permissioned Pool plugin implementation
 /// @dev Replaces tx.origin-based gating with a two-level real-sender resolution
 /// (allowedRouters + IMsgSender self-report). See PermissionedPoolPluginImplementation for the
-/// actual verification logic and PermissionsAdapterFactory for the adapter/router registries.
+/// actual verification logic and AllowlistCheckerRegistry for the checker/router registries.
 abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolPlugin {
   using Plugins for uint8;
 
@@ -25,10 +28,10 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
     permissionedPoolImplementation = _permissionedPoolImplementation;
   }
 
-  function _initializePermissionedPool(address _permissionsAdapterFactory) internal {
+  function _initializePermissionedPool(address _allowlistCheckerRegistry) internal {
     _delegateCall(
       permissionedPoolImplementation,
-      abi.encodeCall(IPermissionedPoolPluginImplementation.initializePermissionedPool, (_permissionsAdapterFactory))
+      abi.encodeCall(IPermissionedPoolPluginImplementation.initializePermissionedPool, (_allowlistCheckerRegistry))
     );
   }
 
@@ -49,17 +52,31 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
   }
 
   /// @inheritdoc IPermissionedPoolPlugin
-  function setPermissionsAdapterFactory(address factory) external override {
-    _authorize();
-    _delegateCall(
-      permissionedPoolImplementation,
-      abi.encodeCall(IPermissionedPoolPluginImplementation.setPermissionsAdapterFactory, (factory))
-    );
-    emit PermissionsAdapterFactoryUpdated(factory);
+  /// @dev Implemented directly in the connector (not via delegatecall) because a raw .delegatecall
+  /// cannot be used inside a `view` function; the registry/checker calls below are regular external
+  /// view calls, only the storage read of our own registry address needs to bypass delegatecall.
+  function isTraderEligible(address account, address token) external view override returns (PermissionFlag) {
+    address registryAddress = PermissionedPoolStorage.layout().allowlistCheckerRegistry;
+    if (registryAddress == address(0)) return PermissionFlags.ALL_ALLOWED;
+
+    address checkerAddress = IAllowlistCheckerRegistry(registryAddress).getChecker(token);
+    if (checkerAddress == address(0)) return PermissionFlags.ALL_ALLOWED;
+
+    return IAllowlistChecker(checkerAddress).checkAllowlist(account, token);
   }
 
   /// @inheritdoc IPermissionedPoolPlugin
-  function getPermissionsAdapterFactory() external view override returns (address) {
-    return PermissionedPoolStorage.layout().permissionsAdapterFactory;
+  function setAllowlistCheckerRegistry(address registry) external override {
+    _authorize();
+    _delegateCall(
+      permissionedPoolImplementation,
+      abi.encodeCall(IPermissionedPoolPluginImplementation.setAllowlistCheckerRegistry, (registry))
+    );
+    emit AllowlistCheckerRegistryUpdated(registry);
+  }
+
+  /// @inheritdoc IPermissionedPoolPlugin
+  function getAllowlistCheckerRegistry() external view override returns (address) {
+    return PermissionedPoolStorage.layout().allowlistCheckerRegistry;
   }
 }

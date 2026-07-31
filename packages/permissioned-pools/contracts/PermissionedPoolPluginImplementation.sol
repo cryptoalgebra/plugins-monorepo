@@ -12,10 +12,10 @@ import './libraries/PermissionFlags.sol';
 
 /// @title Permissioned Pool Plugin Implementation
 /// @notice Contains all business logic for Permissioned Pool verification, executed via delegatecall
-/// @dev Never trusts tx.origin or the raw hook `sender` as the real user. The real sender is only
-/// ever trusted from a router's own `msgSender()` report, and only once that router has been
-/// separately approved in AllowlistCheckerRegistry.allowedRouters — this two-level check is what
-/// prevents an arbitrary contract from spoofing an allowed identity.
+/// @dev Never trusts tx.origin or the raw hook `sender` as the real user.
+/// The real sender is only trusted from a router's own `msgSender()` report, and only once that
+/// router has been approved via this pool's own allowedRouters. This two-level check stops an
+/// arbitrary contract from spoofing an allowed identity.
 contract PermissionedPoolPluginImplementation is IPermissionedPoolPluginImplementation {
   /// @notice Initialize Permissioned Pool plugin
   function initializePermissionedPool(address _allowlistCheckerRegistry) external {
@@ -25,6 +25,11 @@ contract PermissionedPoolPluginImplementation is IPermissionedPoolPluginImplemen
   /// @notice Set Allowlist Checker Registry
   function setAllowlistCheckerRegistry(address _allowlistCheckerRegistry) external {
     PermissionedPoolStorage.layout().allowlistCheckerRegistry = _allowlistCheckerRegistry;
+  }
+
+  /// @inheritdoc IPermissionedPoolPluginImplementation
+  function setRouterAllowed(address router, bool allowed) external {
+    PermissionedPoolStorage.layout().allowedRouters[router] = allowed;
   }
 
   /// @inheritdoc IPermissionedPoolPluginImplementation
@@ -71,16 +76,16 @@ contract PermissionedPoolPluginImplementation is IPermissionedPoolPluginImplemen
     address checkerAddress = registry.getChecker(token);
     if (checkerAddress == address(0)) return;
 
-    address realSender = _resolveRealSender(registry, sender);
+    address realSender = _resolveRealSender(sender);
     PermissionFlag flags = IAllowlistChecker(checkerAddress).checkAllowlist(realSender, token);
     if ((flags & requiredFlag) == PermissionFlags.NONE) revert IPermissionedPoolPlugin.NotAllowed(token, realSender);
   }
 
-  /// @dev `sender` is trusted as-is unless it is itself a governance-approved router — an
-  /// unapproved contract cannot spoof a different identity because we never call its
-  /// `msgSender()` in the first place.
-  function _resolveRealSender(IAllowlistCheckerRegistry registry, address sender) internal view returns (address) {
-    if (!registry.allowedRouters(sender)) return sender;
+  /// @dev `sender` is trusted as-is unless it is itself a governance-approved router.
+  /// An unapproved contract can't spoof a different identity because we never call its
+  /// `msgSender()` in the first place. Router trust is this pool's own storage, not the registry's.
+  function _resolveRealSender(address sender) internal view returns (address) {
+    if (!PermissionedPoolStorage.layout().allowedRouters[sender]) return sender;
 
     try IMsgSender(sender).msgSender() returns (address realSender) {
       return realSender;

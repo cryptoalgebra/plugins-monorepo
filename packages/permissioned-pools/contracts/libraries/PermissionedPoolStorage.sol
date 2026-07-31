@@ -8,6 +8,7 @@ library PermissionedPoolStorage {
 
   struct Layout {
     address allowlistCheckerRegistry;
+    mapping(address => bool) allowedRouters;
   }
 
   function layout() internal pure returns (Layout storage l) {

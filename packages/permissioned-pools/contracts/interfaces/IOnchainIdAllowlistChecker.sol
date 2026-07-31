@@ -4,11 +4,10 @@ pragma solidity >=0.5.0;
 import './IAllowlistChecker.sol';
 
 /// @title IOnchainIdAllowlistChecker
-/// @notice Example IAllowlistChecker backed by OnchainID claims: an account is eligible when its
-/// OnchainID identity holds a claim with the required topic, issued by a trusted issuer, and the
-/// issuer confirms the claim is still valid.
-/// @dev Not tied to a single token — the same checker instance can be assigned to multiple tokens
-/// via AllowlistCheckerRegistry.setChecker, per IAllowlistChecker's `tokenAddress` parameter.
+/// @notice Example IAllowlistChecker backed by OnchainID claims.
+/// @dev An account is eligible when its OnchainID identity holds a claim with the required topic,
+/// issued by a trusted issuer, and the issuer confirms the claim is still valid.
+/// Not tied to a single token. The same checker instance can be assigned to multiple tokens.
 interface IOnchainIdAllowlistChecker is IAllowlistChecker {
   event RequiredTopicUpdated(uint256 requiredTopic);
   event TrustedIssuerUpdated(address indexed issuer, bool trusted);

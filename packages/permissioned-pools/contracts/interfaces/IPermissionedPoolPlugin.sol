@@ -5,12 +5,14 @@ import { PermissionFlag } from '../libraries/PermissionFlags.sol';
 
 /// @title IPermissionedPoolPlugin
 /// @notice Public interface for the Permissioned Pool plugin module
-/// @dev Resolves the real end-user via the two-level check (allowedRouters + IMsgSender),
-/// never via tx.origin or the raw hook `sender`. See AllowlistCheckerRegistry for the
-/// per-token checker registry and the shared trusted-router registry.
+/// @dev Resolves the real end-user via allowedRouters + IMsgSender, never tx.origin or the raw
+/// hook `sender`. allowedRouters is a per-pool trust decision owned by this plugin instance.
 interface IPermissionedPoolPlugin {
   /// @notice Emitted when the Allowlist Checker Registry is updated
   event AllowlistCheckerRegistryUpdated(address allowlistCheckerRegistry);
+
+  /// @notice Emitted when a router's trusted status is updated
+  event RouterAllowedUpdated(address indexed router, bool allowed);
 
   /// @notice Pool has no token with a checker assigned
   error NoPermissionedToken();
@@ -27,6 +29,12 @@ interface IPermissionedPoolPlugin {
   /// @param token One of this pool's tokens
   /// @return The permission flags reported by the token's checker
   function isTraderEligible(address account, address token) external view returns (PermissionFlag);
+
+  /// @notice Whether `router` is a trusted router/relayer for this pool
+  function allowedRouters(address router) external view returns (bool);
+
+  /// @notice Approve or revoke a trusted router/relayer for this pool
+  function setRouterAllowed(address router, bool allowed) external;
 
   /// @notice Set the Allowlist Checker Registry address
   /// @param registry The new Allowlist Checker Registry address

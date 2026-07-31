@@ -7,10 +7,9 @@ import './interfaces/IAllowlistCheckerRegistry.sol';
 import './interfaces/IAllowlistChecker.sol';
 
 /// @title Allowlist Checker Registry
-/// @notice Governance-controlled per-token IAllowlistChecker registry, plus the shared
-/// trusted-router (router/relayer) registry used across all permissioned pools.
+/// @notice Governance-controlled per-token IAllowlistChecker registry.
 /// @dev Access control via AlgebraFactory roles:
-///   - PERMISSIONED_POOL_MANAGER: set/clear checkers, manage allowedRouters
+///   - PERMISSIONED_POOL_MANAGER: set/clear checkers
 contract AllowlistCheckerRegistry is IAllowlistCheckerRegistry {
   error CheckerDoesNotSupportInterface();
 
@@ -20,9 +19,6 @@ contract AllowlistCheckerRegistry is IAllowlistCheckerRegistry {
 
   /// @notice token => governance-approved checker
   mapping(address => address) public override getChecker;
-
-  /// @notice router/relayer => trusted
-  mapping(address => bool) public override allowedRouters;
 
   constructor(address _algebraFactory) {
     algebraFactory = _algebraFactory;
@@ -37,13 +33,6 @@ contract AllowlistCheckerRegistry is IAllowlistCheckerRegistry {
 
     getChecker[token] = checker;
     emit CheckerUpdated(token, checker);
-  }
-
-  /// @inheritdoc IAllowlistCheckerRegistry
-  function setRouterAllowed(address router, bool allowed) external override {
-    _checkManager();
-    allowedRouters[router] = allowed;
-    emit RouterAllowedUpdated(router, allowed);
   }
 
   function _checkManager() internal view {

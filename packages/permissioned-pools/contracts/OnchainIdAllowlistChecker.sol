@@ -10,12 +10,11 @@ import './interfaces/IOnchainIdAllowlistChecker.sol';
 import './libraries/PermissionFlags.sol';
 
 /// @title Onchain ID Allowlist Checker
-/// @notice Example IAllowlistChecker implementation gating on OnchainID claims: an account is
-/// eligible if its identity holds a claim with the required topic, issued by a trusted issuer,
-/// and the issuer confirms the claim hasn't been revoked.
-/// @dev No separate kill switch here — an issuer that wants to stop trading revokes its claims or
-/// untrusts the issuer via setTrustedIssuer; AllowlistCheckerRegistry.setChecker(token, address(0))
-/// is the emergency lever to fully unpermission a token.
+/// @notice Example IAllowlistChecker implementation gating on OnchainID claims.
+/// @dev An account is eligible if its identity holds a claim with the required topic, issued by
+/// a trusted issuer, and the issuer confirms the claim hasn't been revoked.
+/// No separate kill switch. To stop trading, revoke claims or untrust the issuer via setTrustedIssuer.
+/// AllowlistCheckerRegistry.setChecker(token, address(0)) fully unpermissions a token.
 contract OnchainIdAllowlistChecker is IOnchainIdAllowlistChecker, ERC165 {
   /// @inheritdoc IOnchainIdAllowlistChecker
   address public immutable override admin;

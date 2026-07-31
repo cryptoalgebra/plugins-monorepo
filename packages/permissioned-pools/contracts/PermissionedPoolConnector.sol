@@ -13,8 +13,9 @@ import './libraries/PermissionFlags.sol';
 /// @title Permissioned Pool Connector
 /// @notice Delegatecall interface to Permissioned Pool plugin implementation
 /// @dev Replaces tx.origin-based gating with a two-level real-sender resolution
-/// (allowedRouters + IMsgSender self-report). See PermissionedPoolPluginImplementation for the
-/// actual verification logic and AllowlistCheckerRegistry for the checker/router registries.
+/// (allowedRouters + IMsgSender self-report). allowedRouters is owned by this plugin instance,
+/// a per-pool trust decision. AllowlistCheckerRegistry only tracks per-token checkers.
+/// See PermissionedPoolPluginImplementation for the actual verification logic.
 abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolPlugin {
   using Plugins for uint8;
 
@@ -52,9 +53,8 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
   }
 
   /// @inheritdoc IPermissionedPoolPlugin
-  /// @dev Implemented directly in the connector (not via delegatecall) because a raw .delegatecall
-  /// cannot be used inside a `view` function; the registry/checker calls below are regular external
-  /// view calls, only the storage read of our own registry address needs to bypass delegatecall.
+  /// @dev Implemented directly in the connector (not via delegatecall) because a raw delegatecall
+  /// cannot be used inside a view function
   function isTraderEligible(address account, address token) external view override returns (PermissionFlag) {
     address registryAddress = PermissionedPoolStorage.layout().allowlistCheckerRegistry;
     if (registryAddress == address(0)) return PermissionFlags.ALL_ALLOWED;
@@ -63,6 +63,18 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
     if (checkerAddress == address(0)) return PermissionFlags.ALL_ALLOWED;
 
     return IAllowlistChecker(checkerAddress).checkAllowlist(account, token);
+  }
+
+  /// @inheritdoc IPermissionedPoolPlugin
+  function allowedRouters(address router) external view override returns (bool) {
+    return PermissionedPoolStorage.layout().allowedRouters[router];
+  }
+
+  /// @inheritdoc IPermissionedPoolPlugin
+  function setRouterAllowed(address router, bool allowed) external override {
+    _authorize();
+    _delegateCall(permissionedPoolImplementation, abi.encodeCall(IPermissionedPoolPluginImplementation.setRouterAllowed, (router, allowed)));
+    emit RouterAllowedUpdated(router, allowed);
   }
 
   /// @inheritdoc IPermissionedPoolPlugin

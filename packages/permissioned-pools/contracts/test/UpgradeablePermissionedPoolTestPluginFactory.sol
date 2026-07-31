@@ -14,7 +14,7 @@ import '../PermissionedPoolPluginImplementation.sol';
 /// @title Upgradeable Permissioned Pool Plugin Factory (test)
 /// @notice Deploys BeaconProxy instances of UpgradeablePermissionedPoolPluginTest for Algebra pools
 contract UpgradeablePermissionedPoolTestPluginFactory is IBasePluginFactory {
-  address public permissionsAdapterFactory;
+  address public allowlistCheckerRegistry;
 
   address public immutable override algebraFactory;
 
@@ -53,7 +53,7 @@ contract UpgradeablePermissionedPoolTestPluginFactory is IBasePluginFactory {
   function _createPlugin(address pool) internal returns (address plugin) {
     require(pluginByPool[pool] == address(0), 'Already created');
 
-    bytes memory initData = abi.encodeCall(UpgradeablePermissionedPoolPluginTest.initialize, (pool, permissionsAdapterFactory));
+    bytes memory initData = abi.encodeCall(UpgradeablePermissionedPoolPluginTest.initialize, (pool, allowlistCheckerRegistry));
     plugin = address(new AlgebraPluginProxy(address(beacon), pool, initData));
 
     pluginByPool[pool] = plugin;
@@ -70,8 +70,8 @@ contract UpgradeablePermissionedPoolTestPluginFactory is IBasePluginFactory {
     return _createPlugin(pool);
   }
 
-  function setPermissionsAdapterFactory(address newPermissionsAdapterFactory) external {
-    require(permissionsAdapterFactory != newPermissionsAdapterFactory);
-    permissionsAdapterFactory = newPermissionsAdapterFactory;
+  function setAllowlistCheckerRegistry(address newAllowlistCheckerRegistry) external {
+    require(allowlistCheckerRegistry != newAllowlistCheckerRegistry);
+    allowlistCheckerRegistry = newAllowlistCheckerRegistry;
   }
 }

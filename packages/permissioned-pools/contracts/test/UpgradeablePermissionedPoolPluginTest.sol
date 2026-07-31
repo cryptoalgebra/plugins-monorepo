@@ -22,8 +22,8 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
     address _permissionedPoolImplementation
   ) UpgradeableAbstractPlugin(_factory, _pluginFactory) PermissionedPoolConnector(_permissionedPoolImplementation) {}
 
-  function initialize(address, address _permissionsAdapterFactory) external initializer onlyPluginFactory {
-    _initializePermissionedPool(_permissionsAdapterFactory);
+  function initialize(address, address _allowlistCheckerRegistry) external initializer onlyPluginFactory {
+    _initializePermissionedPool(_allowlistCheckerRegistry);
   }
 
   /// @inheritdoc IAbstractPlugin

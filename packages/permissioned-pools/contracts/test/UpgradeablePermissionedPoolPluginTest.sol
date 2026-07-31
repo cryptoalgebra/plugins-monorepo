@@ -43,11 +43,6 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
     return IAlgebraPlugin.beforeInitialize.selector;
   }
 
-  function afterInitialize(address, uint160, int24) external override onlyPool returns (bytes4) {
-    _permissionedPoolVerifyInitialize(_getPool());
-    return IAlgebraPlugin.afterInitialize.selector;
-  }
-
   function beforeSwap(
     address sender,
     address,
@@ -74,11 +69,6 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
       _permissionedPoolVerifyAddLiquidity(_getPool(), sender);
     }
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
-  }
-
-  function beforeFlash(address sender, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
-    _permissionedPoolVerifyFlash(_getPool(), sender);
-    return IAlgebraPlugin.beforeFlash.selector;
   }
 
   // ###### Authorization ######

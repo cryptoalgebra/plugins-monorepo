@@ -33,24 +33,7 @@ contract PermissionedPoolPluginImplementation is IPermissionedPoolPluginImplemen
   }
 
   /// @inheritdoc IPermissionedPoolPluginImplementation
-  function verifyInitialize(address pool) external view {
-    IAllowlistCheckerRegistry registry = _registry();
-    if (address(registry) == address(0)) return;
-
-    address token0 = IAlgebraPoolImmutables(pool).token0();
-    address token1 = IAlgebraPoolImmutables(pool).token1();
-
-    bool hasPermissionedToken = registry.getChecker(token0) != address(0) || registry.getChecker(token1) != address(0);
-    if (!hasPermissionedToken) revert IPermissionedPoolPlugin.NoPermissionedToken();
-  }
-
-  /// @inheritdoc IPermissionedPoolPluginImplementation
   function verifySwap(address pool, address sender) external view {
-    _verifyTokenPair(pool, sender, PermissionFlags.SWAP_ALLOWED);
-  }
-
-  /// @inheritdoc IPermissionedPoolPluginImplementation
-  function verifyFlash(address pool, address sender) external view {
     _verifyTokenPair(pool, sender, PermissionFlags.SWAP_ALLOWED);
   }
 

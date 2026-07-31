@@ -20,8 +20,7 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
   using Plugins for uint8;
 
   string internal constant PERMISSIONED_POOL_MODULE_NAME = 'Permissioned Pool Plugin';
-  uint8 internal constant PERMISSIONED_POOL_PLUGIN_CONFIG =
-    uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.AFTER_INIT_FLAG);
+  uint8 internal constant PERMISSIONED_POOL_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
 
   address internal immutable permissionedPoolImplementation;
 
@@ -36,20 +35,12 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
     );
   }
 
-  function _permissionedPoolVerifyInitialize(address pool) internal {
-    _delegateCall(permissionedPoolImplementation, abi.encodeCall(IPermissionedPoolPluginImplementation.verifyInitialize, (pool)));
-  }
-
   function _permissionedPoolVerifySwap(address pool, address sender) internal {
     _delegateCall(permissionedPoolImplementation, abi.encodeCall(IPermissionedPoolPluginImplementation.verifySwap, (pool, sender)));
   }
 
   function _permissionedPoolVerifyAddLiquidity(address pool, address sender) internal {
     _delegateCall(permissionedPoolImplementation, abi.encodeCall(IPermissionedPoolPluginImplementation.verifyAddLiquidity, (pool, sender)));
-  }
-
-  function _permissionedPoolVerifyFlash(address pool, address sender) internal {
-    _delegateCall(permissionedPoolImplementation, abi.encodeCall(IPermissionedPoolPluginImplementation.verifyFlash, (pool, sender)));
   }
 
   /// @inheritdoc IPermissionedPoolPlugin

@@ -49,16 +49,4 @@ contract MockRouter is IMsgSender {
       revert('call failed');
     }
   }
-
-  function callFlash(address pool, address recipient, uint256 amount0, uint256 amount1) external {
-    (bool success, bytes memory returnData) = pool.call(abi.encodeWithSignature('flash(address,uint256,uint256,bytes)', recipient, amount0, amount1, ''));
-    if (!success) {
-      if (returnData.length > 0) {
-        assembly {
-          revert(add(32, returnData), mload(returnData))
-        }
-      }
-      revert('call failed');
-    }
-  }
 }

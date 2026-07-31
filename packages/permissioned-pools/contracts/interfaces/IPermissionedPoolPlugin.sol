@@ -14,9 +14,6 @@ interface IPermissionedPoolPlugin {
   /// @notice Emitted when a router's trusted status is updated
   event RouterAllowedUpdated(address indexed router, bool allowed);
 
-  /// @notice Pool has no token with a checker assigned
-  error NoPermissionedToken();
-
   /// @notice The resolved real sender is not allowed for this token and action
   error NotAllowed(address token, address account);
 

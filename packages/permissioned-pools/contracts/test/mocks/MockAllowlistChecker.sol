@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import { ERC165 } from '@openzeppelin/contracts/utils/introspection/ERC165.sol';
+import { IERC165 } from '@openzeppelin/contracts/utils/introspection/IERC165.sol';
 import '../../interfaces/IAllowlistChecker.sol';
 import '../../libraries/PermissionFlags.sol';
 
@@ -21,7 +22,7 @@ contract MockAllowlistChecker is IAllowlistChecker, ERC165 {
   }
 
   /// @inheritdoc IERC165
-  function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+  function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
     return interfaceId == type(IAllowlistChecker).interfaceId || super.supportsInterface(interfaceId);
   }
 }

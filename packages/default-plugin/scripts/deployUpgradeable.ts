@@ -10,6 +10,10 @@ const config = {
   // Farming center address (optional, can be set later)
   farmingCenter: "0x000000000000000000000000000000000000000000",
 
+  // Allowlist Checker Registry address for the Permissioned Pool module
+  // (optional, deploy via permissioned-pools/scripts/deployAllowlistChecker.ts and set here, or later via setAllowlistCheckerRegistry)
+  allowlistCheckerRegistry: "0x000000000000000000000000000000000000000000",
+
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
@@ -59,6 +63,11 @@ async function main() {
   await securityImpl.waitForDeployment();
   console.log("SecurityImpl:", await securityImpl.getAddress());
 
+  const PermissionedPoolImpl = await ethers.getContractFactory("PermissionedPoolPluginImplementation");
+  const permissionedPoolImpl = await PermissionedPoolImpl.deploy();
+  await permissionedPoolImpl.waitForDeployment();
+  console.log("PermissionedPoolImpl:", await permissionedPoolImpl.getAddress());
+
 
   // ============= 2. DEPLOY PROXY ADMIN =============
   console.log("=== Deploying ProxyAdmin ===");
@@ -92,7 +101,8 @@ async function main() {
     await dynamicFeeImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await almImpl.getAddress(),
-    await securityImpl.getAddress()
+    await securityImpl.getAddress(),
+    await permissionedPoolImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
   const pluginImplAddress = await pluginImpl.getAddress();
@@ -153,7 +163,12 @@ async function main() {
   await tx2.wait();
   console.log("Set SecurityRegistry");
 
-
+  // Set AllowlistCheckerRegistry (deploy separately via permissioned-pools/scripts/deployAllowlistChecker.ts first)
+  if (config.allowlistCheckerRegistry !== ZERO_ADDRESS) {
+    const tx3 = await factory.setAllowlistCheckerRegistry(config.allowlistCheckerRegistry);
+    await tx3.wait();
+    console.log("Set AllowlistCheckerRegistry:", config.allowlistCheckerRegistry);
+  }
 
   // Set DefaultPluginFactory in AlgebraFactory
   const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
@@ -178,9 +193,13 @@ async function main() {
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
   console.log("ALM:", await almImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
+  console.log("PermissionedPool:", await permissionedPoolImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
+  console.log("");
+  console.log("Note: AllowlistCheckerRegistry is deployed separately - see");
+  console.log("permissioned-pools/scripts/deployAllowlistChecker.ts");
 }
 
 main()

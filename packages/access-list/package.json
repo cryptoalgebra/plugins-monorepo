@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/access-list-plugin",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Access List plugin for Algebra Integral (tx.origin whitelist)",
   "publishConfig": {
     "access": "public"
@@ -12,14 +12,13 @@
     "clean": "rm -rf node_modules artifacts cache typechain"
   },
   "dependencies": {
-    "@cryptoalgebra/abstract-plugin": "^2.2.0",
+    "@cryptoalgebra/abstract-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.2.9",
     "@cryptoalgebra/integral-periphery": "1.2.4",
     "@openzeppelin/contracts": "^4.9.3",
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
-    "@cryptoalgebra/test-utils": "^1.0.0"
-  },
-  "gitHead": "3014dc7c63f4944b3d3c6fd64782b294cff4f529"
+    "@cryptoalgebra/test-utils": "workspace:^"
+  }
 }

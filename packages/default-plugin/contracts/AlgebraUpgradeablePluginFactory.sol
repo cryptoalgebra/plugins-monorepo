@@ -35,6 +35,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Permissioned Pool
+    address allowlistCheckerRegistry;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -127,7 +129,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.allowlistCheckerRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -143,6 +145,11 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   /// @inheritdoc ISecurityPluginFactory
   function securityRegistry() external view override returns (address) {
     return _getStorage().securityRegistry;
+  }
+
+  /// @inheritdoc IPermissionedPoolPluginFactory
+  function allowlistCheckerRegistry() external view override returns (address) {
+    return _getStorage().allowlistCheckerRegistry;
   }
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -177,6 +184,12 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc IPermissionedPoolPluginFactory
+  function setAllowlistCheckerRegistry(address newAllowlistCheckerRegistry) external override onlyAdministrator {
+    _getStorage().allowlistCheckerRegistry = newAllowlistCheckerRegistry;
+    emit AllowlistCheckerRegistry(newAllowlistCheckerRegistry);
   }
 
   // ========== Upgrade Management ==========

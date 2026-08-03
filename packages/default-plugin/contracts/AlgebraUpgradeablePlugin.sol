@@ -11,11 +11,12 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
+import '@cryptoalgebra/permissioned-pools-plugin/contracts/PermissionedPoolConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM, Security and Permissioned Pool
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -24,7 +25,8 @@ contract AlgebraUpgradeablePlugin is
   DynamicFeeConnector,
   FarmingProxyConnector,
   AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  PermissionedPoolConnector
 {
   using Plugins for uint8;
 
@@ -36,6 +38,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _permissionedPoolImpl Permissioned Pool implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -43,7 +46,8 @@ contract AlgebraUpgradeablePlugin is
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _permissionedPoolImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -51,27 +55,31 @@ contract AlgebraUpgradeablePlugin is
     FarmingProxyConnector(_farmingProxyImpl)
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    PermissionedPoolConnector(_permissionedPoolImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry
+    address securityRegistry,
+    address allowlistCheckerRegistry
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
+    _initializePermissionedPool(allowlistCheckerRegistry);
 
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](6);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[5] = PERMISSIONED_POOL_MODULE_NAME;
     return activeModules;
   }
 
@@ -81,7 +89,8 @@ contract AlgebraUpgradeablePlugin is
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      PERMISSIONED_POOL_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -132,7 +141,7 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function beforeModifyPosition(
-    address,
+    address sender,
     address,
     int24,
     int24,
@@ -145,6 +154,8 @@ contract AlgebraUpgradeablePlugin is
       _checkStatusOnBurn(msg.sender);
     } else {
       _checkStatus(msg.sender);
+      // Permissioned Pool check - only verify on add liquidity, allow remove always
+      _permissionedPoolVerifyAddLiquidity(msg.sender, sender);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
@@ -167,7 +178,7 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function beforeSwap(
-    address,
+    address sender,
     address,
     bool,
     int256,
@@ -178,6 +189,8 @@ contract AlgebraUpgradeablePlugin is
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
+    // Permissioned Pool check
+    _permissionedPoolVerifySwap(msg.sender, sender);
 
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();

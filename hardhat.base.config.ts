@@ -15,11 +15,7 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       loggingEnabled: false,
-      evm: 'paris',
-      forking: {
-        url: `https://rpc.ankr.com/base/${ANKR_API_KEY}`,
-        blockNumber: 40801000,
-      },
+      evm: 'paris'
     },
     localHardhat: {
       url: `http://127.0.0.1:8545`,

@@ -22,8 +22,8 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
     address _permissionedPoolImplementation
   ) UpgradeableAbstractPlugin(_factory, _pluginFactory) PermissionedPoolConnector(_permissionedPoolImplementation) {}
 
-  function initialize(address, address _permissionsAdapterFactory) external initializer onlyPluginFactory {
-    _initializePermissionedPool(_permissionsAdapterFactory);
+  function initialize(address, address _allowlistCheckerRegistry) external initializer onlyPluginFactory {
+    _initializePermissionedPool(_allowlistCheckerRegistry);
   }
 
   /// @inheritdoc IAbstractPlugin
@@ -41,11 +41,6 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
   function beforeInitialize(address, uint160) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(defaultPluginConfig());
     return IAlgebraPlugin.beforeInitialize.selector;
-  }
-
-  function afterInitialize(address, uint160, int24) external override onlyPool returns (bytes4) {
-    _permissionedPoolVerifyInitialize(_getPool());
-    return IAlgebraPlugin.afterInitialize.selector;
   }
 
   function beforeSwap(
@@ -74,11 +69,6 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
       _permissionedPoolVerifyAddLiquidity(_getPool(), sender);
     }
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
-  }
-
-  function beforeFlash(address sender, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
-    _permissionedPoolVerifyFlash(_getPool(), sender);
-    return IAlgebraPlugin.beforeFlash.selector;
   }
 
   // ###### Authorization ######

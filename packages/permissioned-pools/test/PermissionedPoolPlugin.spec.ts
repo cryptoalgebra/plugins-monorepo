@@ -5,10 +5,14 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 describe('PermissionedPoolPlugin', function () {
   const SQRT_PRICE_TICK_0 = BigInt('79228162514264337593543950336');
 
-  async function deployFixture() {
-    const [owner, manager, issuer, permissionedManager, allowedUser, disallowedUser] = await ethers.getSigners();
+  const NONE = '0x0000';
+  const SWAP_ALLOWED = '0x0001';
+  const LIQUIDITY_ALLOWED = '0x0002';
+  const ALL_ALLOWED = '0xffff';
 
-    // Core mocks
+  async function deployFixture() {
+    const [owner, manager, permissionedManager, allowedUser, disallowedUser] = await ethers.getSigners();
+
     const MockFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = await MockFactory.deploy();
 
@@ -23,22 +27,18 @@ describe('PermissionedPoolPlugin', function () {
     const token1 = await MockERC20.deploy('Token1', 'TK1', 18);
     await mockPool.setTokens(token0.target, token1.target);
 
-    // Permissions Adapter Factory
-    const PermissionsAdapterFactory = await ethers.getContractFactory('PermissionsAdapterFactory');
-    const adapterFactory = await PermissionsAdapterFactory.deploy(mockFactory.target);
+    const AllowlistCheckerRegistry = await ethers.getContractFactory('AllowlistCheckerRegistry');
+    const registry = await AllowlistCheckerRegistry.deploy(mockFactory.target);
 
     const PERMISSIONED_POOL_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('PERMISSIONED_POOL_MANAGER'));
     await mockFactory.grantRole(PERMISSIONED_POOL_MANAGER, permissionedManager.address);
 
-    // Permissions Adapter for token0, registered + verified
-    const PermissionsAdapter = await ethers.getContractFactory('PermissionsAdapter');
-    const adapter0 = await PermissionsAdapter.deploy(token0.target, issuer.address);
-    await adapterFactory.connect(issuer).registerAdapter(token0.target, adapter0.target);
-    await adapterFactory.connect(permissionedManager).verifyAdapter(token0.target, true);
-    await adapter0.connect(issuer).setAllowed(allowedUser.address, true);
-    await adapter0.connect(issuer).setAllowed(owner.address, true);
+    const MockAllowlistChecker = await ethers.getContractFactory('MockAllowlistChecker');
+    const checker0 = await MockAllowlistChecker.deploy();
+    await registry.connect(permissionedManager).setChecker(token0.target, checker0.target);
+    await checker0.setFlags(allowedUser.address, ALL_ALLOWED);
+    await checker0.setFlags(owner.address, ALL_ALLOWED);
 
-    // Plugin implementation + beacon proxy plugin
     const PermissionedPoolPluginImplementation = await ethers.getContractFactory('PermissionedPoolPluginImplementation');
     const permissionedPoolImpl = await PermissionedPoolPluginImplementation.deploy();
 
@@ -52,7 +52,7 @@ describe('PermissionedPoolPlugin', function () {
     const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target, adapterFactory.target]);
+    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target, registry.target]);
     await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const proxy1Address = await proxyDeployer.lastDeployedProxy();
 
@@ -67,7 +67,6 @@ describe('PermissionedPoolPlugin', function () {
     return {
       owner,
       manager,
-      issuer,
       permissionedManager,
       allowedUser,
       disallowedUser,
@@ -76,9 +75,9 @@ describe('PermissionedPoolPlugin', function () {
       mockPool,
       token0,
       token1,
-      adapterFactory,
-      adapter0,
-      PermissionsAdapter,
+      registry,
+      checker0,
+      MockAllowlistChecker,
       permissionedPoolImpl,
       pluginImplementation,
       beacon,
@@ -90,139 +89,14 @@ describe('PermissionedPoolPlugin', function () {
     };
   }
 
-  // ---------------------------------------------------------------------------------------------
-  describe('PermissionsAdapterFactory: register/verify', function () {
-    it('registers an adapter and reports it as unverified until governance verifies it', async function () {
-      const { adapterFactory, token1, issuer, permissionedManager, PermissionsAdapter } = await loadFixture(deployFixture);
-
-      const adapter1 = await PermissionsAdapter.deploy(token1.target, issuer.address);
-      await adapterFactory.connect(issuer).registerAdapter(token1.target, adapter1.target);
-
-      expect(await adapterFactory.getAdapter(token1.target)).to.equal(adapter1.target);
-      expect(await adapterFactory.isVerified(token1.target)).to.equal(false);
-
-      await adapterFactory.connect(permissionedManager).verifyAdapter(token1.target, true);
-      expect(await adapterFactory.isVerified(token1.target)).to.equal(true);
-    });
-
-    it('rejects registration from anyone other than the adapter admin', async function () {
-      const { adapterFactory, token1, disallowedUser, issuer, PermissionsAdapter } = await loadFixture(deployFixture);
-
-      const adapter1 = await PermissionsAdapter.deploy(token1.target, issuer.address);
-      await expect(adapterFactory.connect(disallowedUser).registerAdapter(token1.target, adapter1.target)).to.be.revertedWith(
-        'Only adapter admin'
-      );
-    });
-
-    it('resets verification when an adapter registration is replaced', async function () {
-      const { adapterFactory, token0, issuer, permissionedManager, PermissionsAdapter } = await loadFixture(deployFixture);
-
-      expect(await adapterFactory.isVerified(token0.target)).to.equal(true);
-
-      const replacement = await PermissionsAdapter.deploy(token0.target, issuer.address);
-      await adapterFactory.connect(issuer).registerAdapter(token0.target, replacement.target);
-
-      expect(await adapterFactory.getAdapter(token0.target)).to.equal(replacement.target);
-      expect(await adapterFactory.isVerified(token0.target)).to.equal(false);
-    });
-
-    it('rejects verification from a non-manager', async function () {
-      const { adapterFactory, token0, disallowedUser } = await loadFixture(deployFixture);
-
-      await expect(adapterFactory.connect(disallowedUser).verifyAdapter(token0.target, true)).to.be.revertedWith(
-        'Only Permissioned Pool manager'
-      );
-    });
-  });
-
-  // ---------------------------------------------------------------------------------------------
   describe('Pool initialization', function () {
-    it('succeeds when one token has a verified adapter and the other has none', async function () {
+    it('always succeeds, regardless of checker configuration', async function () {
       const { mockPool, owner } = await loadFixture(deployFixture);
 
       await expect(mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0)).to.not.be.reverted;
     });
-
-    it('reverts with NoVerifiedToken when neither token has an adapter', async function () {
-      const {
-        mockFactory,
-        proxyDeployer,
-        beacon,
-        pluginImplementation,
-        adapterFactory,
-        token0,
-        token1,
-        owner,
-        UpgradeablePermissionedPoolPluginTest,
-      } = await loadFixture(deployFixture);
-
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const freshPool = await MockPool.deploy();
-      await freshPool.setTokens(token1.target, token1.target); // neither side is token0 (the only registered adapter)
-
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', [freshPool.target, adapterFactory.target]);
-      await proxyDeployer.deploy(beacon.target, freshPool.target, initData);
-      const proxyAddress = await proxyDeployer.lastDeployedProxy();
-      const freshPlugin = UpgradeablePermissionedPoolPluginTest.attach(proxyAddress) as any;
-      await freshPool.setPlugin(proxyAddress);
-
-      await expect(freshPool.connect(owner).initialize(SQRT_PRICE_TICK_0)).to.be.revertedWithCustomError(
-        freshPlugin,
-        'NoVerifiedToken'
-      );
-    });
-
-    it('reverts with UnverifiedTokenAdapter when a token has a registered-but-unverified adapter', async function () {
-      const {
-        mockFactory,
-        proxyDeployer,
-        beacon,
-        pluginImplementation,
-        adapterFactory,
-        token0,
-        token1,
-        issuer,
-        owner,
-        PermissionsAdapter,
-        UpgradeablePermissionedPoolPluginTest,
-      } = await loadFixture(deployFixture);
-
-      const adapter1 = await PermissionsAdapter.deploy(token1.target, issuer.address);
-      await adapterFactory.connect(issuer).registerAdapter(token1.target, adapter1.target);
-      // Note: not verified
-
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const freshPool = await MockPool.deploy();
-      await freshPool.setTokens(token0.target, token1.target);
-
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', [freshPool.target, adapterFactory.target]);
-      await proxyDeployer.deploy(beacon.target, freshPool.target, initData);
-      const proxyAddress = await proxyDeployer.lastDeployedProxy();
-      const freshPlugin = UpgradeablePermissionedPoolPluginTest.attach(proxyAddress) as any;
-      await freshPool.setPlugin(proxyAddress);
-
-      await expect(freshPool.connect(owner).initialize(SQRT_PRICE_TICK_0))
-        .to.be.revertedWithCustomError(freshPlugin, 'UnverifiedTokenAdapter')
-        .withArgs(token1.target);
-    });
-
-    it('bypasses all checks when permissionsAdapterFactory is address(0)', async function () {
-      const { mockFactory, proxyDeployer, beacon, pluginImplementation, token0, token1, owner } = await loadFixture(deployFixture);
-
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const freshPool = await MockPool.deploy();
-      await freshPool.setTokens(token0.target, token1.target);
-
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', [freshPool.target, ethers.ZeroAddress]);
-      await proxyDeployer.deploy(beacon.target, freshPool.target, initData);
-      const proxyAddress = await proxyDeployer.lastDeployedProxy();
-      await freshPool.setPlugin(proxyAddress);
-
-      await expect(freshPool.connect(owner).initialize(SQRT_PRICE_TICK_0)).to.not.be.reverted;
-    });
   });
 
-  // ---------------------------------------------------------------------------------------------
   describe('Swap: direct callers', function () {
     it('allows an allowed EOA to swap directly', async function () {
       const { mockPool, owner, allowedUser } = await loadFixture(deployFixture);
@@ -243,23 +117,21 @@ describe('PermissionedPoolPlugin', function () {
 
   describe('Swap: via routers (two-level check)', function () {
     it('allows a trusted router reporting an allowed real user', async function () {
-      const { mockPool, owner, allowedUser, adapterFactory, permissionedManager, MockRouter } = await loadFixture(deployFixture);
+      const { mockPool, owner, allowedUser, plugin1, manager, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
       const router = await MockRouter.deploy(allowedUser.address);
-      await adapterFactory.connect(permissionedManager).setRouterAllowed(router.target, true);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
 
       await expect(router.callSwap(mockPool.target, 10)).to.not.be.reverted;
     });
 
     it('blocks a trusted router reporting a disallowed real user', async function () {
-      const { mockPool, owner, disallowedUser, adapterFactory, permissionedManager, MockRouter, plugin1, token0 } = await loadFixture(
-        deployFixture
-      );
+      const { mockPool, owner, disallowedUser, plugin1, manager, token0, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
       const router = await MockRouter.deploy(disallowedUser.address);
-      await adapterFactory.connect(permissionedManager).setRouterAllowed(router.target, true);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
 
       await expect(router.callSwap(mockPool.target, 10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
@@ -267,10 +139,10 @@ describe('PermissionedPoolPlugin', function () {
     });
 
     it('ignores an untrusted router self-report and checks the router itself instead', async function () {
-      const { mockPool, owner, allowedUser, MockRouter, plugin1, token0 } = await loadFixture(deployFixture);
+      const { mockPool, owner, allowedUser, plugin1, token0, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
-      // Router lies that the real sender is `allowedUser`, but is NOT a registered router.
+      // Router lies that the real sender is allowedUser, but is never approved via setRouterAllowed
       const router = await MockRouter.deploy(allowedUser.address);
 
       await expect(router.callSwap(mockPool.target, 10))
@@ -279,41 +151,26 @@ describe('PermissionedPoolPlugin', function () {
     });
   });
 
-  describe('Swap: swappingEnabled kill switch', function () {
-    it('blocks an allowed user when swappingEnabled is false, independent of the allowlist', async function () {
-      const { mockPool, owner, allowedUser, adapter0, issuer, plugin1, token0 } = await loadFixture(deployFixture);
+  describe('Add liquidity: gated independently by LIQUIDITY_ALLOWED', function () {
+    it('allows an account with LIQUIDITY_ALLOWED to add liquidity', async function () {
+      const { mockPool, owner, allowedUser, checker0 } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
+      await checker0.setFlags(allowedUser.address, LIQUIDITY_ALLOWED);
 
-      await adapter0.connect(issuer).setSwappingEnabled(false);
-
-      await expect(mockPool.connect(allowedUser).swapToTick(10))
-        .to.be.revertedWithCustomError(plugin1, 'SwappingDisabled')
-        .withArgs(token0.target);
+      await expect(mockPool.connect(allowedUser).mint(allowedUser.address, allowedUser.address, -60, 60, 1000, '0x')).to.not.be.reverted;
     });
 
-    it('resumes allowing swaps once swappingEnabled is re-enabled', async function () {
-      const { mockPool, owner, allowedUser, adapter0, issuer } = await loadFixture(deployFixture);
+    it('blocks an account with only SWAP_ALLOWED from adding liquidity', async function () {
+      const { mockPool, owner, allowedUser, checker0, plugin1, token0 } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
+      await checker0.setFlags(allowedUser.address, SWAP_ALLOWED);
 
-      await adapter0.connect(issuer).setSwappingEnabled(false);
-      await adapter0.connect(issuer).setSwappingEnabled(true);
-
-      await expect(mockPool.connect(allowedUser).swapToTick(10)).to.not.be.reverted;
-    });
-  });
-
-  // ---------------------------------------------------------------------------------------------
-  describe('Add liquidity: allowlist only, no swappingEnabled check', function () {
-    it('allows an allowed user to add liquidity even when swappingEnabled is false', async function () {
-      const { mockPool, owner, allowedUser, adapter0, issuer } = await loadFixture(deployFixture);
-      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
-      await adapter0.connect(issuer).setSwappingEnabled(false);
-
-      await expect(mockPool.connect(allowedUser).mint(allowedUser.address, allowedUser.address, -60, 60, 1000, '0x')).to.not.be
-        .reverted;
+      await expect(mockPool.connect(allowedUser).mint(allowedUser.address, allowedUser.address, -60, 60, 1000, '0x'))
+        .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
+        .withArgs(token0.target, allowedUser.address);
     });
 
-    it('blocks a disallowed user from adding liquidity regardless of swappingEnabled', async function () {
+    it('blocks an account with no flags from adding liquidity', async function () {
       const { mockPool, owner, disallowedUser, plugin1, token0 } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
@@ -323,100 +180,113 @@ describe('PermissionedPoolPlugin', function () {
     });
   });
 
-  describe('Remove liquidity', function () {
-    it('always allows remove liquidity regardless of allowlist or swappingEnabled', async function () {
-      const { mockPool, owner, disallowedUser, adapter0, issuer } = await loadFixture(deployFixture);
+  describe('Swap: gated independently by SWAP_ALLOWED', function () {
+    it('blocks an account with only LIQUIDITY_ALLOWED from swapping', async function () {
+      const { mockPool, owner, allowedUser, checker0, plugin1, token0 } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
-      await adapter0.connect(issuer).setSwappingEnabled(false);
+      await checker0.setFlags(allowedUser.address, LIQUIDITY_ALLOWED);
+
+      await expect(mockPool.connect(allowedUser).swapToTick(10))
+        .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
+        .withArgs(token0.target, allowedUser.address);
+    });
+  });
+
+  describe('Remove liquidity', function () {
+    it('always allows remove liquidity regardless of checker flags', async function () {
+      const { mockPool, owner, disallowedUser } = await loadFixture(deployFixture);
+      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
       await expect(mockPool.connect(disallowedUser).burn(-60, 60, 1000, '0x')).to.not.be.reverted;
     });
   });
 
-  // ---------------------------------------------------------------------------------------------
-  describe('Flash: gated like swap', function () {
-    it('allows an allowed user to flash', async function () {
-      const { mockPool, owner, allowedUser } = await loadFixture(deployFixture);
-      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
-
-      await expect(mockPool.connect(allowedUser).flash(allowedUser.address, 100, 100, '0x')).to.not.be.reverted;
-    });
-
-    it('blocks a disallowed user from flash', async function () {
-      const { mockPool, owner, disallowedUser, plugin1, token0 } = await loadFixture(deployFixture);
-      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
-
-      await expect(mockPool.connect(disallowedUser).flash(disallowedUser.address, 100, 100, '0x'))
-        .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
-        .withArgs(token0.target, disallowedUser.address);
-    });
-
-    it('blocks flash when swappingEnabled is false', async function () {
-      const { mockPool, owner, allowedUser, adapter0, issuer, plugin1, token0 } = await loadFixture(deployFixture);
-      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
-      await adapter0.connect(issuer).setSwappingEnabled(false);
-
-      await expect(mockPool.connect(allowedUser).flash(allowedUser.address, 100, 100, '0x'))
-        .to.be.revertedWithCustomError(plugin1, 'SwappingDisabled')
-        .withArgs(token0.target);
-    });
-  });
-
-  // ---------------------------------------------------------------------------------------------
   describe('Both tokens checked independently', function () {
-    it('gates on token1 too when token1 has its own verified adapter with a different allowlist', async function () {
-      const {
-        mockPool,
-        owner,
-        allowedUser,
-        disallowedUser,
-        adapterFactory,
-        permissionedManager,
-        token0,
-        token1,
-        plugin1,
-        PermissionsAdapter,
-      } = await loadFixture(deployFixture);
+    it('gates on token1 too when token1 has its own checker with different flags', async function () {
+      const { mockPool, owner, allowedUser, disallowedUser, registry, permissionedManager, token0, token1, plugin1, MockAllowlistChecker } =
+        await loadFixture(deployFixture);
 
-      // token1 is permissioned too, but only allows `disallowedUser` (the opposite of token0's allowlist)
-      const adapter1 = await PermissionsAdapter.deploy(token1.target, permissionedManager.address);
-      await adapterFactory.connect(permissionedManager).registerAdapter(token1.target, adapter1.target);
-      await adapterFactory.connect(permissionedManager).verifyAdapter(token1.target, true);
-      await adapter1.connect(permissionedManager).setAllowed(disallowedUser.address, true);
+      const checker1 = await MockAllowlistChecker.deploy();
+      await registry.connect(permissionedManager).setChecker(token1.target, checker1.target);
+      await checker1.setFlags(disallowedUser.address, ALL_ALLOWED);
 
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
-      // allowedUser passes token0's check but fails token1's check -> overall blocked
+      // allowedUser passes token0's check but token1 has no flags set for it -> overall blocked
       await expect(mockPool.connect(allowedUser).swapToTick(10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token1.target, allowedUser.address);
 
-      // disallowedUser fails token0's check (token0 is checked first) -> overall blocked, even
-      // though disallowedUser is on token1's allowlist
+      // disallowedUser fails token0's check first (token0 is checked before token1)
       await expect(mockPool.connect(disallowedUser).swapToTick(10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, disallowedUser.address);
     });
   });
 
-  // ---------------------------------------------------------------------------------------------
-  describe('Authorization', function () {
-    it('allows the manager role to set the Permissions Adapter Factory', async function () {
-      const { plugin1, manager, adapterFactory } = await loadFixture(deployFixture);
+  describe('isTraderEligible', function () {
+    it('returns the checker flags for a permissioned token', async function () {
+      const { plugin1, allowedUser, token0 } = await loadFixture(deployFixture);
 
-      await expect(plugin1.connect(manager).setPermissionsAdapterFactory(ethers.ZeroAddress))
-        .to.emit(plugin1, 'PermissionsAdapterFactoryUpdated')
-        .withArgs(ethers.ZeroAddress);
-
-      expect(await plugin1.getPermissionsAdapterFactory()).to.equal(ethers.ZeroAddress);
+      expect(await plugin1.isTraderEligible(allowedUser.address, token0.target)).to.equal(ALL_ALLOWED);
     });
 
-    it('rejects a non-manager setting the Permissions Adapter Factory', async function () {
+    it('returns NONE for a disallowed account', async function () {
+      const { plugin1, disallowedUser, token0 } = await loadFixture(deployFixture);
+
+      expect(await plugin1.isTraderEligible(disallowedUser.address, token0.target)).to.equal(NONE);
+    });
+
+    it('returns ALL_ALLOWED for a token with no checker assigned', async function () {
+      const { plugin1, disallowedUser, token1 } = await loadFixture(deployFixture);
+
+      expect(await plugin1.isTraderEligible(disallowedUser.address, token1.target)).to.equal(ALL_ALLOWED);
+    });
+
+    it('returns ALL_ALLOWED when the registry itself is unset', async function () {
+      const { plugin1, manager, disallowedUser, token0 } = await loadFixture(deployFixture);
+
+      await plugin1.connect(manager).setAllowlistCheckerRegistry(ethers.ZeroAddress);
+
+      expect(await plugin1.isTraderEligible(disallowedUser.address, token0.target)).to.equal(ALL_ALLOWED);
+    });
+  });
+
+  describe('Router management', function () {
+    it('allows the manager to approve a router', async function () {
+      const { plugin1, manager, MockRouter, disallowedUser } = await loadFixture(deployFixture);
+      const router = await MockRouter.deploy(disallowedUser.address);
+
+      await expect(plugin1.connect(manager).setRouterAllowed(router.target, true))
+        .to.emit(plugin1, 'RouterAllowedUpdated')
+        .withArgs(router.target, true);
+
+      expect(await plugin1.allowedRouters(router.target)).to.equal(true);
+    });
+
+    it('rejects a non-manager approving a router', async function () {
+      const { plugin1, disallowedUser, MockRouter } = await loadFixture(deployFixture);
+      const router = await MockRouter.deploy(disallowedUser.address);
+
+      await expect(plugin1.connect(disallowedUser).setRouterAllowed(router.target, true)).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  describe('Allowlist Checker Registry management', function () {
+    it('allows the manager to set the registry', async function () {
+      const { plugin1, manager, registry } = await loadFixture(deployFixture);
+
+      await expect(plugin1.connect(manager).setAllowlistCheckerRegistry(registry.target))
+        .to.emit(plugin1, 'AllowlistCheckerRegistryUpdated')
+        .withArgs(registry.target);
+
+      expect(await plugin1.getAllowlistCheckerRegistry()).to.equal(registry.target);
+    });
+
+    it('rejects a non-manager setting the registry', async function () {
       const { plugin1, disallowedUser } = await loadFixture(deployFixture);
 
-      await expect(plugin1.connect(disallowedUser).setPermissionsAdapterFactory(ethers.ZeroAddress)).to.be.revertedWith(
-        'Not authorized'
-      );
+      await expect(plugin1.connect(disallowedUser).setAllowlistCheckerRegistry(ethers.ZeroAddress)).to.be.revertedWith('Not authorized');
     });
   });
 });

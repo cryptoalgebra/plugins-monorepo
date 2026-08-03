@@ -5,26 +5,18 @@ pragma solidity =0.8.20;
 /// @notice Interface for Permissioned Pool plugin implementation contract
 /// @dev Used for type-safe delegatecall encoding in PermissionedPoolConnector.
 interface IPermissionedPoolPluginImplementation {
-  function initializePermissionedPool(address _permissionsAdapterFactory) external;
-  function setPermissionsAdapterFactory(address _permissionsAdapterFactory) external;
+  function initializePermissionedPool(address _allowlistCheckerRegistry) external;
+  function setAllowlistCheckerRegistry(address _allowlistCheckerRegistry) external;
+  function setRouterAllowed(address router, bool allowed) external;
 
-  /// @notice Verify pool initialization - reverts unless at least one token has a verified
-  /// adapter, and any token that has an adapter at all has a verified one
-  /// @param pool The pool address
-  function verifyInitialize(address pool) external view;
-
-  /// @notice Verify a swap for both tokens independently - reverts if either token has
-  /// swapping disabled, or if the resolved real sender is not allowed for that token
+  /// @notice Verify a swap for both tokens independently
+  /// @dev Reverts unless the resolved real sender's checker flags include SWAP_ALLOWED for each token that has a checker
   /// @param pool The pool address
   /// @param sender The raw hook sender (the router/caller of the pool, not necessarily the real user)
   function verifySwap(address pool, address sender) external view;
 
-  /// @notice Verify a flash loan - same checks as verifySwap
-  /// @param pool The pool address
-  /// @param sender The raw hook sender
-  function verifyFlash(address pool, address sender) external view;
-
-  /// @notice Verify an add-liquidity operation - allowlist only, swappingEnabled is not checked
+  /// @notice Verify an add-liquidity operation
+  /// @dev Reverts unless the resolved real sender's checker flags include LIQUIDITY_ALLOWED for each token that has a checker
   /// @param pool The pool address
   /// @param sender The raw hook sender
   function verifyAddLiquidity(address pool, address sender) external view;

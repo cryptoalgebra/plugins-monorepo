@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { ADDRESSES,  SQRT_RATIO } from './constants';

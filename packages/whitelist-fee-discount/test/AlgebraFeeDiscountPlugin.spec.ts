@@ -2,8 +2,8 @@ import type { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signer
 import { ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 
-import { expect } from 'test-utils/expect';
-import { encodePriceSqrt } from 'test-utils/utilities';
+import { expect } from '@cryptoalgebra/test-utils/expect';
+import { encodePriceSqrt } from '@cryptoalgebra/test-utils/utilities';
 
 import {
   BeaconProxyDeployer,

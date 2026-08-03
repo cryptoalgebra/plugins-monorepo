@@ -75,7 +75,8 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      address(0)
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -110,7 +111,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, address(0));
 
     pluginByPool[pool] = plugin;
     return plugin;

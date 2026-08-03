@@ -3,9 +3,9 @@ import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ContractFactory } from 'ethers';
 import { VolatilityOracleInteractionsTest, TestERC20 } from '../typechain';
-import { expandTo18Decimals } from 'test-utils/utilities';
-import snapshotGasCost from 'test-utils/snapshotGasCost';
-import { tokensFixture } from 'test-utils/externalFixtures';
+import { expandTo18Decimals } from '@cryptoalgebra/test-utils/utilities';
+import snapshotGasCost from '@cryptoalgebra/test-utils/snapshotGasCost';
+import { tokensFixture } from '@cryptoalgebra/test-utils/externalFixtures';
 
 describe('VolatilityOracleInteractions', () => {
   let tokens: TestERC20[];

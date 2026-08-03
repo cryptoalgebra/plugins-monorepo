@@ -3,11 +3,11 @@ import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
 import { MockTimeAlgebraUpgradeablePlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 
-import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
+import { algebraPoolDeployerMockFixture } from '@cryptoalgebra/test-utils/externalFixtures';
 
-import snapshotGasCost from 'test-utils/snapshotGasCost';
+import snapshotGasCost from '@cryptoalgebra/test-utils/snapshotGasCost';
 
 import {
   expandTo18Decimals,

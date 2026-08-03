@@ -1,8 +1,8 @@
 import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import { expect } from 'test-utils/expect';
-import { encodePriceSqrt } from 'test-utils/utilities';
+import { expect } from '@cryptoalgebra/test-utils/expect';
+import { encodePriceSqrt } from '@cryptoalgebra/test-utils/utilities';
 import { DEFAULT_FEE_CONFIGURATION, ZERO_ADDRESS } from './shared/fixtures';
 
 import { 
@@ -78,7 +78,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       dynamicFeeImpl,
       farmingProxyImpl,
       almImpl,
-      securityImpl
+      securityImpl,
+      ZERO_ADDRESS
     );
 
     return {

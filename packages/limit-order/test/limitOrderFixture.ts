@@ -13,7 +13,7 @@ import {
   bytecode as POOL_BYTECODE,
 } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
 import { LimitOrderManager, IWNativeToken } from '../typechain';
-import { tokensFixture } from 'test-utils/externalFixtures';
+import { tokensFixture } from '@cryptoalgebra/test-utils/externalFixtures';
 import { getCreateAddress } from 'ethers';
 import {AlgebraPool, AlgebraFactory, TestAlgebraCallee, AlgebraPoolDeployer, TestERC20 } from '@cryptoalgebra/integral-core/typechain';
 import WNativeToken from './contracts/WNativeToken.json';

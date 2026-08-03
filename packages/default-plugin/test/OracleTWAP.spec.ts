@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ContractFactory } from 'ethers';
 import { OracleTWAP, MockPool, MockTimeDSFactory, TestERC20 } from '../typechain';
-import { tokensFixture } from 'test-utils/externalFixtures';
+import { tokensFixture } from '@cryptoalgebra/test-utils/externalFixtures';
 import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION } from './shared/fixtures';
 
 // Deploy all 5 implementations for MockTimeDSFactory

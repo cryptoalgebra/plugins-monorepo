@@ -1,7 +1,7 @@
 import { Wallet } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION, newMockTimeUpgradeablePluginFactoryFixture } from './shared/fixtures';
 
 import { MockFactory, NewMockTimeUpgradeablePluginFactory, MockTimeAlgebraUpgradeablePlugin } from '../typechain';
@@ -219,7 +219,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       // Upgrade
@@ -247,7 +248,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -422,7 +424,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       // Single upgrade call affects ALL plugins
@@ -457,7 +460,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -499,7 +503,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -571,7 +576,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -599,7 +605,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -862,7 +869,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()  // NEW security impl!
+        await upgradedSecurityImpl.getAddress(), // NEW security impl!
+        implementations.permissionedPoolImpl
       );
 
       // Upgrade all plugins via beacon
@@ -893,7 +901,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -926,7 +935,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -969,7 +979,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       // Single upgrade call
@@ -1004,7 +1015,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -1083,7 +1095,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1116,7 +1129,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1160,7 +1174,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1200,7 +1215,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1237,7 +1253,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1276,7 +1293,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        implementations.securityImpl
+        implementations.securityImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1359,7 +1377,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()  // NEW security impl!
+        await upgradedSecurityImpl.getAddress(), // NEW security impl!
+        implementations.permissionedPoolImpl
       );
 
       // Upgrade all plugins via beacon
@@ -1390,7 +1409,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -1423,7 +1443,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -1466,7 +1487,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       // Single upgrade call
@@ -1501,7 +1523,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.dynamicFeeImpl,
         implementations.farmingProxyImpl,
         implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
+        await upgradedSecurityImpl.getAddress(),
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());

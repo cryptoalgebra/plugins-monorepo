@@ -1,9 +1,9 @@
 import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { upgradeablePluginFixture } from './shared/fixtures';
-import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
+import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from '@cryptoalgebra/test-utils/utilities';
 
 import { MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
 
@@ -281,7 +281,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const moduleNames = await plugin.getActiveModuleNames();
         
         expect(moduleNames).to.be.an('array');
-        expect(moduleNames.length).to.eq(5);
+        expect(moduleNames.length).to.eq(6);
         
         // Check each module name is a non-empty string
         for (const moduleName of moduleNames) {
@@ -299,9 +299,10 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect(moduleNames).to.include('Farming Proxy Plugin');
         expect(moduleNames).to.include('Security Plugin');
         expect(moduleNames).to.include('ALM Plugin');
-        
+        expect(moduleNames).to.include('Permissioned Pool Plugin');
+
         // Verify module count
-        expect(moduleNames).to.have.lengthOf(5);
+        expect(moduleNames).to.have.lengthOf(6);
       });
 
     });

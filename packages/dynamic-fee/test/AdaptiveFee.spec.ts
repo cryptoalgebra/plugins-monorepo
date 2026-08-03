@@ -1,8 +1,8 @@
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { ethers } from 'hardhat';
 import { AdaptiveFeeTest } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import snapshotGasCost from 'test-utils/snapshotGasCost';
+import snapshotGasCost from '@cryptoalgebra/test-utils/snapshotGasCost';
 
 describe('AdaptiveFee', () => {
   let adaptiveFee: AdaptiveFeeTest;

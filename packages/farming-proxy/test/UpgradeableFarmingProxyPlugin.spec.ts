@@ -1,4 +1,4 @@
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { ethers } from 'hardhat';
 import { 
   UpgradeableFarmingProxyPluginTest, 

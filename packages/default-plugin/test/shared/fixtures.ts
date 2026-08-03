@@ -48,12 +48,17 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  // 6. Permissioned Pool Implementation
+  const permissionedPoolImplFactory = await ethers.getContractFactory('PermissionedPoolPluginImplementation');
+  const permissionedPoolImpl = await permissionedPoolImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    permissionedPoolImpl: await permissionedPoolImpl.getAddress()
   };
 }
 
@@ -143,7 +148,8 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
     implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.permissionedPoolImpl
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
@@ -219,6 +225,7 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     farmingProxyImpl: string;
     almImpl: string;
     securityImpl: string;
+    permissionedPoolImpl: string;
   };
 }
 
@@ -251,12 +258,13 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
   const pluginImplFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const pluginImpl = await pluginImplFactory.deploy(
     mockFactoryAddress,
-    proxyAddress,  
+    proxyAddress,
     implementations.volatilityOracleImpl,
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
     implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.permissionedPoolImpl
   );
 
   // Attach factory interface to proxy

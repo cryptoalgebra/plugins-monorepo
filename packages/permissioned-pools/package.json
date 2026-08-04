@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/permissioned-pools-plugin",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Permissioned pools plugin for Algebra Integral (msg.sender whitelist)",
   "publishConfig": {
     "access": "public"

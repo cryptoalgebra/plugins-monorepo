@@ -17,6 +17,9 @@ interface IPermissionedPoolPlugin {
   /// @notice The resolved real sender is not allowed for this token and action
   error NotAllowed(address token, address account);
 
+  /// @notice The raw hook sender is not a registered router
+  error RouterNotAllowed(address router);
+
   /// @notice A registered router reverted (or misbehaved) when asked for the real sender
   error RouterMsgSenderCallFailed();
 

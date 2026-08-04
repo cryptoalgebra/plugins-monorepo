@@ -64,11 +64,9 @@ contract PermissionedPoolPluginImplementation is IPermissionedPoolPluginImplemen
     if ((flags & requiredFlag) == PermissionFlags.NONE) revert IPermissionedPoolPlugin.NotAllowed(token, realSender);
   }
 
-  /// @dev `sender` is trusted as-is unless it is itself a governance-approved router.
-  /// An unapproved contract can't spoof a different identity because we never call its
-  /// `msgSender()` in the first place. Router trust is this pool's own storage, not the registry's.
+  /// @dev Every caller must be a registered router
   function _resolveRealSender(address sender) internal view returns (address) {
-    if (!PermissionedPoolStorage.layout().allowedRouters[sender]) return sender;
+    if (!PermissionedPoolStorage.layout().allowedRouters[sender]) revert IPermissionedPoolPlugin.RouterNotAllowed(sender);
 
     try IMsgSender(sender).msgSender() returns (address realSender) {
       return realSender;

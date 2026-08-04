@@ -97,21 +97,18 @@ describe('PermissionedPoolPlugin', function () {
     });
   });
 
-  describe('Swap: direct callers', function () {
-    it('allows an allowed EOA to swap directly', async function () {
-      const { mockPool, owner, allowedUser } = await loadFixture(deployFixture);
+  describe('Swap: unregistered callers', function () {
+    it('reverts with RouterNotAllowed even for an otherwise-eligible account', async function () {
+      // MockPool.swapToTick lets any caller reach the hook directly, unlike a real pool where
+      // swap/mint/flash require a callback only a contract can implement. This simulates the raw
+      // hook sender being some address that was never registered as a router - in reality this
+      // would be an unregistered contract, not literally an EOA.
+      const { mockPool, owner, allowedUser, plugin1 } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
-      await expect(mockPool.connect(allowedUser).swapToTick(10)).to.not.be.reverted;
-    });
-
-    it('blocks a disallowed EOA from swapping directly', async function () {
-      const { mockPool, owner, disallowedUser, plugin1, token0 } = await loadFixture(deployFixture);
-      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
-
-      await expect(mockPool.connect(disallowedUser).swapToTick(10))
-        .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
-        .withArgs(token0.target, disallowedUser.address);
+      await expect(mockPool.connect(allowedUser).swapToTick(10))
+        .to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed')
+        .withArgs(allowedUser.address);
     });
   });
 
@@ -138,43 +135,52 @@ describe('PermissionedPoolPlugin', function () {
         .withArgs(token0.target, disallowedUser.address);
     });
 
-    it('ignores an untrusted router self-report and checks the router itself instead', async function () {
-      const { mockPool, owner, allowedUser, plugin1, token0, MockRouter } = await loadFixture(deployFixture);
+    it('reverts with RouterNotAllowed for an unregistered router, regardless of its self-report', async function () {
+      const { mockPool, owner, allowedUser, plugin1, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
-      // Router lies that the real sender is allowedUser, but is never approved via setRouterAllowed
+      // Router claims the real sender is allowedUser, but was never approved via setRouterAllowed
       const router = await MockRouter.deploy(allowedUser.address);
 
       await expect(router.callSwap(mockPool.target, 10))
-        .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
-        .withArgs(token0.target, router.target);
+        .to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed')
+        .withArgs(router.target);
     });
   });
 
   describe('Add liquidity: gated independently by LIQUIDITY_ALLOWED', function () {
     it('allows an account with LIQUIDITY_ALLOWED to add liquidity', async function () {
-      const { mockPool, owner, allowedUser, checker0 } = await loadFixture(deployFixture);
+      const { mockPool, owner, allowedUser, checker0, plugin1, manager, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
       await checker0.setFlags(allowedUser.address, LIQUIDITY_ALLOWED);
 
-      await expect(mockPool.connect(allowedUser).mint(allowedUser.address, allowedUser.address, -60, 60, 1000, '0x')).to.not.be.reverted;
+      const router = await MockRouter.deploy(allowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callMint(mockPool.target, allowedUser.address, -60, 60, 1000)).to.not.be.reverted;
     });
 
     it('blocks an account with only SWAP_ALLOWED from adding liquidity', async function () {
-      const { mockPool, owner, allowedUser, checker0, plugin1, token0 } = await loadFixture(deployFixture);
+      const { mockPool, owner, allowedUser, checker0, plugin1, manager, token0, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
       await checker0.setFlags(allowedUser.address, SWAP_ALLOWED);
 
-      await expect(mockPool.connect(allowedUser).mint(allowedUser.address, allowedUser.address, -60, 60, 1000, '0x'))
+      const router = await MockRouter.deploy(allowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callMint(mockPool.target, allowedUser.address, -60, 60, 1000))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, allowedUser.address);
     });
 
     it('blocks an account with no flags from adding liquidity', async function () {
-      const { mockPool, owner, disallowedUser, plugin1, token0 } = await loadFixture(deployFixture);
+      const { mockPool, owner, disallowedUser, plugin1, manager, token0, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
-      await expect(mockPool.connect(disallowedUser).mint(disallowedUser.address, disallowedUser.address, -60, 60, 1000, '0x'))
+      const router = await MockRouter.deploy(disallowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callMint(mockPool.target, disallowedUser.address, -60, 60, 1000))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, disallowedUser.address);
     });
@@ -182,11 +188,14 @@ describe('PermissionedPoolPlugin', function () {
 
   describe('Swap: gated independently by SWAP_ALLOWED', function () {
     it('blocks an account with only LIQUIDITY_ALLOWED from swapping', async function () {
-      const { mockPool, owner, allowedUser, checker0, plugin1, token0 } = await loadFixture(deployFixture);
+      const { mockPool, owner, allowedUser, checker0, plugin1, manager, token0, MockRouter } = await loadFixture(deployFixture);
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
       await checker0.setFlags(allowedUser.address, LIQUIDITY_ALLOWED);
 
-      await expect(mockPool.connect(allowedUser).swapToTick(10))
+      const router = await MockRouter.deploy(allowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callSwap(mockPool.target, 10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, allowedUser.address);
     });
@@ -203,8 +212,20 @@ describe('PermissionedPoolPlugin', function () {
 
   describe('Both tokens checked independently', function () {
     it('gates on token1 too when token1 has its own checker with different flags', async function () {
-      const { mockPool, owner, allowedUser, disallowedUser, registry, permissionedManager, token0, token1, plugin1, MockAllowlistChecker } =
-        await loadFixture(deployFixture);
+      const {
+        mockPool,
+        owner,
+        allowedUser,
+        disallowedUser,
+        registry,
+        permissionedManager,
+        token0,
+        token1,
+        plugin1,
+        manager,
+        MockAllowlistChecker,
+        MockRouter,
+      } = await loadFixture(deployFixture);
 
       const checker1 = await MockAllowlistChecker.deploy();
       await registry.connect(permissionedManager).setChecker(token1.target, checker1.target);
@@ -212,13 +233,18 @@ describe('PermissionedPoolPlugin', function () {
 
       await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
 
+      const routerForAllowed = await MockRouter.deploy(allowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(routerForAllowed.target, true);
+      const routerForDisallowed = await MockRouter.deploy(disallowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(routerForDisallowed.target, true);
+
       // allowedUser passes token0's check but token1 has no flags set for it -> overall blocked
-      await expect(mockPool.connect(allowedUser).swapToTick(10))
+      await expect(routerForAllowed.callSwap(mockPool.target, 10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token1.target, allowedUser.address);
 
       // disallowedUser fails token0's check first (token0 is checked before token1)
-      await expect(mockPool.connect(disallowedUser).swapToTick(10))
+      await expect(routerForDisallowed.callSwap(mockPool.target, 10))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, disallowedUser.address);
     });

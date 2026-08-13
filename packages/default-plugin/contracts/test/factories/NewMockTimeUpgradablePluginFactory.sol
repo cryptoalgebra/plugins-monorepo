@@ -36,6 +36,10 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Limit Order
+    address limitOrderManager;
+    // Fee Discount
+    address feeDiscountRegistry;
     // ALM
     address defaultRebalanceManager;
     uint32 defaultSlowTwapPeriod;
@@ -135,7 +139,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.limitOrderManager, s.feeDiscountRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -151,6 +155,16 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
   /// @inheritdoc ISecurityPluginFactory
   function securityRegistry() external view override returns (address) {
     return _getStorage().securityRegistry;
+  }
+
+  /// @notice The limit order manager notified after each swap
+  function limitOrderManager() external view returns (address) {
+    return _getStorage().limitOrderManager;
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function feeDiscountRegistry() external view override returns (address) {
+    return _getStorage().feeDiscountRegistry;
   }
 
   /// @notice Default ALM rebalance manager address
@@ -199,6 +213,18 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
   function setSecurityRegistry(address newSecurityRegistry) external override {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override {
+    _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
+    emit FeeDiscountRegistry(newFeeDiscountRegistry);
   }
 
   /// @notice Set the default ALM rebalance manager

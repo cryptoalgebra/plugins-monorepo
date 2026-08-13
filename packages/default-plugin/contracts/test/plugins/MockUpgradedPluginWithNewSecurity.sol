@@ -17,7 +17,9 @@ contract MockUpgradedPluginWithNewSecurity is MockTimeAlgebraUpgradeablePlugin {
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl // ← New security implementation!
+    address _securityImpl, // ← New security implementation!
+    address _limitImpl,
+    address _feeDiscountImpl
   )
     MockTimeAlgebraUpgradeablePlugin(
       _factory,
@@ -26,7 +28,9 @@ contract MockUpgradedPluginWithNewSecurity is MockTimeAlgebraUpgradeablePlugin {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      _limitImpl,
+      _feeDiscountImpl
     )
   {}
 

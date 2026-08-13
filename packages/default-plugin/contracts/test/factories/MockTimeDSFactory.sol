@@ -38,6 +38,12 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Address of Security implementation
   address public immutable securityImplementation;
 
+  /// @notice Address of LimitOrder implementation
+  address public immutable limitOrderImplementation;
+
+  /// @notice Address of FeeDiscount implementation
+  address public immutable feeDiscountImplementation;
+
   /// @notice Default fee configuration
   AlgebraFeeConfiguration public defaultFeeConfiguration;
 
@@ -50,6 +56,12 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
   /// @notice Security registry address
   address public securityRegistry;
 
+  /// @notice Limit order manager address
+  address public limitOrderManager;
+
+  /// @notice Fee discount registry address
+  address public feeDiscountRegistry;
+
   constructor(
     address _algebraFactory,
     address _volatilityOracleImpl,
@@ -57,6 +69,8 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     address _farmingProxyImpl,
     address _almImpl,
     address _securityImpl,
+    address _limitOrderImpl,
+    address _feeDiscountImpl,
     AlgebraFeeConfiguration memory _defaultFeeConfig
   ) {
     algebraFactory = _algebraFactory;
@@ -65,6 +79,8 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     farmingProxyImplementation = _farmingProxyImpl;
     almImplementation = _almImpl;
     securityImplementation = _securityImpl;
+    limitOrderImplementation = _limitOrderImpl;
+    feeDiscountImplementation = _feeDiscountImpl;
     defaultFeeConfiguration = _defaultFeeConfig;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
@@ -76,7 +92,9 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
       _dynamicFeeImpl,
       _farmingProxyImpl,
       _almImpl,
-      _securityImpl
+      _securityImpl,
+      _limitOrderImpl,
+      _feeDiscountImpl
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
   }
@@ -112,7 +130,7 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(defaultFeeConfiguration, securityRegistry, limitOrderManager, feeDiscountRegistry);
 
     pluginByPool[pool] = plugin;
     return plugin;
@@ -127,6 +145,14 @@ contract MockTimeDSFactory is IFarmingPluginFactory, IBasePluginFactory {
 
   function setSecurityRegistry(address _securityRegistry) external {
     securityRegistry = _securityRegistry;
+  }
+
+  function setLimitOrderManager(address _limitOrderManager) external {
+    limitOrderManager = _limitOrderManager;
+  }
+
+  function setFeeDiscountRegistry(address _feeDiscountRegistry) external {
+    feeDiscountRegistry = _feeDiscountRegistry;
   }
 
   // ========== Upgrade Management ==========

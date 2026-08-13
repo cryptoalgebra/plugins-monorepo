@@ -10,6 +10,12 @@ const config = {
   // Farming center address (optional, can be set later)
   farmingCenter: "0x000000000000000000000000000000000000000000",
 
+  // Wrapped native token address, required by LimitOrderManager
+  wNativeToken: "0x000000000000000000000000000000000000000000",
+
+  // Algebra pool deployer address, required by LimitOrderManager
+  poolDeployer: "0x000000000000000000000000000000000000000000",
+
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
@@ -59,6 +65,16 @@ async function main() {
   await securityImpl.waitForDeployment();
   console.log("SecurityImpl:", await securityImpl.getAddress());
 
+  const LimitOrderImpl = await ethers.getContractFactory("LimitOrderPluginImplementation");
+  const limitOrderImpl = await LimitOrderImpl.deploy();
+  await limitOrderImpl.waitForDeployment();
+  console.log("LimitOrderImpl:", await limitOrderImpl.getAddress());
+
+  const FeeDiscountImpl = await ethers.getContractFactory("FeeDiscountPluginImplementation");
+  const feeDiscountImpl = await FeeDiscountImpl.deploy();
+  await feeDiscountImpl.waitForDeployment();
+  console.log("FeeDiscountImpl:", await feeDiscountImpl.getAddress());
+
 
   // ============= 2. DEPLOY PROXY ADMIN =============
   console.log("=== Deploying ProxyAdmin ===");
@@ -92,7 +108,9 @@ async function main() {
     await dynamicFeeImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await almImpl.getAddress(),
-    await securityImpl.getAddress()
+    await securityImpl.getAddress(),
+    await limitOrderImpl.getAddress(),
+    await feeDiscountImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
   const pluginImplAddress = await pluginImpl.getAddress();
@@ -137,6 +155,21 @@ async function main() {
   await securityRegistry.waitForDeployment();
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
 
+  const FeeDiscountRegistryFactory = await ethers.getContractFactory("FeeDiscountRegistry");
+  const feeDiscountRegistry = await FeeDiscountRegistryFactory.deploy(config.algebraFactory);
+  await feeDiscountRegistry.waitForDeployment();
+  console.log("FeeDiscountRegistry:", await feeDiscountRegistry.getAddress());
+
+  const LimitOrderManagerFactory = await ethers.getContractFactory("LimitOrderManager");
+  const limitOrderManager = await LimitOrderManagerFactory.deploy(
+    config.wNativeToken,
+    config.poolDeployer,
+    factoryProxyAddress,
+    config.algebraFactory
+  );
+  await limitOrderManager.waitForDeployment();
+  console.log("LimitOrderManager:", await limitOrderManager.getAddress());
+
 
   // ============= 8. POST-DEPLOYMENT CONFIGURATION =============
   console.log("=== Post-Deployment Configuration ===");
@@ -153,7 +186,15 @@ async function main() {
   await tx2.wait();
   console.log("Set SecurityRegistry");
 
+  // Set FeeDiscountRegistry
+  const tx3 = await factory.setFeeDiscountRegistry(await feeDiscountRegistry.getAddress());
+  await tx3.wait();
+  console.log("Set FeeDiscountRegistry");
 
+  // Set LimitOrderManager
+  const tx4 = await factory.setLimitOrderManager(await limitOrderManager.getAddress());
+  await tx4.wait();
+  console.log("Set LimitOrderManager");
 
   // Set DefaultPluginFactory in AlgebraFactory
   const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
@@ -178,9 +219,13 @@ async function main() {
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
   console.log("ALM:", await almImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
+  console.log("LimitOrder:", await limitOrderImpl.getAddress());
+  console.log("FeeDiscount:", await feeDiscountImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
+  console.log("FeeDiscountRegistry:", await feeDiscountRegistry.getAddress());
+  console.log("LimitOrderManager:", await limitOrderManager.getAddress());
 }
 
 main()

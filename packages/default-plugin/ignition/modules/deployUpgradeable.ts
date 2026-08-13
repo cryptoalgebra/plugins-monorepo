@@ -10,7 +10,13 @@ const config = {
   
   // Farming center address (optional, can be set later)
   farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
-  
+
+  // Wrapped native token address, required by LimitOrderManager
+  wNativeToken: "0x0000000000000000000000000000000000000000",
+
+  // Algebra pool deployer address, required by LimitOrderManager
+  poolDeployer: "0x0000000000000000000000000000000000000000",
+
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
@@ -47,12 +53,22 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
+  });
+
+  const feeDiscountImpl = m.contract("FeeDiscountPluginImplementation", [], {
+    id: "FeeDiscountImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    limitOrderImpl,
+    feeDiscountImpl
   };
 });
 
@@ -100,12 +116,14 @@ const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
 // ============= PLUGIN IMPLEMENTATION =============
 
 const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl,
+    limitOrderImpl,
+    feeDiscountImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -116,18 +134,22 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    limitOrderImpl,
+    feeDiscountImpl
   ], {
     id: "PluginImplementation"
   });
 
-  return { 
+  return {
     pluginImpl,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    limitOrderImpl,
+    feeDiscountImpl
   };
 });
 
@@ -179,6 +201,19 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // Always deploy SecurityRegistry for the target AlgebraFactory.
   const securityRegistry = m.contract("SecurityRegistry", [config.algebraFactory], { id: "SecurityRegistry" });
 
+  // ============= FEE DISCOUNT REGISTRY =============
+  // Always deploy FeeDiscountRegistry for the target AlgebraFactory.
+  const feeDiscountRegistry = m.contract("FeeDiscountRegistry", [config.algebraFactory], { id: "FeeDiscountRegistry" });
+
+  // ============= LIMIT ORDER MANAGER =============
+  // Always deploy LimitOrderManager for the target AlgebraFactory.
+  const limitOrderManager = m.contract("LimitOrderManager", [
+    config.wNativeToken,
+    config.poolDeployer,
+    factoryProxy,
+    config.algebraFactory
+  ], { id: "LimitOrderManager" });
+
   // ============= POST-DEPLOYMENT CONFIGURATION =============
 
   // Set farming address if provided
@@ -195,6 +230,18 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     after: [upgradeAndInitialize, securityRegistry]
   });
 
+  // Always set FeeDiscountRegistry (either provided or freshly deployed)
+  m.call(factory, "setFeeDiscountRegistry", [feeDiscountRegistry], {
+    id: "SetFeeDiscountRegistry",
+    after: [upgradeAndInitialize, feeDiscountRegistry]
+  });
+
+  // Always set LimitOrderManager (either provided or freshly deployed)
+  m.call(factory, "setLimitOrderManager", [limitOrderManager], {
+    id: "SetLimitOrderManager",
+    after: [upgradeAndInitialize, limitOrderManager]
+  });
+
   // Set DefaultPluginFactory in AlgebraFactory
   m.call(algebraFactory, "setDefaultPluginFactory", [factoryProxy], {
     id: "SetDefaultPluginFactory",
@@ -206,6 +253,8 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     factoryImpl,
     factoryProxy,
     securityRegistry,
+    feeDiscountRegistry,
+    limitOrderManager,
     ...m.useModule(PluginImplementationModule)
   };
 });

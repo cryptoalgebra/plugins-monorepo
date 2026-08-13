@@ -23,12 +23,20 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+  const limitOrderImpl = await limitOrderImplFactory.deploy();
+
+  const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+  const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    limitOrderImpl: await limitOrderImpl.getAddress(),
+    feeDiscountImpl: await feeDiscountImpl.getAddress()
   };
 }
 
@@ -53,6 +61,8 @@ describe('OracleTWAP', () => {
       implementations.farmingProxyImpl,
       implementations.almImpl,
       implementations.securityImpl,
+      implementations.limitOrderImpl,
+      implementations.feeDiscountImpl,
       DEFAULT_FEE_CONFIGURATION
     );
 

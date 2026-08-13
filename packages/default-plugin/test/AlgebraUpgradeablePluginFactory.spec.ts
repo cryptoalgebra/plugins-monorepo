@@ -282,6 +282,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
         ZERO_ADDRESS,
         ZERO_ADDRESS,
         ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
         ZERO_ADDRESS
       );
 
@@ -305,7 +307,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         pluginFactoryAddress,
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
+        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
       );
 
       // Should succeed (wallet is owner)
@@ -325,7 +327,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         await mockAlgebraFactory.getAddress(),
         await pluginFactory.getAddress(),
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
+        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
       );
 
       await pluginFactory.upgradePlugins(await newImpl.getAddress());

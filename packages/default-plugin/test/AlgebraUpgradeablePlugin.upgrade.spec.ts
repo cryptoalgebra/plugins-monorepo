@@ -37,6 +37,12 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
+    const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+    const limitOrderImpl = await limitOrderImplFactory.deploy();
+
+    const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+    const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
     // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
     const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
     const pluginFactory = (await pluginFactoryFactory.deploy(
@@ -46,6 +52,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       farmingProxyImpl,
       almImpl,
       securityImpl,
+      limitOrderImpl,
+      feeDiscountImpl,
       DEFAULT_FEE_CONFIGURATION
     )) as any as MockTimeDSFactory;
 
@@ -78,7 +86,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       dynamicFeeImpl,
       farmingProxyImpl,
       almImpl,
-      securityImpl
+      securityImpl,
+      limitOrderImpl,
+      feeDiscountImpl
     );
 
     return {

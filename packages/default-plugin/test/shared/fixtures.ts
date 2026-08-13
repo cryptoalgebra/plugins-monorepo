@@ -48,12 +48,22 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  // 6. LimitOrder Implementation
+  const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+  const limitOrderImpl = await limitOrderImplFactory.deploy();
+
+  // 7. FeeDiscount Implementation
+  const feeDiscountImplFactory = await ethers.getContractFactory('FeeDiscountPluginImplementation');
+  const feeDiscountImpl = await feeDiscountImplFactory.deploy();
+
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
+    securityImpl: await securityImpl.getAddress(),
+    limitOrderImpl: await limitOrderImpl.getAddress(),
+    feeDiscountImpl: await feeDiscountImpl.getAddress()
   };
 }
 
@@ -77,6 +87,8 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
     implementations.farmingProxyImpl,
     implementations.almImpl,
     implementations.securityImpl,
+    implementations.limitOrderImpl,
+    implementations.feeDiscountImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeDSFactory;
 
@@ -143,7 +155,9 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
     implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.limitOrderImpl,
+    implementations.feeDiscountImpl
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
@@ -184,6 +198,8 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
     implementations.farmingProxyImpl,
     implementations.almImpl,
     implementations.securityImpl,
+    implementations.limitOrderImpl,
+    implementations.feeDiscountImpl,
     DEFAULT_FEE_CONFIGURATION
   )) as any as MockTimeUpgradeablePluginFactory;
 
@@ -219,6 +235,8 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     farmingProxyImpl: string;
     almImpl: string;
     securityImpl: string;
+    limitOrderImpl: string;
+    feeDiscountImpl: string;
   };
 }
 
@@ -256,7 +274,9 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
     implementations.dynamicFeeImpl,
     implementations.farmingProxyImpl,
     implementations.almImpl,
-    implementations.securityImpl
+    implementations.securityImpl,
+    implementations.limitOrderImpl,
+    implementations.feeDiscountImpl
   );
 
   // Attach factory interface to proxy

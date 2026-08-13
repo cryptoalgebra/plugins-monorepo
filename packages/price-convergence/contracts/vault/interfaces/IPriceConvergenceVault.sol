@@ -23,7 +23,17 @@ interface IPriceConvergenceVault {
   event Deposit(address indexed sender, address indexed recipient, uint256 shares, uint256 amount0, uint256 amount1);
   event Withdraw(address indexed sender, address indexed recipient, uint256 shares, uint256 amount0, uint256 amount1);
   event FullRangeInitialized(int24 lower, int24 upper, uint128 liquidity);
-  event Rebalance(int24 lower, int24 upper, uint128 liquidity, uint160 targetSqrtPriceX96, uint256 amount0, uint256 amount1);
+  event Rebalance(
+    int24 mainLower,
+    int24 mainUpper,
+    uint128 mainLiquidity,
+    int24 reserveLower,
+    int24 reserveUpper,
+    uint128 reserveLiquidity,
+    uint160 targetSqrtPriceX96,
+    uint256 amount0,
+    uint256 amount1
+  );
 
   error OnlyRebalanceEntrypoint();
   error OnlyVaultManager();

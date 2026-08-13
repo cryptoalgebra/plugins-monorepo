@@ -52,6 +52,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
   IVaultMath public vaultMath;
   address public rebalanceEntrypoint;
   Position public mainPosition;
+  Position public reservePosition;
   bool public fullRangeInitialized;
   uint32 public twapPeriod;
   uint32 public auxTwapPeriod;
@@ -140,7 +141,7 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (amount0 == 0 && amount1 == 0) revert ZeroValue();
 
     Prices memory prices = _getValidatedPrices();
-    if (mainPosition.liquidity != 0) _collectAllFees();
+    if (mainPosition.liquidity != 0 || reservePosition.liquidity != 0) _collectAllFees();
     shares = _calculateDepositShares(amount0, amount1, prices);
     if (shares == 0) revert ZeroValue();
 
@@ -162,11 +163,14 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     uint256 supply = totalSupply();
     if (shares != supply && supply - shares < MIN_SHARES) revert InvalidShares();
 
-    // Burn the caller's proportional share of the main position 
+    // Burn the caller's proportional share of the main and reserve positions
     uint128 mainLiquidityToBurn = shares == supply
       ? mainPosition.liquidity
       : uint128(FullMath.mulDiv(mainPosition.liquidity, shares, supply));
-    if (mainLiquidityToBurn > 0) _collectAllFees();
+    uint128 reserveLiquidityToBurn = shares == supply
+      ? reservePosition.liquidity
+      : uint128(FullMath.mulDiv(reservePosition.liquidity, shares, supply));
+    if (mainLiquidityToBurn > 0 || reserveLiquidityToBurn > 0) _collectAllFees();
 
     amount0 = FullMath.mulDiv(IERC20(token0).balanceOf(address(this)), shares, supply);
     amount1 = FullMath.mulDiv(IERC20(token1).balanceOf(address(this)), shares, supply);
@@ -175,6 +179,11 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
       (uint256 main0, uint256 main1) = _burnPosition(mainPosition, mainLiquidityToBurn);
       amount0 += main0;
       amount1 += main1;
+    }
+    if (reserveLiquidityToBurn > 0) {
+      (uint256 reserve0, uint256 reserve1) = _burnPosition(reservePosition, reserveLiquidityToBurn);
+      amount0 += reserve0;
+      amount1 += reserve1;
     }
 
     _burn(msg.sender, shares);
@@ -189,9 +198,8 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (targetSqrtPriceX96 < TickMath.MIN_SQRT_RATIO || targetSqrtPriceX96 >= TickMath.MAX_SQRT_RATIO) {
       revert InvalidPosition();
     }
-    if (mainPosition.liquidity > 0) {
-      _burnPosition(mainPosition, mainPosition.liquidity);
-    }
+    if (mainPosition.liquidity > 0) _burnPosition(mainPosition, mainPosition.liquidity);
+    if (reservePosition.liquidity > 0) _burnPosition(reservePosition, reservePosition.liquidity);
 
     (uint160 currentSqrtPriceX96, , , , , ) = IAlgebraPool(pool).globalState();
     if (currentSqrtPriceX96 != targetSqrtPriceX96) {
@@ -200,8 +208,18 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
       (currentSqrtPriceX96, , , , , ) = IAlgebraPool(pool).globalState();
     }
 
-    (int24 lower, int24 upper, uint128 liquidityActual, uint256 amount0, uint256 amount1) = _mintMainPosition(currentSqrtPriceX96);
-    emit Rebalance(lower, upper, liquidityActual, targetSqrtPriceX96, amount0, amount1);
+    (uint256 amount0, uint256 amount1) = _mintPositions(currentSqrtPriceX96);
+    emit Rebalance(
+      mainPosition.lower,
+      mainPosition.upper,
+      mainPosition.liquidity,
+      reservePosition.lower,
+      reservePosition.upper,
+      reservePosition.liquidity,
+      targetSqrtPriceX96,
+      amount0,
+      amount1
+    );
   }
 
   function collectFees() external onlyVaultManager nonReentrant returns (uint256 fees0, uint256 fees1) {
@@ -214,12 +232,17 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   function getShareholderAmounts() public view returns (uint256 total0, uint256 total1) {
     (, uint256 main0, uint256 main1) = getMainPosition();
-    total0 = IERC20(token0).balanceOf(address(this)) + main0;
-    total1 = IERC20(token1).balanceOf(address(this)) + main1;
+    (, uint256 reserve0, uint256 reserve1) = getReservePosition();
+    total0 = IERC20(token0).balanceOf(address(this)) + main0 + reserve0;
+    total1 = IERC20(token1).balanceOf(address(this)) + main1 + reserve1;
   }
 
   function getMainPosition() public view returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
     return _getPositionAmounts(mainPosition);
+  }
+
+  function getReservePosition() public view returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+    return _getPositionAmounts(reservePosition);
   }
 
   function algebraMintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata) external override {
@@ -292,21 +315,50 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   function _collectAllFees() private returns (uint256 fees0, uint256 fees1) {
     (uint128 main0, uint128 main1) = _collectPosition(mainPosition);
-    fees0 = uint256(main0);
-    fees1 = uint256(main1);
+    (uint128 reserve0, uint128 reserve1) = _collectPosition(reservePosition);
+    fees0 = uint256(main0) + uint256(reserve0);
+    fees1 = uint256(main1) + uint256(reserve1);
   }
 
-  function _mintMainPosition(
-    uint160 currentSqrtPriceX96
-  ) private returns (int24 lower, int24 upper, uint128 liquidityActual, uint256 amount0, uint256 amount1) {
+  /// @dev Mints the single-tick main position and, if vaultMath planned one, the single-sided
+  /// reserve position that absorbs whichever token the main position could not use.
+  function _mintPositions(uint160 currentSqrtPriceX96) private returns (uint256 amount0, uint256 amount1) {
     uint256 balance0 = IERC20(token0).balanceOf(address(this));
     uint256 balance1 = IERC20(token1).balanceOf(address(this));
-    uint128 liquidity;
-    (lower, upper, liquidity, , ) = vaultMath.calculatePosition(currentSqrtPriceX96, balance0, balance1);
-    if (liquidity == 0) revert ZeroValue();
 
-    (amount0, amount1, liquidityActual) = IAlgebraPool(pool).mint(address(this), address(this), lower, upper, liquidity, bytes(''));
-    mainPosition = Position({ lower: lower, upper: upper, liquidity: liquidityActual });
+    (IVaultMath.RangePosition memory main, IVaultMath.RangePosition memory reserve) = vaultMath.calculatePosition(
+      currentSqrtPriceX96,
+      balance0,
+      balance1
+    );
+
+    if (main.liquidity > 0) {
+      (uint256 main0, uint256 main1, uint128 liquidityActual) = IAlgebraPool(pool).mint(
+        address(this),
+        address(this),
+        main.lower,
+        main.upper,
+        main.liquidity,
+        bytes('')
+      );
+      mainPosition = Position({ lower: main.lower, upper: main.upper, liquidity: liquidityActual });
+      amount0 += main0;
+      amount1 += main1;
+    }
+
+    if (reserve.liquidity > 0) {
+      (uint256 reserve0, uint256 reserve1, uint128 liquidityActual) = IAlgebraPool(pool).mint(
+        address(this),
+        address(this),
+        reserve.lower,
+        reserve.upper,
+        reserve.liquidity,
+        bytes('')
+      );
+      reservePosition = Position({ lower: reserve.lower, upper: reserve.upper, liquidity: liquidityActual });
+      amount0 += reserve0;
+      amount1 += reserve1;
+    }
   }
 
   function _getPositionAmounts(Position memory position) private view returns (uint128 liquidity, uint256 amount0, uint256 amount1) {

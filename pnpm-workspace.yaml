@@ -1,2 +1,6 @@
 packages:
   - packages/*
+allowBuilds:
+  keccak: true
+  nx: true
+  secp256k1: true

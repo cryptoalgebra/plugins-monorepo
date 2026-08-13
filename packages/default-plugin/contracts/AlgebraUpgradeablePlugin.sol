@@ -11,6 +11,8 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderConnector.sol';
+import '@cryptoalgebra/whitelist-fee-discount-plugin/contracts/FeeDiscountConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
@@ -24,7 +26,9 @@ contract AlgebraUpgradeablePlugin is
   DynamicFeeConnector,
   FarmingProxyConnector,
   AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  LimitOrderConnector,
+  FeeDiscountConnector
 {
   using Plugins for uint8;
 
@@ -36,6 +40,8 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _limitImpl Limit order implementation address
+  /// @param _feeDiscountImpl Fee discount implemenation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -43,7 +49,9 @@ contract AlgebraUpgradeablePlugin is
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _limitImpl,
+    address _feeDiscountImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -51,27 +59,35 @@ contract AlgebraUpgradeablePlugin is
     FarmingProxyConnector(_farmingProxyImpl)
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    LimitOrderConnector(_limitImpl)
+    FeeDiscountConnector(_feeDiscountImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry
+    address securityRegistry,
+    address limitOrderManager,
+    address feeDiscountRegistry
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
+    _initializeLimitOrder(limitOrderManager);
+    _initializeFeeDiscount(feeDiscountRegistry);
 
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](7);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[5] = LIMIT_ORDER_MODULE_NAME;
+    activeModules[6] = FEE_DISCOUNT_MODULE_NAME;
     return activeModules;
   }
 
@@ -81,7 +97,9 @@ contract AlgebraUpgradeablePlugin is
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      LIMIT_ORDER_PLUGIN_CONFIG |
+      FEE_DISCOUNT_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -182,6 +200,8 @@ contract AlgebraUpgradeablePlugin is
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint24 fee = _getCurrentFee(volatilityAverage);
+    // apply fee discount
+    fee = _applyFeeDiscount(tx.origin, msg.sender, fee);
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
@@ -200,6 +220,9 @@ contract AlgebraUpgradeablePlugin is
 
     // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
+
+    // Close crossed limit orders
+    _updateLimitOrderManagerState(msg.sender, zeroToOne, tick);
 
     // Obtain TWAP and trigger rebalance
     _triggerAlmRebalance(tick);

@@ -9,8 +9,15 @@ interface IAlgebraUpgradeablePlugin {
   /// @param pool The pool address
   event PluginInitialized(address indexed pool);
 
-  /// @notice Initialize plugin with fee configuration and security registry
+  /// @notice Initialize plugin with fee configuration, security registry, limit order manager and fee discount registry
   /// @param feeConfig The initial fee configuration
   /// @param securityRegistry The security registry address
-  function initialize(AlgebraFeeConfiguration calldata feeConfig, address securityRegistry) external;
+  /// @param limitOrderManager The limit order manager address
+  /// @param feeDiscountRegistry The fee discount registry address
+  function initialize(
+    AlgebraFeeConfiguration calldata feeConfig,
+    address securityRegistry,
+    address limitOrderManager,
+    address feeDiscountRegistry
+  ) external;
 }

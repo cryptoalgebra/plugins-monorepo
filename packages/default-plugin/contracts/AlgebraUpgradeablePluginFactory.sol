@@ -35,6 +35,10 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Limit Order
+    address limitOrderManager;
+    // Fee Discount
+    address feeDiscountRegistry;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -127,7 +131,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, s.limitOrderManager, s.feeDiscountRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -143,6 +147,16 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   /// @inheritdoc ISecurityPluginFactory
   function securityRegistry() external view override returns (address) {
     return _getStorage().securityRegistry;
+  }
+
+  /// @notice The limit order manager notified after each swap
+  function limitOrderManager() external view returns (address) {
+    return _getStorage().limitOrderManager;
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function feeDiscountRegistry() external view override returns (address) {
+    return _getStorage().feeDiscountRegistry;
   }
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -177,6 +191,18 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
+  }
+
+  /// @inheritdoc IFeeDiscountPluginFactory
+  function setFeeDiscountRegistry(address newFeeDiscountRegistry) external override onlyAdministrator {
+    _getStorage().feeDiscountRegistry = newFeeDiscountRegistry;
+    emit FeeDiscountRegistry(newFeeDiscountRegistry);
   }
 
   // ========== Upgrade Management ==========

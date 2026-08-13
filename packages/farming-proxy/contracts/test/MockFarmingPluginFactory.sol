@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.20;
 
-import '@cryptoalgebra/test-utils/contracts/MockPluginFactory.sol';
+import 'test-utils/contracts/MockPluginFactory.sol';
 
 /// @title Mock Farming Plugin Factory for FarmingProxy tests
 /// @dev Extends MockPluginFactory with farmingAddress for incentive authorization

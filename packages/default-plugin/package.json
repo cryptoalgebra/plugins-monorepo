@@ -26,6 +26,6 @@
   "devDependencies": {
     "decimal.js": "^10.5.0",
     "hardhat-contract-sizer": "^2.10.0",
-    "@cryptoalgebra/test-utils": "workspace:^"
+    "test-utils": "workspace:^"
   }
 }

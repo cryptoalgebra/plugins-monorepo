@@ -25,12 +25,12 @@ const config: HardhatUserConfig = {
   typechain: baseConfig.typechain,
   dependencyCompiler: {
     paths: [
-      '@cryptoalgebra/test-utils/contracts/MockFactory.sol',
-      '@cryptoalgebra/test-utils/contracts/MockPool.sol',
-      '@cryptoalgebra/test-utils/contracts/MockPluginFactory.sol',
-      '@cryptoalgebra/test-utils/contracts/MockERC20.sol',
-      '@cryptoalgebra/test-utils/contracts/BeaconImports.sol',
-      '@cryptoalgebra/test-utils/contracts/test/BeaconProxyDeployer.sol',
+      'test-utils/contracts/MockFactory.sol',
+      'test-utils/contracts/MockPool.sol',
+      'test-utils/contracts/MockPluginFactory.sol',
+      'test-utils/contracts/MockERC20.sol',
+      'test-utils/contracts/BeaconImports.sol',
+      'test-utils/contracts/test/BeaconProxyDeployer.sol',
       '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol',
       '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol',
     ],

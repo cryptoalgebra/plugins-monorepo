@@ -20,6 +20,6 @@
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
-    "@cryptoalgebra/test-utils": "workspace:^"
+    "test-utils": "workspace:^"
   }
 }

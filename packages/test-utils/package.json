@@ -1,5 +1,5 @@
 {
-  "name": "@cryptoalgebra/test-utils",
+  "name": "test-utils",
   "version": "1.0.0",
   "private": "true",
   "description": "Shared test utilities and mock contracts for Algebra plugins",

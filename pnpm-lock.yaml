@@ -82,7 +82,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -107,7 +107,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -131,18 +131,12 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.5
         version: 1.2.5
-      '@cryptoalgebra/limit-order-plugin':
-        specifier: workspace:^
-        version: link:../limit-order
       '@cryptoalgebra/safety-switch-plugin':
         specifier: workspace:^
         version: link:../safety-switch
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
         version: link:../volatility-oracle
-      '@cryptoalgebra/whitelist-fee-discount-plugin':
-        specifier: workspace:^
-        version: link:../whitelist-fee-discount
       '@openzeppelin/contracts':
         specifier: ^4.9.3
         version: 4.9.3
@@ -150,15 +144,15 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
-        specifier: workspace:^
-        version: link:../test-utils
       decimal.js:
         specifier: ^10.5.0
         version: 10.5.0
       hardhat-contract-sizer:
         specifier: ^2.10.0
         version: 2.10.1(hardhat@2.26.5(supports-color@8.1.1)(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3))
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
 
   packages/dynamic-fee:
     dependencies:
@@ -178,7 +172,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -200,7 +194,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -222,7 +216,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -244,7 +238,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -266,7 +260,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -282,7 +276,7 @@ importers:
         specifier: 4.9.3
         version: 4.9.3
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -304,7 +298,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -320,7 +314,7 @@ importers:
         specifier: 4.9.3
         version: 4.9.3
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -342,7 +336,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -364,7 +358,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -413,7 +407,7 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
+      test-utils:
         specifier: workspace:^
         version: link:../test-utils
 
@@ -432,12 +426,12 @@ importers:
         specifier: ^4.9.3
         version: 4.9.6
     devDependencies:
-      '@cryptoalgebra/test-utils':
-        specifier: workspace:^
-        version: link:../test-utils
       '@openzeppelin/contracts':
         specifier: ^4.9.3
         version: 4.9.3
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
 
 packages:
 

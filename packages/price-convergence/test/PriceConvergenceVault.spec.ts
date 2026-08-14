@@ -64,7 +64,7 @@ describe("PriceConvergenceVault", function () {
     ).to.be.revertedWithCustomError(Vault, "InvalidFactory");
 
     const VaultMath = await ethers.getContractFactory("VaultMath");
-    const otherVaultMath = await VaultMath.deploy(otherFactory.target, 100);
+    const otherVaultMath = await VaultMath.deploy(otherFactory.target);
     await expect(
       Vault.deploy(
         f.pool.target,
@@ -164,7 +164,7 @@ describe("PriceConvergenceVault", function () {
   it("gates and validates vault math replacement", async function () {
     const f = await loadFixture(deployVaultFixture);
     const VaultMath = await ethers.getContractFactory("VaultMath");
-    const newMath = await VaultMath.deploy(f.factory.target, 500);
+    const newMath = await VaultMath.deploy(f.factory.target);
 
     await expect(
       f.vault.connect(f.other).setVaultMath(newMath.target),
@@ -176,7 +176,7 @@ describe("PriceConvergenceVault", function () {
     // A math module wired to a different factory cannot be attached.
     const MockFactory = await ethers.getContractFactory("MockFactory");
     const foreignFactory = await MockFactory.deploy();
-    const foreignMath = await VaultMath.deploy(foreignFactory.target, 500);
+    const foreignMath = await VaultMath.deploy(foreignFactory.target);
     await expect(
       f.vault.connect(f.vaultManager).setVaultMath(foreignMath.target),
     ).to.be.revertedWithCustomError(f.vault, "InvalidFactory");
@@ -186,7 +186,7 @@ describe("PriceConvergenceVault", function () {
       .withArgs(newMath.target);
     expect(await f.vault.vaultMath()).to.equal(newMath.target);
   });
-  it("applies a replaced vault math at the next rebalance", async function () {
+  it("uses the replaced vault math at the next rebalance", async function () {
     const f = await loadFixture(deployVaultFixture);
     await approveDeposit(f.vault, f.token0, f.token1, f.user);
     await f.vault
@@ -194,20 +194,24 @@ describe("PriceConvergenceVault", function () {
       .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
     await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
 
-    // Position minted with the original math keeps its width (fixture deploys width 100).
     await f.vault.connect(f.rebalancer).rebalance(Q96);
-    let position = await f.vault.mainPosition();
-    expect(position.upper - position.lower).to.equal(100n);
+    const main = await f.vault.mainPosition();
+    const reserve = await f.vault.reservePosition();
+    expect(main.upper - main.lower).to.equal(1n);
+    expect(reserve.upper - reserve.lower).to.equal(1n);
 
     const VaultMath = await ethers.getContractFactory("VaultMath");
-    const newMath = await VaultMath.deploy(f.factory.target, 500);
+    const newMath = await VaultMath.deploy(f.factory.target);
     await f.vault.connect(f.vaultManager).setVaultMath(newMath.target);
+    expect(await f.vault.vaultMath()).to.equal(newMath.target);
 
-    // The replacement takes effect at the next rebalance: the new width is applied.
+    // The replacement takes effect at the next rebalance: it is the newly set instance's
+    // calculatePosition that produced these positions, not the original one.
     await f.vault.connect(f.rebalancer).rebalance(Q96);
-    position = await f.vault.mainPosition();
-    expect(position.upper - position.lower).to.equal(500n);
-    expect(position.liquidity).to.be.greaterThan(0n);
+    const mainAfter = await f.vault.mainPosition();
+    const reserveAfter = await f.vault.reservePosition();
+    expect(mainAfter.liquidity).to.be.greaterThan(0n);
+    expect(reserveAfter.liquidity).to.be.greaterThan(0n);
   });
   it("deposits into the real pool", async function () {
     const { user, token0, token1, vault } =
@@ -418,6 +422,36 @@ describe("PriceConvergenceVault", function () {
       "Rebalance",
     );
     expect((await f.vault.mainPosition()).liquidity).to.be.greaterThan(0);
+  });
+  it("deploys nearly all idle balance into positions after rebalance, without stranding either token", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+
+    // The full-range bootstrap mint only uses a sliver of the deposit; most of it is
+    // still sitting idle in the vault ahead of the first rebalance.
+    const idleBefore0 = await f.token0.balanceOf(f.vault.target);
+    const idleBefore1 = await f.token1.balanceOf(f.vault.target);
+    expect(idleBefore0).to.be.greaterThan(0n);
+    expect(idleBefore1).to.be.greaterThan(0n);
+
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+
+    // Regression coverage for the leftover-side bug: both tokens must end up deployed into
+    // the main or reserve position, not stranded idle in the vault.
+    const idleAfter0 = await f.token0.balanceOf(f.vault.target);
+    const idleAfter1 = await f.token1.balanceOf(f.vault.target);
+    const tolerance = DEPOSIT_AMOUNT / 10_000n;
+    expect(idleAfter0).to.be.at.most(tolerance);
+    expect(idleAfter1).to.be.at.most(tolerance);
+
+    const main = await f.vault.mainPosition();
+    const reserve = await f.vault.reservePosition();
+    expect(main.liquidity).to.be.greaterThan(0n);
+    expect(reserve.liquidity).to.be.greaterThan(0n);
   });
   it("moves pool price exactly to the rebalance target limit", async function () {
     const f = await loadFixture(deployVaultFixture);

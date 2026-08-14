@@ -14,7 +14,6 @@ const REBALANCER = "0x00009cc27c811a3e0FdD2Fd737afCc721B67eE8e";
 const PLUGIN_MANAGER = ZERO_ADDRESS;
 const GRANT_ROLES = true;
 
-const POSITION_WIDTH = 3000;
 const FULL_RANGE_LIQUIDITY = 1_000n;
 const TWAP_PERIOD = 120;
 const SET_REBALANCE_ENTRYPOINT = true;
@@ -149,10 +148,7 @@ async function main() {
     pluginImplementationAddress = await pluginImplementation.getAddress();
   }
 
-  const vaultMath = await deployContract("VaultMath", [
-    factory,
-    POSITION_WIDTH,
-  ]);
+  const vaultMath = await deployContract("VaultMath", [factory]);
   const vault = await deployContract("PriceConvergenceVault", [
     POOL,
     factory,
@@ -203,7 +199,6 @@ async function main() {
         pool: POOL,
         factory,
         erc4626Vault: ERC4626_VAULT,
-        positionWidth: POSITION_WIDTH,
         fullRangeLiquidity: FULL_RANGE_LIQUIDITY.toString(),
         twapPeriod: TWAP_PERIOD,
         pluginImplementation: pluginImplementationAddress,

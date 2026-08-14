@@ -62,18 +62,6 @@ describe("PriceConvergenceVault", function () {
         60,
       ),
     ).to.be.revertedWithCustomError(Vault, "InvalidFactory");
-
-    const VaultMath = await ethers.getContractFactory("VaultMath");
-    const otherVaultMath = await VaultMath.deploy(otherFactory.target);
-    await expect(
-      Vault.deploy(
-        f.pool.target,
-        f.factory.target,
-        1,
-        otherVaultMath.target,
-        60,
-      ),
-    ).to.be.revertedWithCustomError(Vault, "InvalidFactory");
   });
 
   it("gates and validates manager setters", async function () {
@@ -164,7 +152,7 @@ describe("PriceConvergenceVault", function () {
   it("gates and validates vault math replacement", async function () {
     const f = await loadFixture(deployVaultFixture);
     const VaultMath = await ethers.getContractFactory("VaultMath");
-    const newMath = await VaultMath.deploy(f.factory.target);
+    const newMath = await VaultMath.deploy();
 
     await expect(
       f.vault.connect(f.other).setVaultMath(newMath.target),
@@ -172,14 +160,6 @@ describe("PriceConvergenceVault", function () {
     await expect(
       f.vault.connect(f.vaultManager).setVaultMath(ethers.ZeroAddress),
     ).to.be.revertedWithCustomError(f.vault, "ZeroAddress");
-
-    // A math module wired to a different factory cannot be attached.
-    const MockFactory = await ethers.getContractFactory("MockFactory");
-    const foreignFactory = await MockFactory.deploy();
-    const foreignMath = await VaultMath.deploy(foreignFactory.target);
-    await expect(
-      f.vault.connect(f.vaultManager).setVaultMath(foreignMath.target),
-    ).to.be.revertedWithCustomError(f.vault, "InvalidFactory");
 
     await expect(f.vault.connect(f.vaultManager).setVaultMath(newMath.target))
       .to.emit(f.vault, "VaultMath")
@@ -201,7 +181,7 @@ describe("PriceConvergenceVault", function () {
     expect(reserve.upper - reserve.lower).to.equal(1n);
 
     const VaultMath = await ethers.getContractFactory("VaultMath");
-    const newMath = await VaultMath.deploy(f.factory.target);
+    const newMath = await VaultMath.deploy();
     await f.vault.connect(f.vaultManager).setVaultMath(newMath.target);
     expect(await f.vault.vaultMath()).to.equal(newMath.target);
 

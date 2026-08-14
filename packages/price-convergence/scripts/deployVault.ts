@@ -148,7 +148,7 @@ async function main() {
     pluginImplementationAddress = await pluginImplementation.getAddress();
   }
 
-  const vaultMath = await deployContract("VaultMath", [factory]);
+  const vaultMath = await deployContract("VaultMath");
   const vault = await deployContract("PriceConvergenceVault", [
     POOL,
     factory,

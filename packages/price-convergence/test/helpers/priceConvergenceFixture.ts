@@ -23,7 +23,7 @@ export async function deployVaultFixture() {
   await pool.setPluginConfig(BEFORE_SWAP_FLAG);
 
   const VaultMath = await ethers.getContractFactory("VaultMath");
-  const vaultMath = await VaultMath.deploy(core.factory.target);
+  const vaultMath = await VaultMath.deploy();
   const Vault = await ethers.getContractFactory("PriceConvergenceVault");
   const vault = await Vault.deploy(
     pool.target,

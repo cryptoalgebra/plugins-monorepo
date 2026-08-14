@@ -12,13 +12,6 @@ contract VaultMath is IVaultMath {
   /// The main and reserve positions are each exactly one tick wide.
   int24 public constant TICK_SPACING = 1;
 
-  address public immutable factory;
-
-  constructor(address _factory) {
-    if (_factory == address(0)) revert ZeroAddress();
-    factory = _factory;
-  }
-
   /// @notice Calculates the single-tick main position around the current price and, if one
   /// token remains after funding it, the single-sided reserve position that absorbs it.
   /// @dev amount0 and amount1 are raw token units. No decimal normalization is required because

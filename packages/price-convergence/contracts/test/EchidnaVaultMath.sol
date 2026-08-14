@@ -13,7 +13,7 @@ contract EchidnaVaultMath {
   int24 private immutable width;
 
   constructor() {
-    vaultMath = new VaultMath(address(this));
+    vaultMath = new VaultMath();
     width = vaultMath.TICK_SPACING();
   }
 

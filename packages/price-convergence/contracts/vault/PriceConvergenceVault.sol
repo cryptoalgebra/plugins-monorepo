@@ -79,7 +79,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     if (_fullRangeLiquidity == 0) revert ZeroValue();
     if (_twapPeriod == 0) revert InvalidTwapPeriod();
     if (IAlgebraPool(_pool).factory() != _factory) revert InvalidFactory();
-    if (IVaultMath(_vaultMath).factory() != _factory) revert InvalidFactory();
 
     pool = _pool;
     factory = _factory;
@@ -104,7 +103,6 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
 
   function setVaultMath(address _vaultMath) external onlyVaultManager {
     if (_vaultMath == address(0)) revert ZeroAddress();
-    if (IVaultMath(_vaultMath).factory() != factory) revert InvalidFactory();
     vaultMath = IVaultMath(_vaultMath);
     emit VaultMath(_vaultMath);
   }

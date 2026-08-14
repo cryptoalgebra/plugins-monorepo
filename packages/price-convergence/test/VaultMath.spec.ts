@@ -10,18 +10,15 @@ describe("VaultMath", function () {
   const BALANCE_SCALE = 10n ** 12n;
 
   async function deployFixture() {
-    const MockFactory = await ethers.getContractFactory("MockFactory");
-    const factory = await MockFactory.deploy();
-
     const VaultMath = await ethers.getContractFactory("VaultMath");
-    const vaultMath = await VaultMath.deploy(factory.target);
+    const vaultMath = await VaultMath.deploy();
 
     const VaultMathTestHelper = await ethers.getContractFactory(
       "VaultMathTestHelper",
     );
     const helper = await VaultMathTestHelper.deploy();
 
-    return { factory, vaultMath, helper };
+    return { vaultMath, helper };
   }
 
   function balancedRawAmounts(sqrtPriceX96: bigint) {
@@ -42,14 +39,6 @@ describe("VaultMath", function () {
   function dustTolerance(amount: bigint) {
     return amount / 1_000_000n + 10n;
   }
-
-  it("validates constructor factory address", async function () {
-    const VaultMath = await ethers.getContractFactory("VaultMath");
-
-    await expect(
-      VaultMath.deploy(ethers.ZeroAddress),
-    ).to.be.revertedWithCustomError(VaultMath, "ZeroAddress");
-  });
 
   it("rejects empty balances", async function () {
     const { vaultMath } = await loadFixture(deployFixture);

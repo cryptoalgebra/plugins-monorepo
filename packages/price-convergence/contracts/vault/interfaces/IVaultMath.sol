@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 interface IVaultMath {
   error InvalidPosition();
-  error ZeroAddress();
   error ZeroAmounts();
 
   struct RangePosition {
@@ -13,8 +12,6 @@ interface IVaultMath {
     uint256 used0;
     uint256 used1;
   }
-
-  function factory() external view returns (address);
 
   /// @notice Places the main position on the single tick containing the current price, then
   /// routes whichever token the main position could not use into a single-sided reserve

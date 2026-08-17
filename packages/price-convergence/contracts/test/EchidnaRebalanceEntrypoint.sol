@@ -193,6 +193,6 @@ contract EchidnaRebalanceEntrypoint {
     address token1 = shareIsToken0 ? address(quote) : address(share);
     EchidnaEntrypointVault vault = new EchidnaEntrypointVault(FACTORY, address(pool), token0, token1);
 
-    entrypoint = new RebalanceEntrypoint(address(vault), address(share));
+    entrypoint = new RebalanceEntrypoint(address(vault), address(share), token0, 0);
   }
 }

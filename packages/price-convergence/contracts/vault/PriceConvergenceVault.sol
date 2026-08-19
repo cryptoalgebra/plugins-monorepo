@@ -444,7 +444,8 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     return FullMath.mulDiv(difference, PRECISION, denominator);
   }
 
-  function _quoteAtSqrtPrice(uint160 sqrtPrice, uint256 amount, bool zeroToOne) private pure returns (uint256) {
+  /// @dev internal (not private) so PriceConvergenceVaultQuoteHelper can expose it for direct testing
+  function _quoteAtSqrtPrice(uint160 sqrtPrice, uint256 amount, bool zeroToOne) internal pure returns (uint256) {
     if (amount == 0) return 0;
 
     if (sqrtPrice <= type(uint128).max) {

@@ -7,11 +7,11 @@ import { Q96 } from "./helpers/priceConvergenceFixture";
 const REBALANCE_THRESHOLD = 10n ** 20n;
 
 describe("RebalanceEntrypoint", function () {
-  async function deployFixture(reversed = false) {
+  async function deployFixture(reversed = false, initialSqrtPriceX96 = Q96) {
     const [owner, priceManager, other] = await ethers.getSigners();
     const core = await algebraPoolDeployerMockFixture();
     const pool = await core.createPool();
-    await pool.initialize(Q96);
+    await pool.initialize(initialSqrtPriceX96);
     const Token = await ethers.getContractFactory("MockERC20");
     const asset = await Token.deploy("Asset", "AST", 6);
     const quote = await Token.deploy("Quote", "QTE", 18);
@@ -51,6 +51,12 @@ describe("RebalanceEntrypoint", function () {
   }
   async function deployNormalFixture() {
     return deployFixture(false);
+  }
+  // > type(uint128).max (2**128), so squaring it directly would overflow uint256 and
+  // _quoteAtSqrtPrice must take its FullMath.mulDiv-based branch instead of reverting.
+  const EXTREME_SQRT_PRICE_X96 = Q96 << 33n;
+  async function deployExtremePriceFixture() {
+    return deployFixture(false, EXTREME_SQRT_PRICE_X96);
   }
   it("normalizes asset, share, and quote decimals", async function () {
     const { entrypoint } = await loadFixture(deployNormalFixture);
@@ -191,6 +197,32 @@ describe("RebalanceEntrypoint", function () {
 
     // The last unit of idle balance tips the accumulated value over the threshold.
     await quote.mint(vault.target, 1n);
+    expect(await entrypoint.shouldRebalance()).to.equal(true);
+  });
+  it("quotes idle balances against a pool price above type(uint128).max without reverting", async function () {
+    // token0 = share, token1 = quote; value the idle share (token0) balance in quote (token1)
+    // terms, which is the multiplying direction of _quoteAtSqrtPrice - the one that would
+    // overflow uint256 if the contract always squared sqrtPriceX96 directly.
+    const { owner, entrypoint, vault, asset, share, token1 } =
+      await loadFixture(deployExtremePriceFixture);
+    await entrypoint.connect(owner).setThresholdToken(token1);
+
+    await asset.mint(owner.address, 1);
+    await asset.approve(share.target, 1);
+    await share.deposit(1, vault.target);
+    const shareBalance = await share.balanceOf(vault.target);
+    expect(shareBalance).to.be.greaterThan(0n);
+
+    // EXTREME_SQRT_PRICE_X96 is an exact power of two, so this mirrors
+    // _quoteAtSqrtPrice's math (ratioX128 = sqrtPrice**2 / 2**64, then * amount / Q128)
+    // with no rounding, letting the threshold be pinned to the exact boundary.
+    const priceRatio = (EXTREME_SQRT_PRICE_X96 * EXTREME_SQRT_PRICE_X96) / (1n << 192n);
+    const quotedValue = shareBalance * priceRatio;
+
+    await entrypoint.connect(owner).setRebalanceThreshold(quotedValue + 1n);
+    expect(await entrypoint.shouldRebalance()).to.equal(false);
+
+    await entrypoint.connect(owner).setRebalanceThreshold(quotedValue);
     expect(await entrypoint.shouldRebalance()).to.equal(true);
   });
   it("gates and applies the threshold setters", async function () {

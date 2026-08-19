@@ -9,16 +9,22 @@ const deployed = {
   farmingProxyImpl: "0x000000000000000000000000000000000000000000",
   almImpl: "0x000000000000000000000000000000000000000000",
   securityImpl: "0x000000000000000000000000000000000000000000",
+  factoryImpl: "0x000000000000000000000000000000000000000000",
+  limitOrderImpl: "0x000000000000000000000000000000000000000000",
+  feeDiscountImpl: "0x000000000000000000000000000000000000000000",
+  pluginImpl: "0x000000000000000000000000000000000000000000",
   proxyAdmin: "0x000000000000000000000000000000000000000000",
   factoryProxy: "0x000000000000000000000000000000000000000000",
-  pluginImpl: "0x000000000000000000000000000000000000000000",
-  factoryImpl: "0x000000000000000000000000000000000000000000",
+  limitOrderManager: "0x000000000000000000000000000000000000000000",
+  feeDiscountRegistry: "0x000000000000000000000000000000000000000000",
   securityRegistry: "0x000000000000000000000000000000000000000000",
 };
 
 // ============= SAME CONFIG AS DEPLOY SCRIPT =============
 const config = {
   algebraFactory: "0x000000000000000000000000000000000000000000",
+  wnative: "0x000000000000000000000000000000000000000000",
+  poolDeployer: "0x000000000000000000000000000000000000000000",
 };
 
 async function verify(name: string, address: string, constructorArguments: any[]) {
@@ -55,7 +61,9 @@ async function main() {
     ["AlmPluginImplementation", deployed.almImpl],
     ["SecurityPluginImplementation", deployed.securityImpl],
     ["ProxyAdmin", deployed.proxyAdmin],
-    ["AlgebraUpgradeablePluginFactory", deployed.factoryImpl],
+    ["FactoryImplementation", deployed.factoryImpl],
+    ["FeeDiscountPluginImplementation", deployed.feeDiscountImpl],
+    ["LimitOrderPluginImplementation", deployed.limitOrderImpl],
   ] as const;
 
   for (const [name, address] of noArgContracts) {
@@ -70,7 +78,7 @@ async function main() {
   ]);
 
   // 3. AlgebraUpgradeablePlugin
-  await verify("AlgebraUpgradeablePlugin", deployed.pluginImpl, [
+  await verify("AlgebraUpgradeablePlugin (PluginImplementation)", deployed.pluginImpl, [
     config.algebraFactory,
     deployed.factoryProxy,
     deployed.volatilityOracleImpl,
@@ -78,11 +86,23 @@ async function main() {
     deployed.farmingProxyImpl,
     deployed.almImpl,
     deployed.securityImpl,
+    deployed.limitOrderImpl,
+    deployed.feeDiscountImpl,
   ]);
 
   // 4. SecurityRegistry
   await verify("SecurityRegistry", deployed.securityRegistry, [config.algebraFactory]);
 
+  // 5.  LimitOrderManager
+  await verify("LimitOrderManager", deployed.limitOrderManager, [
+    config.wnative,
+    config.poolDeployer,
+    deployed.factoryProxy,
+    config.algebraFactory,
+  ]);
+
+    // 6.  FeeDiscountRegistry
+  await verify("FeeDiscountRegistry", deployed.feeDiscountRegistry, [config.algebraFactory]);
 
   console.log("\n========================================");
   console.log("=== VERIFICATION COMPLETE ===");

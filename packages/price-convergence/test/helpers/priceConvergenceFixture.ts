@@ -7,6 +7,52 @@ export const FULL_RANGE_LIQUIDITY = 1_000n;
 export const MIN_SHARES = 1_000_000n;
 export const BEFORE_SWAP_FLAG = 1;
 
+/// Deploys a PriceConvergenceVault implementation behind its own dedicated
+/// TransparentUpgradeableProxy + ProxyAdmin, mirroring how a real deployment wires it up -
+/// pool/factory/fullRangeLiquidity are immutable (baked into the implementation), everything
+/// else is set up by initialize() through the proxy.
+export async function deployVaultProxy(
+  poolAddress: string,
+  factoryAddress: string,
+  vaultMathAddress: string,
+  twapPeriod: number,
+  fullRangeLiquidity: bigint = FULL_RANGE_LIQUIDITY,
+  // The implementation's constructor is what sets `deployer` (whoever deploys the implementation
+  // - the proxy itself doesn't run a constructor), so this is who deployer() ends up reporting.
+  deployerSigner?: Parameters<typeof ethers.getContractFactory>[1],
+) {
+  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdmin = await ProxyAdmin.deploy();
+
+  const Vault = await ethers.getContractFactory(
+    "PriceConvergenceVault",
+    deployerSigner,
+  );
+  const implementation = await Vault.deploy(
+    poolAddress,
+    factoryAddress,
+    fullRangeLiquidity,
+  );
+
+  const initData = implementation.interface.encodeFunctionData("initialize", [
+    vaultMathAddress,
+    twapPeriod,
+  ]);
+
+  const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxy = await Proxy.deploy(
+    implementation.target,
+    proxyAdmin.target,
+    initData,
+  );
+
+  const vault = await ethers.getContractAt(
+    "PriceConvergenceVault",
+    proxy.target,
+  );
+  return { vault, implementation, proxyAdmin };
+}
+
 export async function deployVaultFixture() {
   const [owner, vaultManager, user, other, rebalancer] =
     await ethers.getSigners();
@@ -24,14 +70,13 @@ export async function deployVaultFixture() {
 
   const VaultMath = await ethers.getContractFactory("VaultMath");
   const vaultMath = await VaultMath.deploy();
-  const Vault = await ethers.getContractFactory("PriceConvergenceVault");
-  const vault = await Vault.deploy(
-    pool.target,
-    core.factory.target,
-    FULL_RANGE_LIQUIDITY,
-    vaultMath.target,
-    60,
-  );
+  const { vault, implementation: vaultImplementation, proxyAdmin } =
+    await deployVaultProxy(
+      pool.target as string,
+      core.factory.target as string,
+      vaultMath.target as string,
+      60,
+    );
 
   const role = ethers.keccak256(
     ethers.toUtf8Bytes("PRICE_CONVERGENCE_VAULT_MANAGER"),
@@ -53,6 +98,8 @@ export async function deployVaultFixture() {
     oracle,
     vaultMath,
     vault,
+    vaultImplementation,
+    proxyAdmin,
     role,
     swapTargetCallee: core.swapTargetCallee,
   };

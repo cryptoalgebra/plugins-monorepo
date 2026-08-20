@@ -9,9 +9,10 @@ import '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol';
-import '@openzeppelin/contracts/security/Pausable.sol';
-import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './interfaces/IPriceConvergenceOracle.sol';
@@ -20,7 +21,15 @@ import './interfaces/IVaultMath.sol';
 
 /// @title Price Convergence Vault
 /// @notice Owns direct Algebra pool liquidity for the Price Convergence strategy.
-contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, IAlgebraSwapCallback, ERC20, Pausable, ReentrancyGuard {
+contract PriceConvergenceVault is
+  Initializable,
+  IPriceConvergenceVault,
+  IAlgebraMintCallback,
+  IAlgebraSwapCallback,
+  ERC20Upgradeable,
+  PausableUpgradeable,
+  ReentrancyGuardUpgradeable
+{
   using SafeERC20 for IERC20;
   int24 public constant TICK_SPACING = 1;
   uint256 public constant PRECISION = 1e18;
@@ -68,16 +77,12 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     _;
   }
 
-  constructor(
-    address _pool,
-    address _factory,
-    uint128 _fullRangeLiquidity,
-    address _vaultMath,
-    uint32 _twapPeriod
-  ) ERC20('Price Convergence Vault', 'pcALM') {
-    if (_pool == address(0) || _factory == address(0) || _vaultMath == address(0)) revert ZeroAddress();
+  /// @dev Runs once, when this implementation itself is deployed - before any proxy exists.
+  /// Only the values genuinely fixed for the vault's whole life live here; everything else is
+  /// set up by initialize() instead, through the proxy.
+  constructor(address _pool, address _factory, uint128 _fullRangeLiquidity) {
+    if (_pool == address(0) || _factory == address(0)) revert ZeroAddress();
     if (_fullRangeLiquidity == 0) revert ZeroValue();
-    if (_twapPeriod == 0) revert InvalidTwapPeriod();
     if (IAlgebraPool(_pool).factory() != _factory) revert InvalidFactory();
 
     pool = _pool;
@@ -86,6 +91,19 @@ contract PriceConvergenceVault is IPriceConvergenceVault, IAlgebraMintCallback, 
     token0 = IAlgebraPool(_pool).token0();
     token1 = IAlgebraPool(_pool).token1();
     fullRangeLiquidity = _fullRangeLiquidity;
+    _disableInitializers();
+  }
+
+  /// @dev Runs once, through the proxy - the non-immutable half of what used to be the
+  /// constructor.
+  function initialize(address _vaultMath, uint32 _twapPeriod) external initializer {
+    if (_vaultMath == address(0)) revert ZeroAddress();
+    if (_twapPeriod == 0) revert InvalidTwapPeriod();
+
+    __ERC20_init('Price Convergence Vault', 'pcALM');
+    __Pausable_init();
+    __ReentrancyGuard_init();
+
     vaultMath = IVaultMath(_vaultMath);
     twapPeriod = _twapPeriod;
     auxTwapPeriod = _twapPeriod / 4;

@@ -3,10 +3,10 @@ import { ethers, network } from "hardhat";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 // Fill these before running the script.
-const POOL = "0x25827078A91d0875376A8A9F1BCfB35827Ce0d4f";
-const ERC4626_VAULT = "0x4db3fBA9958F7eE9715875E485cEae299714029C";
-const FACTORY = "0x285C74f3d01296F96c5d3858ab482f707e8Bfdfc"; // Leave zero to read factory from POOL.
-const PRICE_CONVERGENCE_PLUGIN = "0x61a2CdA69F3AFE2D976F777e4f820E278451500a"; // Optional: plugin proxy address.
+const POOL = "0x677deB381d39E44dE0641EaCB6E36637318043F7";
+const ERC4626_VAULT = "0xFF05E1bD696900dc6A52CA35Ca61Bb1024eDa8e2";
+const FACTORY = "0x53400eD24c77515397fC3A559fF1363DaB81B5c7"; // Leave zero to read factory from POOL.
+const PRICE_CONVERGENCE_PLUGIN = "0xcC0B75a60E62430e0C51b8A49eF050EDfC192337"; // Optional: plugin proxy address.
 
 // Leave zero to grant to the deployer.
 const VAULT_MANAGER = ZERO_ADDRESS;
@@ -14,10 +14,17 @@ const REBALANCER = "0x00009cc27c811a3e0FdD2Fd737afCc721B67eE8e";
 const PLUGIN_MANAGER = ZERO_ADDRESS;
 const GRANT_ROLES = true;
 
+// Owner of the ProxyAdmin governing the vault's proxy - the only account that can upgrade it.
+// Leave zero to default to the deployer.
+const PROXY_ADMIN_OWNER = ZERO_ADDRESS;
+
 const FULL_RANGE_LIQUIDITY = 1_000n;
 const TWAP_PERIOD = 120;
 const SET_REBALANCE_ENTRYPOINT = true;
 const DEPLOY_PLUGIN_IMPLEMENTATION = false;
+
+const THRESHOLD_TOKEN = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Fill in before running.
+const THRESHOLD_AMOUNT_HUMAN = "1000"; // In THRESHOLD_TOKEN's own decimals.
 
 const DEPLOY_CONFIRMATIONS = 1;
 const DEPLOY_TX_DELAY_MS = 2_000;
@@ -32,6 +39,8 @@ const roleManagerAbi = [
   "function grantRole(bytes32 role, address account)",
   "function hasRoleOrOwner(bytes32 role, address account) view returns (bool)",
 ];
+
+const erc20Abi = ["function decimals() view returns (uint8)"];
 
 function requireAddress(value: string, name: string) {
   if (!ethers.isAddress(value) || value === ZERO_ADDRESS) {
@@ -149,20 +158,70 @@ async function main() {
   }
 
   const vaultMath = await deployContract("VaultMath");
-  const vault = await deployContract("PriceConvergenceVault", [
+
+  const proxyAdminOwner =
+    PROXY_ADMIN_OWNER === ZERO_ADDRESS ? deployer.address : PROXY_ADMIN_OWNER;
+  const proxyAdmin = await deployContract("ProxyAdmin");
+  if (proxyAdminOwner !== deployer.address) {
+    await waitForTx(await proxyAdmin.transferOwnership(proxyAdminOwner));
+  }
+
+  const vaultImplementation = await deployContract("PriceConvergenceVault", [
     POOL,
     factory,
     FULL_RANGE_LIQUIDITY,
-    await vaultMath.getAddress(),
-    TWAP_PERIOD,
   ]);
+  const initData = vaultImplementation.interface.encodeFunctionData(
+    "initialize",
+    [await vaultMath.getAddress(), TWAP_PERIOD],
+  );
+  const vaultProxy = await deployContract("TransparentUpgradeableProxy", [
+    await vaultImplementation.getAddress(),
+    await proxyAdmin.getAddress(),
+    initData,
+  ]);
+  const vault = await ethers.getContractAt(
+    "PriceConvergenceVault",
+    await vaultProxy.getAddress(),
+  );
+
   const depositGuard = await deployContract(
     "PriceConvergenceVaultDepositGuard",
     [await vault.getAddress()],
   );
+
+  requireAddress(THRESHOLD_TOKEN, "THRESHOLD_TOKEN");
+  const token0Address = await vault.token0();
+  const token1Address = await vault.token1();
+  if (THRESHOLD_TOKEN !== token0Address && THRESHOLD_TOKEN !== token1Address) {
+    throw new Error(
+      `THRESHOLD_TOKEN ${THRESHOLD_TOKEN} is neither of the vault's tokens ` +
+        `(${token0Address}, ${token1Address})`,
+    );
+  }
+  const thresholdTokenContract = new ethers.Contract(
+    THRESHOLD_TOKEN,
+    erc20Abi,
+    deployer,
+  );
+  const thresholdDecimals = Number(await thresholdTokenContract.decimals());
+  const rebalanceThreshold = ethers.parseUnits(
+    THRESHOLD_AMOUNT_HUMAN,
+    thresholdDecimals,
+  );
+  console.log(
+    `Threshold token: ${THRESHOLD_TOKEN} (${thresholdDecimals} decimals)`,
+  );
+  console.log(
+    `Rebalance threshold: ${THRESHOLD_AMOUNT_HUMAN} ` +
+      `(${rebalanceThreshold.toString()} raw units)`,
+  );
+
   const rebalanceEntrypoint = await deployContract("RebalanceEntrypoint", [
     await vault.getAddress(),
     ERC4626_VAULT,
+    THRESHOLD_TOKEN,
+    rebalanceThreshold,
   ]);
 
   if (SET_REBALANCE_ENTRYPOINT) {
@@ -203,8 +262,13 @@ async function main() {
         twapPeriod: TWAP_PERIOD,
         pluginImplementation: pluginImplementationAddress,
         vaultMath: await vaultMath.getAddress(),
+        proxyAdmin: await proxyAdmin.getAddress(),
+        proxyAdminOwner,
+        vaultImplementation: await vaultImplementation.getAddress(),
         vault: await vault.getAddress(),
         depositGuard: await depositGuard.getAddress(),
+        thresholdToken: THRESHOLD_TOKEN,
+        rebalanceThreshold: rebalanceThreshold.toString(),
         rebalanceEntrypoint: await rebalanceEntrypoint.getAddress(),
       },
       null,

@@ -9,6 +9,7 @@ import {
   MIN_SHARES,
   Q96,
   deployVaultFixture,
+  deployVaultProxy,
 } from "./helpers/priceConvergenceFixture";
 
 describe("PriceConvergenceVault", function () {
@@ -24,45 +25,69 @@ describe("PriceConvergenceVault", function () {
   }
 
   it("validates constructor inputs", async function () {
+    // pool/factory/fullRangeLiquidity are immutable, validated by the constructor itself (it
+    // runs once, when the implementation is deployed - before any proxy exists).
     const f = await loadFixture(deployVaultFixture);
     const Vault = await ethers.getContractFactory("PriceConvergenceVault");
 
     await expect(
-      Vault.deploy(
-        ethers.ZeroAddress,
-        f.factory.target,
-        1,
-        f.vaultMath.target,
-        60,
-      ),
+      Vault.deploy(ethers.ZeroAddress, f.factory.target, 1),
     ).to.be.revertedWithCustomError(Vault, "ZeroAddress");
     await expect(
-      Vault.deploy(
-        f.pool.target,
-        ethers.ZeroAddress,
-        1,
-        f.vaultMath.target,
-        60,
-      ),
+      Vault.deploy(f.pool.target, ethers.ZeroAddress, 1),
     ).to.be.revertedWithCustomError(Vault, "ZeroAddress");
     await expect(
-      Vault.deploy(f.pool.target, f.factory.target, 0, f.vaultMath.target, 60),
+      Vault.deploy(f.pool.target, f.factory.target, 0),
     ).to.be.revertedWithCustomError(Vault, "ZeroValue");
-    await expect(
-      Vault.deploy(f.pool.target, f.factory.target, 1, f.vaultMath.target, 0),
-    ).to.be.revertedWithCustomError(Vault, "InvalidTwapPeriod");
 
     const MockFactory = await ethers.getContractFactory("MockFactory");
     const otherFactory = await MockFactory.deploy();
     await expect(
-      Vault.deploy(
-        f.pool.target,
-        otherFactory.target,
-        1,
-        f.vaultMath.target,
-        60,
-      ),
+      Vault.deploy(f.pool.target, otherFactory.target, 1),
     ).to.be.revertedWithCustomError(Vault, "InvalidFactory");
+  });
+
+  it("validates initialize inputs, and blocks initializing the bare implementation", async function () {
+    // vaultMath/twapPeriod are proxy storage, validated by initialize() - which only ever runs
+    // through a proxy's delegatecall, not directly on the implementation (the constructor's
+    // _disableInitializers() blocks that).
+    const f = await loadFixture(deployVaultFixture);
+    const Vault = await ethers.getContractFactory("PriceConvergenceVault");
+    const implementation = await Vault.deploy(
+      f.pool.target,
+      f.factory.target,
+      1,
+    );
+
+    await expect(
+      implementation.initialize(f.vaultMath.target, 60),
+    ).to.be.revertedWith("Initializable: contract is already initialized");
+
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const proxyAdmin = await ProxyAdmin.deploy();
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+    const proxy = await Proxy.deploy(
+      implementation.target,
+      proxyAdmin.target,
+      "0x", // skip calling initialize() from the proxy's own constructor
+    );
+    const uninitializedVault = await ethers.getContractAt(
+      "PriceConvergenceVault",
+      proxy.target,
+    );
+
+    await expect(
+      uninitializedVault.initialize(ethers.ZeroAddress, 60),
+    ).to.be.revertedWithCustomError(uninitializedVault, "ZeroAddress");
+    await expect(
+      uninitializedVault.initialize(f.vaultMath.target, 0),
+    ).to.be.revertedWithCustomError(uninitializedVault, "InvalidTwapPeriod");
+
+    await expect(uninitializedVault.initialize(f.vaultMath.target, 60)).to.not
+      .be.reverted;
+    await expect(
+      uninitializedVault.initialize(f.vaultMath.target, 60),
+    ).to.be.revertedWith("Initializable: contract is already initialized");
   });
 
   it("gates and validates manager setters", async function () {
@@ -113,16 +138,13 @@ describe("PriceConvergenceVault", function () {
 
   it("lets the deployer bootstrap the rebalance entrypoint once", async function () {
     const f = await loadFixture(deployVaultFixture);
-    const Vault = await ethers.getContractFactory(
-      "PriceConvergenceVault",
-      f.other,
-    );
-    const vault = await Vault.deploy(
-      f.pool.target,
-      f.factory.target,
-      FULL_RANGE_LIQUIDITY,
-      f.vaultMath.target,
+    const { vault } = await deployVaultProxy(
+      f.pool.target as string,
+      f.factory.target as string,
+      f.vaultMath.target as string,
       60,
+      FULL_RANGE_LIQUIDITY,
+      f.other,
     );
     expect(await vault.deployer()).to.equal(f.other.address);
 
@@ -853,15 +875,12 @@ describe("PriceConvergenceVault", function () {
 
       const VaultMath = await ethers.getContractFactory("VaultMath");
       const vaultMath = await VaultMath.deploy();
-      const PriceConvergenceVault = await ethers.getContractFactory(
-        "PriceConvergenceVault",
-      );
-      const vault = await PriceConvergenceVault.deploy(
-        pool.target,
-        core.factory.target,
-        FULL_RANGE_LIQUIDITY,
-        vaultMath.target,
+      const { vault } = await deployVaultProxy(
+        pool.target as string,
+        core.factory.target as string,
+        vaultMath.target as string,
         60,
+        FULL_RANGE_LIQUIDITY,
       );
       await vault.connect(owner).setRebalanceEntrypoint(owner.address);
 
@@ -967,8 +986,6 @@ describe("PriceConvergenceVault", function () {
         f.pool.target,
         f.factory.target,
         FULL_RANGE_LIQUIDITY,
-        f.vaultMath.target,
-        60,
       );
       return { helper };
     }

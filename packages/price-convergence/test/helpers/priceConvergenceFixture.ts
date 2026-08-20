@@ -54,5 +54,6 @@ export async function deployVaultFixture() {
     vaultMath,
     vault,
     role,
+    swapTargetCallee: core.swapTargetCallee,
   };
 }

@@ -12,7 +12,7 @@ contract VaultMath is IVaultMath {
   /// The main and reserve positions are each exactly one tick wide.
   int24 public constant TICK_SPACING = 1;
 
-  uint256 private constant ROUNDING_BUFFER = 4;
+  uint256 public constant ROUNDING_BUFFER = 4;
 
   /// @notice Calculates the single-tick main position around the current price and, if one
   /// token remains after funding it, the single-sided reserve position that absorbs it.

@@ -551,6 +551,204 @@ describe("PriceConvergenceVault", function () {
     expect(await f.vault.getTotalAmounts()).to.deep.equal([total0, total1]);
   });
 
+  it("converges entirely into token1 after a single swap crosses the main position's tick", async function () {
+    // At rebalance(Q96) the price sits exactly on the main tick's lower bound, so main already
+    // holds only token0 and reserve (funded by the token1 leftover) already holds only token1 -
+    // see VaultMath.spec.ts's boundary-price tests. One swap that pushes price past main's upper
+    // bound flips main to token1 too, so the whole vault - both positions together - ends up
+    // holding none of token0 at all.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+
+    const mainBefore = await f.vault.mainPosition();
+    const reserveBefore = await f.vault.reservePosition();
+    const [, main0Before, main1Before] = await f.vault.getMainPosition();
+    const [, reserve0Before, reserve1Before] = await f.vault.getReservePosition();
+    const tolerance = DEPOSIT_AMOUNT / 10_000n;
+    expect(DEPOSIT_AMOUNT - main0Before).to.be.at.most(tolerance);
+    expect(main1Before).to.equal(0n);
+    expect(reserve0Before).to.equal(0n);
+    expect(DEPOSIT_AMOUNT - reserve1Before).to.be.at.most(tolerance);
+
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    const target = await helper.getSqrtRatioAtTick(Number(mainBefore.upper) + 1);
+
+    // Crossing the main tick's own liquidity entirely can take close to as much token1 as the
+    // whole deposit - give the swap generous headroom rather than sizing it tightly.
+    const swapBudget = DEPOSIT_AMOUNT * 1000n;
+    await f.pool.setPluginConfig(0); // mock oracle doesn't implement the full plugin hook surface a real swap would trigger
+    await f.token1.transfer(f.other.address, swapBudget);
+    await f.token1.connect(f.other).approve(f.swapTargetCallee.target, swapBudget);
+    await f.swapTargetCallee
+      .connect(f.other)
+      .swapToHigherSqrtPrice(f.pool.target, target, f.other.address);
+
+    // A swap only moves price - it never mints or burns, so both stored positions must still be
+    // the exact same LP position (same ticks, same liquidity units) as before, just revalued.
+    const mainAfterStruct = await f.vault.mainPosition();
+    const reserveAfterStruct = await f.vault.reservePosition();
+    expect(mainAfterStruct.lower).to.equal(mainBefore.lower);
+    expect(mainAfterStruct.upper).to.equal(mainBefore.upper);
+    expect(mainAfterStruct.liquidity).to.equal(mainBefore.liquidity);
+    expect(reserveAfterStruct.lower).to.equal(reserveBefore.lower);
+    expect(reserveAfterStruct.upper).to.equal(reserveBefore.upper);
+    expect(reserveAfterStruct.liquidity).to.equal(reserveBefore.liquidity);
+
+    const [, main0After, main1After] = await f.vault.getMainPosition();
+    const [, reserve0After, reserve1After] = await f.vault.getReservePosition();
+    expect(main0After).to.equal(0n);
+    expect(main1After).to.be.greaterThan(0n);
+    expect(reserve0After).to.equal(0n);
+    // The reserve's range was never touched by this swap, so its value is exactly unchanged.
+    expect(reserve1After).to.equal(reserve1Before);
+  });
+
+  it("mints only the reserve position when rebalanced while fully one-sided, right next to the new price", async function () {
+    // Continuation of the scenario above: once main and reserve have both flowed entirely into
+    // token1, the next rebalance burns both positions and re-mints from scratch. A two-sided
+    // main position at the current price needs some of both tokens - LiquidityAmounts returns
+    // exactly zero liquidity when one side is exactly zero - so main stays unminted (liquidity 0,
+    // reset to {0,0} by the burn) and every real token ends up in the single-sided reserve
+    // instead. That reserve isn't left behind at the old range either: it's still placed exactly
+    // one tick from wherever the price ended up, since main's tick is recomputed fresh each time.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    const mainBefore = await f.vault.mainPosition();
+    const target = await helper.getSqrtRatioAtTick(Number(mainBefore.upper) + 1);
+
+    const swapBudget = DEPOSIT_AMOUNT * 1000n;
+    await f.pool.setPluginConfig(0); // mock oracle doesn't implement the full plugin hook surface a real swap would trigger
+    await f.token1.transfer(f.other.address, swapBudget);
+    await f.token1.connect(f.other).approve(f.swapTargetCallee.target, swapBudget);
+    await f.swapTargetCallee
+      .connect(f.other)
+      .swapToHigherSqrtPrice(f.pool.target, target, f.other.address);
+
+    const roundingBuffer = await f.vaultMath.ROUNDING_BUFFER();
+    const [totalToken0Before, totalToken1Before] = await f.vault.getShareholderAmounts();
+    expect(totalToken0Before).to.be.at.most(roundingBuffer);
+
+    const [currentSqrtPriceX96, currentTick] = await f.pool.globalState();
+    await f.vault.connect(f.rebalancer).rebalance(currentSqrtPriceX96);
+
+    const mainAfter = await f.vault.mainPosition();
+    const reserveAfter = await f.vault.reservePosition();
+    expect(mainAfter.liquidity).to.equal(0n);
+    expect(mainAfter.lower).to.equal(0n);
+    expect(mainAfter.upper).to.equal(0n);
+    expect(reserveAfter.liquidity).to.be.greaterThan(0n);
+    expect(reserveAfter.upper).to.equal(currentTick);
+    expect(reserveAfter.lower).to.equal(currentTick - 1n);
+
+    const [, reserve0After, reserve1After] = await f.vault.getReservePosition();
+    expect(reserve0After).to.equal(0n);
+    expect(reserve1After).to.be.greaterThan(0n);
+
+    // Burning both old positions and re-minting a single-sided reserve must conserve nearly all
+    // of the token1 value that was locked in them - only the deliberate rounding buffer (plus a
+    // few wei of ordinary rounding-down dust) may be left stranded idle instead of redeployed.
+    const [totalToken0After, totalToken1After] = await f.vault.getShareholderAmounts();
+    expect(totalToken0After).to.be.at.most(roundingBuffer);
+    expect(totalToken1Before - totalToken1After).to.be.at.most(roundingBuffer + 10n);
+  });
+
+  it("converges entirely into token0 across two separate swaps that together cross the reserve position's tick", async function () {
+    // main is already pinned to token0-only at rebalance(Q96) (see the test above) and stays
+    // that way throughout - only the reserve transitions here, and it takes two swaps to do it:
+    // one that lands inside the reserve's own tick (still mixed) and a second that pushes price
+    // past the reserve's lower bound entirely. The end state - fully in token0 - only depends on
+    // where price ends up, not on how many trades it took to get there.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+
+    const mainBefore = await f.vault.mainPosition();
+    const reserveBefore = await f.vault.reservePosition();
+    expect(reserveBefore.upper - reserveBefore.lower).to.equal(1n);
+    const [, main0Before] = await f.vault.getMainPosition();
+    const [, , reserve1Before] = await f.vault.getReservePosition();
+
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    const reserveLowerSqrt = await helper.getSqrtRatioAtTick(reserveBefore.lower);
+    const reserveUpperSqrt = await helper.getSqrtRatioAtTick(reserveBefore.upper);
+    const midReserve = (reserveLowerSqrt + reserveUpperSqrt) / 2n;
+    const belowReserve = await helper.getSqrtRatioAtTick(Number(reserveBefore.lower) - 1);
+
+    // Crossing the reserve tick's own liquidity entirely can take close to as much token0 as
+    // the whole deposit - give the swaps generous headroom rather than sizing them tightly.
+    const swapBudget = DEPOSIT_AMOUNT * 1000n;
+    await f.pool.setPluginConfig(0); // mock oracle doesn't implement the full plugin hook surface a real swap would trigger
+    await f.token0.transfer(f.other.address, swapBudget);
+    await f.token0.connect(f.other).approve(f.swapTargetCallee.target, swapBudget);
+
+    // First swap only reaches the middle of the reserve's own tick: still mixed, not converged.
+    await f.swapTargetCallee
+      .connect(f.other)
+      .swapToLowerSqrtPrice(f.pool.target, midReserve, f.other.address);
+
+    // Neither swap mints or burns, so main - never in this swap's price path - must still be the
+    // exact same (untouched) LP position, and reserve must still be the same liquidity units too,
+    // just partway revalued.
+    const mainMid = await f.vault.mainPosition();
+    const reserveMidStruct = await f.vault.reservePosition();
+    expect(mainMid.lower).to.equal(mainBefore.lower);
+    expect(mainMid.upper).to.equal(mainBefore.upper);
+    expect(mainMid.liquidity).to.equal(mainBefore.liquidity);
+    expect(reserveMidStruct.liquidity).to.equal(reserveBefore.liquidity);
+
+    const [, reserve0Mid, reserve1Mid] = await f.vault.getReservePosition();
+    expect(reserve0Mid).to.be.greaterThan(0n);
+    expect(reserve1Mid).to.be.greaterThan(0n);
+    // Partway converted: strictly less token1 left than the fully one-sided starting point.
+    expect(reserve1Mid).to.be.lessThan(reserve1Before);
+
+    // Second swap pushes price below the reserve tick entirely.
+    await f.swapTargetCallee
+      .connect(f.other)
+      .swapToLowerSqrtPrice(f.pool.target, belowReserve, f.other.address);
+
+    const mainAfterStruct = await f.vault.mainPosition();
+    const reserveAfterStruct = await f.vault.reservePosition();
+    expect(mainAfterStruct.lower).to.equal(mainBefore.lower);
+    expect(mainAfterStruct.upper).to.equal(mainBefore.upper);
+    expect(mainAfterStruct.liquidity).to.equal(mainBefore.liquidity);
+    expect(reserveAfterStruct.liquidity).to.equal(reserveBefore.liquidity);
+
+    const [, main0After, main1After] = await f.vault.getMainPosition();
+    const [, reserve0After, reserve1After] = await f.vault.getReservePosition();
+    // main was already pinned at the tick-0 boundary before either swap and never entered the
+    // swaps' price path, so its value is exactly unchanged throughout.
+    expect(main0After).to.equal(main0Before);
+    expect(main1After).to.equal(0n);
+    expect(reserve0After).to.be.greaterThan(reserve0Mid);
+    expect(reserve1After).to.equal(0n);
+  });
+
   it("mints both positions cleanly even when funded to VaultMath's own tightest computed budget", async function () {
     // VaultMath.used0/used1 come from LiquidityAmounts.getAmountsForLiquidity, which rounds
     // down; if the pool's actual mint ever charged more for that same liquidity (e.g. by
@@ -593,32 +791,33 @@ describe("PriceConvergenceVault", function () {
     await expect(f.vault.connect(f.owner).rebalance(currentSqrtPriceX96)).to
       .not.be.reverted;
 
-    expect(await f.token0.balanceOf(f.vault.target)).to.equal(0n);
-    expect(await f.token1.balanceOf(f.vault.target)).to.equal(0n);
+    // VaultMath withholds ROUNDING_BUFFER wei of budget on purpose (the pool's core mint math
+    // can round up beyond this contract's periphery-based estimate), so up to that much per
+    // token is expected to be left stranded idle rather than an exact zero.
+    const roundingBuffer = await f.vaultMath.ROUNDING_BUFFER();
+    expect(await f.token0.balanceOf(f.vault.target)).to.be.at.most(roundingBuffer);
+    expect(await f.token1.balanceOf(f.vault.target)).to.be.at.most(roundingBuffer);
     expect((await f.vault.mainPosition()).liquidity).to.be.greaterThan(0n);
     expect((await f.vault.reservePosition()).liquidity).to.be.greaterThan(0n);
   });
 
   describe("rebalance across decimal pairs, token order, price direction, and amount size", function () {
-    // KNOWN BUG - every case below currently FAILS (red on purpose), none are fixed in this
-    // codebase yet. Left unskipped deliberately so the suite stays red until this is fixed -
-    // that failure is the signal that a fix landed and this file needs updating, not a flake.
+    // Regression coverage for a real reported production failure ('ERC20: transfer amount
+    // exceeds balance' from algebraMintCallback's unguarded safeTransfer, which - unlike
+    // _paySwap - has no balance check before transferring) at one specific reported price. That
+    // exact repro turned out to generalize completely: every decimals pair (18/18, 6/18, 18/6,
+    // 8/8, 6/6), both token orders (Algebra assigns token0/token1 by address, so
+    // decimalsA/decimalsB don't map to a fixed side), both price directions, and both a small
+    // and a large deposit failed the same way. The one thing that mattered: the target price
+    // must NOT sit exactly on a tick boundary. An exact getSqrtRatioAtTick(tick) value never
+    // reproduced it; landing a third of the way into the tick - which is what any real swap or
+    // oracle-derived price actually looks like - reproduced it every time. So this was not an
+    // edge case, it was the normal case.
     //
-    // Reproduces a real reported production failure ('ERC20: transfer amount exceeds balance'
-    // from algebraMintCallback's unguarded safeTransfer, which - unlike _paySwap - has no
-    // balance check before transferring) at one specific reported price. That exact repro
-    // turned out to generalize completely: every decimals pair (18/18, 6/18, 18/6, 8/8, 6/6),
-    // both token orders (Algebra assigns token0/token1 by address, so decimalsA/decimalsB don't
-    // map to a fixed side), both price directions, and both a small and a large deposit fail
-    // the same way here. The one thing that mattered: the target price must NOT sit exactly on
-    // a tick boundary. An exact getSqrtRatioAtTick(tick) value never reproduced it; landing a
-    // third of the way into the tick - which is what any real swap or oracle-derived price
-    // actually looks like - reproduces it every time. So this is not an edge case, it's the
-    // normal case.
-    //
-    // The team fixed the real occurrence of this by changing VaultMath (exact diff not
-    // available to port here). Once that fix (or an equivalent one) lands in this package,
-    // these should all start passing.
+    // Fixed by VaultMath.ROUNDING_BUFFER, which withholds a few wei of budget so the pool's own
+    // core mint math (which can round up beyond this contract's periphery-based estimate) never
+    // gets asked for more than the vault actually holds. All cases below now pass; keep this
+    // suite unskipped so any regression in that fix shows up here again.
     async function deployForDecimals(decimalsA: number, decimalsB: number) {
       const [owner, vaultManager, user] = await ethers.getSigners();
       const core = await algebraPoolDeployerMockFixture();

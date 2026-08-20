@@ -12,6 +12,8 @@ contract VaultMath is IVaultMath {
   /// The main and reserve positions are each exactly one tick wide.
   int24 public constant TICK_SPACING = 1;
 
+  uint256 private constant ROUNDING_BUFFER = 4;
+
   /// @notice Calculates the single-tick main position around the current price and, if one
   /// token remains after funding it, the single-sided reserve position that absorbs it.
   /// @dev amount0 and amount1 are raw token units. No decimal normalization is required because
@@ -22,6 +24,9 @@ contract VaultMath is IVaultMath {
     uint256 amount1
   ) external pure returns (RangePosition memory mainPosition, RangePosition memory reservePosition) {
     if (amount0 == 0 && amount1 == 0) revert ZeroAmounts();
+
+    amount0 = amount0 > ROUNDING_BUFFER ? amount0 - ROUNDING_BUFFER : 0;
+    amount1 = amount1 > ROUNDING_BUFFER ? amount1 - ROUNDING_BUFFER : 0;
 
     int24 lower = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
     int24 upper = lower + TICK_SPACING;

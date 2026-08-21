@@ -3,6 +3,7 @@
   "plugins": [],
   "rules": {
     "compiler-version": ["error", "^0.8.20"],
+    "quotes": ["error", "single"],
     "func-visibility": ["warn", { "ignoreConstructors": true }],
     "max-line-length": ["warn", 120],
     "no-empty-blocks": "off",

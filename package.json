@@ -4,16 +4,20 @@
   "scripts": {
     "test": "pnpm -r test",
     "compile": "pnpm -r compile",
-    "lint": "solhint 'packages/*/contracts/**/*.sol'",
-    "format": "prettier --write 'packages/*/contracts/**/*.sol'",
+    "lint": "solhint \"packages/*/contracts/**/*.sol\"",
+    "format": "prettier --write \"packages/*/contracts/**/*.sol\"",
     "format:check": "prettier --check 'packages/*/contracts/**/*.sol'",
     "remove-node-modules": "rm -rf node_modules && pnpm -r remove-node-modules",
     "clean": "pnpm -r clean"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@nomicfoundation/hardhat-ethers": "^3.1.0",
     "@nomicfoundation/hardhat-ignition": "^0.15.15",
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.16",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
     "@nomicfoundation/hardhat-toolbox": "^6.1.1",
+    "dotenv": "^16.4.7",
     "ethers": "^6.15.0",
     "hardhat": "^2.26.5",
     "hardhat-dependency-compiler": "^1.2.1",

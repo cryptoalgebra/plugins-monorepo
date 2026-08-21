@@ -124,6 +124,13 @@ describe("PriceConvergenceVaultDepositGuard", function () {
         .connect(f.user)
         .withdraw(shares, f.user.address, DEPOSIT_AMOUNT, DEPOSIT_AMOUNT),
     ).to.be.revertedWithCustomError(f.guard, "InsufficientAmounts");
+    // With only the token1 minimum out of reach the amount0 check passes first, so this is the
+    // one that has to fire - the case above never gets that far.
+    await expect(
+      f.guard
+        .connect(f.user)
+        .withdraw(shares, f.user.address, 0, DEPOSIT_AMOUNT),
+    ).to.be.revertedWithCustomError(f.guard, "InsufficientAmounts");
     expect(await f.vault.balanceOf(f.user.address)).to.equal(shares);
   });
 });

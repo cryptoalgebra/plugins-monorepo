@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { MAX_SQRT_RATIO } from "@cryptoalgebra/test-utils/utilities";
 import { algebraPoolDeployerMockFixture } from "../../test-utils/externalFixtures";
 import {
   BEFORE_SWAP_FLAG,
@@ -12,6 +13,8 @@ import {
 } from "./helpers/priceConvergenceFixture";
 
 describe("PriceConvergenceVault", function () {
+  const Q192 = 1n << 192n;
+
   // Vault integration tests use the real Algebra pool.
   async function approveDeposit(
     vault: any,
@@ -44,6 +47,9 @@ describe("PriceConvergenceVault", function () {
         f.vaultMath.target,
         60,
       ),
+    ).to.be.revertedWithCustomError(Vault, "ZeroAddress");
+    await expect(
+      Vault.deploy(f.pool.target, f.factory.target, 1, ethers.ZeroAddress, 60),
     ).to.be.revertedWithCustomError(Vault, "ZeroAddress");
     await expect(
       Vault.deploy(f.pool.target, f.factory.target, 0, f.vaultMath.target, 60),
@@ -299,6 +305,60 @@ describe("PriceConvergenceVault", function () {
         .connect(f.user)
         .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
     ).to.be.revertedWithCustomError(f.vault, "PriceManipulation");
+
+    // A pool with no plugin at all is rejected the same way as one whose plugin does not
+    // declare the oracle hook - the flag being set does not make a missing oracle usable.
+    await f.pool.setPlugin(ethers.ZeroAddress);
+    await expect(
+      f.vault
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
+    ).to.be.revertedWithCustomError(f.vault, "OracleNotConnected");
+  });
+
+  it("rejects a deposit when only the aux window deviates from spot", async function () {
+    // The short aux window is there to catch a move the longer twap has already smoothed over,
+    // so a deviation seen only there still has to trip the manipulation guard.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.oracle.setTwapTick(0); // the main window agrees with spot
+    await f.oracle.setTwapTickForPeriod(15, 10_000); // the aux window does not
+    await f.oracle.setReturnCurrentTimestamp(true);
+
+    await expect(
+      f.vault
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
+    ).to.be.revertedWithCustomError(f.vault, "PriceManipulation");
+  });
+
+  it("falls back to the main twap when the aux window is switched off", async function () {
+    // setTwapPeriods accepts a zero aux window, and the constructor produces one by itself for
+    // any twapPeriod below four, so this is a reachable configuration rather than a corner.
+    const f = await loadFixture(deployVaultFixture);
+    await f.vault.connect(f.vaultManager).setTwapPeriods(60, 0);
+    expect(await f.vault.auxTwapPeriod()).to.equal(0);
+
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    await f.oracle.setTwapTick(-5_000);
+    await f.oracle.setTwapTickForPeriod(15, -10_000); // what the aux window would have said
+    const twapSqrtPrice = await helper.getSqrtRatioAtTick(-5_000);
+
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    // Priced at the main twap: the disabled window is not consulted, so its much lower tick
+    // never becomes the minimum.
+    const expectedShares =
+      ((DEPOSIT_AMOUNT * twapSqrtPrice * twapSqrtPrice) / Q192 +
+        DEPOSIT_AMOUNT) *
+      MIN_SHARES;
+    expect(await f.vault.balanceOf(f.user.address)).to.equal(expectedShares);
   });
 
   it("withdraws and permits a later deposit", async function () {
@@ -801,6 +861,330 @@ describe("PriceConvergenceVault", function () {
     expect((await f.vault.reservePosition()).liquidity).to.be.greaterThan(0n);
   });
 
+  it("collects fees accrued since the last rebalance before pricing a later deposit", async function () {
+    // deposit() collects into the vault whenever a position already exists, so a depositor
+    // arriving after the vault has earned trading fees is priced against a NAV that already
+    // includes them. Every other deposit test runs against an empty or freshly bootstrapped
+    // vault, so that branch has never been taken.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+
+    // Trade inside the main position's own tick so it earns fees without leaving its range.
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    const upperBoundary = await helper.getSqrtRatioAtTick(1);
+    const targetPrice = Q96 + (upperBoundary - Q96) / 3n;
+
+    await f.pool.setPluginConfig(0); // mock oracle doesn't implement the full plugin hook surface a real swap would trigger
+    await f.token0.transfer(f.other.address, DEPOSIT_AMOUNT);
+    await f.token1.transfer(f.other.address, DEPOSIT_AMOUNT);
+    await f.token0.connect(f.other).approve(f.swapTargetCallee.target, DEPOSIT_AMOUNT);
+    await f.token1.connect(f.other).approve(f.swapTargetCallee.target, DEPOSIT_AMOUNT);
+    await f.swapTargetCallee
+      .connect(f.other)
+      .swapToHigherSqrtPrice(f.pool.target, targetPrice, f.other.address);
+    await f.pool.setPluginConfig(BEFORE_SWAP_FLAG); // deposit() needs the oracle hook back on
+
+    const [owedFees0, owedFees1] = await f.vault
+      .connect(f.vaultManager)
+      .collectFees.staticCall();
+    expect(owedFees0 + owedFees1).to.be.greaterThan(0n);
+    const idle0Before = await f.token0.balanceOf(f.vault.target);
+    const idle1Before = await f.token1.balanceOf(f.vault.target);
+
+    await f.token0.connect(f.user).approve(f.vault.target, DEPOSIT_AMOUNT);
+    await f.token1.connect(f.user).approve(f.vault.target, DEPOSIT_AMOUNT);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    // The deposit pulled the owed fees out of the pool on its way in: the vault's idle balance
+    // grew by the deposit plus exactly those fees, and nothing is left uncollected behind it.
+    expect(await f.token0.balanceOf(f.vault.target)).to.equal(
+      idle0Before + DEPOSIT_AMOUNT + owedFees0,
+    );
+    expect(await f.token1.balanceOf(f.vault.target)).to.equal(
+      idle1Before + DEPOSIT_AMOUNT + owedFees1,
+    );
+    const [remainingFees0, remainingFees1] = await f.vault
+      .connect(f.vaultManager)
+      .collectFees.staticCall();
+    expect(remainingFees0).to.equal(0n);
+    expect(remainingFees1).to.equal(0n);
+  });
+
+  it("prices a deposit at the lowest of the three prices and existing holdings at the highest", async function () {
+    // Every other deposit test runs with spot, twap and auxTwap identical, so neither the
+    // min-of-three that values the incoming deposit nor the max-of-three that values the
+    // vault's existing holdings has ever actually had anything to choose between.
+    const f = await loadFixture(deployVaultFixture);
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+
+    // Both oracle windows below spot, the shorter one lowest: the deposit is valued there.
+    // The deviation is far beyond the hysteresis, but the mock's last timepoint predates this
+    // block, so the manipulation guard correctly stays out of the way.
+    await f.oracle.setTwapTick(-5_000);
+    await f.oracle.setTwapTickForPeriod(15, -10_000); // auxTwapPeriod is twapPeriod / 4
+    const auxSqrtPrice = await helper.getSqrtRatioAtTick(-10_000);
+
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    const expectedShares =
+      ((DEPOSIT_AMOUNT * auxSqrtPrice * auxSqrtPrice) / Q192 + DEPOSIT_AMOUNT) *
+      MIN_SHARES;
+    expect(await f.vault.balanceOf(f.user.address)).to.equal(expectedShares);
+    // Valued at spot (1:1) the same deposit would have minted strictly more.
+    expect(expectedShares).to.be.lessThan(DEPOSIT_AMOUNT * 2n * MIN_SHARES);
+
+    // Now put both windows above spot. The holdings are valued at the highest of the three, so
+    // the next depositor buys into a richer NAV and receives fewer shares than a spot-only
+    // valuation of those same holdings would have given.
+    await f.oracle.setTwapTick(5_000);
+    await f.oracle.setTwapTickForPeriod(15, 10_000);
+    const [total0, total1] = await f.vault.getShareholderAmounts();
+    const [spotSqrtPrice] = await f.pool.globalState();
+    const totalValueAtSpot =
+      (total0 * spotSqrtPrice * spotSqrtPrice) / Q192 + total1;
+    const supply = await f.vault.totalSupply();
+    const sharesBefore = await f.vault.balanceOf(f.user.address);
+
+    await f.token0.connect(f.user).approve(f.vault.target, DEPOSIT_AMOUNT);
+    await f.token1.connect(f.user).approve(f.vault.target, DEPOSIT_AMOUNT);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    const minted = (await f.vault.balanceOf(f.user.address)) - sharesBefore;
+    expect(minted).to.be.lessThan(
+      (DEPOSIT_AMOUNT * 2n * supply) / totalValueAtSpot,
+    );
+  });
+
+  it("accepts a deviating deposit while the oracle's last timepoint predates this block", async function () {
+    // The manipulation guard has two conditions and only the fresh-timepoint half is asserted
+    // elsewhere ("rejects deposits when oracle checks fail"). A deviation this large is allowed
+    // through when nothing wrote to the oracle in this very block, which is the normal case.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.oracle.setTwapTick(10_000); // far outside the 0.5% default hysteresis
+    await f.oracle.setLastTimepointTimestamp(1);
+
+    await expect(
+      f.vault
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
+    ).to.emit(f.vault, "Deposit");
+  });
+
+  it("rounds a negative average tick down rather than toward zero", async function () {
+    // _consult floors the tick delta by hand; plain integer division would land one tick higher
+    // and value the deposit above what the oracle actually reported.
+    const f = await loadFixture(deployVaultFixture);
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+
+    // -1 tick per second over the window, skewed by one so the delta stops dividing evenly.
+    await f.oracle.setTwapTick(-1);
+    await f.oracle.setCumulativeSkew(1);
+    const flooredSqrtPrice = await helper.getSqrtRatioAtTick(-2);
+    const truncatedSqrtPrice = await helper.getSqrtRatioAtTick(-1);
+
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    const flooredShares =
+      ((DEPOSIT_AMOUNT * flooredSqrtPrice * flooredSqrtPrice) / Q192 +
+        DEPOSIT_AMOUNT) *
+      MIN_SHARES;
+    const truncatedShares =
+      ((DEPOSIT_AMOUNT * truncatedSqrtPrice * truncatedSqrtPrice) / Q192 +
+        DEPOSIT_AMOUNT) *
+      MIN_SHARES;
+    expect(flooredShares).to.not.equal(truncatedShares);
+    expect(await f.vault.balanceOf(f.user.address)).to.equal(flooredShares);
+  });
+
+  it("pays out a single token on a partial withdrawal while the vault has converged into token1", async function () {
+    // Picks up where the one-sided convergence tests stop: they assert the state and end there,
+    // but every operation started from that state is a separate untested path. A withdrawal has
+    // only one side left to pay in, and it must leave both positions alive on their own ticks.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+    await f.vault.connect(f.rebalancer).rebalance(Q96);
+
+    const mainBefore = await f.vault.mainPosition();
+    const reserveBefore = await f.vault.reservePosition();
+    const VaultMathTestHelper = await ethers.getContractFactory(
+      "VaultMathTestHelper",
+    );
+    const helper = await VaultMathTestHelper.deploy();
+    const target = await helper.getSqrtRatioAtTick(Number(mainBefore.upper) + 1);
+
+    const swapBudget = DEPOSIT_AMOUNT * 1000n;
+    await f.pool.setPluginConfig(0); // mock oracle doesn't implement the full plugin hook surface a real swap would trigger
+    await f.token1.transfer(f.other.address, swapBudget);
+    await f.token1.connect(f.other).approve(f.swapTargetCallee.target, swapBudget);
+    await f.swapTargetCallee
+      .connect(f.other)
+      .swapToHigherSqrtPrice(f.pool.target, target, f.other.address);
+
+    const [, main0, main1] = await f.vault.getMainPosition();
+    expect(main0).to.equal(0n);
+    expect(main1).to.be.greaterThan(0n);
+
+    const supply = await f.vault.totalSupply();
+    const shares = supply / 100n;
+    const balance0Before = await f.token0.balanceOf(f.user.address);
+    const balance1Before = await f.token1.balanceOf(f.user.address);
+
+    await f.vault.connect(f.user).withdraw(shares, f.user.address);
+
+    // Nothing of token0 to pay out: the vault's only token0 is the few wei of rounding dust,
+    // and one percent of that rounds to nothing, so that transfer is skipped entirely.
+    expect(await f.token0.balanceOf(f.user.address)).to.equal(balance0Before);
+    expect(await f.token1.balanceOf(f.user.address)).to.be.greaterThan(
+      balance1Before,
+    );
+
+    // A partial withdrawal burns a proportional slice of each position and leaves the rest of
+    // it in place, on the same ticks - every other withdraw test empties the vault outright.
+    const mainAfter = await f.vault.mainPosition();
+    const reserveAfter = await f.vault.reservePosition();
+    expect(mainAfter.lower).to.equal(mainBefore.lower);
+    expect(mainAfter.upper).to.equal(mainBefore.upper);
+    expect(reserveAfter.lower).to.equal(reserveBefore.lower);
+    expect(reserveAfter.upper).to.equal(reserveBefore.upper);
+    expect(mainAfter.liquidity).to.equal(
+      mainBefore.liquidity - (mainBefore.liquidity * shares) / supply,
+    );
+    expect(reserveAfter.liquidity).to.equal(
+      reserveBefore.liquidity - (reserveBefore.liquidity * shares) / supply,
+    );
+  });
+
+  it("resumes deposits once the vault manager unpauses", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    await f.vault.connect(f.vaultManager).pause();
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await expect(
+      f.vault
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
+    ).to.be.revertedWith("Pausable: paused");
+
+    await expect(
+      f.vault.connect(f.other).unpause(),
+    ).to.be.revertedWithCustomError(f.vault, "OnlyVaultManager");
+    await f.vault.connect(f.vaultManager).unpause();
+
+    await expect(
+      f.vault
+        .connect(f.user)
+        .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address),
+    ).to.emit(f.vault, "Deposit");
+  });
+
+  it("gates collectFees and reports nothing while the vault holds no position", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    await expect(
+      f.vault.connect(f.other).collectFees(),
+    ).to.be.revertedWithCustomError(f.vault, "OnlyVaultManager");
+
+    // Before the first rebalance both positions are empty, so there is nothing to burn against
+    // and collecting is a no-op rather than a revert.
+    const [fees0, fees1] = await f.vault
+      .connect(f.vaultManager)
+      .collectFees.staticCall();
+    expect(fees0).to.equal(0n);
+    expect(fees1).to.equal(0n);
+    await expect(f.vault.connect(f.vaultManager).collectFees()).to.not.be
+      .reverted;
+  });
+
+  it("rejects mint and swap callbacks from anyone but the pool", async function () {
+    // algebraMintCallback transfers whatever it is asked for with no balance check of its own,
+    // so this caller check is the only thing between an arbitrary address and the vault's idle
+    // tokens.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    await expect(
+      f.vault.connect(f.other).algebraMintCallback(1, 1, "0x"),
+    ).to.be.revertedWithCustomError(f.vault, "OnlyPool");
+    await expect(
+      f.vault.connect(f.other).algebraSwapCallback(1, 1, "0x"),
+    ).to.be.revertedWithCustomError(f.vault, "OnlyPool");
+  });
+
+  it("rejects a rebalance at the upper price bound and while paused", async function () {
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+    await f.vault.connect(f.owner).setRebalanceEntrypoint(f.rebalancer.address);
+
+    // The lower bound is asserted elsewhere; MAX_SQRT_RATIO is excluded, not merely capped.
+    await expect(
+      f.vault.connect(f.rebalancer).rebalance(MAX_SQRT_RATIO),
+    ).to.be.revertedWithCustomError(f.vault, "InvalidPosition");
+
+    await f.vault.connect(f.vaultManager).pause();
+    await expect(
+      f.vault.connect(f.rebalancer).rebalance(Q96),
+    ).to.be.revertedWith("Pausable: paused");
+  });
+
+  it("rejects a dust deposit that rounds down to zero shares", async function () {
+    // Once the vault's value per share exceeds a wei of deposit value, a dust deposit prices to
+    // nothing. Minting zero shares for a real transfer would hand the tokens to existing
+    // holders, so it has to revert instead.
+    const f = await loadFixture(deployVaultFixture);
+    await approveDeposit(f.vault, f.token0, f.token1, f.user);
+    await f.vault
+      .connect(f.user)
+      .deposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT, f.user.address);
+
+    // A donation straight to the vault raises NAV without minting shares - the same effect a
+    // long run of accrued fees has, reached in one step.
+    const supply = await f.vault.totalSupply();
+    await f.token1.transfer(f.vault.target, supply);
+
+    await f.token1.connect(f.user).approve(f.vault.target, 1n);
+    await expect(
+      f.vault.connect(f.user).deposit(0, 1, f.user.address),
+    ).to.be.revertedWithCustomError(f.vault, "ZeroValue");
+  });
+
   describe("rebalance across decimal pairs, token order, price direction, and amount size", function () {
     // Regression coverage for a real reported production failure ('ERC20: transfer amount
     // exceeds balance' from algebraMintCallback's unguarded safeTransfer, which - unlike
@@ -997,6 +1381,17 @@ describe("PriceConvergenceVault", function () {
         false,
       );
       expect(quoted).to.equal(amount / (1n << 66n));
+    });
+
+    it("divides by the price ratio (token1 -> token0) at an ordinary price", async function () {
+      // The vault only ever quotes in the multiplying direction, so the dividing arm of the
+      // ordinary (below uint128) branch is reachable through this helper alone.
+      const { helper } = await loadFixture(deployQuoteHelperFixture);
+      const amount = 12345n * 10n ** 9n;
+
+      // sqrtPrice = 2 * Q96 is a price of exactly 4, so this divides evenly.
+      const quoted = await helper.quoteAtSqrtPrice(2n * Q96, amount, false);
+      expect(quoted).to.equal(amount / 4n);
     });
 
     it("returns zero for a zero amount regardless of price", async function () {

@@ -1,22 +1,29 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { MAX_SQRT_RATIO } from "@cryptoalgebra/test-utils/utilities";
 import { algebraPoolDeployerMockFixture } from "../../test-utils/externalFixtures";
 import { Q96 } from "./helpers/priceConvergenceFixture";
 
 const REBALANCE_THRESHOLD = 10n ** 20n;
 
 describe("RebalanceEntrypoint", function () {
-  async function deployFixture(reversed = false, initialSqrtPriceX96 = Q96) {
+  async function deployFixture(
+    reversed = false,
+    initialSqrtPriceX96 = Q96,
+    assetDecimals = 6,
+    quoteDecimals = 18,
+    shareOffset = 12,
+  ) {
     const [owner, priceManager, other] = await ethers.getSigners();
     const core = await algebraPoolDeployerMockFixture();
     const pool = await core.createPool();
     await pool.initialize(initialSqrtPriceX96);
     const Token = await ethers.getContractFactory("MockERC20");
-    const asset = await Token.deploy("Asset", "AST", 6);
-    const quote = await Token.deploy("Quote", "QTE", 18);
+    const asset = await Token.deploy("Asset", "AST", assetDecimals);
+    const quote = await Token.deploy("Quote", "QTE", quoteDecimals);
     const ERC4626 = await ethers.getContractFactory("MockERC4626");
-    const share = await ERC4626.deploy(asset.target, 12);
+    const share = await ERC4626.deploy(asset.target, shareOffset);
     const Vault = await ethers.getContractFactory("MockRebalanceVault");
     const token0 = reversed ? quote.target : share.target;
     const token1 = reversed ? share.target : quote.target;
@@ -175,7 +182,7 @@ describe("RebalanceEntrypoint", function () {
   it("flags accumulated idle balances, valued at the pool spot price, against the threshold", async function () {
     // token0 = share (ERC4626), token1 = quote; threshold token is token0 (the share).
     // Pool spot price is Q96 (1:1), so token1 idle balance converts to token0 units unchanged.
-    const { vault, entrypoint, quote, share, asset, owner } =
+    const { vault, entrypoint, quote, share, asset, owner, token1 } =
       await loadFixture(deployNormalFixture);
 
     expect(await entrypoint.shouldRebalance()).to.equal(false);
@@ -197,6 +204,11 @@ describe("RebalanceEntrypoint", function () {
 
     // The last unit of idle balance tips the accumulated value over the threshold.
     await quote.mint(vault.target, 1n);
+    expect(await entrypoint.shouldRebalance()).to.equal(true);
+
+    // Valuing the same two balances in token1 instead converts the other way round, which at
+    // this 1:1 spot price has to land on the same verdict.
+    await entrypoint.connect(owner).setThresholdToken(token1);
     expect(await entrypoint.shouldRebalance()).to.equal(true);
   });
   it("quotes idle balances against a pool price above type(uint128).max without reverting", async function () {
@@ -225,6 +237,77 @@ describe("RebalanceEntrypoint", function () {
     await entrypoint.connect(owner).setRebalanceThreshold(quotedValue);
     expect(await entrypoint.shouldRebalance()).to.equal(true);
   });
+  it("normalizes the other way round when the asset has more decimals than the quote", async function () {
+    // Every other case here runs quote 18 / asset 6, so only the "quote has at least as many
+    // decimals" side of the scaling has ever been taken. An 18-decimal asset quoted in a
+    // 6-decimal token divides by the decimal gap instead of multiplying by it.
+    const { entrypoint } = await deployFixture(false, Q96, 18, 6, 0);
+
+    expect(await entrypoint.assetDecimals()).to.equal(18);
+    expect(await entrypoint.quoteDecimals()).to.equal(6);
+    expect(await entrypoint.shareDecimals()).to.equal(18);
+    // 4 quote per asset, expressed in raw units: 4e18 scaled by the 1e12 decimal gap.
+    const [target] = await entrypoint.preview(4n * 10n ** 30n);
+    expect(target).to.equal(2n * Q96);
+  });
+
+  it("rejects a price too small to survive decimal scaling", async function () {
+    // A price that scales down to nothing must revert rather than quietly quote zero. Two
+    // separate guards can catch it: the asset-price scaling itself, and the share price after
+    // the ERC4626 conversion.
+    const scaledToNothing = await deployFixture(false, Q96, 18, 6, 0);
+    await expect(
+      scaledToNothing.entrypoint.preview(1),
+    ).to.be.revertedWithCustomError(scaledToNothing.entrypoint, "InvalidPrice");
+
+    // A share whose decimals dwarf its asset's converts one whole share into so few assets
+    // that a nonzero asset price still collapses to a zero share price.
+    const dwarfedByOffset = await deployFixture(false, Q96, 6, 18, 24);
+    expect(await dwarfedByOffset.entrypoint.shareDecimals()).to.equal(30);
+    await expect(
+      dwarfedByOffset.entrypoint.preview(1),
+    ).to.be.revertedWithCustomError(dwarfedByOffset.entrypoint, "InvalidPrice");
+  });
+
+  it("rejects a price whose pool sqrt price falls below the minimum tick", async function () {
+    // With the share as token1 the pool price is inverted, so an extreme asset price maps to a
+    // pool price below MIN_SQRT_RATIO rather than above the maximum.
+    const { entrypoint } = await deployFixture(true);
+
+    await expect(entrypoint.preview(10n ** 50n)).to.be.revertedWithCustomError(
+      entrypoint,
+      "InvalidPrice",
+    );
+  });
+
+  it("rejects a rebalance target at or above the maximum sqrt price", async function () {
+    const { priceManager, entrypoint } = await loadFixture(deployNormalFixture);
+
+    await expect(
+      entrypoint.connect(priceManager).rebalance(MAX_SQRT_RATIO),
+    ).to.be.revertedWithCustomError(entrypoint, "InvalidPrice");
+  });
+
+  it("follows the ERC4626 exchange rate as it accrues", async function () {
+    // The share's asset backing drifts on its own, with nobody calling this contract - yield
+    // accrual is the normal case, not an edge case, and the target pool price has to move with
+    // it. Donating assets straight to the share vault is that drift in one step.
+    const { entrypoint, asset, share, owner } =
+      await loadFixture(deployNormalFixture);
+    const priceX18 = 4n * 10n ** 18n;
+    const [before] = await entrypoint.preview(priceX18);
+    expect(before).to.equal(2n * Q96);
+
+    // convertToAssets(1 share) reads (totalAssets + 1) / (totalSupply + 10**offset): three wei
+    // of donated asset against an empty vault quadruples it, so the sqrt price doubles.
+    await asset.mint(owner.address, 3);
+    await asset.transfer(share.target, 3);
+    expect(await share.convertToAssets(10n ** 18n)).to.equal(4n * 10n ** 6n);
+
+    const [after] = await entrypoint.preview(priceX18);
+    expect(after).to.equal(4n * Q96);
+  });
+
   it("gates and applies the threshold setters", async function () {
     const { owner, other, entrypoint, token0, token1 } =
       await loadFixture(deployNormalFixture);

@@ -1,79 +1,24 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
 
 describe('UpgradeableLimitOrderPlugin', function () {
   async function deployFixture() {
-    const [owner, manager, user, otherUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeableLimitOrderPluginTest',
+      setup: async ({ mockPool }) => {
+        const mockLimitOrderManager = await (await ethers.getContractFactory('MockLimitOrderManager')).deploy();
+        const limitOrderImpl = await (await ethers.getContractFactory('LimitOrderPluginImplementation')).deploy();
 
-    // Deploy MockFactory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
-
-    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
-
-    // Deploy MockPool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy MockLimitOrderManager
-    const MockLimitOrderManager = await ethers.getContractFactory('MockLimitOrderManager');
-    const mockLimitOrderManager = await MockLimitOrderManager.deploy();
-
-    // Deploy LimitOrderPluginImplementation
-    const LimitOrderPluginImplementation = await ethers.getContractFactory('LimitOrderPluginImplementation');
-    const limitOrderImpl = await LimitOrderPluginImplementation.deploy();
-
-    // Deploy UpgradeableLimitOrderPluginTest (implementation for beacon)
-    const UpgradeableLimitOrderPluginTest = await ethers.getContractFactory('UpgradeableLimitOrderPluginTest');
-    const pluginImplementation = await UpgradeableLimitOrderPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      limitOrderImpl.target
-    );
-
-    // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
-      mockPool.target,
-      mockLimitOrderManager.target,
-    ]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    // Get plugin interface for proxy
-    const plugin1 = UpgradeableLimitOrderPluginTest.attach(proxy1Address) as any;
-
-    // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1Address);
-
-    // Grant manager role to manager
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    return {
-      owner,
-      manager,
-      user,
-      otherUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      mockLimitOrderManager,
-      limitOrderImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeableLimitOrderPluginTest,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-    };
+        return {
+          pluginArgs: [limitOrderImpl.target],
+          initArgs: [mockPool.target, mockLimitOrderManager.target],
+          extra: { mockLimitOrderManager, limitOrderImpl }
+        };
+      }
+    });
   }
-
   describe('Initialization', function () {
     it('should initialize with correct values', async function () {
       const { plugin1, mockPool, mockLimitOrderManager } = await loadFixture(deployFixture);
@@ -137,33 +82,27 @@ describe('UpgradeableLimitOrderPlugin', function () {
   describe('Storage Isolation', function () {
     it('should maintain separate storage for each proxy', async function () {
       const {
+        deployProxy,
         beacon,
         mockFactory,
         pluginImplementation,
         plugin1,
         mockPool,
         mockLimitOrderManager,
-        UpgradeableLimitOrderPluginTest,
+        PluginContract,
         manager,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second MockLimitOrderManager
       const MockLimitOrderManager = await ethers.getContractFactory('MockLimitOrderManager');
       const mockLimitOrderManager2 = await MockLimitOrderManager.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        mockLimitOrderManager2.target,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableLimitOrderPluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, mockLimitOrderManager2.target]);
 
       // Verify different values
       expect(await plugin1.limitOrderManager.staticCall()).to.equal(mockLimitOrderManager.target);
@@ -174,26 +113,20 @@ describe('UpgradeableLimitOrderPlugin', function () {
   describe('Immutables Shared', function () {
     it('should share immutable factory addresses across proxies', async function () {
       const {
+        deployProxy,
         beacon,
         mockFactory,
         pluginImplementation,
         plugin1,
-        UpgradeableLimitOrderPluginTest,
+        PluginContract,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        ethers.ZeroAddress,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableLimitOrderPluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, ethers.ZeroAddress]);
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);

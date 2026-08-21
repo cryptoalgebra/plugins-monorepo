@@ -1,90 +1,40 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, deployMockPool, ALGEBRA_BASE_PLUGIN_MANAGER } from 'test-utils/beaconPlugin';
 
 describe('UpgradeableAccessListPlugin', function () {
+  const ACCESS_LIST_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ACCESS_LIST_MANAGER'));
+
   async function deployFixture() {
-    const [owner, manager, whitelistedUser, nonWhitelistedUser, accessListManager] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeableAccessListPluginTest',
+      setup: async ({ owner, mockFactory, mockPool }) => {
+        const [, , whitelistedUser, nonWhitelistedUser, accessListManager] = await ethers.getSigners();
 
-    // Deploy MockFactory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
+        const accessListRegistry = await (await ethers.getContractFactory('AccessListRegistry')).deploy(mockFactory.target);
+        const accessListImpl = await (await ethers.getContractFactory('AccessListPluginImplementation')).deploy();
 
-    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
+        await mockFactory.grantRole(ACCESS_LIST_MANAGER, accessListManager.address);
+        await accessListRegistry.connect(accessListManager).setWhitelisted(whitelistedUser.address, true);
+        // Whitelist owner so pool.initialize() from owner works
+        await accessListRegistry.connect(accessListManager).setWhitelisted(owner.address, true);
 
-    // Deploy MockPool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy AccessListRegistry
-    const AccessListRegistry = await ethers.getContractFactory('AccessListRegistry');
-    const accessListRegistry = await AccessListRegistry.deploy(mockFactory.target);
-
-    // Deploy AccessListPluginImplementation
-    const AccessListPluginImplementation = await ethers.getContractFactory('AccessListPluginImplementation');
-    const accessListImpl = await AccessListPluginImplementation.deploy();
-
-    // Deploy UpgradeableAccessListPluginTest (implementation for beacon)
-    const UpgradeableAccessListPluginTest = await ethers.getContractFactory('UpgradeableAccessListPluginTest');
-    const pluginImplementation = await UpgradeableAccessListPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      accessListImpl.target
-    );
-
-    // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
-      mockPool.target,
-      accessListRegistry.target,
-    ]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    // Get plugin interface for proxy
-    const plugin1 = UpgradeableAccessListPluginTest.attach(proxy1Address) as any;
-
-    // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1Address);
-
-    // Grant manager role
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    // Grant Access List roles
-    const ACCESS_LIST_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ACCESS_LIST_MANAGER'));
-    await mockFactory.grantRole(ACCESS_LIST_MANAGER, accessListManager.address);
-
-    // Whitelist the whitelisted user
-    await accessListRegistry.connect(accessListManager).setWhitelisted(whitelistedUser.address, true);
-    // Whitelist owner so pool.initialize() from owner works
-    await accessListRegistry.connect(accessListManager).setWhitelisted(owner.address, true);
-
-    return {
-      owner,
-      manager,
-      whitelistedUser,
-      nonWhitelistedUser,
-      accessListManager,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      accessListRegistry,
-      accessListImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeableAccessListPluginTest,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-      ACCESS_LIST_MANAGER,
-    };
+        return {
+          pluginArgs: [accessListImpl.target],
+          initArgs: [mockPool.target, accessListRegistry.target],
+          extra: {
+            whitelistedUser,
+            nonWhitelistedUser,
+            accessListManager,
+            accessListRegistry,
+            accessListImpl,
+            ACCESS_LIST_MANAGER
+          }
+        };
+      }
+    });
   }
-
   describe('Initialization', function () {
     it('should initialize with correct values', async function () {
       const { plugin1, mockPool, accessListRegistry } = await loadFixture(deployFixture);
@@ -240,11 +190,10 @@ describe('UpgradeableAccessListPlugin', function () {
     });
 
     it('should block non-whitelisted user from initializing pool', async function () {
-      const { nonWhitelistedUser, beacon, pluginImplementation, accessListRegistry, proxyDeployer, UpgradeableAccessListPluginTest } = await loadFixture(deployFixture);
+      const { PluginContract, nonWhitelistedUser, beacon, pluginImplementation, accessListRegistry, proxyDeployer, UpgradeableAccessListPluginTest } = await loadFixture(deployFixture);
 
       // Need a fresh pool for initialize
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const freshPool = await MockPool.deploy();
+      const freshPool = await deployMockPool();
 
       // Deploy a fresh plugin proxy for this pool
       const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
@@ -253,7 +202,7 @@ describe('UpgradeableAccessListPlugin', function () {
       ]);
       await proxyDeployer.deploy(beacon.target, freshPool.target, initData);
       const proxyAddress = await proxyDeployer.lastDeployedProxy();
-      const freshPlugin = UpgradeableAccessListPluginTest.attach(proxyAddress) as any;
+      const freshPlugin = PluginContract.attach(proxyAddress) as any;
       await freshPool.setPlugin(proxyAddress);
 
       await expect(
@@ -321,14 +270,13 @@ describe('UpgradeableAccessListPlugin', function () {
         pluginImplementation,
         plugin1,
         accessListRegistry,
-        UpgradeableAccessListPluginTest,
+        PluginContract,
         manager,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second AccessListRegistry
       const AccessListRegistry = await ethers.getContractFactory('AccessListRegistry');
@@ -341,7 +289,7 @@ describe('UpgradeableAccessListPlugin', function () {
       ]);
       await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableAccessListPluginTest.attach(proxy2Address) as any;
+      const plugin2 = PluginContract.attach(proxy2Address) as any;
 
       // Verify different values
       expect(await plugin1.getAccessListRegistry()).to.equal(accessListRegistry.target);
@@ -356,13 +304,12 @@ describe('UpgradeableAccessListPlugin', function () {
         mockFactory,
         pluginImplementation,
         plugin1,
-        UpgradeableAccessListPluginTest,
+        PluginContract,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second proxy
       const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
@@ -371,7 +318,7 @@ describe('UpgradeableAccessListPlugin', function () {
       ]);
       await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
       const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableAccessListPluginTest.attach(proxy2Address) as any;
+      const plugin2 = PluginContract.attach(proxy2Address) as any;
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);

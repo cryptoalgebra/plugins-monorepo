@@ -1,79 +1,24 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
 
 describe('UpgradeableFeeDiscountPlugin', function () {
   async function deployFixture() {
-    const [owner, manager, user, otherUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeableFeeDiscountPluginTest',
+      setup: async ({ mockPool }) => {
+        const mockFeeDiscountRegistry = await (await ethers.getContractFactory('MockFeeDiscountRegistry')).deploy();
+        const feeDiscountImpl = await (await ethers.getContractFactory('FeeDiscountPluginImplementation')).deploy();
 
-    // Deploy MockFactory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
-
-    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
-
-    // Deploy MockPool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy MockFeeDiscountRegistry
-    const MockFeeDiscountRegistry = await ethers.getContractFactory('MockFeeDiscountRegistry');
-    const mockFeeDiscountRegistry = await MockFeeDiscountRegistry.deploy();
-
-    // Deploy FeeDiscountPluginImplementation
-    const FeeDiscountPluginImplementation = await ethers.getContractFactory('FeeDiscountPluginImplementation');
-    const feeDiscountImpl = await FeeDiscountPluginImplementation.deploy();
-
-    // Deploy UpgradeableFeeDiscountPluginTest (implementation for beacon)
-    const UpgradeableFeeDiscountPluginTest = await ethers.getContractFactory('UpgradeableFeeDiscountPluginTest');
-    const pluginImplementation = await UpgradeableFeeDiscountPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      feeDiscountImpl.target
-    );
-
-    // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
-      mockPool.target,
-      mockFeeDiscountRegistry.target,
-    ]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    // Get plugin interface for proxy
-    const plugin1 = UpgradeableFeeDiscountPluginTest.attach(proxy1Address) as any;
-
-    // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1Address);
-
-    // Grant manager role to manager
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    return {
-      owner,
-      manager,
-      user,
-      otherUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      mockFeeDiscountRegistry,
-      feeDiscountImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeableFeeDiscountPluginTest,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-    };
+        return {
+          pluginArgs: [feeDiscountImpl.target],
+          initArgs: [mockPool.target, mockFeeDiscountRegistry.target],
+          extra: { mockFeeDiscountRegistry, feeDiscountImpl }
+        };
+      }
+    });
   }
-
   describe('Initialization', function () {
     it('should initialize with correct values', async function () {
       const { plugin1, mockPool, mockFeeDiscountRegistry } = await loadFixture(deployFixture);
@@ -139,31 +84,25 @@ describe('UpgradeableFeeDiscountPlugin', function () {
   describe('Storage Isolation', function () {
     it('should maintain separate storage for each proxy', async function () {
       const {
+        deployProxy,
         beacon,
         pluginImplementation,
         plugin1,
         mockPool,
         mockFeeDiscountRegistry,
-        UpgradeableFeeDiscountPluginTest,
+        PluginContract,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second MockFeeDiscountRegistry
       const MockFeeDiscountRegistry = await ethers.getContractFactory('MockFeeDiscountRegistry');
       const mockFeeDiscountRegistry2 = await MockFeeDiscountRegistry.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        mockFeeDiscountRegistry2.target,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableFeeDiscountPluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, mockFeeDiscountRegistry2.target]);
 
       // Verify different values
       expect(await plugin1.feeDiscountRegistry()).to.equal(mockFeeDiscountRegistry.target);
@@ -174,26 +113,20 @@ describe('UpgradeableFeeDiscountPlugin', function () {
   describe('Immutables Shared', function () {
     it('should share immutable factory addresses across proxies', async function () {
       const {
+        deployProxy,
         beacon,
         mockFactory,
         proxyDeployer,
         pluginImplementation,
         plugin1,
-        UpgradeableFeeDiscountPluginTest,
+        PluginContract,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        ethers.ZeroAddress,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableFeeDiscountPluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, ethers.ZeroAddress]);
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);

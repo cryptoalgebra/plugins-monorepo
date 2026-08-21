@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, ALGEBRA_BASE_PLUGIN_MANAGER } from 'test-utils/beaconPlugin';
 
 describe('PermissionedPoolPlugin', function () {
   const SQRT_PRICE_TICK_0 = BigInt('79228162514264337593543950336');
@@ -10,85 +11,51 @@ describe('PermissionedPoolPlugin', function () {
   const LIQUIDITY_ALLOWED = '0x0002';
   const ALL_ALLOWED = '0xffff';
 
+  const PERMISSIONED_POOL_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('PERMISSIONED_POOL_MANAGER'));
+
   async function deployFixture() {
-    const [owner, manager, permissionedManager, allowedUser, disallowedUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeablePermissionedPoolPluginTest',
+      setup: async ({ owner, mockFactory, mockPool }) => {
+        const [, , permissionedManager, allowedUser, disallowedUser] = await ethers.getSigners();
 
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
+        const MockERC20 = await ethers.getContractFactory('MockERC20');
+        const token0 = await MockERC20.deploy('Token0', 'TK0', 18);
+        const token1 = await MockERC20.deploy('Token1', 'TK1', 18);
+        await mockPool.setTokens(token0.target, token1.target);
 
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
+        const registry = await (await ethers.getContractFactory('AllowlistCheckerRegistry')).deploy(mockFactory.target);
+        await mockFactory.grantRole(PERMISSIONED_POOL_MANAGER, permissionedManager.address);
 
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
+        const MockAllowlistChecker = await ethers.getContractFactory('MockAllowlistChecker');
+        const checker0 = await MockAllowlistChecker.deploy();
+        await registry.connect(permissionedManager).setChecker(token0.target, checker0.target);
+        await checker0.setFlags(allowedUser.address, ALL_ALLOWED);
+        await checker0.setFlags(owner.address, ALL_ALLOWED);
 
-    const MockERC20 = await ethers.getContractFactory('MockERC20');
-    const token0 = await MockERC20.deploy('Token0', 'TK0', 18);
-    const token1 = await MockERC20.deploy('Token1', 'TK1', 18);
-    await mockPool.setTokens(token0.target, token1.target);
+        const permissionedPoolImpl = await (await ethers.getContractFactory('PermissionedPoolPluginImplementation')).deploy();
+        const MockRouter = await ethers.getContractFactory('MockRouter');
 
-    const AllowlistCheckerRegistry = await ethers.getContractFactory('AllowlistCheckerRegistry');
-    const registry = await AllowlistCheckerRegistry.deploy(mockFactory.target);
-
-    const PERMISSIONED_POOL_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('PERMISSIONED_POOL_MANAGER'));
-    await mockFactory.grantRole(PERMISSIONED_POOL_MANAGER, permissionedManager.address);
-
-    const MockAllowlistChecker = await ethers.getContractFactory('MockAllowlistChecker');
-    const checker0 = await MockAllowlistChecker.deploy();
-    await registry.connect(permissionedManager).setChecker(token0.target, checker0.target);
-    await checker0.setFlags(allowedUser.address, ALL_ALLOWED);
-    await checker0.setFlags(owner.address, ALL_ALLOWED);
-
-    const PermissionedPoolPluginImplementation = await ethers.getContractFactory('PermissionedPoolPluginImplementation');
-    const permissionedPoolImpl = await PermissionedPoolPluginImplementation.deploy();
-
-    const UpgradeablePermissionedPoolPluginTest = await ethers.getContractFactory('UpgradeablePermissionedPoolPluginTest');
-    const pluginImplementation = await UpgradeablePermissionedPoolPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      permissionedPoolImpl.target
-    );
-
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target, registry.target]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    const plugin1 = UpgradeablePermissionedPoolPluginTest.attach(proxy1Address) as any;
-    await mockPool.setPlugin(proxy1Address);
-
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    const MockRouter = await ethers.getContractFactory('MockRouter');
-
-    return {
-      owner,
-      manager,
-      permissionedManager,
-      allowedUser,
-      disallowedUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      token0,
-      token1,
-      registry,
-      checker0,
-      MockAllowlistChecker,
-      permissionedPoolImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeablePermissionedPoolPluginTest,
-      MockRouter,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-      PERMISSIONED_POOL_MANAGER,
-    };
+        return {
+          pluginArgs: [permissionedPoolImpl.target],
+          initArgs: [mockPool.target, registry.target],
+          extra: {
+            permissionedManager,
+            allowedUser,
+            disallowedUser,
+            token0,
+            token1,
+            registry,
+            checker0,
+            MockAllowlistChecker,
+            permissionedPoolImpl,
+            MockRouter,
+            PERMISSIONED_POOL_MANAGER
+          }
+        };
+      }
+    });
   }
-
   describe('Pool initialization', function () {
     it('always succeeds, regardless of checker configuration', async function () {
       const { mockPool, owner } = await loadFixture(deployFixture);

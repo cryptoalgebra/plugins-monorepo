@@ -1,95 +1,23 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { Wallet, AbiCoder, keccak256 } from 'ethers';
+import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
 
 describe('UpgradeableManagedFeePlugin', function () {
   async function deployFixture() {
-    const [owner, manager, user, otherUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeableManagedFeePluginTest',
+      setup: async ({ mockPool }) => {
+        const managedFeeImpl = await (await ethers.getContractFactory('ManagedFeePluginImplementation')).deploy();
 
-    // Deploy MockFactory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
-
-    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
-
-    // Deploy MockPool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy ManagedFeePluginImplementation
-    const ManagedFeePluginImplementation = await ethers.getContractFactory('ManagedFeePluginImplementation');
-    const managedFeeImpl = await ManagedFeePluginImplementation.deploy();
-
-    // Deploy UpgradeableManagedFeePluginTest (implementation for beacon)
-    const UpgradeableManagedFeePluginTest = await ethers.getContractFactory('UpgradeableManagedFeePluginTest');
-    const pluginImplementation = await UpgradeableManagedFeePluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      managedFeeImpl.target
-    );
-
-    // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    // Get plugin interface for proxy
-    const plugin1 = UpgradeableManagedFeePluginTest.attach(proxy1Address) as any;
-
-    // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1Address);
-
-    // Grant manager role to manager
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    return {
-      owner,
-      manager,
-      user,
-      otherUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      managedFeeImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeableManagedFeePluginTest,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-    };
+        return {
+          pluginArgs: [managedFeeImpl.target],
+          initArgs: [],
+          extra: { managedFeeImpl }
+        };
+      }
+    });
   }
-
-  async function generatePluginData(
-    nonce: string,
-    fee: number,
-    user: string,
-    expireTime: number,
-    signer: any
-  ): Promise<string> {
-    const hash = keccak256(
-      AbiCoder.defaultAbiCoder().encode(
-        ['bytes32', 'uint24', 'address', 'uint32'],
-        [nonce, fee, user, expireTime]
-      )
-    );
-
-    const hashBytes = Buffer.from(hash.slice(2), 'hex');
-    const signature = await signer.signMessage(hashBytes);
-
-    return AbiCoder.defaultAbiCoder().encode(
-      ['tuple(bytes32, uint24, address, uint32, bytes)'],
-      [[nonce, fee, user, expireTime, signature]]
-    );
-  }
-
   describe('Initialization', function () {
     it('should initialize with correct values', async function () {
       const { plugin1, mockPool } = await loadFixture(deployFixture);
@@ -158,10 +86,11 @@ describe('UpgradeableManagedFeePlugin', function () {
   describe('Storage Isolation', function () {
     it('should maintain separate storage for each proxy', async function () {
       const {
+        deployProxy,
         beacon,
         pluginImplementation,
         plugin1,
-        UpgradeableManagedFeePluginTest,
+        PluginContract,
         manager,
         user,
         otherUser,
@@ -169,14 +98,10 @@ describe('UpgradeableManagedFeePlugin', function () {
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second proxy
-        const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', []);
-        await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableManagedFeePluginTest.attach(proxy2Address) as any;
+        const plugin2 = await deployProxy(mockPool2, []);
 
       // Whitelist user in plugin1 only
       await plugin1.connect(manager).setWhitelistStatus(user.address, true);
@@ -190,23 +115,20 @@ describe('UpgradeableManagedFeePlugin', function () {
   describe('Immutables Shared', function () {
     it('should share immutable factory addresses across proxies', async function () {
       const {
+        deployProxy,
         beacon,
         mockFactory,
         proxyDeployer,
         pluginImplementation,
         plugin1,
-        UpgradeableManagedFeePluginTest,
+        PluginContract,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', []);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableManagedFeePluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, []);
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);

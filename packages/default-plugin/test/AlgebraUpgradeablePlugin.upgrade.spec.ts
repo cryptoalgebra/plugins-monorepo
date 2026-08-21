@@ -3,12 +3,11 @@ import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
 import { encodePriceSqrt } from 'test-utils/utilities';
-import { DEFAULT_FEE_CONFIGURATION, ZERO_ADDRESS } from './shared/fixtures';
+import { ZERO_ADDRESS, deployImplementations, deployPluginFactory, impersonateAlgebraFactory, withImpl } from './shared/fixtures';
 
 import { 
   MockFactory, 
   MockPool, 
-  MockTimeDSFactory,
   MockTimeAlgebraUpgradeablePlugin,
   MockUpgradedPlugin
 } from '../typechain';
@@ -21,33 +20,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = (await mockFactoryFactory.deploy()) as any as MockFactory;
 
-    // Deploy all 5 implementations
-    const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
-    const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
-
-    const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-    const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
-
-    const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
-    const farmingProxyImpl = await farmingProxyImplFactory.deploy();
-
-    const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-    const almImpl = await almImplFactory.deploy();
-
-    const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
-    const securityImpl = await securityImplFactory.deploy();
-
-    // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
-    const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
-    const pluginFactory = (await pluginFactoryFactory.deploy(
-      mockFactory,
-      volatilityOracleImpl,
-      dynamicFeeImpl,
-      farmingProxyImpl,
-      almImpl,
-      securityImpl,
-      DEFAULT_FEE_CONFIGURATION
-    )) as any as MockTimeDSFactory;
+    const implementations = await deployImplementations();
+    const { mockPluginFactory: pluginFactory } = await deployPluginFactory(mockFactory, implementations);
+    const algebraFactorySigner = await impersonateAlgebraFactory(mockFactory);
 
     // Deploy two mock pools
     const mockPoolFactory = await ethers.getContractFactory('MockPool');
@@ -55,8 +30,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const mockPool2 = (await mockPoolFactory.deploy()) as any as MockPool;
 
     // Create plugins for both pools
-    await pluginFactory.beforeCreatePoolHook(mockPool1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
-    await pluginFactory.beforeCreatePoolHook(mockPool2, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
+    await pluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(mockPool1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
+    await pluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(mockPool2, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
 
     const plugin1Address = await pluginFactory.pluginByPool(mockPool1);
     const plugin2Address = await pluginFactory.pluginByPool(mockPool2);
@@ -71,15 +46,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     // Deploy upgraded implementation (MockUpgradedPlugin)
     const upgradedImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-    const upgradedImplementation = await upgradedImplFactory.deploy(
-      mockFactory,
-      pluginFactory,
-      volatilityOracleImpl,
-      dynamicFeeImpl,
-      farmingProxyImpl,
-      almImpl,
-      securityImpl
-    );
+    const upgradedImplementation = await upgradedImplFactory.deploy(mockFactory, pluginFactory, implementations);
 
     return {
       mockFactory,
@@ -89,13 +56,10 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       mockPool2,
       plugin1,
       plugin2,
+      algebraFactorySigner,
       originalImplementation,
       upgradedImplementation: await upgradedImplementation.getAddress(),
-      volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-      dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
-      farmingProxyImpl: await farmingProxyImpl.getAddress(),
-      almImpl: await almImpl.getAddress(),
-      securityImpl: await securityImpl.getAddress()
+      implementations
     };
   }
 
@@ -368,7 +332,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       const newPool = await mockPoolFactory.deploy();
 
-      await fixture.pluginFactory.beforeCreatePoolHook(
+      await fixture.pluginFactory.connect(fixture.algebraFactorySigner).beforeCreatePoolHook(
         newPool, 
         ZERO_ADDRESS, 
         ZERO_ADDRESS, 
@@ -444,6 +408,52 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Incentive should still work
       const incentive = await fixture.plugin1.incentive();
       expect(incentive).to.eq(await virtualPool.getAddress());
+    });
+  });
+
+  describe('#Upgraded FarmingProxy Module', () => {
+    it('paused farming leaves the virtual pool untouched but still counts updates', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+
+      // Swap the farming module for the V2 implementation
+      const upgradedFarmingFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
+      const upgradedFarming = await upgradedFarmingFactory.deploy();
+
+      const newPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewFarming');
+      const newPluginImpl = await newPluginFactory.deploy(
+        fixture.mockFactory,
+        fixture.pluginFactory,
+        withImpl(fixture.implementations, { farmingProxy: await upgradedFarming.getAddress() })
+      );
+      await fixture.pluginFactory.upgradePlugins(newPluginImpl);
+
+      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewFarming', await fixture.plugin1.getAddress());
+
+      // Attach a virtual pool as incentive
+      await fixture.mockPool1.setPlugin(upgraded);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+      await fixture.pluginFactory.setFarmingAddress(wallet.address);
+      const virtualPool = await (await ethers.getContractFactory('MockTimeVirtualPool')).deploy();
+      await upgraded.setIncentive(virtualPool);
+
+      await fixture.mockPool1.mint(wallet.address, wallet.address, -120, 120, 1000000, '0x');
+
+      // Not paused: the virtual pool follows the pool tick
+      await fixture.mockPool1.swapToTick(10);
+      expect(await virtualPool.currentTick()).to.eq((await fixture.mockPool1.globalState()).tick);
+
+      const statsBefore = await upgraded.getFarmingUpdateStats.staticCall();
+
+      // Paused: crossTo is skipped, the update counter still moves
+      await upgraded.setFarmingPausedMode(true);
+      const tickWhilePaused = await virtualPool.currentTick();
+      await fixture.mockPool1.swapToTick(-10);
+
+      expect(await virtualPool.currentTick()).to.eq(tickWhilePaused);
+      expect((await fixture.mockPool1.globalState()).tick).to.not.eq(tickWhilePaused);
+
+      const statsAfter = await upgraded.getFarmingUpdateStats.staticCall();
+      expect(statsAfter.updateCount).to.be.gt(statsBefore.updateCount);
     });
   });
 });

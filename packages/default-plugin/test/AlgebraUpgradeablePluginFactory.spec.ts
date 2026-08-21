@@ -2,7 +2,7 @@ import { Wallet } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
-import { ZERO_ADDRESS, pluginFactoryFixture } from './shared/fixtures';
+import { ZERO_ADDRESS, EMPTY_IMPLEMENTATIONS, pluginFactoryFixture } from './shared/fixtures';
 
 import { MockFactory } from '../typechain';
 
@@ -275,15 +275,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
       const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
       const pluginFactoryAddress = await pluginFactory.getAddress();
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        pluginFactoryAddress,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS
-      );
+      const newImpl = await newImplFactory.deploy(mockFactoryAddress, pluginFactoryAddress, EMPTY_IMPLEMENTATIONS);
 
       await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWithCustomError(
         pluginFactory,
@@ -305,7 +297,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         mockFactoryAddress,
         pluginFactoryAddress,
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
+        EMPTY_IMPLEMENTATIONS
       );
 
       // Should succeed (wallet is owner)
@@ -325,7 +317,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImpl = await newImplFactory.deploy(
         await mockAlgebraFactory.getAddress(),
         await pluginFactory.getAddress(),
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS
+        EMPTY_IMPLEMENTATIONS
       );
 
       await pluginFactory.upgradePlugins(await newImpl.getAddress());

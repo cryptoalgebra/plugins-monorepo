@@ -2,40 +2,14 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ContractFactory } from 'ethers';
-import { OracleTWAP, MockPool, MockTimeDSFactory, TestERC20 } from '../typechain';
+import { OracleTWAP, MockPool, NewMockTimeUpgradeablePluginFactory, TestERC20 } from '../typechain';
 import { tokensFixture } from 'test-utils/externalFixtures';
-import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION } from './shared/fixtures';
-
-// Deploy all 5 implementations for MockTimeDSFactory
-async function deployImplementations() {
-  const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
-  const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
-
-  const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-  const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
-
-  const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
-  const farmingProxyImpl = await farmingProxyImplFactory.deploy();
-
-  const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-  const almImpl = await almImplFactory.deploy();
-
-  const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
-  const securityImpl = await securityImplFactory.deploy();
-
-  return {
-    volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-    dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
-    farmingProxyImpl: await farmingProxyImpl.getAddress(),
-    almImpl: await almImpl.getAddress(),
-    securityImpl: await securityImpl.getAddress()
-  };
-}
+import { ZERO_ADDRESS, deployImplementations, deployPluginFactory } from './shared/fixtures';
 
 describe('OracleTWAP', () => {
   let tokens: TestERC20[];
   let oracleTWAP: OracleTWAP;
-  let mockPluginFactory: MockTimeDSFactory;
+  let mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
 
   const oracleTWAPFixture = async () => {
     const tokensFixtureRes = await tokensFixture();
@@ -45,16 +19,7 @@ describe('OracleTWAP', () => {
     const mockFactoryFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = await mockFactoryFactory.deploy();
 
-    const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
-    const _mockPluginFactory = await mockPluginFactoryFactory.deploy(
-      mockFactory,
-      implementations.volatilityOracleImpl,
-      implementations.dynamicFeeImpl,
-      implementations.farmingProxyImpl,
-      implementations.almImpl,
-      implementations.securityImpl,
-      DEFAULT_FEE_CONFIGURATION
-    );
+    const { mockPluginFactory: _mockPluginFactory } = await deployPluginFactory(mockFactory, implementations);
 
     const oracleTWAPFactory = await ethers.getContractFactory('OracleTWAP');
     const _oracleTWAP = await oracleTWAPFactory.deploy(_mockPluginFactory);
@@ -62,7 +27,7 @@ describe('OracleTWAP', () => {
     return {
       tokens: tokens as TestERC20[],
       oracleTWAP: _oracleTWAP as any as OracleTWAP,
-      mockPluginFactory: _mockPluginFactory as any as MockTimeDSFactory,
+      mockPluginFactory: _mockPluginFactory as any as NewMockTimeUpgradeablePluginFactory,
     };
   };
 

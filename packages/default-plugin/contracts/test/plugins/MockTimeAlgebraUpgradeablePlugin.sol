@@ -4,6 +4,7 @@ pragma solidity =0.8.20;
 import '../../AlgebraUpgradeablePlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracle.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/libraries/VolatilityOracleStorage.sol';
+import '../../types/ModuleImplementations.sol';
 
 /// @title Mock upgradeable plugin for testing
 /// @notice Used for testing time dependent behavior
@@ -21,14 +22,8 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
   constructor(
     address _factory,
     address _pluginFactory,
-    address _volatilityOracleImpl,
-    address _dynamicFeeImpl,
-    address _farmingProxyImpl,
-    address _almImpl,
-    address _securityImpl
-  )
-    AlgebraUpgradeablePlugin(_factory, _pluginFactory, _volatilityOracleImpl, _dynamicFeeImpl, _farmingProxyImpl, _almImpl, _securityImpl)
-  {}
+    ModuleImplementations memory impls
+  ) AlgebraUpgradeablePlugin(_factory, _pluginFactory, impls) {}
 
   function advanceTime(uint256 by) external {
     unchecked {

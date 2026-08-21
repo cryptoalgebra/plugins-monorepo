@@ -85,15 +85,13 @@ async function main() {
   console.log("=== Deploying Plugin Implementation ===");
 
   const PluginImpl = await ethers.getContractFactory("AlgebraUpgradeablePlugin");
-  const pluginImpl = await PluginImpl.deploy(
-    config.algebraFactory,
-    factoryProxyAddress,
-    await volatilityOracleImpl.getAddress(),
-    await dynamicFeeImpl.getAddress(),
-    await farmingProxyImpl.getAddress(),
-    await almImpl.getAddress(),
-    await securityImpl.getAddress()
-  );
+  const pluginImpl = await PluginImpl.deploy(config.algebraFactory, factoryProxyAddress, {
+    volatilityOracle: await volatilityOracleImpl.getAddress(),
+    dynamicFee: await dynamicFeeImpl.getAddress(),
+    farmingProxy: await farmingProxyImpl.getAddress(),
+    alm: await almImpl.getAddress(),
+    security: await securityImpl.getAddress()
+  });
   await pluginImpl.waitForDeployment();
   const pluginImplAddress = await pluginImpl.getAddress();
   console.log("PluginImplementation:", pluginImplAddress);

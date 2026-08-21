@@ -112,11 +112,13 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
   const pluginImpl = m.contract("AlgebraUpgradeablePlugin", [
     config.algebraFactory,
     factoryProxy,
-    volatilityOracleImpl,
-    dynamicFeeImpl,
-    farmingProxyImpl,
-    almImpl,
-    securityImpl
+    {
+      volatilityOracle: volatilityOracleImpl,
+      dynamicFee: dynamicFeeImpl,
+      farmingProxy: farmingProxyImpl,
+      alm: almImpl,
+      security: securityImpl
+    }
   ], {
     id: "PluginImplementation"
   });

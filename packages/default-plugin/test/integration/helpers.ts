@@ -124,15 +124,13 @@ export async function deployNewPluginImplementation(
   const pluginFactoryAddress = await pluginFactory.getAddress();
 
   const NewPluginFactory = await ethers.getContractFactory(contractName);
-  const newPluginImpl = await NewPluginFactory.deploy(
-    mockFactoryAddress,
-    pluginFactoryAddress,
-    moduleOverrides?.volatility ?? MODULE_IMPLEMENTATIONS.VOLATILITY_ORACLE,
-    moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
-    moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
-    moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
-  );
+  const newPluginImpl = await NewPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, {
+    volatilityOracle: moduleOverrides?.volatility ?? MODULE_IMPLEMENTATIONS.VOLATILITY_ORACLE,
+    dynamicFee: moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
+    farmingProxy: moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
+    alm: moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
+    security: moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
+  });
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };
 }

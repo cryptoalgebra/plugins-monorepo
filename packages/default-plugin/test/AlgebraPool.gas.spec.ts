@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture, reset as resetNetwork } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
-import { MockTimeAlgebraUpgradeablePlugin, MockTimeDSFactory, MockTimeVirtualPool } from '../typechain';
+import { MockTimeAlgebraUpgradeablePlugin, NewMockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
 import { expect } from 'test-utils/expect';
 
 import { algebraPoolDeployerMockFixture } from 'test-utils/externalFixtures';
@@ -22,7 +22,7 @@ import {
   MaxUint128,
   SwapToPriceFunction,
 } from '@cryptoalgebra/integral-core/test-utils';
-import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION } from './shared/fixtures';
+import { ZERO_ADDRESS, deployImplementations, deployPluginFactory, impersonateAlgebraFactory } from './shared/fixtures';
 
 describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let wallet: Wallet, other: Wallet;
@@ -38,49 +38,15 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   const minTick = getMinTick(tickSpacing);
   const maxTick = getMaxTick(tickSpacing);
 
-  // Deploy all 5 implementations
-  async function deployImplementations() {
-    const volatilityOracleImplFactory = await ethers.getContractFactory('VolatilityOraclePluginImplementation');
-    const volatilityOracleImpl = await volatilityOracleImplFactory.deploy();
-
-    const dynamicFeeImplFactory = await ethers.getContractFactory('DynamicFeePluginImplementation');
-    const dynamicFeeImpl = await dynamicFeeImplFactory.deploy();
-
-    const farmingProxyImplFactory = await ethers.getContractFactory('FarmingProxyPluginImplementation');
-    const farmingProxyImpl = await farmingProxyImplFactory.deploy();
-
-    const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-    const almImpl = await almImplFactory.deploy();
-
-    const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
-    const securityImpl = await securityImplFactory.deploy();
-
-    return {
-      volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
-      dynamicFeeImpl: await dynamicFeeImpl.getAddress(),
-      farmingProxyImpl: await farmingProxyImpl.getAddress(),
-      almImpl: await almImpl.getAddress(),
-      securityImpl: await securityImpl.getAddress()
-    };
-  }
-
   async function gasTestFixture() {
     const fix = await algebraPoolDeployerMockFixture();
     const pool = await fix.createPool();
     const implementations = await deployImplementations();
 
-    const mockPluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
-    const mockPluginFactory = (await mockPluginFactoryFactory.deploy(
-      fix.factory,
-      implementations.volatilityOracleImpl,
-      implementations.dynamicFeeImpl,
-      implementations.farmingProxyImpl,
-      implementations.almImpl,
-      implementations.securityImpl,
-      DEFAULT_FEE_CONFIGURATION
-    )) as any as MockTimeDSFactory;
+    const { mockPluginFactory } = await deployPluginFactory(fix.factory, implementations);
 
-    await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
+    const algebraFactorySigner = await impersonateAlgebraFactory(fix.factory);
+    await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
     const pluginAddress = await mockPluginFactory.pluginByPool(pool);
 
     const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
@@ -135,7 +101,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let pool: MockTimeAlgebraPool;
   let plugin: MockTimeAlgebraUpgradeablePlugin;
   let virtualPoolMock: MockTimeVirtualPool;
-  let mockPluginFactory: MockTimeDSFactory;
+  let mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
   let mint: MintFunction;
   let advanceTime: any;
 

@@ -5,14 +5,14 @@ import { expect } from 'test-utils/expect';
 import { upgradeablePluginFixture } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
 
-import { MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
+import { MockPool, MockTimeAlgebraUpgradeablePlugin, NewMockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
 
 describe('AlgebraUpgradeablePlugin', () => {
   let wallet: Wallet, other: Wallet;
 
   let plugin: MockTimeAlgebraUpgradeablePlugin;
   let mockPool: MockPool;
-  let mockPluginFactory: MockTimeUpgradeablePluginFactory;
+  let mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
 
   let minTick = getMinTick(60);
   let maxTick = getMaxTick(60);

@@ -73,11 +73,13 @@ async function main() {
   await verify("AlgebraUpgradeablePlugin", deployed.pluginImpl, [
     config.algebraFactory,
     deployed.factoryProxy,
-    deployed.volatilityOracleImpl,
-    deployed.dynamicFeeImpl,
-    deployed.farmingProxyImpl,
-    deployed.almImpl,
-    deployed.securityImpl,
+    {
+      volatilityOracle: deployed.volatilityOracleImpl,
+      dynamicFee: deployed.dynamicFeeImpl,
+      farmingProxy: deployed.farmingProxyImpl,
+      alm: deployed.almImpl,
+      security: deployed.securityImpl,
+    },
   ]);
 
   // 4. SecurityRegistry

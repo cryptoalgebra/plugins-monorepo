@@ -2,44 +2,20 @@
 pragma solidity =0.8.20;
 
 import '../../AlgebraUpgradeablePlugin.sol';
-import '../utils/UpgradeTestStorage.sol';
+import './mixins/UpgradeTestFunctions.sol';
+import '../../types/ModuleImplementations.sol';
 
 /// @title Mock Upgraded Plugin for testing upgrades
 /// @notice This contract simulates an upgraded version of AlgebraUpgradeablePlugin
 /// @dev Adds a new variable and function to verify upgrade works correctly
-contract MockUpgradedPlugin is AlgebraUpgradeablePlugin {
+contract MockUpgradedPlugin is AlgebraUpgradeablePlugin, UpgradeTestFunctions {
   constructor(
     address _factory,
     address _pluginFactory,
-    address _volatilityOracleImpl,
-    address _dynamicFeeImpl,
-    address _farmingProxyImpl,
-    address _almImpl,
-    address _securityImpl
-  )
-    AlgebraUpgradeablePlugin(_factory, _pluginFactory, _volatilityOracleImpl, _dynamicFeeImpl, _farmingProxyImpl, _almImpl, _securityImpl)
-  {}
+    ModuleImplementations memory impls
+  ) AlgebraUpgradeablePlugin(_factory, _pluginFactory, impls) {}
 
-  /// @notice New function only available in upgraded version
-  /// @return Always returns 42 to verify upgrade works
-  function newUpgradeableFunction() external pure returns (uint256) {
-    return 42;
-  }
-
-  /// @notice Set new variable (only available in upgraded version)
-  function setNewVariable(uint256 value) external {
+  function _upgradeTestAuthorize() internal view override {
     _authorize();
-    UpgradeTestStorage.layout().newVariable = value;
-  }
-
-  /// @notice Get new variable
-  function getNewVariable() external view returns (uint256) {
-    return UpgradeTestStorage.layout().newVariable;
-  }
-
-  /// @notice Check if this is the upgraded implementation
-  /// @dev Always returns true because this IS the upgraded contract
-  function isUpgraded() external pure returns (bool) {
-    return true;
   }
 }

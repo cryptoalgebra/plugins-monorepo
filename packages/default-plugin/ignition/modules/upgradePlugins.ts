@@ -67,11 +67,13 @@ export default buildModule("UpgradePlugins", (m) => {
   const newPluginImpl = m.contract("AlgebraUpgradeablePlugin", [
     config.algebraFactory,
     config.factoryProxyAddress,
-    volatilityOracleImpl,
-    dynamicFeeImpl,
-    farmingProxyImpl,
-    almImpl,
-    securityImpl
+    {
+      volatilityOracle: volatilityOracleImpl,
+      dynamicFee: dynamicFeeImpl,
+      farmingProxy: farmingProxyImpl,
+      alm: almImpl,
+      security: securityImpl
+    }
   ], {
     id: "NewPluginImplementation"
   });

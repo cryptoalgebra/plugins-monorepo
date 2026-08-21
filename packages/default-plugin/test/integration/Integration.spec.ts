@@ -127,18 +127,7 @@ describe('Integration Tests - Fork', function() {
     
       
     beforeEach(async function(){
-      const fixture = await loadFixture(deployFixture);
-    
-      // Destructure fixture
-      ownerSigner = fixture.ownerSigner;
-      algebraFactory = fixture.algebraFactory;
-      token0 = fixture.token0;
-      token1 = fixture.token1;
-      nft = fixture.nft;
-      swapRouter = fixture.swapRouter;
-      newPluginFactory = fixture.newPluginFactory;
-      beacon = fixture.beacon;
-      deployer = fixture.deployer;
+      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer } = await loadFixture(deployFixture));
           
       // Create pool and get plugin
       const poolData = await createAndInitializePool(nft, ownerSigner, token0, token1, algebraFactory);
@@ -295,16 +284,7 @@ describe('Integration Tests - Fork', function() {
     let pool, poolAddress, plugin, pluginAddress, deployer, deadline;
 
     beforeEach(async () => {
-      const fixture = await loadFixture(deployFixture);
-      ownerSigner = fixture.ownerSigner;
-      algebraFactory = fixture.algebraFactory;
-      token0 = fixture.token0;
-      token1 = fixture.token1;
-      nft = fixture.nft;
-      swapRouter = fixture.swapRouter;
-      newPluginFactory = fixture.newPluginFactory;
-      beacon = fixture.beacon;
-      deployer = fixture.deployer;
+      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer } = await loadFixture(deployFixture));
       
       // Setup pool with liquidity and one initial swap
       const poolData = await setupPoolWithLiquidity(
@@ -388,16 +368,7 @@ describe('Integration Tests - Fork', function() {
     let securityRegistry, securityRegistryAddress;
 
     beforeEach(async () => {
-      const fixture = await loadFixture(deployFixture);
-      ownerSigner = fixture.ownerSigner;
-      algebraFactory = fixture.algebraFactory;
-      token0 = fixture.token0;
-      token1 = fixture.token1;
-      nft = fixture.nft;
-      swapRouter = fixture.swapRouter;
-      newPluginFactory = fixture.newPluginFactory;
-      beacon = fixture.beacon;
-      deployer = fixture.deployer;
+      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer } = await loadFixture(deployFixture));
       
       // Deploy and set security registry
       const SecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
@@ -554,7 +525,6 @@ describe('Integration Tests - Fork', function() {
       await upgradedPlugin.connect(ownerSigner).setFarmingPausedMode(false);
       expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(false);
       
-      const statsResult = await upgradedPlugin.getFarmingUpdateStats.staticCall();
       
       // Perform swap after upgrade
       const swapAmount = ethers.parseEther('100');
@@ -623,15 +593,13 @@ describe('Integration Tests - Fork', function() {
       const pluginFactoryAddress = await newPluginFactory.getAddress();
       
       const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
-      const superPlugin = await SuperPluginFactory.deploy(
-        mockFactoryAddress,
-        pluginFactoryAddress,
-        await upgradedVolatility.getAddress(),
-        await upgradedDynamicFee.getAddress(),
-        await upgradedFarming.getAddress(),
-        await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
-      );
+      const superPlugin = await SuperPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, {
+        volatilityOracle: await upgradedVolatility.getAddress(),
+        dynamicFee: await upgradedDynamicFee.getAddress(),
+        farmingProxy: await upgradedFarming.getAddress(),
+        alm: await upgradedAlm.getAddress(),
+        security: await upgradedSecurity.getAddress()
+      });
       
       const superPluginAddress = await superPlugin.getAddress();
       
@@ -686,7 +654,6 @@ describe('Integration Tests - Fork', function() {
       expect(swapOutput).to.be.gt(0);
       
       // Verify stats from upgraded modules
-      const farmingStats = await upgradedPluginProxy.getFarmingUpdateStats.staticCall();
       const securityStats = await upgradedPluginProxy.getSecurityCheckStats.staticCall();
       
       expect(securityStats.checkCount).to.be.gt(0);
@@ -714,15 +681,13 @@ describe('Integration Tests - Fork', function() {
       const pluginFactoryAddress = await newPluginFactory.getAddress();
       
       const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
-      const superPlugin = await SuperPluginFactory.deploy(
-        mockFactoryAddress,
-        pluginFactoryAddress,
-        await upgradedVolatility.getAddress(),
-        await upgradedDynamicFee.getAddress(),
-        await upgradedFarming.getAddress(),
-        await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
-      );
+      const superPlugin = await SuperPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, {
+        volatilityOracle: await upgradedVolatility.getAddress(),
+        dynamicFee: await upgradedDynamicFee.getAddress(),
+        farmingProxy: await upgradedFarming.getAddress(),
+        alm: await upgradedAlm.getAddress(),
+        security: await upgradedSecurity.getAddress()
+      });
       
       const superPluginAddress = await superPlugin.getAddress();
       

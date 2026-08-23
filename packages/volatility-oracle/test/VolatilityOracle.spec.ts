@@ -717,7 +717,10 @@ describe('VolatilityOracle', () => {
     });
   });
 
-  describe('full volatilityOracle', function () {
+  // Excluded from `npx hardhat test`, run with `pnpm test:slow`. One fill of 65536 timepoints costs
+  // about a minute, but a second fill in the same process is ~40x slower, so the two heavy suites are
+  // split one per command instead of both carrying the tag.
+  describe('full volatilityOracle [ @slow ]', function () {
     this.timeout(10_200_000);
 
     let volatilityOracle: VolatilityOracleTest;
@@ -886,6 +889,8 @@ describe('VolatilityOracle', () => {
       await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([24 * 60 * 60]));
     });
 
+    // Off on purpose: it fills the ring a second time inside this process, the slow case above, and
+    // the wrap arithmetic is the same code the first wrap covers. Enable when changing the ring buffer.
     it.skip('second index wrap', async () => {
       let i = Number(await volatilityOracle.index());
       for (; i < 65536; i += BATCH_SIZE) {
@@ -902,6 +907,8 @@ describe('VolatilityOracle', () => {
     });
   });
 
+  // Deliberately untagged, this is the heavy suite `npx hardhat test` keeps. It is the only fill in
+  // that run and costs about five minutes. Read the note above before tagging it as well.
   describe('full volatilityOracle, maximal density', function () {
     this.timeout(10_200_000);
 

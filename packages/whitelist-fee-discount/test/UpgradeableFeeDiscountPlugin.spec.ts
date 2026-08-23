@@ -45,10 +45,11 @@ describe('UpgradeableFeeDiscountPlugin', function () {
     it('should set correct default plugin config', async function () {
       const { plugin1 } = await loadFixture(deployFixture);
 
-      // BEFORE_SWAP_FLAG = 1
+      // The module contributes BEFORE_SWAP_FLAG, the harness adds the DYNAMIC_FEE a fee module would supply
       const BEFORE_SWAP_FLAG = 1n;
-      const expectedConfig = BEFORE_SWAP_FLAG;
-      
+      const DYNAMIC_FEE = 128n;
+      const expectedConfig = BEFORE_SWAP_FLAG | DYNAMIC_FEE;
+
       const config = await plugin1.defaultPluginConfig();
       expect(config).to.equal(expectedConfig);
     });

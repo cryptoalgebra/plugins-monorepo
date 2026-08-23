@@ -69,11 +69,16 @@ async function mockFactoryFixture(): Promise<MockFactoryFixture> {
   return { mockFactory };
 }
 
-// beforeCreatePoolHook is only callable by the Algebra factory, so tests drive it from that address
-export async function impersonateAlgebraFactory(mockFactory: any) {
-  const address = await mockFactory.getAddress();
+// Sends from a contract's own address, for entry points guarded by msg.sender
+export async function impersonateContract(contract: any) {
+  const address = await contract.getAddress();
   await setBalance(address, 10n ** 20n);
   return await ethers.getImpersonatedSigner(address);
+}
+
+// beforeCreatePoolHook is only callable by the Algebra factory, so tests drive it from that address
+export async function impersonateAlgebraFactory(mockFactory: any) {
+  return impersonateContract(mockFactory);
 }
 
 interface PluginFactoryDeployment {

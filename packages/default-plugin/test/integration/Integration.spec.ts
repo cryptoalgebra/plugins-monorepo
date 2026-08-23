@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { config, ethers } from 'hardhat';
 import { expect } from 'test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
@@ -11,7 +11,17 @@ import {
   setupPoolWithLiquidity
 } from './helpers';
 
-describe('Integration Tests - Fork', function() {
+// Needs a live Base fork, which the coverage network does not provide
+describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
+  // AlgebraPool.gas.spec.ts calls reset() with no arguments, which drops the fork for every spec
+  // after it. Re-establish it here so this suite does not depend on file order.
+  before('restore the Base fork', async () => {
+    const forking = config.networks.hardhat.forking;
+    if (forking === undefined) throw new Error('hardhat network is configured without forking');
+
+    await helpers.reset(forking.url, forking.blockNumber);
+  });
+
   async function deployFixture() {
     await helpers.mine();
     
@@ -59,8 +69,12 @@ describe('Integration Tests - Fork', function() {
     };
   }
 
-  it('should deploy fixture', async () => {
-    const { owner } = await loadFixture(deployFixture);
+  it('wires the upgradeable plugin factory in as the default one', async () => {
+    const { algebraFactory, newPluginFactory, beacon } = await loadFixture(deployFixture);
+
+    expect(await algebraFactory.defaultPluginFactory()).to.equal(await newPluginFactory.getAddress());
+    expect(await newPluginFactory.beacon()).to.equal(await beacon.getAddress());
+    expect(await beacon.implementation()).to.not.equal(ethers.ZeroAddress);
   });
 
   it('creates pool and adds liquidity', async () => {
@@ -173,26 +187,32 @@ describe('Integration Tests - Fork', function() {
       newImplAddress = result.address;
     });
 
-    it('Only ALGEBRA_BASE_PLUGIN_MANAGER or owner can upgrade plugin', async() =>{
-      
-      await expect(newPluginFactory.upgradePlugins(newImplAddress)).to.be.reverted;
+    it('upgradePlugins is refused without the administrator role and accepted with it', async() =>{
+      await expect(newPluginFactory.upgradePlugins(newImplAddress)).to.be.revertedWithCustomError(
+        newPluginFactory,
+        'OnlyAdministrator'
+      );
+
+      // Same call from the Algebra factory owner goes through
+      await newPluginFactory.connect(ownerSigner).upgradePlugins(newImplAddress);
+      expect(await beacon.implementation()).to.equal(newImplAddress);
     });
 
     it('reverts when upgrading to zero address', async () => {
       const { ownerSigner, newPluginFactory } = await loadFixture(deployFixture);
-      
+
       await expect(
         newPluginFactory.connect(ownerSigner).upgradePlugins(ethers.ZeroAddress)
-      ).to.be.reverted;
+      ).to.be.revertedWith('UpgradeableBeacon: implementation is not a contract');
     });
-    
+
     it('reverts when upgrading to non-contract address', async () => {
       const { ownerSigner, newPluginFactory } = await loadFixture(deployFixture);
       const [randomAddress] = await ethers.getSigners();
-      
+
       await expect(
         newPluginFactory.connect(ownerSigner).upgradePlugins(randomAddress.address)
-      ).to.be.reverted;
+      ).to.be.revertedWith('UpgradeableBeacon: implementation is not a contract');
     });
     it('upgrades plugin implementation via beacon and swaps still work', async () => {
       // Upgrade plugin
@@ -402,7 +422,8 @@ describe('Integration Tests - Fork', function() {
       const isInitializedBefore = await plugin.isInitialized();
       const timepointIndexBefore = await plugin.timepointIndex();
       const lastTimestampBefore = await plugin.lastTimepointTimestamp();
-      const volatilityBefore = await plugin.getSingleTimepoint(0);
+      // Raw stored timepoint, unlike getSingleTimepoint(0) it does not extrapolate to block.timestamp
+      const timepoint0Before = await plugin.timepoints(0);
       
       // Deploy upgraded security implementation
       const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
@@ -438,10 +459,20 @@ describe('Integration Tests - Fork', function() {
       const timepointIndexAfter = await upgradedPlugin.timepointIndex();
       expect(isInitializedAfter).to.equal(isInitializedBefore);
       expect(timepointIndexAfter).to.equal(timepointIndexBefore);
-      
+      expect(await upgradedPlugin.lastTimepointTimestamp()).to.equal(lastTimestampBefore);
+
       const volatilityAfter = await upgradedPlugin.getSingleTimepoint(0);
       expect(volatilityAfter.tickCumulative).to.not.equal(0n);
-      
+
+      // Every word of the stored timepoint has to match, a collision would shift them individually
+      const timepoint0After = await upgradedPlugin.timepoints(0);
+      expect(timepoint0After.initialized).to.equal(timepoint0Before.initialized);
+      expect(timepoint0After.blockTimestamp).to.equal(timepoint0Before.blockTimestamp);
+      expect(timepoint0After.tickCumulative).to.equal(timepoint0Before.tickCumulative);
+      expect(timepoint0After.volatilityCumulative).to.equal(timepoint0Before.volatilityCumulative);
+      expect(timepoint0After.tick).to.equal(timepoint0Before.tick);
+      expect(timepoint0After.averageTick).to.equal(timepoint0Before.averageTick);
+
       
       expect(await upgradedPlugin.HAS_UPGRADED_SECURITY()).to.equal(true);
       expect(await upgradedPlugin.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
@@ -468,8 +499,9 @@ describe('Integration Tests - Fork', function() {
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
       
       const statsAfterSwap = await upgradedPlugin.getSecurityCheckStats.staticCall();
-      expect(statsAfterSwap.checkCount).to.be.gt(0);
-      
+      expect(statsAfterSwap.checkCount).to.be.gt(statsBefore.checkCount);
+      expect(statsAfterSwap.lastCheckTimestamp).to.be.gt(0);
+
       const newTimepointIndex = await upgradedPlugin.timepointIndex();
       expect(newTimepointIndex).to.be.gt(timepointIndexBefore);
       

@@ -47,51 +47,12 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     return newImpl;
   }
 
-  // ========== PROXY PATTERN ==========
-
-  describe('#Transparent Proxy Pattern', () => {
-    it('is deployed as proxy', async () => {
-      const factoryAddress = await mockPluginFactory.getAddress();
-      const implAddress = await factoryImpl.getAddress();
-      expect(factoryAddress).to.not.eq(implAddress);
-    });
-
-    it('has correct algebraFactory', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      expect(await mockPluginFactory.algebraFactory()).to.eq(mockFactoryAddress);
-    });
-
-    it('has beacon address', async () => {
-      const beacon = await mockPluginFactory.beacon();
-      expect(beacon).to.not.eq(ZERO_ADDRESS);
-    });
-
-    it('implementation cannot be initialized directly', async () => {
-      await expect(
-        factoryImpl.initialize(
-          await (mockAlgebraFactory as any).getAddress(),
-          ZERO_ADDRESS,
-          DEFAULT_FEE_CONFIGURATION
-        )
-      ).to.be.revertedWith('Initializable: contract is already initialized');
-    });
-  });
+  // Thin subclass of the production factory: adds only the ALM defaults and setPluginForPool.
+  // Everything inherited is covered in AlgebraUpgradeablePluginFactory.spec.ts.
 
   // ========== FACTORY UPGRADE ==========
 
   describe('#Factory Upgrade via ProxyAdmin', () => {
-    it('ProxyAdmin owner can upgrade factory', async () => {
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
-      const newFactoryImpl = await newFactoryImplFactory.deploy();
-
-      const proxyAddress = await mockPluginFactory.getAddress();
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(proxyAddress, await newFactoryImpl.getAddress());
-
-      // Verify factory still works
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      expect(await mockPluginFactory.algebraFactory()).to.eq(mockFactoryAddress);
-    });
-
     it('preserves storage after factory upgrade', async () => {
       // Set configurations before upgrade
       await mockPluginFactory.setFarmingAddress(other.address);
@@ -211,11 +172,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress) as any;
     });
 
-    it('has implementation address', async () => {
-      const impl = await mockPluginFactory.implementation();
-      expect(impl).to.not.eq(ZERO_ADDRESS);
-    });
-
     it('can upgrade plugins', async () => {
 
       // Deploy MockUpgradedPlugin
@@ -246,9 +202,11 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
   });
 
-  // ========== ALM SETTERS ==========
+  // ========== ALM SETTERS (harness only) ==========
 
-  describe('#ALM Configuration', () => {
+  // Harness only setters, with no access control and no path into a created plugin.
+  // ALM configuration reaches a plugin through its own initializeALM instead.
+  describe('#ALM Configuration (harness only)', () => {
     describe('#setDefaultRebalanceManager', () => {
       it('updates defaultRebalanceManager', async () => {
         await mockPluginFactory.setDefaultRebalanceManager(almManager.address);
@@ -280,73 +238,24 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
           mockPluginFactory.setDefaultAlmTwapPeriods(600, 3600)
         ).to.be.revertedWithCustomError(mockPluginFactory, 'InvalidAlmTwapPeriods');
       });
-    });
-  });
 
-  // ========== SECURITY SETTERS ==========
+      it('accepts equal periods', async () => {
+        // The guard is `slowPeriod < fastPeriod`, so equality is deliberately allowed
+        await expect(mockPluginFactory.setDefaultAlmTwapPeriods(3600, 3600)).to.not.be.reverted;
 
-  describe('#Security Configuration', () => {
-    describe('#setSecurityRegistry', () => {
-      it('updates securityRegistry', async () => {
-        await mockPluginFactory.setSecurityRegistry(other.address);
-        expect(await mockPluginFactory.securityRegistry()).to.eq(other.address);
+        expect(await mockPluginFactory.defaultSlowTwapPeriod()).to.eq(3600);
+        expect(await mockPluginFactory.defaultFastTwapPeriod()).to.eq(3600);
       });
 
-      it('emits SecurityRegistry event', async () => {
-        await expect(mockPluginFactory.setSecurityRegistry(other.address))
-          .to.emit(mockPluginFactory, 'SecurityRegistry')
-          .withArgs(other.address);
+      it('reverts one second below equality', async () => {
+        await expect(
+          mockPluginFactory.setDefaultAlmTwapPeriods(3599, 3600)
+        ).to.be.revertedWithCustomError(mockPluginFactory, 'InvalidAlmTwapPeriods');
       });
     });
   });
 
-  // ========== FEE CONFIGURATION ==========
-
-  describe('#Fee Configuration', () => {
-    const newConfig = {
-      alpha1: 3002,
-      alpha2: 10009,
-      beta1: 1001,
-      beta2: 1006,
-      gamma1: 20,
-      gamma2: 22,
-      baseFee: 150,
-    };
-
-    it('updates defaultFeeConfiguration', async () => {
-      await mockPluginFactory.setDefaultFeeConfiguration(newConfig);
-      const config = await mockPluginFactory.defaultFeeConfiguration();
-      expect(config.alpha1).to.eq(newConfig.alpha1);
-      expect(config.baseFee).to.eq(newConfig.baseFee);
-    });
-
-    it('emits DefaultFeeConfiguration event', async () => {
-      await expect(mockPluginFactory.setDefaultFeeConfiguration(newConfig))
-        .to.emit(mockPluginFactory, 'DefaultFeeConfiguration');
-    });
-  });
-
-  // ========== FARMING CONFIGURATION ==========
-
-  describe('#Farming Configuration', () => {
-    describe('#setFarmingAddress', () => {
-      it('updates farmingAddress', async () => {
-        await mockPluginFactory.setFarmingAddress(other.address);
-        expect(await mockPluginFactory.farmingAddress()).to.eq(other.address);
-      });
-
-      it('emits FarmingAddress event', async () => {
-        await expect(mockPluginFactory.setFarmingAddress(other.address))
-          .to.emit(mockPluginFactory, 'FarmingAddress')
-          .withArgs(other.address);
-      });
-
-      it('cannot set same address twice', async () => {
-        await mockPluginFactory.setFarmingAddress(other.address);
-        await expect(mockPluginFactory.setFarmingAddress(other.address)).to.be.reverted;
-      });
-    });
-  });
+  // Security, fee and farming setters are inherited, covered in AlgebraUpgradeablePluginFactory.spec.ts
 
   // ========== COMPLETE PLUGIN UPGRADE FLOW ==========
 
@@ -413,7 +322,12 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const pool2Before = await plugin2.pool();
       const feeConfig1Before = await plugin.feeConfig.staticCall();
       const feeConfig2Before = await plugin2.feeConfig.staticCall();
+      // Factory ALM defaults never reach a created plugin, nothing calls initializeALM.
+      // Pinned so that wiring them through would break here rather than pass quietly.
       const alm1Before = await plugin.rebalanceManager();
+      expect(alm1Before).to.eq(ZERO_ADDRESS);
+      expect(await mockPluginFactory.defaultRebalanceManager()).to.eq(almManager.address);
+
       const security1Before = await plugin.getSecurityRegistry();
 
       // Deploy and upgrade
@@ -435,7 +349,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       expect(feeConfig1After.baseFee).to.eq(feeConfig1Before.baseFee);
       expect(feeConfig2After.alpha1).to.eq(feeConfig2Before.alpha1);
 
-      // ALM config preserved
+      // ALM storage is still uninitialized, and the upgrade did not invent values for it
       expect(await upgraded1.rebalanceManager()).to.eq(alm1Before);
       expect(await upgraded1.slowTwapPeriod()).to.eq(0);
       expect(await upgraded1.fastTwapPeriod()).to.eq(0);
@@ -476,8 +390,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // OLD: VolatilityOracle storage (algebra.storage.volatilityoracle)
     
+      // The pool was initialized and never swapped, so timepoint 0 is the only one written
       const timepointIndex = await upgraded.timepointIndex();
-      expect(timepointIndex).to.be.gte(0);
+      expect(timepointIndex).to.eq(0);
       const timepoint0 = await upgraded.timepoints(0);
       expect(timepoint0.initialized).to.eq(true);
 
@@ -1025,23 +940,28 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     it('volatility calculation uses preserved historical data after upgrade', async () => {
       // Build up oracle history
       for (let i = 0; i < 10; i++) {
-        await plugin.advanceTime(3600); 
+        await plugin.advanceTime(3600);
         await mockPool.swapToTick(i % 2 === 0 ? 100 : -100);
       }
+
+      const timepointIndexBefore = await plugin.timepointIndex();
+      expect(timepointIndexBefore).to.be.gt(0);
 
       // Upgrade
 
       const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
-      
-      // After upgrade, getCurrentFee() should still work (not revert)
-      // Note: fee value may differ because MockUpgradedPlugin uses real block.timestamp
-      // while MockTimeAlgebraUpgradeablePlugin used mock time
-      await expect(upgradedPlugin.getCurrentFee()).to.not.be.reverted;
-      
+
+      // The history the fee is computed from survived
+      expect(await upgradedPlugin.timepointIndex()).to.eq(timepointIndexBefore);
+
+      // The fee value itself may differ, MockUpgradedPlugin reads block.timestamp where
+      // MockTimeAlgebraUpgradeablePlugin read its own clock. The AdaptiveFee bounds still hold.
+      const feeConfig = await upgradedPlugin.feeConfig.staticCall();
       const fee = await upgradedPlugin.getCurrentFee();
-      expect(fee).to.be.gte(0); // Fee should be valid
+      expect(fee).to.be.gte(feeConfig.baseFee);
+      expect(fee).to.be.lte(feeConfig.baseFee + feeConfig.alpha1 + feeConfig.alpha2);
     });
 
     it('TWAP calculation works with preserved timepoints after upgrade', async () => {

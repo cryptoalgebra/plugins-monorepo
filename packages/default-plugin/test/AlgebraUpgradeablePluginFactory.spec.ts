@@ -2,7 +2,13 @@ import { Wallet } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
-import { ZERO_ADDRESS, EMPTY_IMPLEMENTATIONS, pluginFactoryFixture } from './shared/fixtures';
+import {
+  ZERO_ADDRESS,
+  DEFAULT_FEE_CONFIGURATION,
+  EMPTY_IMPLEMENTATIONS,
+  impersonateAlgebraFactory,
+  pluginFactoryFixture,
+} from './shared/fixtures';
 
 import { MockFactory } from '../typechain';
 
@@ -67,7 +73,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       // Other user (not proxyAdminOwner) cannot upgrade via ProxyAdmin
       await expect(
         proxyAdmin.connect(other).upgrade(proxyAddress, await newFactoryImpl.getAddress())
-      ).to.be.reverted;
+      ).to.be.revertedWith('Ownable: caller is not the owner');
     });
 
     it('ProxyAdmin owner can upgrade factory', async () => {
@@ -116,11 +122,62 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     });
   });
 
+  describe('#initialize', () => {
+    // A second, still uninitialized factory behind its own proxy
+    async function deployUninitializedFactory() {
+      const implFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
+      const impl = await implFactory.deploy();
+
+      const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+      const proxy = await TransparentProxyFactory.deploy(await impl.getAddress(), await proxyAdmin.getAddress(), '0x');
+
+      // The beacon needs a contract to point at, the factory implementation itself will do
+      return { fresh: implFactory.attach(await proxy.getAddress()) as any, beaconTarget: await impl.getAddress() };
+    }
+
+    it('rejects a fee configuration whose maximum exceeds uint16', async () => {
+      const { fresh, beaconTarget } = await deployUninitializedFactory();
+      const conf = { ...DEFAULT_FEE_CONFIGURATION, alpha1: 30000, alpha2: 30000, baseFee: 15000 };
+
+      await expect(fresh.initialize(await mockAlgebraFactory.getAddress(), beaconTarget, conf)).to.be.revertedWith('Max fee exceeded');
+    });
+
+    it('rejects a fee configuration with a zero gamma', async () => {
+      const { fresh, beaconTarget } = await deployUninitializedFactory();
+      const conf = { ...DEFAULT_FEE_CONFIGURATION, gamma1: 0 };
+
+      await expect(fresh.initialize(await mockAlgebraFactory.getAddress(), beaconTarget, conf)).to.be.revertedWith('Gammas must be > 0');
+    });
+
+    it('emits DefaultFeeConfiguration for a valid configuration', async () => {
+      const { fresh, beaconTarget } = await deployUninitializedFactory();
+
+      await expect(fresh.initialize(await mockAlgebraFactory.getAddress(), beaconTarget, DEFAULT_FEE_CONFIGURATION)).to.emit(
+        fresh,
+        'DefaultFeeConfiguration'
+      );
+    });
+  });
+
   describe('#Create plugin', () => {
     it('only factory can call beforeCreatePoolHook', async () => {
       await expect(
         pluginFactory.beforeCreatePoolHook(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')
       ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAlgebraFactory');
+    });
+
+    it('only factory can call afterCreatePoolHook', async () => {
+      await expect(pluginFactory.afterCreatePoolHook(wallet.address, wallet.address, other.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'OnlyAlgebraFactory'
+      );
+    });
+
+    it('afterCreatePoolHook passes for the Algebra factory', async () => {
+      const algebraFactorySigner = await impersonateAlgebraFactory(mockAlgebraFactory);
+
+      await expect(pluginFactory.connect(algebraFactorySigner).afterCreatePoolHook(wallet.address, wallet.address, other.address)).to.not.be
+        .reverted;
     });
   });
 
@@ -155,6 +212,24 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
 
       await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+
+      await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'PluginAlreadyCreated'
+      );
+    });
+
+    it('cannot create for a pool the create hook already served', async () => {
+      // Both entry points reach the same _createPlugin, so entering by the other door must still be refused
+      const mockPool = await (await ethers.getContractFactory('MockPool')).deploy();
+      const poolAddress = await mockPool.getAddress();
+
+      const algebraFactorySigner = await impersonateAlgebraFactory(mockAlgebraFactory);
+      await pluginFactory
+        .connect(algebraFactorySigner)
+        .beforeCreatePoolHook(poolAddress, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
+
+      await mockAlgebraFactory.stubPool(wallet.address, other.address, poolAddress);
 
       await expect(pluginFactory.createPluginForExistingPool(wallet.address, other.address)).to.be.revertedWithCustomError(
         pluginFactory,
@@ -261,11 +336,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
   });
 
   describe('#Plugin Upgrade functionality', () => {
-    it('has beacon address', async () => {
-      const beacon = await pluginFactory.beacon();
-      expect(beacon).to.not.eq(ZERO_ADDRESS);
-    });
-
+    // The beacon address itself is checked once, in #Transparent Proxy
     it('has implementation address', async () => {
       const impl = await pluginFactory.implementation();
       expect(impl).to.not.eq(ZERO_ADDRESS);
@@ -337,6 +408,31 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     it('updates securityRegistry', async () => {
       await pluginFactory.setSecurityRegistry(other.address);
       expect(await pluginFactory.securityRegistry()).to.eq(other.address);
+    });
+
+    it('emits event', async () => {
+      await expect(pluginFactory.setSecurityRegistry(other.address)).to.emit(pluginFactory, 'SecurityRegistry').withArgs(other.address);
+    });
+
+    it('reaches only plugins created after the change', async () => {
+      // The registry is copied into the plugin by _createPlugin and never re-read
+      const [, , secondToken, secondPool] = await ethers.getSigners();
+
+      await pluginFactory.setSecurityRegistry(wallet.address);
+      await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
+      await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+
+      const firstPlugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', await pluginFactory.pluginByPool(other.address));
+      expect(await firstPlugin.getSecurityRegistry()).to.eq(wallet.address);
+
+      await pluginFactory.setSecurityRegistry(other.address);
+      expect(await firstPlugin.getSecurityRegistry()).to.eq(wallet.address);
+
+      await mockAlgebraFactory.stubPool(wallet.address, secondToken.address, secondPool.address);
+      await pluginFactory.createPluginForExistingPool(wallet.address, secondToken.address);
+
+      const secondPlugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', await pluginFactory.pluginByPool(secondPool.address));
+      expect(await secondPlugin.getSecurityRegistry()).to.eq(other.address);
     });
   });
 });

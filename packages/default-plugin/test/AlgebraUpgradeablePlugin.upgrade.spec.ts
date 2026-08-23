@@ -90,21 +90,34 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('plugins have independent storage', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
-      // Set plugin to different pools
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool2.setPlugin(fixture.plugin2);
 
-      // Initialize pools at different prices
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
       await fixture.mockPool2.initialize(encodePriceSqrt(2, 1));
 
-      // Check they have different ticks
-      const state1 = await fixture.mockPool1.globalState();
-      const state2 = await fixture.mockPool2.globalState();
-      
-      // Different prices should result in different ticks
-      expect(state1.tick).to.not.eq(state2.tick);
+      // Only pool1 sees activity, so only plugin1 writes further timepoints
+      await fixture.mockPool1.mint(wallet.address, wallet.address, -120, 120, 1000000, '0x');
+      await fixture.plugin1.advanceTime(60);
+      await fixture.mockPool1.swapToTick(10);
+      await fixture.plugin1.advanceTime(60);
+      await fixture.mockPool1.swapToTick(-10);
+
+      // Oracle state diverged even though both proxies share one implementation
+      expect(await fixture.plugin1.timepointIndex()).to.be.gt(await fixture.plugin2.timepointIndex());
+      expect(await fixture.plugin1.lastTimepointTimestamp()).to.be.gt(await fixture.plugin2.lastTimepointTimestamp());
+
+      // Each proxy still resolves its own pool
+      expect(await fixture.plugin1.pool()).to.eq(await fixture.mockPool1.getAddress());
+      expect(await fixture.plugin2.pool()).to.eq(await fixture.mockPool2.getAddress());
+
+      // Farming state written on plugin1 does not leak into plugin2
+      await fixture.pluginFactory.setFarmingAddress(wallet.address);
+      const virtualPool = await (await ethers.getContractFactory('MockTimeVirtualPool')).deploy();
+      await fixture.plugin1.setIncentive(virtualPool);
+      expect(await fixture.plugin1.incentive()).to.eq(await virtualPool.getAddress());
+      expect(await fixture.plugin2.incentive()).to.eq(ZeroAddress);
     });
 
   });
@@ -380,14 +393,23 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       await fixture.plugin1.advanceTime(100);
       await fixture.mockPool1.swapToTick(10);
 
+      const feeConfigBefore = await fixture.plugin1.feeConfig();
       const feeBefore = await fixture.plugin1.getCurrentFee();
+      expect(feeBefore).to.be.gte(feeConfigBefore.baseFee);
 
       // Upgrade
       await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
 
+      // The fee may move, MockUpgradedPlugin reads block.timestamp. The config it derives from must not.
+      const feeConfigAfter = await fixture.plugin1.feeConfig();
+      expect(feeConfigAfter.baseFee).to.eq(feeConfigBefore.baseFee);
+      expect(feeConfigAfter.alpha1).to.eq(feeConfigBefore.alpha1);
+      expect(feeConfigAfter.alpha2).to.eq(feeConfigBefore.alpha2);
+
+      // AdaptiveFee caps the result at baseFee + alpha1 + alpha2
       const feeAfter = await fixture.plugin1.getCurrentFee();
-      // Fee should be the same or very close (might change slightly due to volatility calculations)
-      expect(feeAfter).to.be.gte(0);
+      expect(feeAfter).to.be.gte(feeConfigAfter.baseFee);
+      expect(feeAfter).to.be.lte(feeConfigAfter.baseFee + feeConfigAfter.alpha1 + feeConfigAfter.alpha2);
     });
 
     it('farming proxy still works after upgrade', async () => {
@@ -408,6 +430,167 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Incentive should still work
       const incentive = await fixture.plugin1.incentive();
       expect(incentive).to.eq(await virtualPool.getAddress());
+    });
+  });
+
+  describe('#V2 storage namespace isolation', () => {
+    // Deploy a V2 implementation for every module and a plugin that composes all five
+    async function upgradeToSuperPlugin(fixture: any) {
+      const v2 = await Promise.all(
+        [
+          'MockUpgradedVolatilityOraclePluginImplementation',
+          'MockUpgradedDynamicFeePluginImplementation',
+          'MockUpgradedFarmingProxyPluginImplementation',
+          'MockUpgradedALMPluginImplementation',
+          'MockUpgradedSecurityPluginImplementation',
+        ].map(async (name) => (await (await ethers.getContractFactory(name)).deploy()).getAddress())
+      );
+
+      const superPlugin = await (await ethers.getContractFactory('MockSuperUpgradedPlugin')).deploy(fixture.mockFactory, fixture.pluginFactory, {
+        volatilityOracle: v2[0],
+        dynamicFee: v2[1],
+        farmingProxy: v2[2],
+        alm: v2[3],
+        security: v2[4],
+      });
+
+      await fixture.pluginFactory.upgradePlugins(superPlugin);
+      return ethers.getContractAt('MockSuperUpgradedPlugin', await fixture.plugin1.getAddress());
+    }
+
+    it('writing every V2 module field leaves all V1 state untouched', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.plugin1.advanceTime(100000);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+
+      // Give every module something of its own to lose
+      await fixture.pluginFactory.setFarmingAddress(wallet.address);
+      const virtualPool = await (await ethers.getContractFactory('MockTimeVirtualPool')).deploy();
+      await fixture.plugin1.setIncentive(virtualPool);
+
+      const registry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
+      await fixture.plugin1.setSecurityRegistry(registry);
+
+      const rebalanceManager = await (await ethers.getContractFactory('MockRebalanceManager')).deploy();
+      await fixture.plugin1.initializeALM(rebalanceManager, 3600, 600);
+
+      await fixture.mockPool1.mint(wallet.address, wallet.address, -120, 120, 1000000, '0x');
+      await fixture.plugin1.advanceTime(60);
+      await fixture.mockPool1.swapToTick(30);
+
+      const before = {
+        pool: await fixture.plugin1.pool(),
+        pluginConfig: await fixture.plugin1.defaultPluginConfig(),
+        feeConfig: await fixture.plugin1.feeConfig(),
+        timepointIndex: await fixture.plugin1.timepointIndex(),
+        lastTimepointTimestamp: await fixture.plugin1.lastTimepointTimestamp(),
+        timepoint0: await fixture.plugin1.timepoints(0),
+        incentive: await fixture.plugin1.incentive(),
+        rebalanceManager: await fixture.plugin1.rebalanceManager(),
+        slowTwapPeriod: await fixture.plugin1.slowTwapPeriod(),
+        fastTwapPeriod: await fixture.plugin1.fastTwapPeriod(),
+        securityRegistry: await fixture.plugin1.getSecurityRegistry(),
+      };
+
+      const upgraded = await upgradeToSuperPlugin(fixture);
+
+      // Every module now runs its V2 implementation
+      expect(await upgraded.hasUpgradedVolatilityImpl.staticCall()).to.eq(true);
+      expect(await upgraded.hasUpgradedDynamicFeeImpl.staticCall()).to.eq(true);
+      expect(await upgraded.hasUpgradedFarmingImpl.staticCall()).to.eq(true);
+      expect(await upgraded.hasUpgradedAlmImpl.staticCall()).to.eq(true);
+      expect(await upgraded.hasUpgradedSecurityImpl.staticCall()).to.eq(true);
+
+      // Write into all five V2 namespaces
+      await upgraded.setVolatilityEnhancedMode(true);
+      await upgraded.setAdvancedFeeMode(true);
+      await upgraded.setFarmingPausedMode(true);
+      await upgraded.setAlmAdvancedMode(true);
+      await upgraded.setSecurityEmergencyMode(true);
+
+      expect(await upgraded.getVolatilityEnhancedMode.staticCall()).to.eq(true);
+      expect(await upgraded.getAdvancedFeeMode.staticCall()).to.eq(true);
+      expect(await upgraded.getFarmingPausedMode.staticCall()).to.eq(true);
+      expect(await upgraded.getAlmAdvancedMode.staticCall()).to.eq(true);
+      expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(true);
+
+      // Not one V1 field moved
+      expect(await upgraded.pool()).to.eq(before.pool);
+      expect(await upgraded.defaultPluginConfig()).to.eq(before.pluginConfig);
+
+      const feeConfigAfter = await upgraded.feeConfig.staticCall();
+      expect(feeConfigAfter.alpha1).to.eq(before.feeConfig.alpha1);
+      expect(feeConfigAfter.alpha2).to.eq(before.feeConfig.alpha2);
+      expect(feeConfigAfter.beta1).to.eq(before.feeConfig.beta1);
+      expect(feeConfigAfter.beta2).to.eq(before.feeConfig.beta2);
+      expect(feeConfigAfter.gamma1).to.eq(before.feeConfig.gamma1);
+      expect(feeConfigAfter.gamma2).to.eq(before.feeConfig.gamma2);
+      expect(feeConfigAfter.baseFee).to.eq(before.feeConfig.baseFee);
+
+      expect(await upgraded.timepointIndex()).to.eq(before.timepointIndex);
+      expect(await upgraded.lastTimepointTimestamp()).to.eq(before.lastTimepointTimestamp);
+
+      const timepoint0After = await upgraded.timepoints(0);
+      expect(timepoint0After.initialized).to.eq(before.timepoint0.initialized);
+      expect(timepoint0After.blockTimestamp).to.eq(before.timepoint0.blockTimestamp);
+      expect(timepoint0After.tickCumulative).to.eq(before.timepoint0.tickCumulative);
+      expect(timepoint0After.volatilityCumulative).to.eq(before.timepoint0.volatilityCumulative);
+      expect(timepoint0After.tick).to.eq(before.timepoint0.tick);
+
+      expect(await upgraded.incentive()).to.eq(before.incentive);
+
+      expect(await upgraded.rebalanceManager()).to.eq(before.rebalanceManager);
+      expect(await upgraded.slowTwapPeriod()).to.eq(before.slowTwapPeriod);
+      expect(await upgraded.fastTwapPeriod()).to.eq(before.fastTwapPeriod);
+
+      expect(await upgraded.getSecurityRegistry()).to.eq(before.securityRegistry);
+    });
+
+    it('each V2 namespace is independent of the others', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+
+      const upgraded = await upgradeToSuperPlugin(fixture);
+
+      // Turning one module's flag on must not drag the others with it
+      await upgraded.setAlmAdvancedMode(true);
+
+      expect(await upgraded.getAlmAdvancedMode.staticCall()).to.eq(true);
+      expect(await upgraded.getVolatilityEnhancedMode.staticCall()).to.eq(false);
+      expect(await upgraded.getAdvancedFeeMode.staticCall()).to.eq(false);
+      expect(await upgraded.getFarmingPausedMode.staticCall()).to.eq(false);
+      expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(false);
+
+      // And turning it back off must not disturb one that was set in between
+      await upgraded.setAdvancedFeeMode(true);
+      await upgraded.setAlmAdvancedMode(false);
+
+      expect(await upgraded.getAlmAdvancedMode.staticCall()).to.eq(false);
+      expect(await upgraded.getAdvancedFeeMode.staticCall()).to.eq(true);
+    });
+
+    it('two proxies keep their V2 state apart', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.mockPool2.setPlugin(fixture.plugin2);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+      await fixture.mockPool2.initialize(encodePriceSqrt(1, 1));
+
+      await upgradeToSuperPlugin(fixture);
+
+      const upgraded1 = await ethers.getContractAt('MockSuperUpgradedPlugin', await fixture.plugin1.getAddress());
+      const upgraded2 = await ethers.getContractAt('MockSuperUpgradedPlugin', await fixture.plugin2.getAddress());
+
+      await upgraded1.setVolatilityEnhancedMode(true);
+      await upgraded1.setSecurityEmergencyMode(true);
+
+      expect(await upgraded2.getVolatilityEnhancedMode.staticCall()).to.eq(false);
+      expect(await upgraded2.getSecurityEmergencyMode.staticCall()).to.eq(false);
     });
   });
 

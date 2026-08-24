@@ -113,8 +113,14 @@ describe('#AlmPlugin', () => {
 		}
 	});
 
+	// almRebalances3.json holds 1365 recorded rebalances, 460 of them with a limit position, and each
+	// case costs about 300ms. Running all of them would add over two minutes, so the suite takes a
+	// sample. The stride spreads it over the whole file, so the cases cover the full recorded history
+	// instead of one contiguous stretch of it the way a prefix slice did.
 	describe('#rebalance3', () => {
-		for (const rebalance of rebalances3.slice(0,30)) {
+		const REBALANCE3_STRIDE = 8;
+
+		for (const rebalance of rebalances3.filter((_, index) => index % REBALANCE3_STRIDE === 0)) {
 			if (rebalance.rebalance.limitPosition != null) {
 				it(`rebalance for tx ${rebalance.transactionHash}`, async () => {
 					const { almPlugin, mockVault } = await almPluginFixture({

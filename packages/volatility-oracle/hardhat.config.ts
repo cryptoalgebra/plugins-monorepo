@@ -20,7 +20,8 @@ const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
 };
 
 // Two suites fill 65536 timepoints. Either one alone costs minutes, both in one process take over an
-// hour, so `npx hardhat test` runs one of them and `pnpm test:slow` runs the other.
+// hour, so `npx hardhat test` runs the one in VolatilityOracle.spec.ts and `pnpm test:slow` runs the
+// one in VolatilityOracle.slow.spec.ts, which carries the @slow tag and its own gas snapshots.
 // An explicit --grep means the caller chose a filter, so do not invert theirs.
 const mocha = process.argv.includes('--grep') ? {} : { grep: '@slow', invert: true };
 

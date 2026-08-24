@@ -3,6 +3,7 @@
   "private": "true",
   "scripts": {
     "test": "pnpm -r --no-bail test",
+    "test:slow": "pnpm -r --no-bail --if-present test:slow",
     "compile": "pnpm -r compile",
     "lint": "solhint \"packages/*/contracts/**/*.sol\"",
     "format": "prettier --write \"packages/*/contracts/**/*.sol\"",

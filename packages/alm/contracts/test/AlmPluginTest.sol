@@ -55,6 +55,12 @@ contract AlmPluginTest is BaseRebalanceManager {
     depositTokenBalance = _depositTokenBalance;
   }
 
+  /// @dev The base reads authorization off the Algebra factory, and this harness has no pool to get
+  /// one from. Tests that reach an authorized entry point set it explicitly.
+  function setFactory(address _factory) public {
+    factory = _factory;
+  }
+
   function setState(State _state) public {
     state = _state;
   }

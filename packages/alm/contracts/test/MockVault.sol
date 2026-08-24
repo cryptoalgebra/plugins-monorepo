@@ -11,8 +11,10 @@ contract MockVault is IAlgebraVault, ERC20 {
 
   address public immutable algebraVaultFactory;
   address public immutable override pool;
-  address public immutable override token0;
-  address public immutable override token1;
+  /// @dev A real vault reads these off the pool in its constructor. They stay zero by default so
+  /// existing tests are unaffected, and setTokens fills them for tests that need real ERC20s.
+  address public override token0;
+  address public override token1;
   bool public override allowToken0;
   bool public override allowToken1;
 
@@ -85,6 +87,11 @@ contract MockVault is IAlgebraVault, ERC20 {
 
   function setShouldRevertOnRebalance(bool _shouldRevertOnRebalance) public {
     shouldRevertOnRebalance = _shouldRevertOnRebalance;
+  }
+
+  function setTokens(address _token0, address _token1) public {
+    token0 = _token0;
+    token1 = _token1;
   }
 
   function setAllowTokens(bool _allowToken0, bool _allowToken1) public {

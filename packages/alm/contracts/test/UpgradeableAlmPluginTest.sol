@@ -40,6 +40,12 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
     UpgradeableAbstractPlugin._authorize();
   }
 
+  /// @dev The connector reaches the module by delegatecall from afterSwap, which this harness has no
+  /// pool to receive. Without a passthrough the only route to that code is a composed plugin.
+  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
+    _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+  }
+
   /// @notice Get ALM implementation address (for testing)
   function getAlmImplementation() external view returns (address) {
     return almImplementation;

@@ -328,4 +328,59 @@ describe('#UpgradeableAlmPlugin', () => {
       ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
+  // The connector reaches the module by delegatecall, and nothing in this package took that route:
+  // afterSwap lives on a composed plugin, so these lines were only ever run from default-plugin.
+  describe('#obtainTWAPAndRebalance', () => {
+    beforeEach(async () => {
+      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
+      await pluginProxy.initialize(MOCK_POOL);
+    });
+
+    it('should forward the ticks and timestamp to the rebalance manager', async () => {
+      const recorder = await (await ethers.getContractFactory('MockRebalanceManagerRecorder')).deploy();
+      await pluginProxy.initializeALM(await recorder.getAddress(), SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      await pluginProxy.obtainTWAPAndRebalance(100, -50, 25, 1234);
+
+      expect(await recorder.calls()).to.eq(1);
+      expect(await recorder.lastCurrentTick()).to.eq(100);
+      expect(await recorder.lastSlowTwapTick()).to.eq(-50);
+      expect(await recorder.lastFastTwapTick()).to.eq(25);
+      expect(await recorder.lastBlockTimestamp()).to.eq(1234);
+    });
+
+    it('should do nothing while no rebalance manager is set', async () => {
+      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(ZERO_ADDRESS);
+
+      await expect(pluginProxy.obtainTWAPAndRebalance(100, -50, 25, 1234)).to.not.be.reverted;
+    });
+
+    it('should stop forwarding once the manager is detached', async () => {
+      const recorder = await (await ethers.getContractFactory('MockRebalanceManagerRecorder')).deploy();
+      await pluginProxy.initializeALM(await recorder.getAddress(), SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+      await pluginProxy.obtainTWAPAndRebalance(100, -50, 25, 1234);
+
+      await pluginProxy.setRebalanceManager(ZERO_ADDRESS);
+      await pluginProxy.obtainTWAPAndRebalance(200, -60, 30, 5678);
+
+      expect(await recorder.calls()).to.eq(1);
+    });
+  });
+
+  // The connector recomputes all three getters off storage instead of delegating, so the
+  // implementation keeps a second copy that no plugin ever reaches and that can drift.
+  describe('#implementation kept in step with the connector', () => {
+    it('should report the same configuration as the connector', async () => {
+      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      // Configure the implementation in its own storage, then compare the two copies
+      await almImplementation.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      expect(await almImplementation.getRebalanceManager()).to.eq(await pluginProxy.rebalanceManager.staticCall());
+      expect(await almImplementation.getSlowTwapPeriod()).to.eq(await pluginProxy.slowTwapPeriod.staticCall());
+      expect(await almImplementation.getFastTwapPeriod()).to.eq(await pluginProxy.fastTwapPeriod.staticCall());
+    });
+  });
 });

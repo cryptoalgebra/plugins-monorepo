@@ -113,6 +113,80 @@ describe('#AlmPlugin', () => {
 		}
 	});
 
+	// The manager pauses itself when the vault refuses a rebalance, and unpause is the only way back.
+	// Every other case here has a vault that always accepts, so neither half had ever run.
+	describe('#pause', () => {
+		const sample = rebalances.find((r) => r.rebalance.limitPosition != null)!;
+
+		async function fixtureAtSample() {
+			const { almPlugin, mockVault } = await almPluginFixture({
+				depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
+				simulate: sample.state.simulateTrigger,
+				normalThreshold: sample.state.normalTrigger,
+				underInventoryThreshold: sample.state.underTrigger,
+				overInventoryThreshold: sample.state.overTrigger,
+				priceChangeThreshold: (BigInt(sample.state.priceChangeTrigger) / 2n).toString(),
+				extremeVolatility: sample.state.extremeVolatility,
+				highVolatility: sample.state.highVolatility,
+				someVolatility: sample.state.someVolatility,
+				dtrDelta: sample.state.dtrDelta,
+				baseLowPct: sample.state.baseLowPct,
+				baseHighPct: sample.state.baseHighPct,
+				limitReservePct: sample.state.limitReservePct,
+			}, 60, true, false);
+
+			await almPlugin.setDecimals(18, 18);
+			await mockVault.setTotalAmounts(BigInt(sample.state.usedToken0), BigInt(sample.state.usedToken1));
+			await almPlugin.setPrices(BigInt(sample.state.twapSlow), BigInt(sample.state.twapFast), BigInt(sample.state.currentPrice));
+			await almPlugin.setDepositTokenBalance(sample.state.depositTokenBalance);
+			await almPlugin.setLastRebalanceCurrentPrice(BigInt(sample.state.lastRebalancePrice));
+			await almPlugin.setState(BigInt(sample.state.state));
+
+			return { almPlugin, mockVault, currentTick: BigInt(sample.state.currentTick) };
+		}
+
+		it('pauses itself when the vault reverts the rebalance', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+			await mockVault.setShouldRevertOnRebalance(true);
+
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(almPlugin, 'Paused');
+
+			expect(await almPlugin.paused()).to.be.true;
+			// State.Special, the state the catch branch parks it in
+			expect(await almPlugin.state()).to.be.eq(3);
+		});
+
+		it('does nothing at all while paused, even with a working vault', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+			await mockVault.setShouldRevertOnRebalance(true);
+			await almPlugin.rebalance(currentTick, 0n, 0n, 0n);
+
+			await mockVault.setShouldRevertOnRebalance(false);
+
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.paused()).to.be.true;
+		});
+
+		it('rebalances again once unpaused', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+			await mockVault.setShouldRevertOnRebalance(true);
+			await almPlugin.rebalance(currentTick, 0n, 0n, 0n);
+
+			await mockVault.setShouldRevertOnRebalance(false);
+
+			// unpause is the one authorized entry point here, and the base asks the Algebra factory
+			const mockFactory = await (await ethers.getContractFactory('MockFactory')).deploy();
+			await almPlugin.setFactory(await mockFactory.getAddress());
+
+			await expect(almPlugin.unpause()).to.emit(almPlugin, 'Unpaused');
+			expect(await almPlugin.paused()).to.be.false;
+
+			// The catch branch left it in Special, so put it back where the recorded case started
+			await almPlugin.setState(BigInt(sample.state.state));
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+	});
+
 	// almRebalances3.json holds 1365 recorded rebalances, 460 of them with a limit position, and each
 	// case costs about 300ms. Running all of them would add over two minutes, so the suite takes a
 	// sample. The stride spreads it over the whole file, so the cases cover the full recorded history

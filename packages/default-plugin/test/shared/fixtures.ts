@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { pinnedMockTimePluginFactory } from './pinnedFactory';
 import { setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { MockFactory, MockPool, MockTimeAlgebraUpgradeablePlugin, NewMockTimeUpgradeablePluginFactory } from '../../typechain';
 
@@ -101,7 +102,7 @@ export async function deployPluginFactory(
   const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
   const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
 
-  const factoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+  const factoryImplFactory = await pinnedMockTimePluginFactory();
   const factoryImpl = await factoryImplFactory.deploy();
 
   const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');

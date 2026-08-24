@@ -11,6 +11,7 @@ import {
   withImpl,
 } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 
 import { MockFactory, MockPool, MockTimeAlgebraUpgradeablePlugin, NewMockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
 
@@ -542,7 +543,7 @@ describe('AlgebraUpgradeablePlugin', () => {
   describe('#initialize', () => {
     // A fresh proxy off the same beacon, deployed outside the factory so it is still uninitialized
     async function deployUninitializedPlugin() {
-      const proxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const proxyFactory = await pinnedPluginProxyFactory();
       const proxy = await proxyFactory.deploy(await mockPluginFactory.beacon(), await mockPool.getAddress(), '0x');
 
       const pluginContractFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');

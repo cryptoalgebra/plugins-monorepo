@@ -1,5 +1,6 @@
 import { Wallet } from 'ethers';
 import { ethers } from 'hardhat';
+import { pinnedMockTimePluginFactory } from './shared/pinnedFactory';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
 import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION, newMockTimeUpgradeablePluginFactoryFixture, withImpl, impersonateAlgebraFactory, ModuleImplementations } from './shared/fixtures';
@@ -61,7 +62,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       await mockPluginFactory.setDefaultAlmTwapPeriods(3600, 600);
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
         await mockPluginFactory.getAddress(), 
@@ -495,7 +496,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const implementationBefore = await mockPluginFactory.implementation();
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -519,7 +520,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const feeConfigBefore = await mockPluginFactory.defaultFeeConfiguration();
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -544,7 +545,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const pluginBefore = await mockPluginFactory.pluginByPool(mockPool.getAddress());
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -558,7 +559,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
     it('can create new plugins after factory upgrade', async () => {
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -586,7 +587,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
     it('can modify configs after factory upgrade', async () => {
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -613,7 +614,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const feeConfigBefore = await plugin.feeConfig.staticCall();
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(

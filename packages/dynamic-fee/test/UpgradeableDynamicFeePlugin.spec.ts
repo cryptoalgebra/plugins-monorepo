@@ -92,7 +92,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
       await expect(
         pluginProxy.initialize(MOCK_POOL, DEFAULT_FEE_CONFIG)
-      ).to.be.reverted;
+      ).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
     it('should revert with invalid fee configuration (alpha1 + alpha2 + baseFee > max)', async () => {
@@ -108,7 +108,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
       await expect(
         pluginProxy.initialize(MOCK_POOL, invalidConfig)
-      ).to.be.reverted;
+      ).to.be.revertedWith('Max fee exceeded');
     });
   });
 
@@ -148,7 +148,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
       await expect(
         pluginProxy.changeFeeConfiguration(invalidConfig)
-      ).to.be.reverted;
+      ).to.be.revertedWith('Max fee exceeded');
     });
   });
 

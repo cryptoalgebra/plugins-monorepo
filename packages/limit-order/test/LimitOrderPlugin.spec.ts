@@ -207,7 +207,7 @@ describe('LimitOrders', () => {
       });
 
       it('try to place lo at max tick', async () => {
-        await expect(loModule.place(poolKey, 887220, true, 10n**8n)).to.be.reverted;
+        await expect(loModule.place(poolKey, 887220, true, 10n**8n)).to.be.revertedWithCustomError(pool, 'topTickAboveMAX');
       });
     });
 

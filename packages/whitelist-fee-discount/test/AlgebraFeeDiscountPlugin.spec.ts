@@ -154,4 +154,54 @@ describe('AlgebraFeeDiscountPlugin', () => {
 
   });
 
+
+  // The registry validates its two array arguments and the discount bound, and only the happy path
+  // through that loop had ever run
+  describe('FeeDiscountRegistry validation', () => {
+    it('should refuse a caller without the manager role', async () => {
+      await expect(registry.connect(other).setFeeDiscount(wallet.address, [mockPool.target], [300])).to.be.revertedWith(
+        'Unauthorized'
+      );
+    });
+
+    it('should refuse mismatched pool and discount arrays', async () => {
+      await expect(registry.setFeeDiscount(wallet.address, [mockPool.target], [300, 400])).to.be.revertedWith(
+        'ArraysLengthMismatch'
+      );
+    });
+
+    it('should refuse a discount above the denominator', async () => {
+      await expect(registry.setFeeDiscount(wallet.address, [mockPool.target], [1001])).to.be.revertedWith(
+        'fee discount execeeds 100%'
+      );
+    });
+
+    it('should leave existing discounts alone for an empty batch', async () => {
+      await registry.setFeeDiscount(wallet.address, [mockPool.target], [300]);
+
+      await registry.setFeeDiscount(wallet.address, [], []);
+
+      expect(await registry.feeDiscounts(wallet.address, mockPool.target)).to.eq(300);
+    });
+  });
+
+  // The connector reads the registry straight off storage instead of delegating, so the
+  // implementation keeps a second getter that no plugin reaches and that can drift
+  describe('FeeDiscountPluginImplementation kept in step with the connector', () => {
+    it('should report the same registry as the connector', async () => {
+      const impl = await (await ethers.getContractFactory('FeeDiscountPluginImplementation')).deploy();
+      await impl.initializeFeeDiscount(registry.target);
+
+      expect(await impl.getFeeDiscountRegistry()).to.eq(await plugin.feeDiscountRegistry());
+    });
+
+    it('should follow its own setter', async () => {
+      const impl = await (await ethers.getContractFactory('FeeDiscountPluginImplementation')).deploy();
+      await impl.initializeFeeDiscount(registry.target);
+
+      await impl.setFeeDiscountRegistry(ZeroAddress);
+
+      expect(await impl.getFeeDiscountRegistry()).to.eq(ZeroAddress);
+    });
+  });
 });

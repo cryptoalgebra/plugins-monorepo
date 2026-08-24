@@ -82,6 +82,12 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
   }
 
+  /// @dev The connector's fee formula has no caller on this branch: sliding-fee is composed only by
+  /// this harness. Its two clamps are still shipped logic, so they get a passthrough rather than nothing.
+  function getCurrentFeeForDirection(bool zeroToOne) external view returns (uint16) {
+    return _getCurrentFee(zeroToOne);
+  }
+
   // ###### Authorization ######
 
   /// @dev Authorization check for SlidingFeeConnector - only ALGEBRA_BASE_PLUGIN_MANAGER

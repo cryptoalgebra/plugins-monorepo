@@ -287,4 +287,51 @@ describe('SlidingFee', () => {
     });
   });
 
+
+  // _getCurrentFee has no caller on this branch, sliding-fee is composed only by the harness here.
+  // Its two clamps are shipped logic all the same, and neither had ever been evaluated.
+  describe('#getCurrentFee', () => {
+    beforeEach('set config', async () => {
+      await slidingFeePlugin.setBaseFee(500)
+      await slidingFeePlugin.setPriceChangeFactor(1000)
+    });
+
+    it('returns baseFee while both factors are still one', async function () {
+      expect(await slidingFeePlugin.getCurrentFeeForDirection(true)).to.be.eq(500)
+      expect(await slidingFeePlugin.getCurrentFeeForDirection(false)).to.be.eq(500)
+    });
+
+    it('clamps at uint16 max and floors at one, in the two directions at once', async function () {
+      // Price doubled one to zero, which drives that factor to ~2 and the opposite one to ~0
+      await slidingFeePlugin.getFeeForSwap(false, 10000, 16932);
+      await slidingFeePlugin.setBaseFee(40000);
+
+      // 40000 * 2 does not fit in uint16
+      expect(await slidingFeePlugin.getCurrentFeeForDirection(false)).to.be.eq(65535)
+      // 40000 * ~0 truncates to nothing, and the fee is never allowed to be zero
+      expect(await slidingFeePlugin.getCurrentFeeForDirection(true)).to.be.eq(1)
+    });
+  });
+
+  // The connector reads baseFee, priceChangeFactor and feeFactors straight off storage instead of
+  // delegating, so the implementation keeps a second copy that no plugin reaches and that can drift.
+  describe('#implementation kept in step with the connector', () => {
+    it('should report the same configuration as the connector', async function () {
+      await slidingFeePlugin.setBaseFee(700)
+      await slidingFeePlugin.setPriceChangeFactor(1500)
+
+      // Configure a bare implementation in its own storage, then compare the two copies
+      const impl = await (await ethers.getContractFactory('SlidingFeePluginImplementation')).deploy();
+      await impl.initializeSlidingFee(700);
+      await impl.setPriceChangeFactor(1500);
+
+      expect(await impl.getBaseFee()).to.be.eq(await slidingFeePlugin.baseFee())
+      expect(await impl.getPriceChangeFactor()).to.be.eq(await slidingFeePlugin.priceChangeFactor())
+
+      const [implZeroToOne, implOneToZero] = await impl.getFeeFactors();
+      const [zeroToOne, oneToZero] = await slidingFeePlugin.feeFactors();
+      expect(implZeroToOne).to.be.eq(zeroToOne)
+      expect(implOneToZero).to.be.eq(oneToZero)
+    });
+  });
 });

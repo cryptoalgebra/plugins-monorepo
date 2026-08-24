@@ -50,6 +50,12 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
     return UpgradeableAbstractPlugin._getPool();
   }
 
+  /// @dev The connector reaches this from afterSwap on a composed plugin, which this harness has no
+  /// pool to receive. Without a passthrough the only route to that code is another package.
+  function updateVirtualPoolTick(bool zeroToOne, int24 tick) external {
+    _updateVirtualPoolTick(zeroToOne, tick);
+  }
+
   /// @notice Get FarmingProxy implementation address (for testing)
   function getFarmingProxyImplementation() external view returns (address) {
     return farmingProxyImplementation;

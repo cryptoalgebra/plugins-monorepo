@@ -275,4 +275,73 @@ describe('FeeAuctionPlugin', () => {
       expect(implAddress).to.equal(await feeAuctionImplementation.getAddress());
     });
   });
+
+  // initialize validates the same two bounds the setters do, and neither had been asserted there
+  describe('#initialization bounds', () => {
+    const MAX_FEE = 1000000;
+
+    it('should accept a base fee at the ceiling', async () => {
+      await pluginProxy.initialize(MAX_FEE, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED);
+
+      expect(await pluginProxy.baseFee()).to.equal(MAX_FEE);
+    });
+
+    it('should reject a base fee one over the ceiling', async () => {
+      await expect(
+        pluginProxy.initialize(MAX_FEE + 1, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED)
+      ).to.be.revertedWith('Base fee too high');
+    });
+
+    it('should reject a max MEV tax one over the ceiling', async () => {
+      await expect(
+        pluginProxy.initialize(DEFAULT_BASE_FEE, DEFAULT_MEV_TAX_MULTIPLIER, MAX_FEE + 1, DEFAULT_MEV_TAX_ENABLED)
+      ).to.be.revertedWith('Max MEV tax too high');
+    });
+  });
+
+  // The two cases above note that hardhat leaves tx.gasprice equal to block.basefee, so the priority
+  // fee is zero and the MEV tax never actually computes anything. Setting the gas price explicitly is
+  // what makes the multiplier and the cap observable.
+  describe('#MEV tax with a real priority fee', () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
+      await mockPool.initialize(BigInt('79228162514264337593543950336'));
+    });
+
+    async function swapPayingPriorityFee(priorityFee: bigint) {
+      const basefee = (await ethers.provider.getBlock('latest'))!.baseFeePerGas!;
+      // An explicit gas limit keeps the upfront cost affordable at these gas prices
+      await mockPool.swapToTick(0, { gasPrice: basefee + priorityFee, gasLimit: 300000 });
+    }
+
+    it('should charge a tax proportional to the priority fee', async () => {
+      // tax = priorityFee * multiplier / 1e18, so this aims at roughly half the cap
+      const multiplier = 1_000_000n;
+      await pluginProxy.setMevTaxParameters(multiplier, DEFAULT_MAX_MEV_TAX);
+
+      await swapPayingPriorityFee((5000n * 10n ** 18n) / multiplier);
+
+      const pluginFee = await mockPool.pluginFee();
+      expect(pluginFee).to.be.greaterThan(0);
+      expect(pluginFee).to.be.lessThan(DEFAULT_MAX_MEV_TAX);
+    });
+
+    it('should cap the tax at maxMevTax', async () => {
+      await pluginProxy.setMevTaxParameters(16_777_215, DEFAULT_MAX_MEV_TAX);
+
+      // Far past the cap, so a shift in the base fee between blocks cannot change the outcome
+      await swapPayingPriorityFee(10n ** 16n);
+
+      expect(await mockPool.pluginFee()).to.equal(DEFAULT_MAX_MEV_TAX);
+    });
+
+    it('should charge nothing while the MEV tax is switched off', async () => {
+      await pluginProxy.setMevTaxParameters(16_777_215, DEFAULT_MAX_MEV_TAX);
+      await pluginProxy.setMevTaxEnabled(false);
+
+      await swapPayingPriorityFee(10n ** 16n);
+
+      expect(await mockPool.pluginFee()).to.equal(0);
+    });
+  });
 });

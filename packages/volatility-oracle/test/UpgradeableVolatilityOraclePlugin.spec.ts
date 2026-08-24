@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { expect } from 'chai';
 import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 import { encodePriceSqrt } from 'test-utils/utilities';
@@ -36,7 +37,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     // Deploy pool-aware proxy (required for POOL_ADDRESS_OFFSET-based pool discovery)
-    const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxy = await pinnedPluginProxyFactory();
     const initData = pluginImplementation.interface.encodeFunctionData('initializePlugin');
     const proxy1 = await AlgebraPluginProxy.deploy(beacon.target, mockPool.target, initData);
 
@@ -116,7 +117,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxy = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxy.deploy(beacon.target, mockPool2.target, '0x');
       const plugin2 = UpgradeableVolatilityOraclePluginTest.attach(proxy2.target) as any;
 
@@ -145,7 +146,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxy = await pinnedPluginProxyFactory();
       const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin');
       const proxy2 = await AlgebraPluginProxy.deploy(beacon.target, mockPool2.target, initData2);
       const plugin2 = UpgradeableVolatilityOraclePluginTest.attach(proxy2.target) as any;

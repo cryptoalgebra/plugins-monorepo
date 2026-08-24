@@ -91,7 +91,7 @@ describe('ManagedSwapFee', () => {
       await expect(managedSwapFeePlugin.connect(other).getFeeForSwap(pluginData)).to.be.revertedWithCustomError(managedSwapFeePlugin,"NotAllowed")
     });
 
-    it('gas cost', async () => {
+    it('gas cost [ @skip-on-coverage ]', async () => {
       await snapshotGasCost(managedSwapFeePlugin.getFeeForSwap(pluginData));
     });
 

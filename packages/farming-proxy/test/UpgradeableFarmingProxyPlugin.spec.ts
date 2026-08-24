@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { 
   UpgradeableFarmingProxyPluginTest, 
   FarmingProxyPluginImplementation, 
@@ -53,7 +54,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       await mockPool.getAddress(),
@@ -157,7 +158,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const MockPoolFactory = await ethers.getContractFactory('MockPool');
       const mockPool2 = await MockPoolFactory.deploy() as any as MockPool;
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), await mockPool2.getAddress(), '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;
@@ -186,7 +187,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
       // Use pool-aware proxy so _getPool works consistently
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), await mockPool.getAddress(), '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;

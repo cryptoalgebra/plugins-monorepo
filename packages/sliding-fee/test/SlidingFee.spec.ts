@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedProxyDeployerFactory } from 'test-utils/pinnedProxy';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 
@@ -16,7 +17,7 @@ describe('SlidingFee', () => {
     const SlidingFeePluginImplementation = await ethers.getContractFactory('SlidingFeePluginImplementation');
     const slidingFeeImpl = await SlidingFeePluginImplementation.deploy();
 
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
+    const BeaconProxyDeployer = await pinnedProxyDeployerFactory();
     const proxyDeployer = await BeaconProxyDeployer.deploy();
 
     const UpgradeableSlidingFeePluginTest = await ethers.getContractFactory('UpgradeableSlidingFeePluginTest');

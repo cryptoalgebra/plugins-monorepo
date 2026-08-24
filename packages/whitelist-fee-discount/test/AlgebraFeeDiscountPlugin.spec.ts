@@ -4,6 +4,7 @@ import { ethers } from 'hardhat';
 
 import { expect } from 'test-utils/expect';
 import { encodePriceSqrt } from 'test-utils/utilities';
+import { pinnedProxyDeployerFactory } from 'test-utils/pinnedProxy';
 
 import {
   BeaconProxyDeployer,
@@ -43,7 +44,7 @@ describe('AlgebraFeeDiscountPlugin', () => {
     const feeDiscountImpl: FeeDiscountPluginImplementation =
       await new FeeDiscountPluginImplementation__factory(wallet).deploy();
 
-    const proxyDeployer: BeaconProxyDeployer = await new BeaconProxyDeployer__factory(wallet).deploy();
+    const proxyDeployer = (await (await pinnedProxyDeployerFactory()).connect(wallet).deploy()) as any as BeaconProxyDeployer;
 
     const pluginImplementation: UpgradeableFeeDiscountPluginTest =
       await new UpgradeableFeeDiscountPluginTest__factory(wallet).deploy(

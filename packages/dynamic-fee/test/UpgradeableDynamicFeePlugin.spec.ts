@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { UpgradeableDynamicFeePluginTest, DynamicFeePluginImplementation, MockFactory } from '../typechain';
 import { Wallet } from 'ethers';
 
@@ -59,7 +60,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       MOCK_POOL,
@@ -254,7 +255,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy1 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
@@ -288,7 +289,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableDynamicFeePluginTest', await proxy2.getAddress()) as any as UpgradeableDynamicFeePluginTest;

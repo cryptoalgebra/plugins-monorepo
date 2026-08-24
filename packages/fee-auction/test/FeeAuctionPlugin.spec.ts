@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { Wallet } from 'ethers';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import {
@@ -55,7 +56,7 @@ describe('FeeAuctionPlugin', () => {
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
     // Deploy Proxy
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       await mockPool.getAddress(),

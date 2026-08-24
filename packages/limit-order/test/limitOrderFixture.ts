@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { abi as FACTORY_ABI, bytecode as FACTORY_BYTECODE } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraFactory.sol/AlgebraFactory.json';
+import PLUGIN_FACTORY_ARTIFACT from './pinned/UpgradeableLimitOrderTestPluginFactory.json';
 import {
   abi as TEST_CALLEE_ABI,
   bytecode as TEST_CALLEE_BYTECODE,
@@ -81,7 +82,14 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
 
   const poolFactory = await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE);
 
-  const pluginFactoryFactory = await ethers.getContractFactory('UpgradeableLimitOrderTestPluginFactory');
+  // Pinned bytecode on purpose. This harness builds the plugin proxy with `new AlgebraPluginProxy`,
+  // and the plugin reads the pool address out of that proxy's runtime code at a fixed offset. A
+  // coverage build compiles without the optimizer, which moves the immutable and makes every pool
+  // driven case revert OnlyPool(). See packages/test-utils/pinnedProxy.ts for the full story.
+  const pluginFactoryFactory = await ethers.getContractFactory(
+    PLUGIN_FACTORY_ARTIFACT.abi,
+    PLUGIN_FACTORY_ARTIFACT.bytecode
+  );
   const pluginFactory = (await pluginFactoryFactory.deploy(factory)) as any;
 
   const loModuleFactory = await ethers.getContractFactory('LimitOrderManager');

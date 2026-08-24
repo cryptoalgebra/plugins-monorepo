@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { UpgradeableAlmPluginTest, AlmPluginImplementation, MockFactory } from '../typechain';
 import { ZERO_ADDRESS } from 'test-utils/consts';
 import { Wallet } from 'ethers';
@@ -41,7 +42,7 @@ describe('#UpgradeableAlmPlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       MOCK_POOL,
@@ -176,7 +177,7 @@ describe('#UpgradeableAlmPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy2.getAddress()) as any as UpgradeableAlmPluginTest;
@@ -208,7 +209,7 @@ describe('#UpgradeableAlmPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy2.getAddress()) as any as UpgradeableAlmPluginTest;

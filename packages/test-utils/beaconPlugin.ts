@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { deployPinnedProxyDeployer } from './pinnedProxy';
 
 /// Role that gates the authorized functions of every plugin.
 export const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
@@ -49,7 +50,8 @@ export async function deployBeaconPluginFixture(options: {
   const [owner, manager, user, otherUser] = await ethers.getSigners();
 
   const mockFactory = await (await ethers.getContractFactory('MockFactory')).deploy();
-  const proxyDeployer = await (await ethers.getContractFactory('BeaconProxyDeployer')).deploy();
+  // Pinned bytecode on purpose, see pinnedProxy.ts: a coverage build moves the pool immutable
+  const proxyDeployer = await deployPinnedProxyDeployer();
   const mockPool = await (await ethers.getContractFactory('MockPool')).deploy();
 
   const base: BeaconPluginBase = { owner, manager, user, otherUser, mockFactory, proxyDeployer, mockPool };

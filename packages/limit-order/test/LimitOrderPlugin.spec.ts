@@ -531,4 +531,12 @@ describe('LimitOrders', () => {
 
   })
 
+
+  // The manager accepts native currency only from the wrapper it unwraps through, and nothing had
+  // ever tried to send it any other way
+  describe('#receive', async () => {
+    it('reverts for native currency from anyone but the wrapper', async () => {
+      await expect(wallet.sendTransaction({ to: await loModule.getAddress(), value: 1n })).to.be.revertedWith('Not WNativeToken');
+    });
+  });
 });

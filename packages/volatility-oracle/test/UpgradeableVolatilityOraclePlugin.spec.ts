@@ -5,6 +5,15 @@ import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 import { encodePriceSqrt } from 'test-utils/utilities';
 
 describe('UpgradeableVolatilityOraclePlugin', function () {
+  const TWAP_PERIOD = 3600;
+
+  // afterInitialize seeds the oracle, beforeSwap writes into it
+  async function initializedFixture() {
+    const fixture = await loadFixture(deployFixture);
+    await fixture.mockPool.initialize(encodePriceSqrt(1, 1));
+    return fixture;
+  }
+
   async function deployFixture() {
     const [owner, manager, user, otherUser] = await ethers.getSigners();
 
@@ -185,15 +194,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
   // volatility average - is only reached through a composed plugin in another package, so none of it
   // has a test at this layer. These drive it through MockPool, the way a real pool would.
   describe('Oracle behaviour', function () {
-    const TWAP_PERIOD = 3600;
-
-    // afterInitialize seeds the oracle, beforeSwap writes into it
-    async function initializedFixture() {
-      const fixture = await loadFixture(deployFixture);
-      await fixture.mockPool.initialize(encodePriceSqrt(1, 1));
-      return fixture;
-    }
-
     it('should be initialized by the pool and refuse a second initialize', async function () {
       const { plugin1 } = await initializedFixture();
 
@@ -293,6 +293,50 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const [cumulativeThen] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
 
       expect(cumulativeNow - cumulativeThen).to.equal(BigInt(TWAP_PERIOD) * (await plugin1.getTwapTick.staticCall(TWAP_PERIOD)));
+    });
+  });
+
+  // The connector exposes the raw ring buffer alongside the computed views, and neither raw reader
+  // had a caller. The guarded delegatecall in canGetTwap had none either.
+  describe('Raw timepoint access', function () {
+    it('should expose the seeded timepoint through the ring buffer getter', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      const tp = await plugin1.timepoints(0);
+
+      expect(tp.initialized).to.be.true;
+      expect(tp.blockTimestamp).to.equal(await time.latest());
+      expect(tp.tickCumulative).to.equal(0);
+    });
+
+    it('should return an empty slot for an index never written', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      const tp = await plugin1.timepoints(1);
+
+      expect(tp.initialized).to.be.false;
+      expect(tp.blockTimestamp).to.equal(0);
+    });
+
+    it('should answer a batch of secondsAgos consistently with the single reader', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+
+      const [batch] = await plugin1.getTimepoints([0, TWAP_PERIOD]);
+      const [now] = await plugin1.getSingleTimepoint(0);
+      const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+
+      expect(batch[0]).to.equal(now);
+      expect(batch[1]).to.equal(then);
+    });
+
+    it('should report canGetTwap false rather than revert for a period beyond the clock', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      // currentTime - period underflows inside the module, and the connector swallows that
+      expect(await plugin1.canGetTwap.staticCall(4294967295)).to.be.false;
     });
   });
 });

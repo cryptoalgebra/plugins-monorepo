@@ -162,4 +162,27 @@ describe('UpgradeableManagedFeePlugin', function () {
       ).to.be.revertedWith('Not authorized');
     });
   });
+
+  // The connector reads the whitelist straight off storage instead of delegating, so the
+  // implementation keeps a second getter that no plugin reaches and that can drift
+  describe('Implementation kept in step with the connector', function () {
+    it('should report the same whitelist status as the connector', async function () {
+      const { plugin1, managedFeeImpl, user } = await loadFixture(deployFixture);
+
+      await plugin1.setWhitelistStatus(user.address, true);
+      await managedFeeImpl.setWhitelistStatus(user.address, true);
+
+      expect(await managedFeeImpl.isWhitelisted(user.address)).to.equal(await plugin1.whitelistedAddresses(user.address));
+    });
+
+    it('should follow its own setter back to false', async function () {
+      const { managedFeeImpl, user } = await loadFixture(deployFixture);
+
+      await managedFeeImpl.setWhitelistStatus(user.address, true);
+      expect(await managedFeeImpl.isWhitelisted(user.address)).to.be.true;
+
+      await managedFeeImpl.setWhitelistStatus(user.address, false);
+      expect(await managedFeeImpl.isWhitelisted(user.address)).to.be.false;
+    });
+  });
 });

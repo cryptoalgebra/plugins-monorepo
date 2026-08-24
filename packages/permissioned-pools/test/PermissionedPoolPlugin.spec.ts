@@ -282,4 +282,31 @@ describe('PermissionedPoolPlugin', function () {
       await expect(plugin1.connect(disallowedUser).setAllowlistCheckerRegistry(ethers.ZeroAddress)).to.be.revertedWith('Not authorized');
     });
   });
+
+  // Detaching the registry is the module's off switch. Every other case here runs with one attached,
+  // so the early exit that lets everything through had never been taken.
+  describe('Without a registry', function () {
+    it('should let a disallowed user swap once the registry is detached', async function () {
+      const { plugin1, mockPool, disallowedUser } = await loadFixture(deployFixture);
+
+      await mockPool.initialize(SQRT_PRICE_TICK_0);
+      // The pool calls the plugin directly here, so it is the router check that stops it first
+      await expect(mockPool.connect(disallowedUser).swapToTick(10)).to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed');
+
+      await plugin1.setAllowlistCheckerRegistry(ethers.ZeroAddress);
+
+      await expect(mockPool.connect(disallowedUser).swapToTick(10)).to.not.be.reverted;
+    });
+
+    it('should let a disallowed user add liquidity once the registry is detached', async function () {
+      const { plugin1, mockPool, disallowedUser } = await loadFixture(deployFixture);
+
+      await mockPool.initialize(SQRT_PRICE_TICK_0);
+      await plugin1.setAllowlistCheckerRegistry(ethers.ZeroAddress);
+
+      await expect(
+        mockPool.connect(disallowedUser).mint(disallowedUser.address, disallowedUser.address, -120, 120, 100, '0x')
+      ).to.not.be.reverted;
+    });
+  });
 });

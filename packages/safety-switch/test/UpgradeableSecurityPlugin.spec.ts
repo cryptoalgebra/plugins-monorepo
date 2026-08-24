@@ -137,4 +137,37 @@ describe('UpgradeableSecurityPlugin', function () {
       ).to.be.revertedWith('Not authorized');
     });
   });
+
+  // The connector reads the registry straight off storage instead of delegating, so the
+  // implementation keeps a second getter no plugin reaches. Its guarded early exits are only
+  // reachable there too: a plugin always has a registry by the time the hooks run.
+  describe('Implementation kept in step with the connector', function () {
+    it('should report the same registry as the connector', async function () {
+      const { plugin1, securityImpl, mockSecurityRegistry } = await loadFixture(deployFixture);
+
+      await plugin1.setSecurityRegistry(mockSecurityRegistry.target);
+      await securityImpl.initializeSecurity(mockSecurityRegistry.target);
+
+      expect(await securityImpl.getSecurityRegistry()).to.equal(await plugin1.getSecurityRegistry());
+    });
+
+    it('should let both checks through while no registry is set', async function () {
+      const { securityImpl, mockPool } = await loadFixture(deployFixture);
+
+      expect(await securityImpl.getSecurityRegistry()).to.equal(ethers.ZeroAddress);
+
+      await expect(securityImpl.checkStatus(mockPool.target)).to.not.be.reverted;
+      await expect(securityImpl.checkStatusOnBurn(mockPool.target)).to.not.be.reverted;
+    });
+
+    it('should enforce the registry once it has one', async function () {
+      const { securityImpl, mockPool, mockSecurityRegistry } = await loadFixture(deployFixture);
+
+      await securityImpl.initializeSecurity(mockSecurityRegistry.target);
+      await mockSecurityRegistry.setPoolStatus(mockPool.target, 2);
+
+      await expect(securityImpl.checkStatus(mockPool.target)).to.be.revertedWithCustomError(securityImpl, 'PoolDisabled');
+      await expect(securityImpl.checkStatusOnBurn(mockPool.target)).to.be.revertedWithCustomError(securityImpl, 'PoolDisabled');
+    });
+  });
 });

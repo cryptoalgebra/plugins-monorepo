@@ -236,6 +236,16 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       });
     }
 
+    it('takes the same short circuit as the connector when both sigmoids are off', async () => {
+      const flat = { ...DEFAULT_FEE_CONFIG, alpha1: 0, alpha2: 0 };
+      await pluginProxy.changeFeeConfiguration(flat);
+      await dynamicFeeImplementation.changeFeeConfiguration(flat);
+
+      // Both copies must collapse to baseFee rather than run the sigmoids
+      expect(await dynamicFeeImplementation.getCurrentFee(1000000)).to.eq(flat.baseFee);
+      expect(await pluginProxy.getCurrentFeeForVolatility(1000000)).to.eq(flat.baseFee);
+    });
+
     it('reports the same configuration as the connector', async () => {
       const fromImplementation = await dynamicFeeImplementation.getFeeConfig();
       const fromConnector = await pluginProxy.feeConfig.staticCall();

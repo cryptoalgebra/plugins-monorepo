@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
+import { encodePriceSqrt } from 'test-utils/utilities';
 
 describe('UpgradeableLimitOrderPlugin', function () {
   async function deployFixture() {
@@ -159,6 +160,50 @@ describe('UpgradeableLimitOrderPlugin', function () {
       await expect(
         plugin1.connect(user).setLimitOrderManager(otherUser.address)
       ).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  // afterSwap is the module's only route into the manager, and it runs from the pool. Nothing in this
+  // package drove it, so the connector's delegatecall and both sides of the manager check were dark.
+  describe('afterSwap', function () {
+    it('should forward the pool, direction and tick to the manager', async function () {
+      const { mockPool, mockLimitOrderManager } = await loadFixture(deployFixture);
+
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+      await mockPool.swapToTickWithDirection(-120, true);
+
+      expect(await mockLimitOrderManager.getSwapCallsCount()).to.equal(1);
+      const [pool, zeroToOne, tick] = await mockLimitOrderManager.getLastSwapCall();
+      expect(pool).to.equal(mockPool.target);
+      expect(zeroToOne).to.be.true;
+      expect(tick).to.equal(-120);
+
+      await mockPool.swapToTickWithDirection(300, false);
+      const [, secondZeroToOne, secondTick] = await mockLimitOrderManager.getLastSwapCall();
+      expect(secondZeroToOne).to.be.false;
+      expect(secondTick).to.equal(300);
+    });
+
+    it('should do nothing while no manager is set', async function () {
+      const { plugin1, mockPool, mockLimitOrderManager } = await loadFixture(deployFixture);
+
+      await plugin1.setLimitOrderManager(ethers.ZeroAddress);
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+
+      await expect(mockPool.swapToTick(-120)).to.not.be.reverted;
+      expect(await mockLimitOrderManager.getSwapCallsCount()).to.equal(0);
+    });
+  });
+
+  // The connector reads the manager straight off storage instead of delegating, so the
+  // implementation keeps a second getter that no plugin reaches and that can drift
+  describe('Implementation kept in step with the connector', function () {
+    it('should report the same manager as the connector', async function () {
+      const { plugin1, limitOrderImpl, mockLimitOrderManager } = await loadFixture(deployFixture);
+
+      await limitOrderImpl.setLimitOrderManager(mockLimitOrderManager.target);
+
+      expect(await limitOrderImpl.getLimitOrderManager()).to.equal(await plugin1.limitOrderManager());
     });
   });
 });

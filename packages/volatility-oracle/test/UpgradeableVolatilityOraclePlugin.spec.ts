@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
+import { encodePriceSqrt } from 'test-utils/utilities';
 
 describe('UpgradeableVolatilityOraclePlugin', function () {
   async function deployFixture() {
@@ -159,19 +160,138 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
   });
 
   describe('Authorization', function () {
+    // prepayTimepointsStorageSlots is the connector's only _authorize guarded entry point
     it('should allow owner to call authorized functions', async function () {
-      const { plugin1, owner } = await loadFixture(deployFixture);
+      const { plugin1 } = await loadFixture(deployFixture);
 
-      // Owner should be authorized - test by checking no revert on collectPluginFee
-      // (would need actual fee to collect, so just verify no revert on a simple call)
-      expect(await plugin1.factory()).to.not.be.undefined;
+      await expect(plugin1.prepayTimepointsStorageSlots(1, 10)).to.not.be.reverted;
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role', async function () {
       const { plugin1, manager } = await loadFixture(deployFixture);
 
-      // Manager should be authorized
-      expect(await plugin1.factory()).to.not.be.undefined;
+      await expect(plugin1.connect(manager).prepayTimepointsStorageSlots(1, 10)).to.not.be.reverted;
+    });
+
+    it('should reject a caller with neither ownership nor the role', async function () {
+      const { plugin1, user } = await loadFixture(deployFixture);
+
+      await expect(plugin1.connect(user).prepayTimepointsStorageSlots(1, 10)).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  // Everything above tests the proxy. The module's own logic - writing timepoints, the TWAP and the
+  // volatility average - is only reached through a composed plugin in another package, so none of it
+  // has a test at this layer. These drive it through MockPool, the way a real pool would.
+  describe('Oracle behaviour', function () {
+    const TWAP_PERIOD = 3600;
+
+    // afterInitialize seeds the oracle, beforeSwap writes into it
+    async function initializedFixture() {
+      const fixture = await loadFixture(deployFixture);
+      await fixture.mockPool.initialize(encodePriceSqrt(1, 1));
+      return fixture;
+    }
+
+    it('should be initialized by the pool and refuse a second initialize', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      expect(await plugin1.isInitialized()).to.be.true;
+      expect(await plugin1.timepointIndex()).to.equal(0);
+      expect(await plugin1.lastTimepointTimestamp()).to.equal(await time.latest());
+
+      await expect(plugin1.initialize()).to.be.revertedWith('Already initialized');
+    });
+
+    it('should refuse initialize while the pool has no price', async function () {
+      const { plugin1 } = await loadFixture(deployFixture);
+
+      await expect(plugin1.initialize()).to.be.revertedWith('Pool is not initialized');
+    });
+
+    // This harness reads the real block.timestamp, so two swaps are always a second apart and the
+    // same-second case cannot be reached here. It is covered in default-plugin, whose MockTime plugin
+    // holds its own clock still.
+    it('should write a timepoint on a swap once time has passed', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      const indexAtStart = await plugin1.timepointIndex();
+
+      await time.increase(60);
+      await mockPool.swapToTick(100);
+
+      expect(await plugin1.timepointIndex()).to.equal(indexAtStart + 1n);
+      expect(await plugin1.lastTimepointTimestamp()).to.equal(await time.latest());
+    });
+
+    it('should refuse a zero TWAP period', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.getTwapTick.staticCall(0)).to.be.revertedWith('Period is zero');
+    });
+
+    it('should report canGetTwap only once the history reaches the period', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      expect(await plugin1.canGetTwap.staticCall(TWAP_PERIOD)).to.be.false;
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(0);
+
+      expect(await plugin1.canGetTwap.staticCall(TWAP_PERIOD)).to.be.true;
+    });
+
+    it('should average a flat tick to that tick', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(0);
+
+      expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(0);
+    });
+
+    it('should trail the current tick after the price moves', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+      await time.increase(TWAP_PERIOD / 2);
+      await mockPool.swapToTick(600);
+
+      const twapTick = await plugin1.getTwapTick.staticCall(TWAP_PERIOD);
+
+      // Half the window sat at 0 and half at 600, so the average is strictly between them
+      expect(twapTick).to.be.greaterThan(0);
+      expect(twapTick).to.be.lessThan(600);
+    });
+
+    it('should report no volatility for a flat tick and some once it moves', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(0);
+      expect(await plugin1.getAverageVolatilityLast()).to.equal(0);
+
+      await time.increase(TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+      await time.increase(TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+
+      expect(await plugin1.getAverageVolatilityLast()).to.be.greaterThan(0);
+    });
+
+    it('should return cumulatives that grow with the elapsed time', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+      await time.increase(TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+
+      const [cumulativeNow] = await plugin1.getSingleTimepoint(0);
+      const [cumulativeThen] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+
+      expect(cumulativeNow - cumulativeThen).to.equal(BigInt(TWAP_PERIOD) * (await plugin1.getTwapTick.staticCall(TWAP_PERIOD)));
     });
   });
 });

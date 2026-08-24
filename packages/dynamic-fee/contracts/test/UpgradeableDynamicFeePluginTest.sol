@@ -40,11 +40,15 @@ contract UpgradeableDynamicFeePluginTest is UpgradeableAbstractPlugin, DynamicFe
   }
 
   /// @inheritdoc IAlgebraDynamicFeePlugin
-  /// @dev Returns baseFee for testing purposes. Real implementation should calculate from volatility.
+  /// @dev There is no oracle in this harness, so the fee is quoted at zero volatility
   function getCurrentFee() external view override returns (uint16 fee) {
-    // For testing, just return baseFee (last element of tuple)
-    // Real implementation would get volatility from oracle and calculate dynamic fee
-    return 100; // Default baseFee
+    return _getCurrentFee(0);
+  }
+
+  /// @notice Reaches the connector's fee formula at a chosen volatility
+  /// @dev The connector recomputes the formula instead of delegating, so it needs its own coverage
+  function getCurrentFeeForVolatility(uint88 volatilityAverage) external view returns (uint16 fee) {
+    return _getCurrentFee(volatilityAverage);
   }
 
   /// @dev Authorization - use real auth from UpgradeableAbstractPlugin

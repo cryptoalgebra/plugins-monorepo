@@ -110,6 +110,36 @@ describe('#UpgradeableDynamicFeePlugin', () => {
         pluginProxy.initialize(MOCK_POOL, invalidConfig)
       ).to.be.revertedWith('Max fee exceeded');
     });
+
+    it('should revert with zero gamma1', async () => {
+      await expect(
+        pluginProxy.initialize(MOCK_POOL, { ...DEFAULT_FEE_CONFIG, gamma1: 0 })
+      ).to.be.revertedWith('Gammas must be > 0');
+    });
+
+    it('should revert with zero gamma2', async () => {
+      await expect(
+        pluginProxy.initialize(MOCK_POOL, { ...DEFAULT_FEE_CONFIG, gamma2: 0 })
+      ).to.be.revertedWith('Gammas must be > 0');
+    });
+
+    // alpha1 + alpha2 + baseFee is compared with <=, so the sum may reach uint16 max exactly
+    it('should accept a configuration summing to exactly uint16 max', async () => {
+      const maxConfig = { ...DEFAULT_FEE_CONFIG, alpha1: 30000, alpha2: 30000, baseFee: 5535 };
+
+      await pluginProxy.initialize(MOCK_POOL, maxConfig);
+
+      const config = await pluginProxy.feeConfig.staticCall();
+      expect(config.alpha1).to.eq(maxConfig.alpha1);
+      expect(config.alpha2).to.eq(maxConfig.alpha2);
+      expect(config.baseFee).to.eq(maxConfig.baseFee);
+    });
+
+    it('should reject a configuration one over uint16 max', async () => {
+      await expect(
+        pluginProxy.initialize(MOCK_POOL, { ...DEFAULT_FEE_CONFIG, alpha1: 30000, alpha2: 30000, baseFee: 5536 })
+      ).to.be.revertedWith('Max fee exceeded');
+    });
   });
 
   describe('#changeFeeConfiguration', () => {
@@ -149,6 +179,73 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       await expect(
         pluginProxy.changeFeeConfiguration(invalidConfig)
       ).to.be.revertedWith('Max fee exceeded');
+    });
+
+    it('should revert with zero gamma', async () => {
+      await expect(
+        pluginProxy.changeFeeConfiguration({ ...ALT_FEE_CONFIG, gamma2: 0 })
+      ).to.be.revertedWith('Gammas must be > 0');
+    });
+
+    // A rejected change must not leave the stored configuration half written
+    it('should keep the previous configuration after a rejected change', async () => {
+      await expect(
+        pluginProxy.changeFeeConfiguration({ ...ALT_FEE_CONFIG, gamma1: 0 })
+      ).to.be.revertedWith('Gammas must be > 0');
+
+      const config = await pluginProxy.feeConfig.staticCall();
+      expect(config.alpha1).to.eq(DEFAULT_FEE_CONFIG.alpha1);
+      expect(config.gamma1).to.eq(DEFAULT_FEE_CONFIG.gamma1);
+      expect(config.baseFee).to.eq(DEFAULT_FEE_CONFIG.baseFee);
+    });
+  });
+
+  describe('#getCurrentFee', () => {
+    beforeEach(async () => {
+      await pluginProxy.initialize(MOCK_POOL, DEFAULT_FEE_CONFIG);
+    });
+
+    it('should collapse to baseFee once both sigmoids are switched off', async () => {
+      await pluginProxy.changeFeeConfiguration({ ...DEFAULT_FEE_CONFIG, alpha1: 0, alpha2: 0 });
+
+      expect(await pluginProxy.getCurrentFeeForVolatility(1000000)).to.eq(DEFAULT_FEE_CONFIG.baseFee);
+      expect(await pluginProxy.getCurrentFee()).to.eq(DEFAULT_FEE_CONFIG.baseFee);
+    });
+
+    it('should stay within the bound AdaptiveFee guarantees at high volatility', async () => {
+      const fee = await pluginProxy.getCurrentFeeForVolatility(1000000);
+
+      expect(fee).to.be.greaterThan(DEFAULT_FEE_CONFIG.baseFee);
+      expect(fee).to.be.lessThanOrEqual(DEFAULT_FEE_CONFIG.baseFee + DEFAULT_FEE_CONFIG.alpha1 + DEFAULT_FEE_CONFIG.alpha2);
+    });
+  });
+
+  // The connector recomputes the fee and the configuration getter instead of delegating, so the
+  // implementation keeps a second copy of both. Nothing reaches that copy through a plugin, and the
+  // two are free to drift apart. These configure the implementation in its own storage and compare.
+  describe('#implementation kept in step with the connector', () => {
+    beforeEach(async () => {
+      await pluginProxy.initialize(MOCK_POOL, DEFAULT_FEE_CONFIG);
+      await dynamicFeeImplementation.initializeDynamicFee(DEFAULT_FEE_CONFIG);
+    });
+
+    for (const volatility of [0, 1000, 1000000]) {
+      it(`quotes the same fee as the connector at volatility ${volatility}`, async () => {
+        expect(await dynamicFeeImplementation.getCurrentFee(volatility)).to.eq(await pluginProxy.getCurrentFeeForVolatility(volatility));
+      });
+    }
+
+    it('reports the same configuration as the connector', async () => {
+      const fromImplementation = await dynamicFeeImplementation.getFeeConfig();
+      const fromConnector = await pluginProxy.feeConfig.staticCall();
+
+      expect(fromImplementation.alpha1).to.eq(fromConnector.alpha1);
+      expect(fromImplementation.alpha2).to.eq(fromConnector.alpha2);
+      expect(fromImplementation.beta1).to.eq(fromConnector.beta1);
+      expect(fromImplementation.beta2).to.eq(fromConnector.beta2);
+      expect(fromImplementation.gamma1).to.eq(fromConnector.gamma1);
+      expect(fromImplementation.gamma2).to.eq(fromConnector.gamma2);
+      expect(fromImplementation.baseFee).to.eq(fromConnector.baseFee);
     });
   });
 

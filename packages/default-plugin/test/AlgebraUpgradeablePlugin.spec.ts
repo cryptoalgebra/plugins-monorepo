@@ -8,10 +8,15 @@ import {
   deployPluginFactory,
   impersonateContract,
   upgradeablePluginFixture,
+  withImpl,
 } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
 
 import { MockFactory, MockPool, MockTimeAlgebraUpgradeablePlugin, NewMockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
+
+// Mirrors ISecurityRegistry.Status
+const BURN_ONLY = 1;
+const DISABLED = 2;
 
 describe('AlgebraUpgradeablePlugin', () => {
   let wallet: Wallet, other: Wallet;
@@ -59,6 +64,60 @@ describe('AlgebraUpgradeablePlugin', () => {
       // A swap between two fields would still leave five distinct addresses, the equalities above are what catches it
       const addresses = [wired.volatilityOracle, wired.dynamicFee, wired.farmingProxy, wired.alm, wired.security];
       expect(new Set(addresses).size).to.be.eq(5);
+    });
+
+    // The constructor takes one struct, so a field left out is a zero address rather than a compile error.
+    // Nothing rejects it: a delegatecall to address(0) reports success, so a module reached only by a
+    // void call goes quiet and one whose return value is decoded fails at the first call instead.
+    describe('a module left at the zero address', () => {
+      // Deploy a plugin for a fresh pool with one module implementation missing
+      async function deployWithMissingModule(missing: Partial<{ dynamicFee: string; security: string }>) {
+        const { mockPluginFactory: brokenFactory } = await deployPluginFactory(mockFactory, withImpl(implementations, missing));
+
+        const brokenPool = (await (await ethers.getContractFactory('MockPool')).deploy()) as any as MockPool;
+        const algebraFactorySigner = await impersonateContract(mockFactory);
+        await brokenFactory
+          .connect(algebraFactorySigner)
+          .beforeCreatePoolHook(brokenPool, ZeroAddress, ZeroAddress, ZeroAddress, ZeroAddress, '0x');
+
+        const brokenPlugin = (await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin')).attach(
+          await brokenFactory.pluginByPool(brokenPool)
+        ) as any as MockTimeAlgebraUpgradeablePlugin;
+
+        await brokenPool.setPlugin(brokenPlugin);
+        await brokenPool.initialize(encodePriceSqrt(1, 1));
+
+        return { brokenPool, brokenPlugin };
+      }
+
+      it('leaves Security failing open instead of reverting', async () => {
+        const { brokenPool, brokenPlugin } = await deployWithMissingModule({ security: ZeroAddress });
+
+        const registry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
+
+        // The call succeeds and even emits, but the implementation that would have stored it is not there
+        await expect(brokenPlugin.setSecurityRegistry(registry)).to.emit(brokenPlugin, 'SecurityRegistry');
+        expect(await brokenPlugin.getSecurityRegistry()).to.be.eq(ZeroAddress);
+
+        await registry.setPoolStatus(brokenPool, DISABLED);
+        await expect(brokenPool.swapToTick(10)).to.not.be.reverted;
+      });
+
+      // _getCurrentFee reads storage directly, only the writes go through the implementation,
+      // so the module does not fail loudly, it just never receives its configuration
+      it('leaves DynamicFee unconfigured, so the pool trades at a zero fee', async () => {
+        const { brokenPool, brokenPlugin } = await deployWithMissingModule({ dynamicFee: ZeroAddress });
+
+        const config = await brokenPlugin.feeConfig();
+        expect(config.baseFee).to.be.eq(0);
+        expect(config.alpha1).to.be.eq(0);
+        expect(await brokenPlugin.getCurrentFee()).to.be.eq(0);
+
+        await brokenPlugin.advanceTime(60);
+        await brokenPool.swapToTick(10);
+
+        expect(await brokenPool.overrideFee()).to.be.eq(0);
+      });
     });
 
     it('stores the pool where POOL_ADDRESS_OFFSET expects to find it', async () => {
@@ -116,6 +175,62 @@ describe('AlgebraUpgradeablePlugin', () => {
       expect(await fromPool.beforeFlash.staticCall(wallet.address, wallet.address, 1, 1, '0x')).to.be.eq(selectorOf('beforeFlash'));
       expect(await fromPool.afterFlash.staticCall(wallet.address, wallet.address, 1, 1, 0, 0, '0x')).to.be.eq(selectorOf('afterFlash'));
       expect(await fromPool.handlePluginFee.staticCall(0, 0)).to.be.eq(selectorOf('handlePluginFee'));
+    });
+
+    // MockPool mirrors AlgebraPool here: an operation the plugin itself starts must not re-enter the hooks
+    it('skips the hooks when the pool operation comes from the plugin', async () => {
+      await mockPool.setPlugin(plugin);
+      await initializeAtZeroTick(mockPool);
+      await plugin.advanceTime(60);
+
+      const indexBefore = await plugin.timepointIndex();
+      const timestampBefore = await plugin.lastTimepointTimestamp();
+
+      const fromPlugin = mockPool.connect(await impersonateContract(plugin)) as any;
+      await fromPlugin.swapToTick(100);
+
+      expect(await plugin.timepointIndex()).to.be.eq(indexBefore);
+      expect(await plugin.lastTimepointTimestamp()).to.be.eq(timestampBefore);
+      // beforeSwap never ran, so it never handed the pool a fee
+      expect(await mockPool.overrideFee()).to.be.eq(0);
+
+      // The same call from anyone else does run the hooks, which is what makes the check above meaningful
+      await mockPool.swapToTick(100);
+      expect(await plugin.lastTimepointTimestamp()).to.be.greaterThan(timestampBefore);
+      expect(await mockPool.overrideFee()).to.be.greaterThan(0);
+    });
+
+    // Also mirrored from AlgebraPool, and the fixture leaves the pool unconnected until a test wires it
+    it('refuses a plugin config change while no plugin is connected', async () => {
+      const poolErrors = await ethers.getContractAt('IAlgebraPoolErrors', await mockPool.getAddress());
+
+      await expect(mockPool.setPluginConfig(PLUGIN_FLAGS.AFTER_SWAP_FLAG)).to.be.revertedWithCustomError(
+        poolErrors,
+        'pluginIsNotConnected'
+      );
+
+      await mockPool.setPlugin(plugin);
+      await expect(mockPool.setPluginConfig(PLUGIN_FLAGS.AFTER_SWAP_FLAG)).to.not.be.reverted;
+    });
+
+    // The position hooks carry their own copy of that guard, separate from the one on the swap path
+    it('skips the position hooks when the modify comes from the plugin', async () => {
+      await mockPool.setPlugin(plugin);
+      await initializeAtZeroTick(mockPool);
+      await mockPool.setPluginConfig(PLUGIN_FLAGS.AFTER_POSITION_MODIFY_FLAG);
+
+      const fromPlugin = mockPool.connect(await impersonateContract(plugin)) as any;
+
+      // afterModifyPosition is what rewrites the config back, so an untouched config proves it never ran
+      await fromPlugin.mint(wallet.address, wallet.address, -120, 120, 100, '0x');
+      expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.AFTER_POSITION_MODIFY_FLAG);
+
+      await fromPlugin.burn(-120, 120, 100, '0x');
+      expect((await mockPool.globalState()).pluginConfig).to.be.eq(PLUGIN_FLAGS.AFTER_POSITION_MODIFY_FLAG);
+
+      // From an ordinary caller the same mint does run the hook and restores the default config
+      await mockPool.mint(wallet.address, wallet.address, -120, 120, 100, '0x');
+      expect((await mockPool.globalState()).pluginConfig).to.be.eq(await plugin.defaultPluginConfig());
     });
 
     describe('not implemented hooks', async () => {
@@ -343,6 +458,26 @@ describe('AlgebraUpgradeablePlugin', () => {
 
         expect(await plugin.incentive()).to.be.eq(await vpStub.getAddress());
       });
+
+      // afterSwap hands the direction straight to the virtual pool, and every other case swaps one way
+      it('forwards the swap direction to the virtual pool', async () => {
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
+        await mockPluginFactory.setFarmingAddress(wallet.address);
+
+        const vpStub = await (await ethers.getContractFactory('MockDirectionVirtualPool')).deploy();
+        await plugin.setIncentive(vpStub);
+
+        await mockPool.swapToTickWithDirection(-200, true);
+        expect(await vpStub.lastZeroToOne()).to.be.true;
+        expect(await vpStub.currentTick()).to.be.eq(-200);
+
+        await mockPool.swapToTickWithDirection(300, false);
+        expect(await vpStub.lastZeroToOne()).to.be.false;
+        expect(await vpStub.currentTick()).to.be.eq(300);
+
+        expect(await vpStub.crossToCount()).to.be.eq(2);
+      });
     });
   });
 
@@ -446,6 +581,7 @@ describe('AlgebraUpgradeablePlugin', () => {
       { name: 'setSecurityRegistry', call: (p) => p.setSecurityRegistry(ZeroAddress) },
       { name: 'setRebalanceManager', call: (p) => p.setRebalanceManager(ZeroAddress) },
       { name: 'setSlowTwapPeriod', call: (p) => p.setSlowTwapPeriod(3600) },
+      { name: 'setFastTwapPeriod', call: (p) => p.setFastTwapPeriod(0) },
       // initializeALM rejects a zero manager on its own, so it needs a real address to reach _authorize's outcome
       { name: 'initializeALM', call: (p) => p.initializeALM(wallet.address, 3600, 600) },
     ];
@@ -489,6 +625,42 @@ describe('AlgebraUpgradeablePlugin', () => {
       expect(await token.balanceOf(plugin)).to.be.eq(600);
     });
 
+    it('collectPluginFee accepts a zero amount and moves nothing', async () => {
+      await plugin.collectPluginFee(token, 0, other.address);
+
+      expect(await token.balanceOf(other.address)).to.be.eq(0);
+      expect(await token.balanceOf(plugin)).to.be.eq(1000);
+    });
+
+    // SafeTransfer collapses every failed transfer into this one error, which lives on the pool interface
+    it('collectPluginFee reverts when the plugin holds less than the requested amount', async () => {
+      const poolErrors = await ethers.getContractAt('IAlgebraPoolErrors', await plugin.getAddress());
+
+      await expect(plugin.collectPluginFee(token, 1001, other.address)).to.be.revertedWithCustomError(poolErrors, 'transferFailed');
+
+      expect(await token.balanceOf(plugin)).to.be.eq(1000);
+    });
+
+    it('collectPluginFee reverts for the zero recipient', async () => {
+      const poolErrors = await ethers.getContractAt('IAlgebraPoolErrors', await plugin.getAddress());
+
+      await expect(plugin.collectPluginFee(token, 400, ZeroAddress)).to.be.revertedWithCustomError(poolErrors, 'transferFailed');
+
+      expect(await token.balanceOf(plugin)).to.be.eq(1000);
+    });
+
+    // SafeTransfer treats an empty return as success, which is the case it exists for. MockERC20 is a
+    // plain OpenZeppelin token and always returns true, so it never reaches that branch.
+    it('collectPluginFee accepts a token whose transfer returns nothing', async () => {
+      const noReturnToken = await (await ethers.getContractFactory('MockNoReturnERC20')).deploy();
+      await noReturnToken.mint(plugin, 1000);
+
+      await plugin.collectPluginFee(noReturnToken, 400, other.address);
+
+      expect(await noReturnToken.balanceOf(other.address)).to.be.eq(400);
+      expect(await noReturnToken.balanceOf(plugin)).to.be.eq(600);
+    });
+
     // The matching positive case lives in #Hooks, which checks every hook selector in one place
     it('handlePluginFee can only be called by the pool', async () => {
       await expect(plugin.handlePluginFee(0, 0)).to.be.revertedWithCustomError(plugin, 'OnlyPool');
@@ -496,10 +668,6 @@ describe('AlgebraUpgradeablePlugin', () => {
   });
 
   describe('#SecurityRegistry status', () => {
-    // Mirrors ISecurityRegistry.Status
-    const BURN_ONLY = 1;
-    const DISABLED = 2;
-
     let registry: any;
 
     beforeEach('attach a registry and open the pool', async () => {
@@ -536,6 +704,17 @@ describe('AlgebraUpgradeablePlugin', () => {
       await expect(mockPool.burn(-120, 120, 100, '0x')).to.not.be.reverted;
     });
 
+    // beforeModifyPosition splits on `desiredLiquidityDelta <= 0`, so a zero delta takes the burn path.
+    // A poke collects fees without adding liquidity and has to stay possible while the pool is BURN_ONLY.
+    it('treats a zero liquidity delta as a burn, not as a mint', async () => {
+      await registry.setPoolStatus(mockPool, BURN_ONLY);
+
+      await expect(mockPool.mint(wallet.address, wallet.address, -120, 120, 0, '0x')).to.not.be.reverted;
+
+      await registry.setPoolStatus(mockPool, DISABLED);
+      await expect(mockPool.mint(wallet.address, wallet.address, -120, 120, 0, '0x')).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+    });
+
     it('a global status takes priority over an enabled pool', async () => {
       await registry.setPoolStatus(mockPool, 0);
       await registry.setGlobalStatus(DISABLED);
@@ -549,6 +728,39 @@ describe('AlgebraUpgradeablePlugin', () => {
 
       await plugin.setSecurityRegistry(ZeroAddress);
       await expect(mockPool.swapToTick(10)).to.not.be.reverted;
+    });
+
+    it('lets the pool through again once its status is reset', async () => {
+      await registry.setPoolStatus(mockPool, DISABLED);
+      await expect(mockPool.swapToTick(10)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+
+      await registry.resetPoolStatus(mockPool);
+
+      await expect(mockPool.swapToTick(10)).to.not.be.reverted;
+      await expect(mockPool.burn(-120, 120, 100, '0x')).to.not.be.reverted;
+    });
+
+    // One registry serves every pool, so a status set on one must not reach the others
+    it('disabling one pool leaves another pool on the same registry untouched', async () => {
+      const otherPool = (await (await ethers.getContractFactory('MockPool')).deploy()) as any as MockPool;
+
+      const algebraFactorySigner = await impersonateContract(mockFactory);
+      await mockPluginFactory
+        .connect(algebraFactorySigner)
+        .beforeCreatePoolHook(otherPool, ZeroAddress, ZeroAddress, ZeroAddress, ZeroAddress, '0x');
+
+      const otherPlugin = (await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin')).attach(
+        await mockPluginFactory.pluginByPool(otherPool)
+      ) as any as MockTimeAlgebraUpgradeablePlugin;
+
+      await otherPlugin.setSecurityRegistry(registry);
+      await otherPool.setPlugin(otherPlugin);
+      await initializeAtZeroTick(otherPool);
+
+      await registry.setPoolStatus(mockPool, DISABLED);
+
+      await expect(mockPool.swapToTick(10)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+      await expect(otherPool.swapToTick(10)).to.not.be.reverted;
     });
   });
 
@@ -573,6 +785,27 @@ describe('AlgebraUpgradeablePlugin', () => {
 
       expect(await mockPool.overrideFee()).to.be.eq(100);
       expect(await plugin.getCurrentFee()).to.be.eq(100);
+    });
+
+    // Nothing has moved yet, so the oracle reports no volatility and both sigmoids evaluate to zero
+    it('reports exactly baseFee while the oracle holds no volatility', async () => {
+      const feeConfig = await plugin.feeConfig();
+
+      expect(await plugin.getCurrentFee()).to.be.eq(feeConfig.baseFee);
+    });
+
+    // Two swaps inside one timestamp: the oracle must not append a second timepoint for the same second
+    it('does not write a second timepoint for two swaps at the same timestamp', async () => {
+      await plugin.advanceTime(60);
+      await mockPool.swapToTick(100);
+
+      const indexAfterFirst = await plugin.timepointIndex();
+      const feeAfterFirst = await mockPool.overrideFee();
+
+      await mockPool.swapToTick(200);
+
+      expect(await plugin.timepointIndex()).to.be.eq(indexAfterFirst);
+      expect(await mockPool.overrideFee()).to.be.eq(feeAfterFirst);
     });
 
     it('stays within the bound AdaptiveFee guarantees after real volatility', async () => {
@@ -640,6 +873,66 @@ describe('AlgebraUpgradeablePlugin', () => {
       expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
       expect(await rebalanceManager.lastCurrentTick()).to.be.eq((await mockPool.globalState()).tick);
       expect(await rebalanceManager.lastTimestamp()).to.be.eq(await plugin.lastTimepointTimestamp());
+    });
+
+    // The two periods are what the module exists for, so the manager has to receive one tick per period
+    // and they have to be the right way round. Asserting only the current tick would miss a swap of the two.
+    it('hands the manager the slow and the fast TWAP tick, not the same tick twice', async () => {
+      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
+
+      // Build history that is far from flat, so the two windows cannot agree by accident
+      await plugin.advanceTime(2 * SLOW_PERIOD);
+      await mockPool.swapToTick(-600);
+      await plugin.advanceTime(SLOW_PERIOD);
+      await mockPool.swapToTick(600);
+      await plugin.advanceTime(FAST_PERIOD);
+      await mockPool.swapToTick(100);
+
+      const twapTick = async (period: number) => {
+        const [cumulativeNow] = await plugin.getSingleTimepoint(0);
+        const [cumulativeThen] = await plugin.getSingleTimepoint(period);
+        const delta = cumulativeNow - cumulativeThen;
+        // getTwapTick rounds towards negative infinity, BigInt division truncates towards zero
+        return delta < 0n && delta % BigInt(period) !== 0n ? delta / BigInt(period) - 1n : delta / BigInt(period);
+      };
+
+      expect(await rebalanceManager.lastSlowTwapTick()).to.be.eq(await twapTick(SLOW_PERIOD));
+      expect(await rebalanceManager.lastFastTwapTick()).to.be.eq(await twapTick(FAST_PERIOD));
+      expect(await rebalanceManager.lastSlowTwapTick()).to.not.be.eq(await rebalanceManager.lastFastTwapTick());
+    });
+
+    // getTwapTick refuses a zero period, and afterSwap has no way to skip it, so every swap on the pool
+    // reverts for as long as the period stays zero. initializeALM accepts a zero fast period too.
+    it('a zero fastTwapPeriod stops every swap on the pool', async () => {
+      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
+      await plugin.advanceTime(2 * SLOW_PERIOD);
+      await mockPool.swapToTick(100);
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+
+      await plugin.setFastTwapPeriod(0);
+
+      await plugin.advanceTime(SLOW_PERIOD);
+      await expect(mockPool.swapToTick(-100)).to.be.revertedWith('Period is zero');
+
+      // Restoring the period brings the pool back
+      await plugin.setFastTwapPeriod(FAST_PERIOD);
+      await expect(mockPool.swapToTick(-100)).to.not.be.reverted;
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(2);
+    });
+
+    // The same zero period is harmless until the oracle has slowTwapPeriod of history, because the
+    // rebalance branch is skipped entirely. A pool configured this way trades normally and then stops,
+    // with nobody having sent a transaction in between.
+    it('a pool initialized with a zero fastTwapPeriod trades until enough history accumulates', async () => {
+      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, 0);
+
+      await plugin.advanceTime(SLOW_PERIOD / 2);
+      await expect(mockPool.swapToTick(100)).to.not.be.reverted;
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(0);
+
+      // Only time has passed since the swap above, nothing was called on the plugin
+      await plugin.advanceTime(2 * SLOW_PERIOD);
+      await expect(mockPool.swapToTick(-100)).to.be.revertedWith('Period is zero');
     });
 
     it('stops rebalancing again once the manager is detached', async () => {

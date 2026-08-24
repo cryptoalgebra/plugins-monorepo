@@ -34,6 +34,8 @@ Don't put dates, file counts, or "last touched" claims in this file — they rot
 
 - **Renaming a `describe` orphans its snapshots.** Snapshot keys are the full title chain, so adding a tag like `[ @slow ]` to a suite makes every entry underneath it a new key and leaves the old ones behind as dead weight. If the suite cannot be updated in a full run (see above), delete the stale keys from the `.snap` file by hand, and check the diff reads as renames rather than additions.
 
+- **Adding a field to a mock that the gas suite attaches to a real pool moves the recorded gas.** `packages/default-plugin/test/AlgebraPool.gas.spec.ts` snapshots swaps with `MockTimeVirtualPool` wired in as the farming incentive, so an extra `SSTORE` inside that mock's `crossTo` shows up as a gas regression in half a dozen unrelated snapshots. The numbers are measuring the pool and plugin, not the mock, so updating the snapshots would be recording noise as a baseline. When a new test needs a mock to record something the gas path does not, add a second mock for it instead of widening the one the gas suite uses.
+
 ## Testing private or internal functions directly
 
 If the behavior you need to test is a `private` or `internal` function buried inside a stateful contract — not reachable through a clean public entry point without a lot of unrelated setup — don't force it through the full public flow, and don't copy its logic into a test file. A copy validates the copy, not the real function, and drifts silently when the original changes.

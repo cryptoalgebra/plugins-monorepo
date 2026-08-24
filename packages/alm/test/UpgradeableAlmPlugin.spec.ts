@@ -105,6 +105,26 @@ describe('#UpgradeableAlmPlugin', () => {
         pluginProxy.initializeALM(ZERO_ADDRESS, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD)
       ).to.be.revertedWith('_rebalanceManager must be non zero address');
     });
+
+    // initializeALM carries no initializer guard, unlike the plugin's own initialize. Whoever holds
+    // ALGEBRA_BASE_PLUGIN_MANAGER can therefore re-point the module and rewrite both periods at once.
+    it('can be called again and overwrites the whole configuration', async () => {
+      const OTHER_MANAGER = '0x0000000000000000000000000000000000000055';
+
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+      await pluginProxy.initializeALM(OTHER_MANAGER, 7200, 1200);
+
+      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(OTHER_MANAGER);
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(7200);
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(1200);
+    });
+
+    // A zero fast period passes the guard here, and the composed plugin then reverts on every swap
+    it('should accept a zero fastTwapPeriod', async () => {
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, 0);
+
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(0);
+    });
   });
 
   describe('#setters', () => {

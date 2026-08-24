@@ -2,7 +2,8 @@
 pragma solidity =0.8.20;
 
 /// @notice Addresses of the module implementations a composed plugin delegates to
-/// @dev Passed as one struct so adding a module does not change every constructor and deploy script
+/// @dev Test-side only. The harnesses take one struct so a new module does not change every harness
+/// constructor, while AlgebraUpgradeablePlugin itself keeps the plain positional arguments it ships with.
 struct ModuleImplementations {
   address volatilityOracle;
   address dynamicFee;

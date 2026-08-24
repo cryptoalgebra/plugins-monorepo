@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import '../MockTimeAlgebraUpgradeablePlugin.sol';
 import './V2ModuleAccessors.sol';
-import '../../../types/ModuleImplementations.sol';
+import '../../types/ModuleImplementations.sol';
 
 /// @title Base for plugin mocks that expose upgraded module functions
 /// @notice Pulls in every V2 accessor mixin and wires them to the plugin once

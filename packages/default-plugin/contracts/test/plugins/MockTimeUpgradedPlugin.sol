@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import './MockTimeAlgebraUpgradeablePlugin.sol';
 import './mixins/UpgradeTestFunctions.sol';
-import '../../types/ModuleImplementations.sol';
+import '../types/ModuleImplementations.sol';
 
 /// @title Mock Time Upgraded Plugin for testing upgrades with time manipulation
 /// @notice Extends MockTimeAlgebraUpgradeablePlugin to keep advanceTime() after upgrade

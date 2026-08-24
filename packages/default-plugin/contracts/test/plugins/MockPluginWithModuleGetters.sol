@@ -2,7 +2,7 @@
 pragma solidity =0.8.20;
 
 import './MockTimeAlgebraUpgradeablePlugin.sol';
-import '../../types/ModuleImplementations.sol';
+import '../types/ModuleImplementations.sol';
 
 /// @title Mock plugin that exposes its module implementation immutables
 /// @notice Connectors keep them internal, so reordering ModuleImplementations compiles silently

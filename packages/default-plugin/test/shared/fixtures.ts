@@ -20,7 +20,7 @@ export const DEFAULT_FEE_CONFIGURATION = {
   baseFee: 100
 };
 
-// Mirrors the ModuleImplementations struct the plugin constructor takes
+// Mirrors the ModuleImplementations struct the test harnesses take
 export interface ModuleImplementations {
   volatilityOracle: string;
   dynamicFee: string;
@@ -57,6 +57,11 @@ export const EMPTY_IMPLEMENTATIONS: ModuleImplementations = {
   alm: ZERO_ADDRESS,
   security: ZERO_ADDRESS
 };
+
+// The shipped AlgebraUpgradeablePlugin constructor takes the five addresses positionally
+export function moduleArgs(impls: ModuleImplementations): string[] {
+  return [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.alm, impls.security];
+}
 
 // Same module set with some modules pointed at other implementations
 export function withImpl(base: ModuleImplementations, overrides: Partial<ModuleImplementations>): ModuleImplementations {
@@ -186,8 +191,9 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
   const proxyAddress = await proxy.getAddress();
 
   // Now deploy plugin implementation with the REAL proxy address as pluginFactory
+  // The shipped plugin takes the five module addresses positionally, only the harnesses take a struct
   const pluginImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
-  const pluginImpl = await pluginImplFactory.deploy(mockFactoryAddress, proxyAddress, implementations);
+  const pluginImpl = await pluginImplFactory.deploy(mockFactoryAddress, proxyAddress, ...moduleArgs(implementations));
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
 

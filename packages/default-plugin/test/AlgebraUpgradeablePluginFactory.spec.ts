@@ -6,6 +6,7 @@ import {
   ZERO_ADDRESS,
   DEFAULT_FEE_CONFIGURATION,
   EMPTY_IMPLEMENTATIONS,
+  moduleArgs,
   impersonateAlgebraFactory,
   pluginFactoryFixture,
 } from './shared/fixtures';
@@ -346,7 +347,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
       const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
       const pluginFactoryAddress = await pluginFactory.getAddress();
-      const newImpl = await newImplFactory.deploy(mockFactoryAddress, pluginFactoryAddress, EMPTY_IMPLEMENTATIONS);
+      const newImpl = await newImplFactory.deploy(mockFactoryAddress, pluginFactoryAddress, ...moduleArgs(EMPTY_IMPLEMENTATIONS));
 
       await expect(pluginFactory.connect(other).upgradePlugins(newImpl)).to.be.revertedWithCustomError(
         pluginFactory,

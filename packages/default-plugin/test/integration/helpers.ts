@@ -123,14 +123,22 @@ export async function deployNewPluginImplementation(
   const mockFactoryAddress = await algebraFactory.getAddress();
   const pluginFactoryAddress = await pluginFactory.getAddress();
 
-  const NewPluginFactory = await ethers.getContractFactory(contractName);
-  const newPluginImpl = await NewPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, {
+  const impls = {
     volatilityOracle: moduleOverrides?.volatility ?? MODULE_IMPLEMENTATIONS.VOLATILITY_ORACLE,
     dynamicFee: moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
     farmingProxy: moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
     alm: moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
     security: moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
-  });
+  };
+
+  // The shipped plugin takes the five module addresses positionally, the harnesses take one struct
+  const constructorArgs =
+    contractName === 'AlgebraUpgradeablePlugin'
+      ? [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.alm, impls.security]
+      : [impls];
+
+  const NewPluginFactory = await ethers.getContractFactory(contractName);
+  const newPluginImpl = await NewPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, ...constructorArgs);
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };
 }

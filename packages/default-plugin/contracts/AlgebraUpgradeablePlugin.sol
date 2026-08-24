@@ -13,7 +13,6 @@ import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
-import './types/ModuleImplementations.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
 /// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
@@ -32,18 +31,26 @@ contract AlgebraUpgradeablePlugin is
   /// @notice Constructor sets immutable values shared across ALL proxies
   /// @param _factory The Algebra factory address
   /// @param _pluginFactory The plugin factory address
-  /// @param impls Addresses of the module implementations
+  /// @param _volatilityOracleImpl VolatilityOracle implementation address
+  /// @param _dynamicFeeImpl DynamicFee implementation address
+  /// @param _farmingProxyImpl FarmingProxy implementation address
+  /// @param _almImpl ALM implementation address
+  /// @param _securityImpl Security implementation address
   constructor(
     address _factory,
     address _pluginFactory,
-    ModuleImplementations memory impls
+    address _volatilityOracleImpl,
+    address _dynamicFeeImpl,
+    address _farmingProxyImpl,
+    address _almImpl,
+    address _securityImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
-    VolatilityOracleConnector(impls.volatilityOracle)
-    DynamicFeeConnector(impls.dynamicFee)
-    FarmingProxyConnector(impls.farmingProxy)
-    AlmConnector(impls.alm)
-    SecurityConnector(impls.security)
+    VolatilityOracleConnector(_volatilityOracleImpl)
+    DynamicFeeConnector(_dynamicFeeImpl)
+    FarmingProxyConnector(_farmingProxyImpl)
+    AlmConnector(_almImpl)
+    SecurityConnector(_securityImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin

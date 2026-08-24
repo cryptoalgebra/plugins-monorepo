@@ -2,7 +2,7 @@
 pragma solidity =0.8.20;
 
 import './mixins/MockV2UpgradedPluginBase.sol';
-import '../../types/ModuleImplementations.sol';
+import '../types/ModuleImplementations.sol';
 
 /// @title Mock Upgraded Plugin with New Security Implementation
 /// @notice Plugin version that uses upgraded SecurityPluginImplementation

@@ -949,4 +949,78 @@ describe('AlgebraUpgradeablePlugin', () => {
       expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
     });
   });
+
+  // Every block above exercises one module with the others idle. This is the composition root, so the
+  // interesting behaviour is what the modules do to each other inside a single swap.
+  describe('#Modules together', () => {
+    const SLOW_PERIOD = 3600;
+    const FAST_PERIOD = 600;
+    const HISTORY_BASE = 100000;
+
+    let registry: any;
+    let incentive: any;
+    let rebalanceManager: any;
+
+    beforeEach('attach security, farming and ALM to one pool', async () => {
+      registry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
+      incentive = await (await ethers.getContractFactory('MockDirectionVirtualPool')).deploy();
+      rebalanceManager = await (await ethers.getContractFactory('MockRebalanceManager')).deploy();
+
+      await plugin.setSecurityRegistry(registry);
+      await mockPluginFactory.setFarmingAddress(wallet.address);
+      await mockPool.setPlugin(plugin);
+      await plugin.advanceTime(HISTORY_BASE);
+      await initializeAtZeroTick(mockPool);
+
+      await plugin.setIncentive(incentive);
+      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
+      await plugin.advanceTime(2 * SLOW_PERIOD);
+    });
+
+    // The positive control: without it, "the counters stayed at zero" below would prove nothing
+    it('notifies both the incentive and the rebalance manager on one swap', async () => {
+      await mockPool.swapToTick(100);
+
+      expect(await incentive.crossToCount()).to.be.eq(1);
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+    });
+
+    // A reverted transaction leaves no trace by itself, so the counters staying at zero proves nothing.
+    // What is worth knowing is that a rejected swap leaves the modules usable: the next swap still works.
+    it('leaves both modules working after the registry rejects a swap', async () => {
+      await registry.setPoolStatus(mockPool, DISABLED);
+      await expect(mockPool.swapToTick(100)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+
+      await registry.setPoolStatus(mockPool, 0);
+      await mockPool.swapToTick(100);
+
+      expect(await incentive.crossToCount()).to.be.eq(1);
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+    });
+
+    // afterSwap notifies farming first and triggers ALM second, so a broken ALM configuration takes
+    // the whole swap down. The farming module has to survive that and keep working once ALM is fixed.
+    it('leaves both modules working after ALM brings a swap down', async () => {
+      await plugin.setFastTwapPeriod(0);
+      await expect(mockPool.swapToTick(100)).to.be.revertedWith('Period is zero');
+
+      await plugin.setFastTwapPeriod(FAST_PERIOD);
+      await mockPool.swapToTick(100);
+
+      expect(await incentive.crossToCount()).to.be.eq(1);
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+    });
+
+    it('keeps burning available with every module attached while the pool is BURN_ONLY', async () => {
+      await mockPool.mint(wallet.address, wallet.address, -120, 120, 100, '0x');
+      await registry.setPoolStatus(mockPool, BURN_ONLY);
+
+      await expect(mockPool.swapToTick(100)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
+      await expect(mockPool.burn(-120, 120, 100, '0x')).to.not.be.reverted;
+
+      // The burn goes through, and a burn never reaches afterSwap, so neither module hears about it
+      expect(await incentive.crossToCount()).to.be.eq(0);
+      expect(await rebalanceManager.rebalanceCount()).to.be.eq(0);
+    });
+  });
 });

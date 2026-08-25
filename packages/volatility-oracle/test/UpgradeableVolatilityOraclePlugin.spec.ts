@@ -356,6 +356,35 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       expect(batch[1]).to.equal(then);
     });
 
+    // prepayTimepointsStorageSlots exists so later writes land in slots that are already paid for.
+    // The three authorization cases call it and stop, so the sequence it exists for was never run.
+    it('should write timepoints into slots that were prepaid', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await plugin1.prepayTimepointsStorageSlots(1, 5);
+
+      // Prepaying must not look like a written timepoint to anything reading the buffer
+      expect((await plugin1.timepoints(1)).initialized).to.be.false;
+      expect(await plugin1.timepointIndex()).to.equal(0);
+
+      await time.increase(60);
+      await mockPool.swapToTick(100);
+
+      const written = await plugin1.timepoints(1);
+      expect(written.initialized).to.be.true;
+      expect(written.blockTimestamp).to.equal(await time.latest());
+      expect(await plugin1.timepointIndex()).to.equal(1);
+    });
+
+    it('should keep prepaying idempotent over a range already paid for', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await plugin1.prepayTimepointsStorageSlots(1, 5);
+
+      await expect(plugin1.prepayTimepointsStorageSlots(1, 5)).to.not.be.reverted;
+      expect((await plugin1.timepoints(1)).initialized).to.be.false;
+    });
+
     it('should report canGetTwap false rather than revert for a period beyond the clock', async function () {
       const { plugin1 } = await initializedFixture();
 

@@ -394,6 +394,37 @@ describe('LimitOrders', () => {
       expect(amount1).to.be.eq(301338);
     });
 
+    // The same call twice: the neighbouring cases cover several owners on one tick and partial fills,
+    // but nobody withdraws the same position a second time
+    it('reverts on a second withdraw of the same position', async () => {
+      await loModule.place(poolKey, -60, false, 10n**8n);
+      await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(99,100), wallet);
+
+      await loModule.withdraw(1, wallet);
+
+      await expect(loModule.withdraw(1, wallet)).to.be.reverted;
+    });
+
+    // A sequence rather than an end state: both owners take their share out of one filled epoch, and
+    // the drained epoch has nothing left for a third attempt
+    it('empties the epoch once every owner has withdrawn', async () => {
+      await loModule.place(poolKey, -60, false, 10n**8n);
+      await loModule.connect(other).place(poolKey, -60, false, 10n**8n);
+      await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(99,100), wallet);
+
+      const before = await token0.balanceOf(wallet);
+      const otherBefore = await token0.balanceOf(other);
+
+      await loModule.withdraw(1, wallet);
+      await loModule.connect(other).withdraw(1, other);
+
+      const total = (await token0.balanceOf(wallet)) - before + ((await token0.balanceOf(other)) - otherBefore);
+      expect(total).to.be.greaterThan(0);
+
+      // Nothing is left for a third party to claim out of the drained epoch
+      await expect(loModule.connect(other).withdraw(1, other)).to.be.reverted;
+    });
+
     it('reverts if claim not filled lo', async () => {
       await loModule.place(poolKey, -60, false, 10n**8n);
 

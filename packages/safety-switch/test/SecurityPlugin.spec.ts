@@ -193,4 +193,50 @@ describe('SecurityPlugin', () => {
   });
   });
 
+
+  // getPoolStatus resolves three ways, and the branch where an override exists *and* the global status
+  // is not ENABLED is the one nothing reached: the global tests never set an override first.
+  describe('#global status against a per-pool override', () => {
+    const OTHER_POOL = '0x0000000000000000000000000000000000000077';
+
+    it('lets the global status decide for a pool that has no override of its own', async () => {
+      // Overriding any pool switches the whole registry into override mode
+      await registry.setPoolsStatus([OTHER_POOL], [2]);
+      expect(await registry.isPoolStatusOverrided()).to.be.eq(true);
+
+      await registry.setGlobalStatus(2);
+
+      await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+    });
+
+    it('lets the global status override a stricter per-pool one', async () => {
+      // The pool says DISABLED, the global says BURN_ONLY, and the global is what the plugin acts on
+      await registry.setPoolsStatus([pool.target], [2]);
+      await registry.setGlobalStatus(1);
+
+      await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
+      await expect(pool.burn(-60, 60, 1, '0x')).to.not.be.reverted;
+    });
+
+    it('hands control back to the override once the global status returns to ENABLED', async () => {
+      await registry.setPoolsStatus([pool.target], [2]);
+      await registry.setGlobalStatus(1);
+      await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
+
+      await registry.setGlobalStatus(0);
+
+      // The pool's own DISABLED is in charge again, so the error changes
+      await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+    });
+
+    it('leaves override mode once the last overridden pool goes back to ENABLED', async () => {
+      await registry.setPoolsStatus([pool.target], [2]);
+      await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+
+      await registry.setPoolsStatus([pool.target], [0]);
+      expect(await registry.isPoolStatusOverrided()).to.be.eq(false);
+
+      await expect(pool.swapToTick(0)).to.not.be.reverted;
+    });
+  });
 });

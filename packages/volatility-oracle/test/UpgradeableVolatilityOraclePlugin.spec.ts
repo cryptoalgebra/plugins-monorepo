@@ -266,6 +266,30 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       expect(twapTick).to.be.lessThan(600);
     });
 
+    // getTwapTick truncates towards zero and then corrects, so a negative window that does not divide
+    // evenly by the period has to come back one tick lower than plain integer division gives
+    it('should round a negative average down rather than towards zero', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(-100);
+      // A partial stretch at a negative tick, chosen so the cumulative delta leaves a remainder
+      await time.increase(1000);
+      await mockPool.swapToTick(-100);
+
+      const [now] = await plugin1.getSingleTimepoint(0);
+      const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+      const delta = now - then;
+
+      // Both halves of the correction's condition, so the case cannot drift into being trivial
+      expect(delta).to.be.lessThan(0n);
+      expect(delta % BigInt(TWAP_PERIOD)).to.not.equal(0n);
+
+      // BigInt division truncates towards zero, the contract must land one below it
+      const truncated = delta / BigInt(TWAP_PERIOD);
+      expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(truncated - 1n);
+    });
+
     it('should report no volatility for a flat tick and some once it moves', async function () {
       const { plugin1, mockPool } = await initializedFixture();
 

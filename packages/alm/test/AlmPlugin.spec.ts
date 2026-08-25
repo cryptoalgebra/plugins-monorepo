@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { time } from '@nomicfoundation/hardhat-network-helpers';
 import { AlmPluginTest, MockVault } from '../typechain';
 import { ZERO_ADDRESS } from 'test-utils/consts';
 import { rebalances } from "./almRebalances.json";
@@ -40,6 +41,36 @@ describe('#AlmPlugin', () => {
 			mockVault: mockVault,
 			almPlugin: almPlugin
 		}
+	}
+
+	// A recorded case that actually rebalances, shared by the sequence and pause suites below
+	const sample = rebalances.find((r) => r.rebalance.limitPosition != null)!;
+
+	async function fixtureAtSample() {
+		const { almPlugin, mockVault } = await almPluginFixture({
+			depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
+			simulate: sample.state.simulateTrigger,
+			normalThreshold: sample.state.normalTrigger,
+			underInventoryThreshold: sample.state.underTrigger,
+			overInventoryThreshold: sample.state.overTrigger,
+			priceChangeThreshold: (BigInt(sample.state.priceChangeTrigger) / 2n).toString(),
+			extremeVolatility: sample.state.extremeVolatility,
+			highVolatility: sample.state.highVolatility,
+			someVolatility: sample.state.someVolatility,
+			dtrDelta: sample.state.dtrDelta,
+			baseLowPct: sample.state.baseLowPct,
+			baseHighPct: sample.state.baseHighPct,
+			limitReservePct: sample.state.limitReservePct,
+		}, 60, true, false);
+
+		await almPlugin.setDecimals(18, 18);
+		await mockVault.setTotalAmounts(BigInt(sample.state.usedToken0), BigInt(sample.state.usedToken1));
+		await almPlugin.setPrices(BigInt(sample.state.twapSlow), BigInt(sample.state.twapFast), BigInt(sample.state.currentPrice));
+		await almPlugin.setDepositTokenBalance(sample.state.depositTokenBalance);
+		await almPlugin.setLastRebalanceCurrentPrice(BigInt(sample.state.lastRebalancePrice));
+		await almPlugin.setState(BigInt(sample.state.state));
+
+		return { almPlugin, mockVault, currentTick: BigInt(sample.state.currentTick) };
 	}
 
 	describe('#initializeALM', () => {
@@ -113,38 +144,51 @@ describe('#AlmPlugin', () => {
 		}
 	});
 
+	// The manager is a state machine, but every corpus case injects a state and does one rebalance, so
+	// nothing ever reads back what a rebalance itself wrote. These drive two in a row on one instance.
+	describe('#consecutive rebalances', () => {
+		it('records its own timestamp and price on the first rebalance', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+
+			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(0);
+
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+
+			// Both written by the rebalance itself, not by a setter
+			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(await time.latest());
+			expect(await almPlugin.lastRebalanceCurrentPrice()).to.not.be.eq(BigInt(sample.state.lastRebalancePrice));
+		});
+
+		// minTimeBetweenRebalances only means anything across two calls, and with lastRebalanceTimestamp
+		// left at zero the window is always in the distant past, so this guard had never held anyone back
+		it('refuses a second rebalance inside minTimeBetweenRebalances', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+
+			await almPlugin.rebalance(currentTick, 0n, 0n, 0n);
+			const firstTimestamp = await almPlugin.lastRebalanceTimestamp();
+
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(firstTimestamp);
+		});
+
+		it('allows the next rebalance once the window has passed', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+
+			await almPlugin.rebalance(currentTick, 0n, 0n, 0n);
+			const firstTimestamp = await almPlugin.lastRebalanceTimestamp();
+
+			// The fixture builds the manager with a 7200 second window
+			await time.increase(7200);
+			await almPlugin.setState(BigInt(sample.state.state));
+
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.lastRebalanceTimestamp()).to.be.greaterThan(firstTimestamp);
+		});
+	});
+
 	// The manager pauses itself when the vault refuses a rebalance, and unpause is the only way back.
 	// Every other case here has a vault that always accepts, so neither half had ever run.
 	describe('#pause', () => {
-		const sample = rebalances.find((r) => r.rebalance.limitPosition != null)!;
-
-		async function fixtureAtSample() {
-			const { almPlugin, mockVault } = await almPluginFixture({
-				depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
-				simulate: sample.state.simulateTrigger,
-				normalThreshold: sample.state.normalTrigger,
-				underInventoryThreshold: sample.state.underTrigger,
-				overInventoryThreshold: sample.state.overTrigger,
-				priceChangeThreshold: (BigInt(sample.state.priceChangeTrigger) / 2n).toString(),
-				extremeVolatility: sample.state.extremeVolatility,
-				highVolatility: sample.state.highVolatility,
-				someVolatility: sample.state.someVolatility,
-				dtrDelta: sample.state.dtrDelta,
-				baseLowPct: sample.state.baseLowPct,
-				baseHighPct: sample.state.baseHighPct,
-				limitReservePct: sample.state.limitReservePct,
-			}, 60, true, false);
-
-			await almPlugin.setDecimals(18, 18);
-			await mockVault.setTotalAmounts(BigInt(sample.state.usedToken0), BigInt(sample.state.usedToken1));
-			await almPlugin.setPrices(BigInt(sample.state.twapSlow), BigInt(sample.state.twapFast), BigInt(sample.state.currentPrice));
-			await almPlugin.setDepositTokenBalance(sample.state.depositTokenBalance);
-			await almPlugin.setLastRebalanceCurrentPrice(BigInt(sample.state.lastRebalancePrice));
-			await almPlugin.setState(BigInt(sample.state.state));
-
-			return { almPlugin, mockVault, currentTick: BigInt(sample.state.currentTick) };
-		}
-
 		it('pauses itself when the vault reverts the rebalance', async () => {
 			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
 			await mockVault.setShouldRevertOnRebalance(true);

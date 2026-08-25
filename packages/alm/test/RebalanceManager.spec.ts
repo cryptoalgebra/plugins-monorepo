@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 
 // Everything else in this package drives AlmPluginTest, a harness that overrides the four functions
 // connecting the manager to its vault and pool. That leaves the shipped RebalanceManager untouched:
@@ -323,6 +323,63 @@ describe('RebalanceManager', function () {
       const { rebalanceManager, user } = await loadFixture(deployFixture);
 
       await expect(rebalanceManager.connect(user).unpause()).to.be.reverted;
+    });
+  });
+
+  // Everything above stops at the guards. These drive the shipped manager through an actual rebalance,
+  // with a real ERC20 balance on the vault instead of the number the harness stores for itself.
+  describe('Rebalancing a live vault', function () {
+    async function readyToRebalance() {
+      const fixture = await loadFixture(deployFixture);
+      const { rebalanceManager, pool, vaultAllowingToken1, token0, token1, user } = fixture;
+
+      await pool.setPlugin(user.address);
+      // Both sides funded, so totalDepositToken + totalPairedInDeposit is not zero
+      await vaultAllowingToken1.setTotalAmounts(10n ** 12n, 10n ** 24n);
+      await token0.mint(vaultAllowingToken1.target, 10n ** 10n);
+
+      return { ...fixture, plugin: user };
+    }
+
+    // The deposit token balance is the one input the manager reads straight off the chain rather than
+    // being told, so it can move between two calls without anybody touching the manager
+    it('should see a deposit that arrived at the vault between two rebalances', async function () {
+      const { rebalanceManager, vaultAllowingToken1, token1, plugin } = await readyToRebalance();
+
+      await rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0);
+      await time.increase(3600);
+
+      // Nothing calls the manager here, a third party simply sends tokens to the vault
+      await token1.mint(vaultAllowingToken1.target, 10n ** 24n);
+
+      await expect(rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0)).to.emit(
+        vaultAllowingToken1,
+        'MockRebalance'
+      );
+    });
+
+    it('should leave the vault alone on the second call while nothing arrived', async function () {
+      const { rebalanceManager, vaultAllowingToken1, plugin } = await readyToRebalance();
+
+      await rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0);
+      await time.increase(3600);
+
+      await expect(rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0)).to.not.emit(
+        vaultAllowingToken1,
+        'MockRebalance'
+      );
+    });
+
+    it('should rebalance the vault on the first call', async function () {
+      const { rebalanceManager, vaultAllowingToken1, plugin } = await readyToRebalance();
+
+      await expect(rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0)).to.emit(
+        vaultAllowingToken1,
+        'MockRebalance'
+      );
+
+      expect(await rebalanceManager.lastRebalanceTimestamp()).to.not.equal(0);
+      expect(await rebalanceManager.lastRebalanceCurrentPrice()).to.not.equal(0);
     });
   });
 });

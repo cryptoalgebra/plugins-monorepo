@@ -13,6 +13,11 @@ describe('ManagedSwapFee', () => {
   let user: string;
   let expireTime: number;
 
+  // expireTime is signed, and the signature travels in calldata, so its zero bytes set the intrinsic
+  // cost of the transaction. Taking the time from the block made the gas snapshot flicker by 12 gas.
+  // Near the top of the uint32 range so it stays in the future whatever clock the network starts on.
+  const FIXED_EXPIRE_TIME = 4_000_000_000;
+
   async function managedSwapFeeFixture() {
     const ManagedFeePluginImplementation = await ethers.getContractFactory('ManagedFeePluginImplementation');
     const managedFeeImpl = await ManagedFeePluginImplementation.deploy();
@@ -43,13 +48,10 @@ describe('ManagedSwapFee', () => {
 
   describe('#getManagedFee', () => {
     beforeEach('set config', async () => {
-      let provider = ethers.provider
-      const block = await provider.getBlock('latest');
-
       nonce ="0x0000000000000000000000000000000000000000000000000000000000000001"
       fee = 1000
       user = wallet.address
-      expireTime = block!.timestamp + 1000
+      expireTime = FIXED_EXPIRE_TIME
 
       pluginData = await generatePluginData(nonce, fee, user, expireTime, wallet)
       await managedSwapFeePlugin.setWhitelistStatus(wallet.address, true);

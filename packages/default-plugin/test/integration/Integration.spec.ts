@@ -1,4 +1,5 @@
-import { config, ethers } from 'hardhat';
+import { ethers } from 'hardhat';
+import { BASE_FORK } from '../../../../hardhat.base.config';
 import { expect } from 'test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
@@ -13,13 +14,10 @@ import {
 
 // Needs a live Base fork, which the coverage network does not provide
 describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
-  // AlgebraPool.gas.spec.ts calls reset() with no arguments, which drops the fork for every spec
-  // after it. Re-establish it here so this suite does not depend on file order.
+  // The hardhat network does not boot on a fork, and AlgebraPool.gas.spec.ts calls reset() with no
+  // arguments anyway. This suite establishes the fork itself, so it does not depend on file order.
   before('restore the Base fork', async () => {
-    const forking = config.networks.hardhat.forking;
-    if (forking === undefined) throw new Error('hardhat network is configured without forking');
-
-    await helpers.reset(forking.url, forking.blockNumber);
+    await helpers.reset(BASE_FORK.url, BASE_FORK.blockNumber);
   });
 
   async function deployFixture() {

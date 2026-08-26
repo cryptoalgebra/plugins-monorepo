@@ -6,6 +6,7 @@ interface IRebalanceEntrypoint {
   event ThresholdToken(address indexed thresholdToken);
   event RebalanceThreshold(uint256 rebalanceThreshold);
 
+  error InvalidBaseToken();
   error InvalidERC4626Vault();
   error InvalidPrice();
   error InvalidThresholdToken();

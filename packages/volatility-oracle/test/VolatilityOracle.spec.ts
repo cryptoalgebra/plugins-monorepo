@@ -2,10 +2,10 @@ import { BigNumberish, Wallet } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { VolatilityOracleTest } from '../typechain';
-import checkTimepointEquals from 'test-utils/checkTimepointEquals';
-import { expect } from 'test-utils/expect';
-import { TEST_POOL_START_TIME } from 'test-utils/consts';
-import snapshotGasCost from 'test-utils/snapshotGasCost';
+import checkTimepointEquals from '@cryptoalgebra/test-utils/checkTimepointEquals';
+import { expect } from '@cryptoalgebra/test-utils/expect';
+import { TEST_POOL_START_TIME } from '@cryptoalgebra/test-utils/consts';
+import snapshotGasCost from '@cryptoalgebra/test-utils/snapshotGasCost';
 
 describe('VolatilityOracle', () => {
   let wallet: Wallet;

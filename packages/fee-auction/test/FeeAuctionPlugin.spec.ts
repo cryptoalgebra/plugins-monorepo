@@ -1,4 +1,4 @@
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';

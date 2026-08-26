@@ -30,7 +30,7 @@ interface IAccessListRegistry {
   /// @param statuses Array of whitelist statuses
   function setWhitelistedBatch(address[] calldata users, bool[] calldata statuses) external;
 
-  /// @notice Pause Access List verification (emergency — all checks bypass)
+  /// @notice Pause Access List verification (emergency - all checks bypass)
   function pause() external;
 
   /// @notice Unpause Access List verification

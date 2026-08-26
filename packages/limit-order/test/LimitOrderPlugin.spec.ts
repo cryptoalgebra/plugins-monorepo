@@ -1,13 +1,13 @@
 import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
-import { expect } from 'test-utils/expect';
+import { expect } from '@cryptoalgebra/test-utils/expect';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ZERO_ADDRESS, limitOrderPluginFixture } from './limitOrderFixture';
-import { encodePriceSqrt, MAX_SQRT_RATIO, MIN_SQRT_RATIO} from 'test-utils/utilities';
+import { encodePriceSqrt, MAX_SQRT_RATIO, MIN_SQRT_RATIO} from '@cryptoalgebra/test-utils/utilities';
 
 import { LimitOrderManager, TestERC20, IWNativeToken, LimitOrderTestPlugin } from '../typechain';
 
-import snapshotGasCost from 'test-utils/snapshotGasCost';
+import snapshotGasCost from '@cryptoalgebra/test-utils/snapshotGasCost';
 import { AlgebraPool, TestAlgebraCallee } from '@cryptoalgebra/integral-core/typechain';
 
 describe('LimitOrders', () => {

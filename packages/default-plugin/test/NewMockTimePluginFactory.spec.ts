@@ -19,6 +19,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     farmingProxyImpl: string;
     securityImpl: string;
     priceConvergenceImpl: string;
+    permissionedPoolImpl: string;
   };
 
   before('prepare signers', async () => {
@@ -198,7 +199,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       // Upgrade
@@ -224,7 +226,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -332,7 +335,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       // Single upgrade call affects ALL plugins
@@ -363,7 +367,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -392,7 +397,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -453,7 +459,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -478,7 +485,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -693,7 +701,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(), // NEW security impl!
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       // Upgrade all plugins via beacon
@@ -723,7 +732,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -755,7 +765,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -797,7 +808,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       // Single upgrade call
@@ -831,7 +843,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
@@ -909,7 +922,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -941,7 +955,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -984,7 +999,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1023,7 +1039,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
@@ -1063,7 +1080,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl
+        implementations.priceConvergenceImpl,
+        implementations.permissionedPoolImpl
       );
 
       await mockPluginFactory.upgradePlugins(await newImpl.getAddress());

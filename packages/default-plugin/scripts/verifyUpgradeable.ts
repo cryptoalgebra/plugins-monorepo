@@ -23,7 +23,7 @@ const config = {
 
 async function verify(name: string, address: string, constructorArguments: any[]) {
   if (!address) {
-    console.log(`⏭  Skipping ${name} — address not set`);
+    console.log(`⏭  Skipping ${name} - address not set`);
     return;
   }
   console.log(`🔍 Verifying ${name} at ${address}...`);

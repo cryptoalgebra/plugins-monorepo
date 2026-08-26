@@ -39,7 +39,8 @@ async function customFactoryFixture() {
     await volatilityOracleImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await securityImpl.getAddress(),
-    await priceConvergenceImpl.getAddress()
+    await priceConvergenceImpl.getAddress(),
+    ZERO_ADDRESS
   );
 
   const customFactory = CustomFactory.attach(proxyAddr) as any;

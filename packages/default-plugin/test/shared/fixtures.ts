@@ -35,14 +35,20 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
+  // Price Convergence Implementation
   const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
   const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
+
+  // Permissioned Pool Implementation
+  const permissionedPoolImplFactory = await ethers.getContractFactory('PermissionedPoolPluginImplementation');
+  const permissionedPoolImpl = await permissionedPoolImplFactory.deploy();
 
   return {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     securityImpl: await securityImpl.getAddress(),
     priceConvergenceImpl: await priceConvergenceImpl.getAddress(),
+    permissionedPoolImpl: await permissionedPoolImpl.getAddress(),
   };
 }
 
@@ -131,7 +137,8 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.volatilityOracleImpl,
     implementations.farmingProxyImpl,
     implementations.securityImpl,
-    implementations.priceConvergenceImpl
+    implementations.priceConvergenceImpl,
+    implementations.permissionedPoolImpl
   );
 
   const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
@@ -201,6 +208,7 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     farmingProxyImpl: string;
     securityImpl: string;
     priceConvergenceImpl: string;
+    permissionedPoolImpl: string;
   };
 }
 
@@ -232,7 +240,8 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
     activeImplementations.volatilityOracleImpl,
     activeImplementations.farmingProxyImpl,
     activeImplementations.securityImpl,
-    activeImplementations.priceConvergenceImpl
+    activeImplementations.priceConvergenceImpl,
+    activeImplementations.permissionedPoolImpl
   );
 
   const pluginFactory = factoryImplFactory.attach(proxyAddress);
@@ -249,6 +258,7 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
       farmingProxyImpl: activeImplementations.farmingProxyImpl,
       securityImpl: activeImplementations.securityImpl,
       priceConvergenceImpl: activeImplementations.priceConvergenceImpl,
+      permissionedPoolImpl: activeImplementations.permissionedPoolImpl,
     },
   };
 };

@@ -126,8 +126,10 @@ contract AlgebraCustomPluginFactory is Initializable, IAlgebraCustomPluginFactor
     // Create proxy with empty init data (initialization happens separately)
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
-    // Initialize plugin with the security registry
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry);
+    // Initialize plugin with the security registry. Custom pools created through this factory
+    // don't configure an allowlist checker registry, so the Permissioned Pool module stays
+    // fully open (isTraderEligible short-circuits to ALL_ALLOWED for a zero registry).
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry, address(0));
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);

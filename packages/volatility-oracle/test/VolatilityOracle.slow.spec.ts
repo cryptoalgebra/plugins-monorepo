@@ -6,9 +6,9 @@ import { expect } from 'test-utils/expect';
 import { TEST_POOL_START_TIME } from 'test-utils/consts';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 
-// Split out of VolatilityOracle.spec.ts so its gas snapshots live in their own snapshot file. Kept in
-// the default run they showed up as obsolete on every `npx hardhat test`, and the next `--update` would
-// have deleted them. Excluded from `npx hardhat test` by the @slow tag, run it with `pnpm test:slow`.
+// Split out of VolatilityOracle.spec.ts so its gas snapshots live in their own snapshot file, back when
+// the suite was excluded from the default run and its entries showed up as obsolete on every
+// `npx hardhat test`. It runs in the default suite now. The @slow tag only keeps it out of coverage.
 describe('VolatilityOracle', () => {
   let wallet: Wallet;
 
@@ -192,6 +192,8 @@ describe('VolatilityOracle', () => {
 
     // Off on purpose: it fills the ring a second time inside this process, the slow case above, and
     // the wrap arithmetic is the same code the first wrap covers. Enable when changing the ring buffer.
+    // It lands one past the first wrap, not on the same index: the last batch rounds the total up to
+    // Math.ceil(65536 / 300) * 300, so this loop writes 65537 timepoints on top of 163.
     it.skip('second index wrap', async () => {
       let i = Number(await volatilityOracle.index());
       for (; i < 65536; i += BATCH_SIZE) {
@@ -204,7 +206,7 @@ describe('VolatilityOracle', () => {
           await volatilityOracle.batchUpdateFast(BATCH_SIZE);
         }
       }
-      expect(await volatilityOracle.index()).to.eq(163);
+      expect(await volatilityOracle.index()).to.eq(164);
     });
   });
 });

@@ -171,6 +171,7 @@ contract PriceConvergenceVault is
 
     emit Deposit(msg.sender, recipient, shares, amount0, amount1);
   }
+
   /// @notice Burns shares and returns a proportional share of every vault asset.
   function withdraw(uint256 shares, address recipient) external override nonReentrant returns (uint256 amount0, uint256 amount1) {
     if (recipient == address(0)) revert ZeroAddress();

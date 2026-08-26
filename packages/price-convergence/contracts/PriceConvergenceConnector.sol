@@ -21,7 +21,7 @@ abstract contract PriceConvergenceConnector is BaseConnector, IPriceConvergenceP
 
   /// @notice Reverts unless a pool liquidity modification was initiated by the configured vault.
   function _checkModifyPositionCaller(address caller) internal view {
-    if (caller != PriceConvergenceStorage.layout().vault) revert OnlyVault();
+    if (caller != vault()) revert OnlyVault();
   }
 
   /// @inheritdoc IPriceConvergencePlugin
@@ -32,7 +32,7 @@ abstract contract PriceConvergenceConnector is BaseConnector, IPriceConvergenceP
   }
 
   /// @inheritdoc IPriceConvergencePlugin
-  function vault() external view override returns (address) {
+  function vault() public view override returns (address) {
     return PriceConvergenceStorage.layout().vault;
   }
 }

@@ -154,8 +154,8 @@ contract AlgebraUpgradeablePlugin is
     } else {
       _checkStatus(msg.sender);
       _checkModifyPositionCaller(sender);
-      // Permissioned Pool check - only verify on add liquidity, allow remove always
-      _permissionedPoolVerifyAddLiquidity(msg.sender, sender);
+      // The vault doesn't need KYC - only gate other callers reaching this pool.
+      if (sender != vault()) _permissionedPoolVerifyAddLiquidity(msg.sender, sender);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);

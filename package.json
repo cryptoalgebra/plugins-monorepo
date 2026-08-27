@@ -6,7 +6,7 @@
     "compile": "pnpm -r compile",
     "lint": "solhint \"packages/*/contracts/**/*.sol\"",
     "format": "prettier --write \"packages/*/contracts/**/*.sol\"",
-    "format:check": "prettier --check 'packages/*/contracts/**/*.sol'",
+    "format:check": "prettier --check \"packages/*/contracts/**/*.sol\"",
     "remove-node-modules": "rm -rf node_modules && pnpm -r remove-node-modules",
     "clean": "pnpm -r clean"
   },

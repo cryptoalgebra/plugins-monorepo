@@ -36,18 +36,14 @@ describe('VolatilityOracle', () => {
       const _volatilityOracle = await volatilityOracleFixture();
       await _volatilityOracle.initialize({ tick: 0, time: STARTING_TIME });
 
-      let i = 1;
-      for (i = 1; i < 65536; i += BATCH_SIZE) {
+      for (let i = 1; i < 65536; i += BATCH_SIZE) {
         if (i + BATCH_SIZE > 65536) {
           BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          console.log('batch update starting at', i);
           await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
         } else {
-          console.log('batch update starting at', i);
           await _volatilityOracle.batchUpdateFast(BATCH_SIZE);
         }
       }
-      console.log('Length:', i);
       return _volatilityOracle;
     };
 
@@ -190,19 +186,16 @@ describe('VolatilityOracle', () => {
       await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([24 * 60 * 60]));
     });
 
-    // Off on purpose: it fills the ring a second time inside this process, the slow case above, and
-    // the wrap arithmetic is the same code the first wrap covers. Enable when changing the ring buffer.
-    // It lands one past the first wrap, not on the same index: the last batch rounds the total up to
-    // Math.ceil(65536 / 300) * 300, so this loop writes 65537 timepoints on top of 163.
-    it.skip('second index wrap', async () => {
+    // Fills the ring a second time on top of the fixture, so the wrap arithmetic runs on an index that
+    // has already wrapped once. It lands one past the first wrap, not on the same index: the last batch
+    // rounds the total up to Math.ceil(65536 / 300) * 300, so this loop writes 65537 timepoints on 163.
+    it('second index wrap', async () => {
       let i = Number(await volatilityOracle.index());
       for (; i < 65536; i += BATCH_SIZE) {
         if (i + BATCH_SIZE > 65536) {
           BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          console.log('batch update starting at', i);
           await volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
         } else {
-          console.log('batch update starting at', i);
           await volatilityOracle.batchUpdateFast(BATCH_SIZE);
         }
       }

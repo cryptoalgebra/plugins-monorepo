@@ -717,9 +717,9 @@ describe('VolatilityOracle', () => {
     });
   });
 
-  // Deliberately untagged, this is the heavy suite `npx hardhat test` keeps. It is the only fill of the
-  // 65536 timepoints in that run and costs about five minutes. The other one lives in
-  // VolatilityOracle.slow.spec.ts, because a second fill in the same process is ~40x slower.
+  // Fills the ring at maximal density, one second per timepoint. The sparse fill lives in
+  // VolatilityOracle.slow.spec.ts and runs in the same process, both cost a few seconds each.
+  // Deliberately untagged, only the sparse fill carries @slow to stay out of coverage.
   describe('full volatilityOracle, maximal density', function () {
     this.timeout(10_200_000);
 
@@ -736,18 +736,14 @@ describe('VolatilityOracle', () => {
       await _volatilityOracle.initialize({ tick: 0, time: STARTING_TIME });
       await _volatilityOracle.setStep(step);
 
-      let i = 1;
-      for (i = 1; i < 65536; i += BATCH_SIZE) {
+      for (let i = 1; i < 65536; i += BATCH_SIZE) {
         if (i + BATCH_SIZE > 65536) {
           BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          console.log('batch update starting at', i);
           await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
         } else {
-          console.log('batch update starting at', i);
           await _volatilityOracle.batchUpdateFast(BATCH_SIZE);
         }
       }
-      console.log('Length:', i);
       return _volatilityOracle;
     };
 

@@ -20,13 +20,7 @@ const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
 };
 
 const config: HardhatUserConfig = {
-  networks: {
-    ...baseConfig.networks,
-    hardhat: {
-      allowUnlimitedContractSize: true,
-      loggingEnabled: false,
-    },
-  },
+  networks: baseConfig.networks,
   etherscan: baseConfig.etherscan,
   typechain: baseConfig.typechain,
   dependencyCompiler: {

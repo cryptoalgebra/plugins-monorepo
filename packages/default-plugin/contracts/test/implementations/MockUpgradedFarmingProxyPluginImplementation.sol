@@ -14,11 +14,7 @@ import '../interfaces/IMockV2Modules.sol';
 /// @title Mock Upgraded FarmingProxy Plugin Implementation
 /// @notice Decorates the shipped module, V1 calls are forwarded instead of reimplemented
 /// @dev Implements both module interfaces explicitly, so a change in either breaks this mock at compile time
-contract MockUpgradedFarmingProxyPluginImplementation is
-  IFarmingProxyPluginImplementation,
-  IMockV2FarmingProxy,
-  V1Forwarder
-{
+contract MockUpgradedFarmingProxyPluginImplementation is IFarmingProxyPluginImplementation, IMockV2FarmingProxy, V1Forwarder {
   using Plugins for uint8;
 
   constructor() V1Forwarder(address(new FarmingProxyPluginImplementation())) {}

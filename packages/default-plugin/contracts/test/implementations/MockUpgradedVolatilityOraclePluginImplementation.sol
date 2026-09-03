@@ -9,10 +9,7 @@ import '../interfaces/IMockV2Modules.sol';
 /// @title Mock Upgraded VolatilityOracle Plugin Implementation
 /// @notice V1 surface is inherited so it can never drift from the shipped module
 /// @dev V2 state lives in its own namespace, the module layout is never restated here
-contract MockUpgradedVolatilityOraclePluginImplementation is
-  VolatilityOraclePluginImplementation,
-  IMockV2VolatilityOracle
-{
+contract MockUpgradedVolatilityOraclePluginImplementation is VolatilityOraclePluginImplementation, IMockV2VolatilityOracle {
   function setEnhancedMode(bool enabled) external {
     MockV2Storage.volatility().enhancedMode = enabled;
   }

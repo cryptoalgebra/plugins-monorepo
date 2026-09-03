@@ -9,10 +9,7 @@ import '../interfaces/IMockV2Modules.sol';
 /// @title Mock Upgraded DynamicFee Plugin Implementation
 /// @notice V1 surface is inherited so it can never drift from the shipped module
 /// @dev V2 state lives in its own namespace, the module layout is never restated here
-contract MockUpgradedDynamicFeePluginImplementation is
-  DynamicFeePluginImplementation,
-  IMockV2DynamicFee
-{
+contract MockUpgradedDynamicFeePluginImplementation is DynamicFeePluginImplementation, IMockV2DynamicFee {
   function setAdvancedMode(bool enabled) external {
     MockV2Storage.dynamicFee().advancedMode = enabled;
   }

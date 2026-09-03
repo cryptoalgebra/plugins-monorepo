@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/whitelist-fee-discount-plugin",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "",
   "publishConfig": {
     "access": "public"
@@ -18,7 +18,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
-    "test-utils": "workspace:^",
-    "@openzeppelin/contracts": "^4.9.3"
+    "@openzeppelin/contracts": "^4.9.3",
+    "test-utils": "workspace:^"
   }
 }

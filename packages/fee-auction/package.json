@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/fee-auction-plugin",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Fee Auction Plugin for Algebra DEX with MEV tax support",
   "publishConfig": {
     "access": "public"

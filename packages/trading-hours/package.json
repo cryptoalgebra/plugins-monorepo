@@ -1,6 +1,6 @@
 {
   "name": "@cryptoalgebra/trading-hours-plugin",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "description": "Trading Hours plugin for Algebra Integral (daily hours, weekends, per-day holiday/temporary-block overrides)",
   "publishConfig": {
     "access": "public"

@@ -261,8 +261,9 @@ describe('#AlmPlugin', () => {
 	describe('#rebalance3', () => {
 		// Two recordings this contract reproduces differently. In both the recorded range has one side
 		// pinned to MIN_TICK or MAX_TICK, which only happens once a side of the price bounds is zeroed,
-		// so the keeper entered an inventory-skewed state where this contract does not. For the first it
-		// returns a two-sided range instead, for the second it declines to rebalance at all.
+		// so the keeper entered an inventory-skewed state where this contract does not. They are held
+		// out of the replay above, and what the contract does with them instead is pinned in
+		// #held out of the corpus below.
 		const HELD_OUT = new Set([
 			'0x9301aea485a8d64e756088f60d29bc004ef9986e31a6441c10fab740c0ea561f',
 			'0xfbb296bbdbb9e46c1472a61558d5cb31bf901f4fc95694e88c548fbbff58526c',
@@ -316,5 +317,73 @@ describe('#AlmPlugin', () => {
 				});
 			}
 		}
+
+		// HELD_OUT keeps these two out of the replay above, because the recording is calldata an
+		// off-chain keeper passed to the vault and not the output of any deployed manager, so where the
+		// two disagree there is nothing on chain that settles which is right. Dropping them silently
+		// would leave the contract's own behaviour on these inputs unasserted, so it is pinned here.
+		// These are characterization tests: they record what the contract does today, not what it
+		// should do. If the port's inventory thresholds are corrected, these are expected to change.
+		describe('#held out of the corpus', () => {
+			async function driveHeldOut(transactionHash: string) {
+				const rebalance = rebalances3.find((entry) => entry.transactionHash === transactionHash)!;
+				const state = rebalance.state;
+
+				const { almPlugin, mockVault } = await deployedFor({
+					depositTokenUnusedThreshold: state.depositTokenUnusedThreshold,
+					simulate: state.simulateTrigger,
+					normalThreshold: state.normalTrigger,
+					underInventoryThreshold: state.underTrigger,
+					overInventoryThreshold: state.overTrigger,
+					priceChangeThreshold: (BigInt(state.priceChangeTrigger) / 2n).toString(),
+					extremeVolatility: state.extremeVolatility,
+					highVolatility: state.highVolatility,
+					someVolatility: state.someVolatility,
+					dtrDelta: state.dtrDelta,
+					baseLowPct: state.baseLowPct,
+					baseHighPct: state.baseHighPct,
+					limitReservePct: state.limitReservePct,
+				}, 200, false, true);
+
+				await almPlugin.setDecimals(6, 18);
+				await mockVault.setTotalAmounts(BigInt(state.usedToken0), BigInt(state.usedToken1));
+				await almPlugin.setPrices(BigInt(state.twapSlow), BigInt(state.twapFast), BigInt(state.currentPrice));
+				await almPlugin.setDepositTokenBalance(state.depositTokenBalance);
+				await almPlugin.setLastRebalanceCurrentPrice(BigInt(state.lastRebalancePrice));
+				await almPlugin.setState(BigInt(state.state));
+
+				return { almPlugin, mockVault, currentTick: BigInt(state.currentTick), recorded: rebalance.rebalance, recordedState: BigInt(state.state) };
+			}
+
+			// Both sides produce a one sided range, on opposite sides. The recording pins the base to the
+			// rounded MIN_TICK and keeps the limit in a narrow band above it; this contract keeps the base
+			// narrow and runs the limit up to the rounded MAX_TICK instead.
+			it('puts the range on the opposite side of the recorded one for tx 0x9301aea4', async () => {
+				const { almPlugin, mockVault, currentTick, recorded } = await driveHeldOut(
+					'0x9301aea485a8d64e756088f60d29bc004ef9986e31a6441c10fab740c0ea561f'
+				);
+
+				await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n))
+					.to.emit(mockVault, 'MockRebalance')
+					.withArgs(-270000, -267600, -267600, 887200);
+
+				// The recorded side, so a corpus refresh that quietly changed it would fail here
+				expect(recorded.basePosition.bottomTick).to.be.eq('-887200');
+				expect(recorded.limitPosition.topTick).to.be.eq('-260000');
+			});
+
+			// Here the contract declines outright rather than disagreeing about the range
+			it('does not rebalance at all for tx 0xfbb296bb', async () => {
+				const { almPlugin, mockVault, currentTick, recorded, recordedState } = await driveHeldOut(
+					'0xfbb296bbdbb9e46c1472a61558d5cb31bf901f4fc95694e88c548fbbff58526c'
+				);
+
+				await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+
+				// Declining leaves the state alone, it is not a silent transition into another one
+				expect(await almPlugin.state()).to.be.eq(recordedState);
+				expect(recorded.limitPosition.topTick).to.be.eq('887200');
+			});
+		});
 	});
 });

@@ -26,10 +26,11 @@ contract UpgradeableTradingHoursPluginTest is UpgradeableAbstractPlugin, Trading
     address,
     uint32 tradingStartSeconds,
     uint32 tradingEndSeconds,
-    int32 weekendOffsetSeconds,
+    int32 dayOfWeekOffsetSeconds,
+    uint8 blockedWeekdaysMask,
     bool enabled
   ) external initializer onlyPluginFactory {
-    _initializeTradingHours(tradingStartSeconds, tradingEndSeconds, weekendOffsetSeconds, enabled);
+    _initializeTradingHours(tradingStartSeconds, tradingEndSeconds, dayOfWeekOffsetSeconds, blockedWeekdaysMask, enabled);
   }
 
   /// @inheritdoc IAbstractPlugin

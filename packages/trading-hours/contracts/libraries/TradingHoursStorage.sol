@@ -11,11 +11,13 @@ library TradingHoursStorage {
     uint32 tradingStartSeconds;
     // UTC seconds from midnight, exclusive
     uint32 tradingEndSeconds;
-    // used only to find the local calendar day for the hardcoded Sat/Sun rule, local = UTC + offset
-    int32 weekendOffsetSeconds;
-    // while false, trading is fully unrestricted, including the weekend rule. Checked directly by the
-    // connector before it even delegatecalls into verifyTrading, so a disabled pool skips that call entirely
+    // used only to find the local calendar day for the blockedWeekdaysMask rule, local = UTC + offset
+    int32 dayOfWeekOffsetSeconds;
+    // while false, trading is fully unrestricted, including the blocked-weekdays rule. Checked directly by
+    // the connector before it even delegatecalls into verifyTrading, so a disabled pool skips that call entirely
     bool enabled;
+    // bit i (0 = Sunday .. 6 = Saturday) set means that weekday is always blocked. Bit 7 unused, must be 0
+    uint8 blockedWeekdaysMask;
     // key is the UTC timestamp of the start of the day (TradingHoursLib.dayStart) - "day" is a comment-only
     // concept, never a separate index type. Value is up to 5 packed (start,end) uint24 windows, UTC
     // seconds-of-day, for holidays and temporary closures. Slots must be filled contiguously from index 0,

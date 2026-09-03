@@ -13,9 +13,9 @@ import '../TradingHoursPluginImplementation.sol';
 
 /// @title Upgradeable Trading Hours Plugin Factory (test)
 /// @notice Deploys BeaconProxy instances of UpgradeableTradingHoursPluginTest for Algebra pools
-/// @dev Pools start disabled (00:00-24:00 UTC default hours, zero weekend offset, module inactive) - the
-/// pool admin configures actual hours per pool and calls setEnabled(true) when ready, since each pool can
-/// track a different market's schedule
+/// @dev Pools start disabled (00:00-24:00 UTC default hours, zero day-of-week offset, Sat/Sun default mask,
+/// module inactive) - the pool admin configures actual hours/weekdays per pool and calls setEnabled(true)
+/// when ready, since each pool can track a different market's schedule
 contract UpgradeableTradingHoursTestPluginFactory is IBasePluginFactory {
   address public immutable override algebraFactory;
 
@@ -52,7 +52,12 @@ contract UpgradeableTradingHoursTestPluginFactory is IBasePluginFactory {
   function _createPlugin(address pool) internal returns (address plugin) {
     require(pluginByPool[pool] == address(0), 'Already created');
 
-    bytes memory initData = abi.encodeCall(UpgradeableTradingHoursPluginTest.initialize, (pool, 0, uint32(1 days), int32(0), false));
+    // default blocked-weekdays mask is Sat/Sun (bit 0 = Sunday, bit 6 = Saturday), only takes effect once
+    // the pool admin calls setEnabled(true)
+    bytes memory initData = abi.encodeCall(
+      UpgradeableTradingHoursPluginTest.initialize,
+      (pool, 0, uint32(1 days), int32(0), uint8(0x41), false)
+    );
     plugin = address(new AlgebraPluginProxy(address(beacon), pool, initData));
 
     pluginByPool[pool] = plugin;

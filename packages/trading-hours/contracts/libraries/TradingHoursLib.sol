@@ -21,9 +21,9 @@ library TradingHoursLib {
     return (timestamp / SECONDS_PER_DAY) * SECONDS_PER_DAY;
   }
 
-  /// @dev A disabled module allows everything, including the weekend rule. Otherwise: trading hours and
-  /// blocked windows are plain UTC, only the weekend rule needs local time, since Sat/Sun is hardcoded
-  /// and must line up with the actual local calendar day.
+  /// @dev A disabled module allows everything, including the blocked-weekdays rule. Otherwise: trading
+  /// hours and blocked windows are plain UTC, only the weekday check needs local time, since it must line
+  /// up with the actual local calendar day.
   function isTradingAllowed(TradingHoursStorage.Layout storage l, uint256 timestamp) internal view returns (bool) {
     if (!l.enabled) return true;
 
@@ -31,9 +31,9 @@ library TradingHoursLib {
     if (secondsInDay < l.tradingStartSeconds || secondsInDay >= l.tradingEndSeconds) return false;
 
     // day count (not a timestamp) purely for the +4 % 7 weekday formula, never exposed externally
-    uint256 weekendDayCount = localTimestamp(l.weekendOffsetSeconds, timestamp) / SECONDS_PER_DAY;
-    uint256 dayOfWeek = (weekendDayCount + 4) % 7; // 0 = Sunday
-    if (dayOfWeek == 0 || dayOfWeek == 6) return false;
+    uint256 dayOfWeekCount = localTimestamp(l.dayOfWeekOffsetSeconds, timestamp) / SECONDS_PER_DAY;
+    uint256 dayOfWeek = (dayOfWeekCount + 4) % 7; // 0 = Sunday
+    if ((l.blockedWeekdaysMask >> dayOfWeek) & 1 != 0) return false;
 
     uint256 packed = l.blockedWindows[dayStart(timestamp)];
     if (packed == 0) return true;

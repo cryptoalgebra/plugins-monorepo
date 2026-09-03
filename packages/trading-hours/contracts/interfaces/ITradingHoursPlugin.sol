@@ -5,10 +5,11 @@ pragma solidity >=0.5.0;
 /// @notice Public interface for the Trading Hours plugin module
 /// @dev Blocks swap outside configured trading hours. Flash and liquidity operations (add and remove)
 /// are always allowed.
-/// While disabled (see setEnabled), trading is fully unrestricted, including the weekend rule - the
-/// connector checks this flag directly and skips the verification call entirely when disabled.
-/// Once enabled: trading hours and blocked windows are plain UTC seconds-of-day. Weekends (Sat/Sun) are
-/// always blocked and not configurable - the weekend offset only shifts which UTC day counts as local Sat/Sun.
+/// While disabled (see setEnabled), trading is fully unrestricted, including the blocked-weekdays rule -
+/// the connector checks this flag directly and skips the verification call entirely when disabled.
+/// Once enabled: trading hours and blocked windows are plain UTC seconds-of-day. Which weekdays are always
+/// blocked (e.g. Sat/Sun) is configurable via setBlockedWeekdays - the day-of-week offset only shifts
+/// which UTC day counts as which local weekday.
 /// Additional per-day blocked windows (holidays, temporary closures) can be set for specific UTC days.
 interface ITradingHoursPlugin {
   /// @param day Any UTC timestamp within the target day - floored to the start of that day. uint32 is
@@ -29,8 +30,11 @@ interface ITradingHoursPlugin {
   /// @notice Emitted when the daily trading window is updated
   event TradingHoursUpdated(uint32 startSeconds, uint32 endSeconds);
 
-  /// @notice Emitted when the weekend UTC offset is updated
-  event WeekendOffsetUpdated(int32 offsetSeconds);
+  /// @notice Emitted when the day-of-week offset is updated
+  event DayOfWeekOffsetUpdated(int32 offsetSeconds);
+
+  /// @notice Emitted when the set of always-blocked weekdays is updated
+  event BlockedWeekdaysUpdated(uint8 mask);
 
   /// @notice Emitted when a blocked window for a specific day is set or cleared
   /// @param day UTC timestamp of the start of the day this window applies to
@@ -42,14 +46,17 @@ interface ITradingHoursPlugin {
   /// @notice startSeconds must be less than endSeconds, and endSeconds must be at most 1 days
   error InvalidTradingHours();
 
+  /// @notice Only bits 0-6 (Sunday to Saturday) may be set
+  error InvalidBlockedWeekdaysMask();
+
   /// @notice index must be less than the max number of blocked windows per day
   error InvalidBlockedWindowIndex();
 
   /// @notice startSeconds must be less than endSeconds, unless clearing the slot with (0, 0)
   error InvalidBlockedWindowRange();
 
-  /// @notice Turn the module on or off. While disabled, trading is fully unrestricted (weekend rule
-  /// included) - existing hours/offset/blocked-window configuration is kept, not cleared
+  /// @notice Turn the module on or off. While disabled, trading is fully unrestricted (blocked-weekdays
+  /// rule included) - existing hours/offset/weekday/blocked-window configuration is kept, not cleared
   function setEnabled(bool enabled) external;
 
   /// @notice Set the daily trading window, in UTC seconds from midnight
@@ -57,9 +64,13 @@ interface ITradingHoursPlugin {
   /// @param endSeconds UTC seconds from midnight when trading closes, exclusive
   function setTradingHours(uint32 startSeconds, uint32 endSeconds) external;
 
-  /// @notice Set the offset used only to find the local calendar day for the Sat/Sun rule
+  /// @notice Set the offset used only to find the local calendar day for the blocked-weekdays rule
   /// @param offsetSeconds Offset in seconds, e.g. +10800 for UTC+3
-  function setWeekendOffset(int32 offsetSeconds) external;
+  function setDayOfWeekOffset(int32 offsetSeconds) external;
+
+  /// @notice Set which local weekdays are always blocked (e.g. Sat/Sun)
+  /// @param mask Bit i (0 = Sunday .. 6 = Saturday) set means that weekday is always blocked. Bits 7 must be 0
+  function setBlockedWeekdays(uint8 mask) external;
 
   /// @notice Set or clear one of the blocked windows for a specific day
   /// @dev Slots must be filled contiguously from index 0 - the read path stops scanning at the first
@@ -79,8 +90,11 @@ interface ITradingHoursPlugin {
   /// @notice Returns the configured daily trading window, in UTC seconds from midnight
   function getTradingHours() external view returns (uint32 startSeconds, uint32 endSeconds);
 
-  /// @notice Returns the configured weekend offset
-  function getWeekendOffset() external view returns (int32 offsetSeconds);
+  /// @notice Returns the configured day-of-week offset
+  function getDayOfWeekOffset() external view returns (int32 offsetSeconds);
+
+  /// @notice Returns the mask of always-blocked local weekdays
+  function getBlockedWeekdays() external view returns (uint8 mask);
 
   /// @notice Returns one of the blocked windows for a specific day
   /// @param day Any UTC timestamp within the target day - floored to the start of that day

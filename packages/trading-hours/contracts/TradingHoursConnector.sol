@@ -12,7 +12,7 @@ import './libraries/TradingHoursLib.sol';
 /// @notice Delegatecall interface to Trading Hours plugin implementation
 /// @dev Blocks swap outside configured trading hours, while enabled. Flash and liquidity operations
 /// (add and remove) are always allowed.
-/// Trading hours and blocked windows are plain UTC. Weekends (Sat/Sun local) are always blocked while enabled.
+/// Trading hours and blocked windows are plain UTC. Configured weekdays are always blocked while enabled.
 abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   using Plugins for uint8;
 
@@ -25,10 +25,19 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
     tradingHoursImplementation = _tradingHoursImplementation;
   }
 
-  function _initializeTradingHours(uint32 startSeconds, uint32 endSeconds, int32 weekendOffsetSeconds, bool enabled) internal {
+  function _initializeTradingHours(
+    uint32 startSeconds,
+    uint32 endSeconds,
+    int32 dayOfWeekOffsetSeconds,
+    uint8 blockedWeekdaysMask,
+    bool enabled
+  ) internal {
     _delegateCall(
       tradingHoursImplementation,
-      abi.encodeCall(ITradingHoursPluginImplementation.initializeTradingHours, (startSeconds, endSeconds, weekendOffsetSeconds, enabled))
+      abi.encodeCall(
+        ITradingHoursPluginImplementation.initializeTradingHours,
+        (startSeconds, endSeconds, dayOfWeekOffsetSeconds, blockedWeekdaysMask, enabled)
+      )
     );
   }
 
@@ -54,10 +63,17 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   }
 
   /// @inheritdoc ITradingHoursPlugin
-  function setWeekendOffset(int32 offsetSeconds) external override {
+  function setDayOfWeekOffset(int32 offsetSeconds) external override {
     _authorize();
-    _delegateCall(tradingHoursImplementation, abi.encodeCall(ITradingHoursPluginImplementation.setWeekendOffset, (offsetSeconds)));
-    emit WeekendOffsetUpdated(offsetSeconds);
+    _delegateCall(tradingHoursImplementation, abi.encodeCall(ITradingHoursPluginImplementation.setDayOfWeekOffset, (offsetSeconds)));
+    emit DayOfWeekOffsetUpdated(offsetSeconds);
+  }
+
+  /// @inheritdoc ITradingHoursPlugin
+  function setBlockedWeekdays(uint8 mask) external override {
+    _authorize();
+    _delegateCall(tradingHoursImplementation, abi.encodeCall(ITradingHoursPluginImplementation.setBlockedWeekdays, (mask)));
+    emit BlockedWeekdaysUpdated(mask);
   }
 
   /// @inheritdoc ITradingHoursPlugin
@@ -92,8 +108,13 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   }
 
   /// @inheritdoc ITradingHoursPlugin
-  function getWeekendOffset() external view override returns (int32 offsetSeconds) {
-    return TradingHoursStorage.layout().weekendOffsetSeconds;
+  function getDayOfWeekOffset() external view override returns (int32 offsetSeconds) {
+    return TradingHoursStorage.layout().dayOfWeekOffsetSeconds;
+  }
+
+  /// @inheritdoc ITradingHoursPlugin
+  function getBlockedWeekdays() external view override returns (uint8 mask) {
+    return TradingHoursStorage.layout().blockedWeekdaysMask;
   }
 
   /// @inheritdoc ITradingHoursPlugin

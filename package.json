@@ -19,6 +19,7 @@
     "@nomicfoundation/hardhat-toolbox": "^6.1.1",
     "dotenv": "^16.4.7",
     "ethers": "^6.15.0",
+    "fast-check": "^4.9.0",
     "hardhat": "^2.26.5",
     "hardhat-dependency-compiler": "^1.2.1",
     "lerna": "^9.0.0",

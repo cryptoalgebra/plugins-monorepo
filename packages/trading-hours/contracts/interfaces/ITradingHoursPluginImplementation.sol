@@ -11,7 +11,7 @@ interface ITradingHoursPluginImplementation {
   function setEnabled(bool enabled) external;
   function setTradingHours(uint32 startSeconds, uint32 endSeconds) external;
   function setWeekendOffset(int32 offsetSeconds) external;
-  function setBlockedWindow(uint256 day, uint8 index, uint24 startSeconds, uint24 endSeconds) external;
+  function setBlockedWindow(uint32 day, uint8 index, uint24 startSeconds, uint24 endSeconds) external;
   function setBlockedWindows(ITradingHoursPlugin.BlockedWindowInput[] calldata inputs) external;
 
   /// @notice Verify trading is allowed at block.timestamp - reverts if not

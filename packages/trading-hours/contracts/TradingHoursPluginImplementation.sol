@@ -36,7 +36,7 @@ contract TradingHoursPluginImplementation is ITradingHoursPluginImplementation {
   }
 
   /// @notice Set or clear one of the blocked windows for a specific day
-  function setBlockedWindow(uint256 day, uint8 index, uint24 startSeconds, uint24 endSeconds) external {
+  function setBlockedWindow(uint32 day, uint8 index, uint24 startSeconds, uint24 endSeconds) external {
     _setBlockedWindow(day, index, startSeconds, endSeconds);
   }
 
@@ -60,7 +60,7 @@ contract TradingHoursPluginImplementation is ITradingHoursPluginImplementation {
     l.tradingEndSeconds = endSeconds;
   }
 
-  function _setBlockedWindow(uint256 day, uint8 index, uint24 startSeconds, uint24 endSeconds) internal {
+  function _setBlockedWindow(uint32 day, uint8 index, uint24 startSeconds, uint24 endSeconds) internal {
     if (index >= TradingHoursLib.MAX_BLOCKED_WINDOWS_PER_DAY) revert ITradingHoursPlugin.InvalidBlockedWindowIndex();
     bool isClear = startSeconds == 0 && endSeconds == 0;
     if (!isClear && startSeconds >= endSeconds) revert ITradingHoursPlugin.InvalidBlockedWindowRange();

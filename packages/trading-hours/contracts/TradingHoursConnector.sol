@@ -10,15 +10,14 @@ import './libraries/TradingHoursLib.sol';
 
 /// @title Trading Hours Connector
 /// @notice Delegatecall interface to Trading Hours plugin implementation
-/// @dev Blocks swap, add liquidity and flash outside configured trading hours, while enabled.
+/// @dev Blocks swap outside configured trading hours, while enabled. Flash and liquidity operations
+/// (add and remove) are always allowed.
 /// Trading hours and blocked windows are plain UTC. Weekends (Sat/Sun local) are always blocked while enabled.
-/// Remove liquidity is always allowed.
 abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   using Plugins for uint8;
 
   string internal constant TRADING_HOURS_MODULE_NAME = 'Trading Hours Plugin';
-  uint8 internal constant TRADING_HOURS_PLUGIN_CONFIG =
-    uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
+  uint8 internal constant TRADING_HOURS_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG);
 
   address internal immutable tradingHoursImplementation;
 
@@ -33,9 +32,8 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
     );
   }
 
-  /// @dev Reverts if trading is not allowed at block.timestamp. Call from beforeSwap/beforeFlash/
-  /// beforeModifyPosition(add) hooks. Checks enabled directly first, so a disabled pool never pays for
-  /// the delegatecall
+  /// @dev Reverts if trading is not allowed at block.timestamp. Call from the beforeSwap hook.
+  /// Checks enabled directly first, so a disabled pool never pays for the delegatecall
   function _verifyTrading() internal {
     if (!TradingHoursStorage.layout().enabled) return;
     _delegateCall(tradingHoursImplementation, abi.encodeCall(ITradingHoursPluginImplementation.verifyTrading, ()));
@@ -63,13 +61,13 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   }
 
   /// @inheritdoc ITradingHoursPlugin
-  function setBlockedWindow(uint256 day, uint8 index, uint24 startSeconds, uint24 endSeconds) external override {
+  function setBlockedWindow(uint32 day, uint8 index, uint24 startSeconds, uint24 endSeconds) external override {
     _authorize();
     _delegateCall(
       tradingHoursImplementation,
       abi.encodeCall(ITradingHoursPluginImplementation.setBlockedWindow, (day, index, startSeconds, endSeconds))
     );
-    emit BlockedWindowUpdated(TradingHoursLib.dayStart(day), index, startSeconds, endSeconds);
+    emit BlockedWindowUpdated(uint32(TradingHoursLib.dayStart(day)), index, startSeconds, endSeconds);
   }
 
   /// @inheritdoc ITradingHoursPlugin
@@ -78,7 +76,7 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
     _delegateCall(tradingHoursImplementation, abi.encodeCall(ITradingHoursPluginImplementation.setBlockedWindows, (inputs)));
     for (uint256 i; i < inputs.length; i++) {
       BlockedWindowInput calldata input = inputs[i];
-      emit BlockedWindowUpdated(TradingHoursLib.dayStart(input.day), input.index, input.startSeconds, input.endSeconds);
+      emit BlockedWindowUpdated(uint32(TradingHoursLib.dayStart(input.day)), input.index, input.startSeconds, input.endSeconds);
     }
   }
 
@@ -99,7 +97,7 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   }
 
   /// @inheritdoc ITradingHoursPlugin
-  function getBlockedWindow(uint256 day, uint8 index) external view override returns (uint24 startSeconds, uint24 endSeconds) {
+  function getBlockedWindow(uint32 day, uint8 index) external view override returns (uint24 startSeconds, uint24 endSeconds) {
     return TradingHoursLib.unpackWindow(TradingHoursStorage.layout().blockedWindows[TradingHoursLib.dayStart(day)], index);
   }
 

@@ -62,26 +62,6 @@ contract UpgradeableTradingHoursPluginTest is UpgradeableAbstractPlugin, Trading
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
   }
 
-  function beforeModifyPosition(
-    address,
-    address,
-    int24,
-    int24,
-    int128 liquidityDelta,
-    bytes calldata
-  ) external override onlyPool returns (bytes4, uint24) {
-    // Only verify on add liquidity (positive delta), allow remove always
-    if (liquidityDelta > 0) {
-      _verifyTrading();
-    }
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
-  }
-
-  function beforeFlash(address, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
-    _verifyTrading();
-    return IAlgebraPlugin.beforeFlash.selector;
-  }
-
   // ###### Authorization ######
 
   /// @dev Authorization check for TradingHoursConnector - only ALGEBRA_BASE_PLUGIN_MANAGER

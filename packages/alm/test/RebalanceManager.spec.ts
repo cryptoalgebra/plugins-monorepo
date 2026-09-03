@@ -178,6 +178,70 @@ describe('RebalanceManager', function () {
         );
       });
     }
+
+    // Every rule above lives a second time in the setters, and only the constructor copy was ever
+    // driven to its failing side. Two copies of the same fourteen rules that can drift apart, so the
+    // setter copy is pinned too. Calls come from the manager, otherwise _authorize refuses first and
+    // the case would pass without reaching the rule it names.
+    const invalidBySetter: [string, (m: any) => Promise<any>, string][] = [
+      ['priceChangeThreshold at the ceiling', (m) => m.setPriceChangeThreshold(10000), 'Invalid price change threshold'],
+      ['baseLowPct below the floor', (m) => m.setPercentages(99, 1500, 500), 'Invalid base low percent'],
+      ['baseLowPct above the ceiling', (m) => m.setPercentages(10001, 1500, 500), 'Invalid base low percent'],
+      ['baseHighPct below the floor', (m) => m.setPercentages(3000, 99, 500), 'Invalid base high percent'],
+      ['baseHighPct above the ceiling', (m) => m.setPercentages(3000, 10001, 500), 'Invalid base high percent'],
+      ['limitReservePct below the floor', (m) => m.setPercentages(3000, 1500, 99), 'Invalid limit reserve percent'],
+      // The ceiling is what the stored simulate leaves, 10000 - 9000, not a constant
+      ['limitReservePct above what the stored simulate leaves', (m) => m.setPercentages(3000, 1500, 1001), 'Invalid limit reserve percent'],
+      ['underInventoryThreshold at the floor', (m) => m.setTriggers(9000, 8000, 6000, 8500), '_underInventoryThreshold must be > 6000'],
+      [
+        'normalThreshold equal to underInventoryThreshold',
+        (m) => m.setTriggers(9000, 7000, 7000, 8500),
+        '_normalThreshold must be > _underInventoryThreshold',
+      ],
+      [
+        'overInventoryThreshold equal to normalThreshold',
+        (m) => m.setTriggers(9000, 8000, 7000, 8000),
+        '_overInventoryThreshold must be > _normalThreshold',
+      ],
+      ['simulate equal to overInventoryThreshold', (m) => m.setTriggers(8500, 8000, 7000, 8500), 'Simulate must be > _overInventoryThreshold'],
+      // Every earlier rule has to pass for this one to be the one that fires
+      ['simulate at the ceiling', (m) => m.setTriggers(9500, 9300, 9200, 9400), 'Simulate must be < 9500'],
+      ['dtrDelta above the ceiling', (m) => m.setDtrDelta(10001), '_dtrDelta must be <= 10000'],
+      // Compared against the stored someVolatility, 200
+      ['highVolatility below someVolatility', (m) => m.setHighVolatility(199), '_highVolatility must be >= someVolatility'],
+      ['someVolatility above the ceiling', (m) => m.setSomeVolatility(301), '_someVolatility must be <= 300'],
+      // Compared against the stored highVolatility, 500
+      ['extremeVolatility below highVolatility', (m) => m.setExtremeVolatility(499), '_extremeVolatility must be >= highVolatility'],
+      [
+        'depositTokenUnusedThreshold below the floor',
+        (m) => m.setDepositTokenUnusedThreshold(99),
+        '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000',
+      ],
+      [
+        'depositTokenUnusedThreshold above the ceiling',
+        (m) => m.setDepositTokenUnusedThreshold(10001),
+        '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000',
+      ],
+    ];
+
+    for (const [name, call, message] of invalidBySetter) {
+      it(`should reject ${name} through its setter`, async function () {
+        const { rebalanceManager, manager } = await loadFixture(deployFixture);
+
+        await expect(call(rebalanceManager.connect(manager))).to.be.revertedWith(message);
+      });
+    }
+
+    it('should leave the stored thresholds untouched when a setter is rejected', async function () {
+      const { rebalanceManager, manager } = await loadFixture(deployFixture);
+
+      await expect(rebalanceManager.connect(manager).setPercentages(99, 1500, 500)).to.be.revertedWith('Invalid base low percent');
+
+      const stored = await rebalanceManager.thresholds();
+      expect(stored.baseLowPct).to.equal(THRESHOLDS.baseLowPct);
+      expect(stored.baseHighPct).to.equal(THRESHOLDS.baseHighPct);
+      expect(stored.limitReservePct).to.equal(THRESHOLDS.limitReservePct);
+    });
   });
 
   // Every setter goes through _authorize, which asks the Algebra factory for the manager role
@@ -381,6 +445,73 @@ describe('RebalanceManager', function () {
 
       expect(await rebalanceManager.lastRebalanceTimestamp()).to.not.equal(0);
       expect(await rebalanceManager.lastRebalanceCurrentPrice()).to.not.equal(0);
+    });
+  });
+
+  // _getPriceAccountingDecimals turns a TWAP tick into a price in paired-token units. It is invisible
+  // to the corpus in AlmPlugin.spec.ts, because AlmPluginTest overrides _getTwapPrices, its only
+  // caller, so the shipped manager is the only way to reach it. It branches on which of the two tokens
+  // sorts first, and only one of those orders was ever driven.
+  describe('Price accounting', function () {
+    // The vault decides which side is the deposit token, so the two fixture vaults are the two token
+    // orders. Fresh manager per reading: the price is only stored by a rebalance that happens, and a
+    // second call on one instance falls inside minTimeBetweenRebalances.
+    async function priceAt(vault: any, tick: number, fixture: any) {
+      const manager = await fixture.RebalanceManager.deploy(vault.target, 3600, THRESHOLDS);
+      await vault.setTotalAmounts(10n ** 12n, 10n ** 24n);
+      await fixture.token0.mint(vault.target, 10n ** 12n);
+      await fixture.token1.mint(vault.target, 10n ** 24n);
+
+      await manager.connect(fixture.user).obtainTWAPAndRebalance(tick, tick, tick, 0);
+      return manager.lastRebalanceCurrentPrice();
+    }
+
+    const PARITY_TOKEN0 = 10n ** BigInt(TOKEN0_DECIMALS);
+    const PARITY_TOKEN1 = 10n ** BigInt(TOKEN1_DECIMALS);
+
+    it('should price a flat tick at one paired token per deposit token in either token order', async function () {
+      const fixture = await loadFixture(deployFixture);
+      await fixture.pool.setPlugin(fixture.user.address);
+
+      // Tick 0 is a sqrt price of exactly 2**96, so the price is one paired token per deposit token
+      // whichever way the two sort, and it reads as 10**6 one way and 10**18 the other because the
+      // vaults swap which token is the paired one
+      expect(await priceAt(fixture.vaultAllowingToken1, 0, fixture)).to.be.eq(PARITY_TOKEN0);
+      expect(await priceAt(fixture.vaultAllowingToken0, 0, fixture)).to.be.eq(PARITY_TOKEN1);
+    });
+
+    // The case above cannot see which arm of the token-order branch ran: at tick 0 the sqrt price is
+    // exactly 2**96, both arms compute the same number, and a swapped comparison passes it unchanged.
+    // Off parity they divide in opposite directions, and that is what this pins.
+    it('should move the price to opposite sides of parity for the two token orders', async function () {
+      const fixture = await loadFixture(deployFixture);
+      await fixture.pool.setPlugin(fixture.user.address);
+
+      const TICK = 10000;
+      const onToken1 = await priceAt(fixture.vaultAllowingToken1, TICK, fixture);
+      const onToken0 = await priceAt(fixture.vaultAllowingToken0, TICK, fixture);
+
+      // Which arm a vault takes is decided by the token addresses, and those are not fixed: loadFixture
+      // re-runs the fixture when an earlier snapshot is reverted to, and the redeploy lands on a
+      // different nonce. So derive the expected direction rather than hardcoding it. The multiplying
+      // arm is the one where the paired token sorts before the deposit token.
+      const token0First = BigInt(await fixture.token0.getAddress()) < BigInt(await fixture.token1.getAddress());
+
+      if (token0First) {
+        // vaultAllowingToken1 pairs token0 against a token1 deposit, so it multiplies and rises
+        expect(onToken1).to.be.greaterThan(PARITY_TOKEN0);
+        expect(onToken0).to.be.lessThan(PARITY_TOKEN1);
+      } else {
+        expect(onToken1).to.be.lessThan(PARITY_TOKEN0);
+        expect(onToken0).to.be.greaterThan(PARITY_TOKEN1);
+      }
+
+      // Each is the other's reciprocal about parity, so the product returns to the two parities
+      // multiplied. A swapped comparison sends both the same way and breaks this outright.
+      const product = onToken1 * onToken0;
+      const parityProduct = PARITY_TOKEN0 * PARITY_TOKEN1;
+      expect(product).to.be.greaterThan((parityProduct * 9999n) / 10000n);
+      expect(product).to.be.lessThan((parityProduct * 10001n) / 10000n);
     });
   });
 });

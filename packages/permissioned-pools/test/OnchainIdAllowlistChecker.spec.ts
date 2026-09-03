@@ -136,7 +136,7 @@ describe('OnchainIdAllowlistChecker', function () {
     it('should refuse a required topic change from anyone else', async function () {
       const { other, checker } = await loadFixture(deployFixture);
 
-      await expect(checker.connect(other).setRequiredTopic(42)).to.be.reverted;
+      await expect(checker.connect(other).setRequiredTopic(42)).to.be.revertedWithCustomError(checker, 'OnlyAdmin');
     });
 
     it('should refuse a batch whose arrays disagree in length', async function () {

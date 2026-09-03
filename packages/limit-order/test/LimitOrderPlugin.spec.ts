@@ -402,7 +402,7 @@ describe('LimitOrders', () => {
 
       await loModule.withdraw(1, wallet);
 
-      await expect(loModule.withdraw(1, wallet)).to.be.reverted;
+      await expect(loModule.withdraw(1, wallet)).to.be.revertedWithCustomError(loModule, 'ZeroLiquidity');
     });
 
     // A sequence rather than an end state: both owners take their share out of one filled epoch, and
@@ -422,7 +422,7 @@ describe('LimitOrders', () => {
       expect(total).to.be.greaterThan(0);
 
       // Nothing is left for a third party to claim out of the drained epoch
-      await expect(loModule.connect(other).withdraw(1, other)).to.be.reverted;
+      await expect(loModule.connect(other).withdraw(1, other)).to.be.revertedWithCustomError(loModule, 'ZeroLiquidity');
     });
 
     it('reverts if claim not filled lo', async () => {

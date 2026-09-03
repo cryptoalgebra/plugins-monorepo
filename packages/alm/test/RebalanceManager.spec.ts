@@ -199,7 +199,8 @@ describe('RebalanceManager', function () {
       it(`should refuse ${name} from a caller with neither ownership nor the role`, async function () {
         const { rebalanceManager, user } = await loadFixture(deployFixture);
 
-        await expect(call(rebalanceManager.connect(user))).to.be.reverted;
+        // _authorize is a require with no reason string, so this pins the guard and not some other revert
+        await expect(call(rebalanceManager.connect(user))).to.be.revertedWithoutReason();
       });
 
       it(`should accept ${name} from the manager role`, async function () {
@@ -322,7 +323,7 @@ describe('RebalanceManager', function () {
     it('should refuse unpause from a caller with neither ownership nor the role', async function () {
       const { rebalanceManager, user } = await loadFixture(deployFixture);
 
-      await expect(rebalanceManager.connect(user).unpause()).to.be.reverted;
+      await expect(rebalanceManager.connect(user).unpause()).to.be.revertedWithoutReason();
     });
   });
 

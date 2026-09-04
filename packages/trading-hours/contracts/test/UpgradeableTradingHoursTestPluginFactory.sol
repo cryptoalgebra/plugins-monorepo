@@ -63,6 +63,15 @@ contract UpgradeableTradingHoursTestPluginFactory is IBasePluginFactory {
     pluginByPool[pool] = plugin;
   }
 
+  /// @notice Upgrade every plugin this factory created
+  /// @dev The beacon is created in this constructor, so the factory owns it and nothing outside could
+  /// reach upgradeTo without this forwarder. Mirrors AlgebraUpgradeablePluginFactory.upgradePlugins
+  function upgradePlugins(address newImplementation) external {
+    IAlgebraFactory factory = IAlgebraFactory(algebraFactory);
+    require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender), 'Not authorized');
+    beacon.upgradeTo(newImplementation);
+  }
+
   /// @inheritdoc IBasePluginFactory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);

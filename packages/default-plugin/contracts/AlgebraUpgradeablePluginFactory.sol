@@ -11,6 +11,9 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/libraries/AdaptiveFee.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/interfaces/ITradingHoursPlugin.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/interfaces/ITradingHoursPluginFactory.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/libraries/TradingHoursLib.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 import './interfaces/IAlgebraDefaultPluginFactory.sol';
@@ -35,6 +38,12 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Trading Hours
+    uint32 tradingHoursStartSeconds;
+    uint32 tradingHoursEndSeconds;
+    int32 tradingHoursDayOfWeekOffsetSeconds;
+    uint8 tradingHoursBlockedWeekdaysMask;
+    bool tradingHoursEnabled;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -75,6 +84,10 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     AdaptiveFee.validateFeeConfiguration(initialFeeConfig);
     s.defaultFeeConfiguration = initialFeeConfig;
     emit DefaultFeeConfiguration(initialFeeConfig);
+
+    // Fully open hours, Sat/Sun mask, disabled - a structurally valid starting point so _createPlugin
+    // never reverts before an administrator calls setDefaultTradingHours
+    _setDefaultTradingHours(0, uint32(1 days), 0, 0x41, false);
   }
 
   // ========== IBasePluginFactory Implementation ==========
@@ -127,16 +140,14 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    // Trading hours start disabled (fully unrestricted, Sat/Sun default mask) until the pool admin opts in,
-    // since each pool can track a different market's schedule - see TradingHoursConnector
     IAlgebraUpgradeablePlugin(plugin).initialize(
       s.defaultFeeConfiguration,
       s.securityRegistry,
-      0,
-      uint32(1 days),
-      0,
-      0x41,
-      false
+      s.tradingHoursStartSeconds,
+      s.tradingHoursEndSeconds,
+      s.tradingHoursDayOfWeekOffsetSeconds,
+      s.tradingHoursBlockedWeekdaysMask,
+      s.tradingHoursEnabled
     );
 
     s.pluginByPool[pool] = plugin;
@@ -166,6 +177,29 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
   }
 
+  /// @inheritdoc ITradingHoursPluginFactory
+  function defaultTradingHours()
+    external
+    view
+    override
+    returns (
+      uint32 startSeconds,
+      uint32 endSeconds,
+      int32 dayOfWeekOffsetSeconds,
+      uint8 blockedWeekdaysMask,
+      bool enabled
+    )
+  {
+    PluginFactoryStorage storage s = _getStorage();
+    return (
+      s.tradingHoursStartSeconds,
+      s.tradingHoursEndSeconds,
+      s.tradingHoursDayOfWeekOffsetSeconds,
+      s.tradingHoursBlockedWeekdaysMask,
+      s.tradingHoursEnabled
+    );
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -187,6 +221,36 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setSecurityRegistry(address newSecurityRegistry) external override onlyAdministrator {
     _getStorage().securityRegistry = newSecurityRegistry;
     emit SecurityRegistry(newSecurityRegistry);
+  }
+
+  /// @inheritdoc ITradingHoursPluginFactory
+  function setDefaultTradingHours(
+    uint32 startSeconds,
+    uint32 endSeconds,
+    int32 dayOfWeekOffsetSeconds,
+    uint8 blockedWeekdaysMask,
+    bool enabled
+  ) external override onlyAdministrator {
+    _setDefaultTradingHours(startSeconds, endSeconds, dayOfWeekOffsetSeconds, blockedWeekdaysMask, enabled);
+  }
+
+  function _setDefaultTradingHours(
+    uint32 startSeconds,
+    uint32 endSeconds,
+    int32 dayOfWeekOffsetSeconds,
+    uint8 blockedWeekdaysMask,
+    bool enabled
+  ) private {
+    if (startSeconds >= endSeconds || endSeconds > TradingHoursLib.SECONDS_PER_DAY) revert ITradingHoursPlugin.InvalidTradingHours();
+    if (blockedWeekdaysMask >= 128) revert ITradingHoursPlugin.InvalidBlockedWeekdaysMask();
+
+    PluginFactoryStorage storage s = _getStorage();
+    s.tradingHoursStartSeconds = startSeconds;
+    s.tradingHoursEndSeconds = endSeconds;
+    s.tradingHoursDayOfWeekOffsetSeconds = dayOfWeekOffsetSeconds;
+    s.tradingHoursBlockedWeekdaysMask = blockedWeekdaysMask;
+    s.tradingHoursEnabled = enabled;
+    emit DefaultTradingHours(startSeconds, endSeconds, dayOfWeekOffsetSeconds, blockedWeekdaysMask, enabled);
   }
 
   // ========== Upgrade Management ==========

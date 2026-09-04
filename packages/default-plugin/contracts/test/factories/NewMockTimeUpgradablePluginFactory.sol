@@ -9,6 +9,9 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguratio
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/interfaces/ITradingHoursPlugin.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/interfaces/ITradingHoursPluginFactory.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/libraries/TradingHoursLib.sol';
 
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/AlgebraPluginProxy.sol';
@@ -36,6 +39,12 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Trading Hours
+    uint32 tradingHoursStartSeconds;
+    uint32 tradingHoursEndSeconds;
+    int32 tradingHoursDayOfWeekOffsetSeconds;
+    uint8 tradingHoursBlockedWeekdaysMask;
+    bool tradingHoursEnabled;
     // ALM
     address defaultRebalanceManager;
     uint32 defaultSlowTwapPeriod;
@@ -81,6 +90,8 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
 
     s.defaultFeeConfiguration = initialFeeConfig;
     emit DefaultFeeConfiguration(initialFeeConfig);
+
+    _setDefaultTradingHours(0, uint32(1 days), 0, 0x41, false);
   }
 
   // ========== IBasePluginFactory Implementation ==========
@@ -135,7 +146,15 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry, 0, uint32(1 days), 0, 0x41, false);
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      s.defaultFeeConfiguration,
+      s.securityRegistry,
+      s.tradingHoursStartSeconds,
+      s.tradingHoursEndSeconds,
+      s.tradingHoursDayOfWeekOffsetSeconds,
+      s.tradingHoursBlockedWeekdaysMask,
+      s.tradingHoursEnabled
+    );
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -179,6 +198,29 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     return (config.alpha1, config.alpha2, config.beta1, config.beta2, config.gamma1, config.gamma2, config.baseFee);
   }
 
+  /// @inheritdoc ITradingHoursPluginFactory
+  function defaultTradingHours()
+    external
+    view
+    override
+    returns (
+      uint32 startSeconds,
+      uint32 endSeconds,
+      int32 dayOfWeekOffsetSeconds,
+      uint8 blockedWeekdaysMask,
+      bool enabled
+    )
+  {
+    PluginFactoryStorage storage s = _getStorage();
+    return (
+      s.tradingHoursStartSeconds,
+      s.tradingHoursEndSeconds,
+      s.tradingHoursDayOfWeekOffsetSeconds,
+      s.tradingHoursBlockedWeekdaysMask,
+      s.tradingHoursEnabled
+    );
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IDynamicFeePluginFactory
@@ -214,6 +256,36 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     s.defaultSlowTwapPeriod = slowPeriod;
     s.defaultFastTwapPeriod = fastPeriod;
     emit AlmTwapPeriods(slowPeriod, fastPeriod);
+  }
+
+  /// @inheritdoc ITradingHoursPluginFactory
+  function setDefaultTradingHours(
+    uint32 startSeconds,
+    uint32 endSeconds,
+    int32 dayOfWeekOffsetSeconds,
+    uint8 blockedWeekdaysMask,
+    bool enabled
+  ) external override {
+    _setDefaultTradingHours(startSeconds, endSeconds, dayOfWeekOffsetSeconds, blockedWeekdaysMask, enabled);
+  }
+
+  function _setDefaultTradingHours(
+    uint32 startSeconds,
+    uint32 endSeconds,
+    int32 dayOfWeekOffsetSeconds,
+    uint8 blockedWeekdaysMask,
+    bool enabled
+  ) private {
+    if (startSeconds >= endSeconds || endSeconds > TradingHoursLib.SECONDS_PER_DAY) revert ITradingHoursPlugin.InvalidTradingHours();
+    if (blockedWeekdaysMask >= 128) revert ITradingHoursPlugin.InvalidBlockedWeekdaysMask();
+
+    PluginFactoryStorage storage s = _getStorage();
+    s.tradingHoursStartSeconds = startSeconds;
+    s.tradingHoursEndSeconds = endSeconds;
+    s.tradingHoursDayOfWeekOffsetSeconds = dayOfWeekOffsetSeconds;
+    s.tradingHoursBlockedWeekdaysMask = blockedWeekdaysMask;
+    s.tradingHoursEnabled = enabled;
+    emit DefaultTradingHours(startSeconds, endSeconds, dayOfWeekOffsetSeconds, blockedWeekdaysMask, enabled);
   }
 
   // ========== Upgrade Management ==========

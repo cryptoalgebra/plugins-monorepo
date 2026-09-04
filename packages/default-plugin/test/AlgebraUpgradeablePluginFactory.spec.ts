@@ -234,6 +234,71 @@ describe('AlgebraUpgradeablePluginFactory', () => {
     });
   });
 
+  describe('#Default trading hours', () => {
+    it('starts fully open, Sat/Sun mask, disabled', async () => {
+      const defaults = await pluginFactory.defaultTradingHours();
+      expect(defaults.startSeconds).to.eq(0);
+      expect(defaults.endSeconds).to.eq(86400);
+      expect(defaults.dayOfWeekOffsetSeconds).to.eq(0);
+      expect(defaults.blockedWeekdaysMask).to.eq(0x41);
+      expect(defaults.enabled).to.eq(false);
+    });
+
+    describe('#setDefaultTradingHours', () => {
+      it('fails if caller is not owner', async () => {
+        await expect(
+          pluginFactory.connect(other).setDefaultTradingHours(9 * 3600, 18 * 3600, 0, 0x41, true)
+        ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
+      });
+
+      it('updates defaultTradingHours', async () => {
+        await pluginFactory.setDefaultTradingHours(9 * 3600, 18 * 3600, -18000, 0x60, true);
+
+        const defaults = await pluginFactory.defaultTradingHours();
+        expect(defaults.startSeconds).to.eq(9 * 3600);
+        expect(defaults.endSeconds).to.eq(18 * 3600);
+        expect(defaults.dayOfWeekOffsetSeconds).to.eq(-18000);
+        expect(defaults.blockedWeekdaysMask).to.eq(0x60);
+        expect(defaults.enabled).to.eq(true);
+      });
+
+      it('emits DefaultTradingHours', async () => {
+        await expect(pluginFactory.setDefaultTradingHours(9 * 3600, 18 * 3600, 0, 0x41, true))
+          .to.emit(pluginFactory, 'DefaultTradingHours')
+          .withArgs(9 * 3600, 18 * 3600, 0, 0x41, true);
+      });
+
+      it('reverts with InvalidTradingHours when start >= end', async () => {
+        await expect(pluginFactory.setDefaultTradingHours(100, 100, 0, 0x41, false)).to.be.revertedWithCustomError(
+          pluginFactory,
+          'InvalidTradingHours'
+        );
+      });
+
+      it('reverts with InvalidBlockedWeekdaysMask when bit 7 is set', async () => {
+        await expect(pluginFactory.setDefaultTradingHours(0, 86400, 0, 0x80, false)).to.be.revertedWithCustomError(
+          pluginFactory,
+          'InvalidBlockedWeekdaysMask'
+        );
+      });
+
+      it('newly created pools pick up the configured defaults', async () => {
+        await pluginFactory.setDefaultTradingHours(9 * 3600, 18 * 3600, 0, 0x60, true);
+
+        await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
+        await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+        const pluginAddress = await pluginFactory.pluginByPool(other.address);
+        const plugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
+
+        const [start, end] = await plugin.getTradingHours();
+        expect(start).to.eq(9 * 3600);
+        expect(end).to.eq(18 * 3600);
+        expect(await plugin.getBlockedWeekdays()).to.eq(0x60);
+        expect(await plugin.getEnabled()).to.eq(true);
+      });
+    });
+  });
+
   describe('#setFarmingAddress', () => {
     it('fails if caller is not owner', async () => {
       await expect(pluginFactory.connect(other).setFarmingAddress(wallet.address)).to.be.revertedWithCustomError(

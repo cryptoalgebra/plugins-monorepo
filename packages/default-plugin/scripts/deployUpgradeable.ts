@@ -5,10 +5,10 @@ import { ethers } from "hardhat";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: "0x000000000000000000000000000000000000000000",
+  algebraFactory: "0x285C74f3d01296F96c5d3858ab482f707e8Bfdfc",
 
   // Farming center address (optional, can be set later)
-  farmingCenter: "0x000000000000000000000000000000000000000000",
+  farmingCenter: "0x92E4eaCD3b49fa85D13E4B6E8d6bfd0CFafaeD75",
 
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
@@ -19,6 +19,16 @@ const config = {
     gamma1: 59,
     gamma2: 8500,
     baseFee: 100,
+  },
+
+  // Default trading hours configuration, applied to every newly created pool - pool admins can
+  // still override their own pool's hours/weekdays afterwards via the plugin's own setters
+  tradingHours: {
+    startSeconds: 9 * 3600, // 09:00 UTC, inclusive
+    endSeconds: 18 * 3600, // 18:00 UTC, exclusive
+    dayOfWeekOffsetSeconds: 0, // only affects which UTC day counts as local Sat/Sun
+    blockedWeekdaysMask: 0x41, // bit 0 = Sunday, bit 6 = Saturday
+    enabled: true,
   },
 
 };
@@ -157,16 +167,18 @@ async function main() {
   // Set SecurityRegistry
   const tx2 = await factory.setSecurityRegistry(await securityRegistry.getAddress());
   await tx2.wait();
-  console.log("Set SecurityRegistry");
+  console.log("Set SecurityRegistry")
 
-
-
-  // Set DefaultPluginFactory in AlgebraFactory
-  const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
-  const tx9 = await algebraFactory.setDefaultPluginFactory(factoryProxyAddress);
-  await tx9.wait();
-  console.log("Set DefaultPluginFactory in AlgebraFactory");
-  console.log("");
+  // Set default trading hours
+  const tx3 = await factory.setDefaultTradingHours(
+    config.tradingHours.startSeconds,
+    config.tradingHours.endSeconds,
+    config.tradingHours.dayOfWeekOffsetSeconds,
+    config.tradingHours.blockedWeekdaysMask,
+    config.tradingHours.enabled
+  );
+  await tx3.wait();
+  console.log("Set default trading hours");
 
   // ============= SUMMARY =============
   console.log("========================================");
@@ -188,6 +200,13 @@ async function main() {
   console.log("");
   console.log("--- Auxiliary ---");
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
+  console.log("");
+  console.log("--- Default Trading Hours ---");
+  console.log("startSeconds:", config.tradingHours.startSeconds);
+  console.log("endSeconds:", config.tradingHours.endSeconds);
+  console.log("dayOfWeekOffsetSeconds:", config.tradingHours.dayOfWeekOffsetSeconds);
+  console.log("blockedWeekdaysMask:", config.tradingHours.blockedWeekdaysMask);
+  console.log("enabled:", config.tradingHours.enabled);
 }
 
 main()

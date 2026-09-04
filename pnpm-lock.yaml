@@ -134,6 +134,9 @@ importers:
       '@cryptoalgebra/safety-switch-plugin':
         specifier: workspace:^
         version: link:../safety-switch
+      '@cryptoalgebra/trading-hours-plugin':
+        specifier: workspace:^
+        version: link:../trading-hours
       '@cryptoalgebra/volatility-oracle-plugin':
         specifier: workspace:^
         version: link:../volatility-oracle

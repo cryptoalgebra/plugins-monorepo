@@ -11,11 +11,13 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
+import '@cryptoalgebra/trading-hours-plugin/contracts/TradingHoursConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM, Security
+/// and Trading Hours
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -24,7 +26,8 @@ contract AlgebraUpgradeablePlugin is
   DynamicFeeConnector,
   FarmingProxyConnector,
   AlmConnector,
-  SecurityConnector
+  SecurityConnector,
+  TradingHoursConnector
 {
   using Plugins for uint8;
 
@@ -36,6 +39,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _almImpl ALM implementation address
   /// @param _securityImpl Security implementation address
+  /// @param _tradingHoursImpl Trading Hours implementation address
   constructor(
     address _factory,
     address _pluginFactory,
@@ -43,7 +47,8 @@ contract AlgebraUpgradeablePlugin is
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
     address _almImpl,
-    address _securityImpl
+    address _securityImpl,
+    address _tradingHoursImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
@@ -51,27 +56,41 @@ contract AlgebraUpgradeablePlugin is
     FarmingProxyConnector(_farmingProxyImpl)
     AlmConnector(_almImpl)
     SecurityConnector(_securityImpl)
+    TradingHoursConnector(_tradingHoursImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     AlgebraFeeConfiguration calldata feeConfig,
-    address securityRegistry
+    address securityRegistry,
+    uint32 tradingHoursStartSeconds,
+    uint32 tradingHoursEndSeconds,
+    int32 tradingHoursDayOfWeekOffsetSeconds,
+    uint8 tradingHoursBlockedWeekdaysMask,
+    bool tradingHoursEnabled
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
+    _initializeTradingHours(
+      tradingHoursStartSeconds,
+      tradingHoursEndSeconds,
+      tradingHoursDayOfWeekOffsetSeconds,
+      tradingHoursBlockedWeekdaysMask,
+      tradingHoursEnabled
+    );
 
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](6);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
     activeModules[3] = ALM_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
+    activeModules[5] = TRADING_HOURS_MODULE_NAME;
     return activeModules;
   }
 
@@ -81,7 +100,8 @@ contract AlgebraUpgradeablePlugin is
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       ALM_PLUGIN_CONFIG |
-      SECURITY_PLUGIN_CONFIG;
+      SECURITY_PLUGIN_CONFIG |
+      TRADING_HOURS_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -96,7 +116,8 @@ contract AlgebraUpgradeablePlugin is
     return UpgradeableAbstractPlugin._getPool();
   }
 
-  /// @dev Required by DynamicFeeConnector, AlmConnector, SecurityConnector - use base class implementation
+  /// @dev Required by DynamicFeeConnector, AlmConnector, SecurityConnector, TradingHoursConnector - use base
+  /// class implementation
   function _authorize() internal view override(UpgradeableAbstractPlugin, BaseConnector) {
     UpgradeableAbstractPlugin._authorize();
   }
@@ -178,6 +199,7 @@ contract AlgebraUpgradeablePlugin is
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
+    _verifyTrading();
 
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();

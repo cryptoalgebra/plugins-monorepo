@@ -618,6 +618,9 @@ describe('Integration Tests - Fork', function() {
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
       
+      const TradingHoursImplFactory = await ethers.getContractFactory('TradingHoursPluginImplementation');
+      const tradingHoursImpl = await TradingHoursImplFactory.deploy();
+      
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
       const pluginFactoryAddress = await newPluginFactory.getAddress();
@@ -630,7 +633,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        await tradingHoursImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();
@@ -709,6 +713,9 @@ describe('Integration Tests - Fork', function() {
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
       
+      const TradingHoursImplFactory = await ethers.getContractFactory('TradingHoursPluginImplementation');
+      const tradingHoursImpl = await TradingHoursImplFactory.deploy();
+      
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
       const pluginFactoryAddress = await newPluginFactory.getAddress();
@@ -721,7 +728,8 @@ describe('Integration Tests - Fork', function() {
         await upgradedDynamicFee.getAddress(),
         await upgradedFarming.getAddress(),
         await upgradedAlm.getAddress(),
-        await upgradedSecurity.getAddress()
+        await upgradedSecurity.getAddress(),
+        await tradingHoursImpl.getAddress()
       );
       
       const superPluginAddress = await superPlugin.getAddress();

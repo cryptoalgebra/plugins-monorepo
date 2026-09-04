@@ -47,12 +47,17 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
+  const tradingHoursImpl = m.contract("TradingHoursPluginImplementation", [], {
+    id: "TradingHoursImpl"
+  });
+
   return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    tradingHoursImpl
   };
 });
 
@@ -100,12 +105,13 @@ const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
 // ============= PLUGIN IMPLEMENTATION =============
 
 const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    almImpl,
+    securityImpl,
+    tradingHoursImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -116,18 +122,20 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    tradingHoursImpl
   ], {
     id: "PluginImplementation"
   });
 
-  return { 
+  return {
     pluginImpl,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
     almImpl,
-    securityImpl
+    securityImpl,
+    tradingHoursImpl
   };
 });
 

@@ -9,8 +9,21 @@ interface IAlgebraUpgradeablePlugin {
   /// @param pool The pool address
   event PluginInitialized(address indexed pool);
 
-  /// @notice Initialize plugin with fee configuration and security registry
+  /// @notice Initialize plugin with fee configuration, security registry and trading-hours defaults
   /// @param feeConfig The initial fee configuration
   /// @param securityRegistry The security registry address
-  function initialize(AlgebraFeeConfiguration calldata feeConfig, address securityRegistry) external;
+  /// @param tradingHoursStartSeconds Default daily trading window start, UTC seconds from midnight
+  /// @param tradingHoursEndSeconds Default daily trading window end, UTC seconds from midnight
+  /// @param tradingHoursDayOfWeekOffsetSeconds Default offset for the blocked-weekdays local-day check
+  /// @param tradingHoursBlockedWeekdaysMask Default always-blocked weekdays, bit i = weekday i (0 = Sunday)
+  /// @param tradingHoursEnabled Whether trading hours restrictions start enabled
+  function initialize(
+    AlgebraFeeConfiguration calldata feeConfig,
+    address securityRegistry,
+    uint32 tradingHoursStartSeconds,
+    uint32 tradingHoursEndSeconds,
+    int32 tradingHoursDayOfWeekOffsetSeconds,
+    uint8 tradingHoursBlockedWeekdaysMask,
+    bool tradingHoursEnabled
+  ) external;
 }

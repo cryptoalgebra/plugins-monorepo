@@ -127,7 +127,17 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.defaultFeeConfiguration, s.securityRegistry);
+    // Trading hours start disabled (fully unrestricted, Sat/Sun default mask) until the pool admin opts in,
+    // since each pool can track a different market's schedule - see TradingHoursConnector
+    IAlgebraUpgradeablePlugin(plugin).initialize(
+      s.defaultFeeConfiguration,
+      s.securityRegistry,
+      0,
+      uint32(1 days),
+      0,
+      0x41,
+      false
+    );
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);

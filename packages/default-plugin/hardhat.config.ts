@@ -43,6 +43,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/alm-plugin/contracts/AlmPluginImplementation.sol',
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPluginImplementation.sol',
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol',
+      '@cryptoalgebra/trading-hours-plugin/contracts/TradingHoursPluginImplementation.sol',
     ],
   },
   solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,

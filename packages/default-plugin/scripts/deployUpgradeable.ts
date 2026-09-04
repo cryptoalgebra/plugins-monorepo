@@ -59,6 +59,11 @@ async function main() {
   await securityImpl.waitForDeployment();
   console.log("SecurityImpl:", await securityImpl.getAddress());
 
+  const TradingHoursImpl = await ethers.getContractFactory("TradingHoursPluginImplementation");
+  const tradingHoursImpl = await TradingHoursImpl.deploy();
+  await tradingHoursImpl.waitForDeployment();
+  console.log("TradingHoursImpl:", await tradingHoursImpl.getAddress());
+
 
   // ============= 2. DEPLOY PROXY ADMIN =============
   console.log("=== Deploying ProxyAdmin ===");
@@ -92,7 +97,8 @@ async function main() {
     await dynamicFeeImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await almImpl.getAddress(),
-    await securityImpl.getAddress()
+    await securityImpl.getAddress(),
+    await tradingHoursImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
   const pluginImplAddress = await pluginImpl.getAddress();
@@ -178,6 +184,7 @@ async function main() {
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
   console.log("ALM:", await almImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
+  console.log("TradingHours:", await tradingHoursImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");
   console.log("SecurityRegistry:", await securityRegistry.getAddress());

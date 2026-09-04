@@ -9,6 +9,7 @@ const deployed = {
   farmingProxyImpl: "0x000000000000000000000000000000000000000000",
   almImpl: "0x000000000000000000000000000000000000000000",
   securityImpl: "0x000000000000000000000000000000000000000000",
+  tradingHoursImpl: "0x000000000000000000000000000000000000000000",
   proxyAdmin: "0x000000000000000000000000000000000000000000",
   factoryProxy: "0x000000000000000000000000000000000000000000",
   pluginImpl: "0x000000000000000000000000000000000000000000",
@@ -54,6 +55,7 @@ async function main() {
     ["FarmingProxyPluginImplementation", deployed.farmingProxyImpl],
     ["AlmPluginImplementation", deployed.almImpl],
     ["SecurityPluginImplementation", deployed.securityImpl],
+    ["TradingHoursPluginImplementation", deployed.tradingHoursImpl],
     ["ProxyAdmin", deployed.proxyAdmin],
     ["AlgebraUpgradeablePluginFactory", deployed.factoryImpl],
   ] as const;
@@ -78,6 +80,7 @@ async function main() {
     deployed.farmingProxyImpl,
     deployed.almImpl,
     deployed.securityImpl,
+    deployed.tradingHoursImpl,
   ]);
 
   // 4. SecurityRegistry

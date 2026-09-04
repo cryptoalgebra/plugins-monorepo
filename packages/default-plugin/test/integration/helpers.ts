@@ -118,10 +118,19 @@ export async function deployNewPluginImplementation(
     farming?: string;
     alm?: string;
     security?: string;
+    tradingHours?: string;
   }
 ) {
   const mockFactoryAddress = await algebraFactory.getAddress();
   const pluginFactoryAddress = await pluginFactory.getAddress();
+
+  // Trading Hours has no deployed mainnet address yet (unlike the other 5 modules), so deploy a fresh
+  // implementation for it unless the caller supplies one
+  let tradingHoursAddress = moduleOverrides?.tradingHours;
+  if (!tradingHoursAddress) {
+    const TradingHoursImplFactory = await ethers.getContractFactory('TradingHoursPluginImplementation');
+    tradingHoursAddress = await (await TradingHoursImplFactory.deploy()).getAddress();
+  }
 
   const NewPluginFactory = await ethers.getContractFactory(contractName);
   const newPluginImpl = await NewPluginFactory.deploy(
@@ -131,7 +140,8 @@ export async function deployNewPluginImplementation(
     moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
     moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
     moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
+    moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY,
+    tradingHoursAddress
   );
 
   return { newPluginImpl, address: await newPluginImpl.getAddress() };

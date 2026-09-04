@@ -19,5 +19,6 @@
     "@cryptoalgebra/integral-periphery": "1.2.5",
     "@openzeppelin/contracts": "^4.9.3",
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
-  }
+  },
+  "gitHead": "58081df6ce09c538a1155b8f7d2d855b410c12f2"
 }

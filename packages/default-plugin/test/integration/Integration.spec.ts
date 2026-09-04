@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, config as hardhatConfig } from 'hardhat';
 import { expect } from 'test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
@@ -12,6 +12,16 @@ import {
 } from './helpers';
 
 describe('Integration Tests - Fork', function() {
+  // This is the only file in the package that needs the fork, and it is not the only one that resets
+  // the network: AlgebraPool.gas.spec.ts takes its measurements on a clean chain, and a bare
+  // hardhat_reset drops forking for the rest of the mocha process, whatever the config says. Run alone
+  // this file passed; run after that one, every Base address below had no code and each fixture died
+  // on its first call. So establish the fork here instead of depending on which files ran first.
+  before('put the fork back, in case another spec file reset it away', async function () {
+    const forking = (hardhatConfig.networks.hardhat as any).forking;
+    if (forking?.url) await helpers.reset(forking.url, forking.blockNumber);
+  });
+
   async function deployFixture() {
     await helpers.mine();
     

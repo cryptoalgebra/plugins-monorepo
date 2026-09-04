@@ -1,11 +1,32 @@
 import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
 import { upgradeablePluginFixture } from './shared/fixtures';
 import { PLUGIN_FLAGS, encodePriceSqrt, getMaxTick, getMinTick } from 'test-utils/utilities';
 
 import { MockPool, MockTimeAlgebraUpgradeablePlugin, MockTimeUpgradeablePluginFactory, MockTimeVirtualPool } from '../typechain';
+
+const SECONDS_PER_DAY = 86400;
+
+// The Trading Hours module reads block.timestamp, not the plugin's mock clock, so its cases pin the
+// timestamp of the next block instead of calling advanceTime like the oracle-driven ones do.
+function dayStart(timestamp: number): number {
+  return Math.floor(timestamp / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+}
+
+// First UTC instant at `secondsOfDay` strictly after `from`
+function nextInstantAt(from: number, secondsOfDay: number): number {
+  const candidate = dayStart(from) + secondsOfDay;
+  return candidate > from ? candidate : candidate + SECONDS_PER_DAY;
+}
+
+// First UTC instant at `secondsOfDay` on the next occurrence of `weekday` (0 = Sunday) after `from`
+function nextWeekdayInstantAt(from: number, weekday: number, secondsOfDay: number): number {
+  let candidate = nextInstantAt(from, secondsOfDay);
+  while (new Date(candidate * 1000).getUTCDay() !== weekday) candidate += SECONDS_PER_DAY;
+  return candidate;
+}
 
 describe('AlgebraUpgradeablePlugin', () => {
   let wallet: Wallet, other: Wallet;
@@ -305,6 +326,87 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect(moduleNames).to.have.lengthOf(6);
       });
 
+    });
+  });
+
+  // The Trading Hours module has its own package, where it is tested against a plugin that carries
+  // nothing else. These are the cases that need the whole plugin around it: the gate sits in
+  // beforeSwap next to the security check, the fee calculation and the oracle write.
+  describe('#TradingHours', () => {
+    beforeEach('connect plugin to pool', async () => {
+      await mockPool.setPlugin(plugin);
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+    });
+
+    it('is created disabled, so even a weekend swap goes through', async () => {
+      // The factory hands every new pool the Sat/Sun mask already filled in, switched off
+      expect(await plugin.getEnabled()).to.be.eq(false);
+      expect(await plugin.getBlockedWeekdays()).to.be.eq(0x41);
+
+      await time.setNextBlockTimestamp(nextWeekdayInstantAt(await time.latest(), 6, 12 * 3600));
+      await expect(mockPool.swapToTick(0)).to.not.be.reverted;
+    });
+
+    it('blocks a swap outside the daily window and allows it inside', async () => {
+      await plugin.setTradingHours(9 * 3600, 18 * 3600);
+      await plugin.setBlockedWeekdays(0);
+      await plugin.setEnabled(true);
+
+      const closed = nextInstantAt(await time.latest(), 8 * 3600);
+      await time.setNextBlockTimestamp(closed);
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'TradingNotAllowed');
+
+      await time.setNextBlockTimestamp(nextInstantAt(closed, 9 * 3600));
+      await expect(mockPool.swapToTick(0)).to.not.be.reverted;
+    });
+
+    it('blocks a swap on a masked weekday', async () => {
+      await plugin.setTradingHours(0, SECONDS_PER_DAY);
+      await plugin.setEnabled(true); // the mask the factory set is Sat/Sun
+
+      // both instants come off the same base, so the Monday is a day after the Sunday whether or not
+      // the reverting transaction above made it into a block
+      const sunday = nextWeekdayInstantAt(await time.latest(), 0, 12 * 3600);
+      await time.setNextBlockTimestamp(sunday);
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'TradingNotAllowed');
+
+      await time.setNextBlockTimestamp(sunday + SECONDS_PER_DAY);
+      await expect(mockPool.swapToTick(0)).to.not.be.reverted;
+    });
+
+    it('leaves liquidity and flash alone while a swap is blocked', async () => {
+      await plugin.setTradingHours(0, 1);
+      await plugin.setBlockedWeekdays(0);
+      await plugin.setEnabled(true);
+
+      await time.setNextBlockTimestamp(nextInstantAt(await time.latest(), 12 * 3600));
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'TradingNotAllowed');
+
+      await expect(mockPool.mint(wallet.address, wallet.address, 0, 60, 100, '0x')).to.not.be.reverted;
+      await expect(mockPool.burn(0, 60, 50, '0x')).to.not.be.reverted;
+      await expect(mockPool.flash(wallet.address, 100, 100, '0x')).to.not.be.reverted;
+    });
+
+    it('answers with the security error first when both modules would refuse', async () => {
+      // _checkStatus runs before _verifyTrading in beforeSwap, so a pool that is both suspended and
+      // outside its hours reports the suspension. Pinned because the two lines are interchangeable at
+      // a glance, and swapping them would silently change what every blocked trader is told.
+      const securityRegistry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
+      await plugin.setSecurityRegistry(await securityRegistry.getAddress());
+      await securityRegistry.setGlobalStatus(2); // DISABLED
+
+      await plugin.setTradingHours(0, 1);
+      await plugin.setBlockedWeekdays(0);
+      await plugin.setEnabled(true);
+
+      const closed = nextInstantAt(await time.latest(), 12 * 3600);
+      await time.setNextBlockTimestamp(closed);
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+
+      // and with security happy again, the same swap reports the hours
+      await securityRegistry.setGlobalStatus(0); // ENABLED
+      await time.setNextBlockTimestamp(closed + 60);
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'TradingNotAllowed');
     });
   });
 });

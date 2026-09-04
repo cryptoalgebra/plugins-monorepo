@@ -1,6 +1,6 @@
 import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
 import { encodePriceSqrt } from 'test-utils/utilities';
 import { DEFAULT_FEE_CONFIGURATION, ZERO_ADDRESS } from './shared/fixtures';
@@ -450,6 +450,130 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Incentive should still work
       const incentive = await fixture.plugin1.incentive();
       expect(incentive).to.eq(await virtualPool.getAddress());
+    });
+  });
+
+  // What the beacon upgrade will actually meet on a live network: proxies created by an implementation
+  // that had no Trading Hours module, whose namespace for it has never been written. Nothing re-runs
+  // initialize for them, so they arrive with every Trading Hours field at zero.
+  describe('#Trading Hours On A Plugin Created Before The Module', () => {
+    const SECONDS_PER_DAY = 86400;
+
+    function nextInstantAt(from: number, secondsOfDay: number): number {
+      const candidate = Math.floor(from / SECONDS_PER_DAY) * SECONDS_PER_DAY + secondsOfDay;
+      return candidate > from ? candidate : candidate + SECONDS_PER_DAY;
+    }
+
+    function nextWeekdayInstantAt(from: number, weekday: number, secondsOfDay: number): number {
+      let candidate = nextInstantAt(from, secondsOfDay);
+      while (new Date(candidate * 1000).getUTCDay() !== weekday) candidate += SECONDS_PER_DAY;
+      return candidate;
+    }
+
+    // Takes a live, fully initialized plugin back to the storage an old proxy carries, by way of an
+    // implementation that can clear the namespace. See MockPreTradingHoursPlugin for why this stands in
+    // for a plugin the removed implementation created.
+    async function rewindToPreTradingHours(fixture: any) {
+      const preFactory = await ethers.getContractFactory('MockPreTradingHoursPlugin');
+      const preImpl = await preFactory.deploy(
+        fixture.mockFactory,
+        fixture.pluginFactory,
+        fixture.volatilityOracleImpl,
+        fixture.dynamicFeeImpl,
+        fixture.farmingProxyImpl,
+        fixture.almImpl,
+        fixture.securityImpl,
+        fixture.tradingHoursImpl
+      );
+
+      await fixture.pluginFactory.upgradePlugins(await preImpl.getAddress());
+      const asPre = await ethers.getContractAt('MockPreTradingHoursPlugin', await fixture.plugin1.getAddress());
+      await asPre.wipeTradingHours();
+      await fixture.pluginFactory.upgradePlugins(fixture.originalImplementation);
+    }
+
+    it('arrives disabled, with every field at zero', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+
+      await rewindToPreTradingHours(fixture);
+
+      expect(await fixture.plugin1.getEnabled()).to.eq(false);
+      const [start, end] = await fixture.plugin1.getTradingHours();
+      expect(start).to.eq(0);
+      expect(end).to.eq(0);
+      expect(await fixture.plugin1.getBlockedWeekdays()).to.eq(0);
+    });
+
+    it('keeps trading exactly as before, weekends included', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+
+      await rewindToPreTradingHours(fixture);
+
+      await time.setNextBlockTimestamp(nextWeekdayInstantAt(await time.latest(), 6, 12 * 3600));
+      await expect(fixture.mockPool1.swapToTick(0)).to.not.be.reverted;
+    });
+
+    it('closes the pool at every hour if it is enabled before its hours are set', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+
+      await rewindToPreTradingHours(fixture);
+
+      // start == end == 0 blocks every second of the day, so this single call is not "switch the
+      // schedule on", it is "close the pool". The order that works is hours first, flag last.
+      await fixture.plugin1.setEnabled(true);
+
+      for (const hour of [0, 9, 12, 23]) {
+        await time.setNextBlockTimestamp(nextInstantAt(await time.latest(), hour * 3600));
+        await expect(fixture.mockPool1.swapToTick(0), `${hour}:00`).to.be.revertedWithCustomError(
+          fixture.plugin1,
+          'TradingNotAllowed'
+        );
+      }
+
+      await fixture.plugin1.setTradingHours(0, SECONDS_PER_DAY);
+      await expect(fixture.mockPool1.swapToTick(0)).to.not.be.reverted;
+    });
+
+    it('cannot be repaired by re-running initialize', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+
+      await rewindToPreTradingHours(fixture);
+
+      // The proxy was initialized once, by the implementation that had no Trading Hours fields, and
+      // Initializable does not care that the signature has grown since. The fields can only be filled
+      // in through the module's own setters.
+      await expect(
+        fixture.plugin1.initialize(DEFAULT_FEE_CONFIGURATION, ZERO_ADDRESS, 0, SECONDS_PER_DAY, 0, 0x41, false)
+      ).to.be.revertedWith('Initializable: contract is already initialized');
+    });
+
+    it('leaves the other modules untouched', async () => {
+      const fixture = await loadFixture(upgradeFixture);
+      await fixture.mockPool1.setPlugin(fixture.plugin1);
+      await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
+      await fixture.mockPool1.mint(wallet.address, wallet.address, -120, 120, 1000000, '0x');
+      await fixture.mockPool1.swapToTick(10);
+
+      const feeConfigBefore = await fixture.plugin1.feeConfig();
+      const timepointIndexBefore = await fixture.plugin1.timepointIndex();
+      const securityRegistryBefore = await fixture.plugin1.getSecurityRegistry();
+
+      await rewindToPreTradingHours(fixture);
+
+      // Each module has its own ERC-7201 namespace, so clearing one is expected to reach no other -
+      // and this is also what makes the wipe above a fair stand-in for the real upgrade.
+      const feeConfigAfter = await fixture.plugin1.feeConfig();
+      expect(feeConfigAfter.alpha1).to.eq(feeConfigBefore.alpha1);
+      expect(feeConfigAfter.baseFee).to.eq(feeConfigBefore.baseFee);
+      expect(await fixture.plugin1.timepointIndex()).to.eq(timepointIndexBefore);
+      expect(await fixture.plugin1.getSecurityRegistry()).to.eq(securityRegistryBefore);
     });
   });
 });

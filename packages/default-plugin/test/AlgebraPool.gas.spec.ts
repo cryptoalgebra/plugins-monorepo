@@ -28,6 +28,9 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
   let wallet: Wallet, other: Wallet;
 
   before('create fixture loader', async () => {
+    // Measurements belong on a clean chain, so this resets the network - which also drops forking for
+    // the rest of the mocha process, since a bare hardhat_reset ignores the config's forking section.
+    // test/integration/Integration.spec.ts puts the fork back for itself; nothing else here needs one.
     await resetNetwork();
     [wallet, other] = await (ethers as any).getSigners();
   });

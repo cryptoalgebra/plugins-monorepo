@@ -47,6 +47,19 @@ function nextWeekdayInstantAt(from: number, weekday: number, secondsOfDay: numbe
   return candidate;
 }
 
+// Deterministic seeded PRNG (mulberry32) for the property tests at the end of this file, so a failure
+// reproduces on someone else's machine. Kept here rather than in test-utils: it is six lines, and
+// test-utils is a dependency of every package in the workspace.
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 describe('UpgradeableTradingHoursPluginTest', function () {
   async function deployFixture() {
     const [owner, manager, user, otherUser] = await ethers.getSigners();
@@ -463,6 +476,25 @@ describe('UpgradeableTradingHoursPluginTest', function () {
       expect((await mockPool.globalState()).pluginConfig).to.equal(PLUGIN_FLAGS.BEFORE_SWAP_FLAG);
     });
 
+    it('should wire the pool up even at an instant the module blocks', async function () {
+      const { plugin1, mockPool, manager } = await loadFixture(deployFixture);
+      await plugin1.connect(manager).setTradingHours(0, SECONDS_PER_DAY);
+      await plugin1.connect(manager).setBlockedWeekdays(ALL_DAYS_MASK);
+      await plugin1.connect(manager).setEnabled(true);
+
+      // A pool has to be creatable on a weekend or a holiday: only swaps are gated, and beforeInitialize
+      // is what writes the plugin config the gate itself depends on. Blocking it would make a pool
+      // deployed outside trading hours permanently unable to consult the plugin.
+      const instant = nextInstantAt(await time.latest(), 12 * 3600);
+      expect(await plugin1.isTradingAllowed(instant)).to.be.false;
+
+      await time.setNextBlockTimestamp(instant);
+      await expect(mockPool.initialize(encodePriceSqrt(1, 1))).to.not.be.reverted;
+
+      expect((await mockPool.globalState()).pluginConfig).to.equal(PLUGIN_FLAGS.BEFORE_SWAP_FLAG);
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin1, 'TradingNotAllowed');
+    });
+
     it('should reject beforeInitialize from anyone but the pool', async function () {
       const { plugin1, user } = await loadFixture(deployFixture);
 
@@ -608,6 +640,36 @@ describe('UpgradeableTradingHoursPluginTest', function () {
       // shortcut 18862 / 6918, with it removed 22207 / 3439, so both bounds sit between the two.
       expect(disabled - noPlugin, 'what a disabled pool pays the plugin').to.be.lessThan(20000n);
       expect(enabled - disabled, 'what enabling adds').to.be.greaterThan(5000n);
+    });
+
+    it('should charge little for the window scan even with every slot populated [ @skip-on-coverage ]', async function () {
+      const { plugin1, mockPool, manager } = await loadFixture(deployFixture);
+      await openAllHours(plugin1, manager, mockPool);
+
+      // The worst case an open pool can reach: five populated slots, none of them matching, so the loop
+      // runs to the end instead of breaking on an empty lane. Both measurements sit at the same second
+      // of the day on consecutive days, and both take the second of two swaps, so the pool writes the
+      // same values into the same warm slots either way and the difference belongs to the scan.
+      async function measureSwapAt(instant: number) {
+        await time.setNextBlockTimestamp(instant);
+        await mockPool.swapToTick(0);
+        return (await (await mockPool.swapToTick(0)).wait())!.gasUsed;
+      }
+
+      const evening = nextInstantAt(await time.latest(), 23 * 3600);
+      const noWindows = await measureSwapAt(evening);
+
+      const nextEvening = evening + SECONDS_PER_DAY;
+      const day = dayStart(nextEvening);
+      for (let i = 0; i < 5; i++) {
+        await plugin1.connect(manager).setBlockedWindow(day, i, i * 3600, (i + 1) * 3600); // all well before 23:00
+      }
+      const fiveWindows = await measureSwapAt(nextEvening);
+
+      // Both paths load the same single packed word, so what is measured here is five iterations of
+      // shift-and-compare against one early return: measured at 928 gas, and the bound leaves the loop
+      // room to grow without quietly leaving the "one word, five lanes" cost model behind.
+      expect(fiveWindows - noWindows, 'what a full slot scan adds').to.be.lessThan(2000n);
     });
   });
 
@@ -763,6 +825,269 @@ describe('UpgradeableTradingHoursPluginTest', function () {
       await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin1, 'TradingNotAllowed');
       await expect(mockPool.mint(owner.address, owner.address, -60, 60, 1000, '0x')).to.not.be.reverted;
       await expect(mockPool.burn(-60, 60, 500, '0x')).to.not.be.reverted;
+    });
+  });
+
+  describe('The shared implementation instance', function () {
+    it('should ignore writes made directly to the implementation contract', async function () {
+      const { plugin1, mockPool, manager, tradingHoursImpl } = await loadFixture(deployFixture);
+      await openAllHours(plugin1, manager, mockPool);
+
+      // The implementation carries no access control of its own, because it is only ever meant to be
+      // reached by delegatecall and its own storage belongs to nobody. Anyone can still write it, and
+      // this pins that such a write reaches no plugin: every proxy keeps its schedule in its own storage.
+      await tradingHoursImpl.setTradingHours(0, 1);
+      await tradingHoursImpl.setBlockedWeekdays(ALL_DAYS_MASK);
+      await tradingHoursImpl.setEnabled(true);
+
+      const instant = (await time.latest()) + 1;
+      expect(await tradingHoursImpl.isTradingAllowed(instant), 'the implementation closed itself').to.be.false;
+      expect(await plugin1.isTradingAllowed(instant), 'the plugin it delegates for').to.be.true;
+      await expect(mockPool.swapToTick(0)).to.not.be.reverted;
+    });
+  });
+
+  describe('Batch capacity', function () {
+    it('should apply a hundred-entry batch in one transaction', async function () {
+      const { plugin1, manager } = await loadFixture(deployFixture);
+
+      // Nothing bounds the array, and the connector walks it a second time to emit one event per entry,
+      // so this pins what a realistic holiday calendar - a hundred single-day closures loaded at once -
+      // actually costs, rather than leaving the limit to be discovered on a live network.
+      const firstDay = dayStart(await time.latest()) + SECONDS_PER_DAY;
+      const inputs = Array.from({ length: 100 }, (_, i) => ({
+        day: firstDay + i * SECONDS_PER_DAY,
+        index: 0,
+        startSeconds: 9 * 3600,
+        endSeconds: 18 * 3600,
+      }));
+
+      const receipt = (await (await plugin1.connect(manager).setBlockedWindows(inputs)).wait())!;
+
+      expect(receipt.logs.length, 'one event per entry').to.equal(inputs.length);
+      // 2.87M gas measured, comfortably inside one block: a calendar this size needs no splitting
+      expect(receipt.gasUsed, 'a hundred closures in one transaction').to.be.lessThan(5_000_000n);
+
+      for (const i of [0, 42, 99]) {
+        const [start, end] = await plugin1.getBlockedWindow(inputs[i].day, 0);
+        expect([Number(start), Number(end)], `entry ${i}`).to.deep.equal([9 * 3600, 18 * 3600]);
+      }
+    });
+  });
+
+  describe('Fuzz: the enforced gate agrees with isTradingAllowed', function () {
+    // isTradingAllowed reads the connector's own storage directly; the swap path delegatecalls into the
+    // implementation and reverts from there. Two separate pieces of code answering the same question,
+    // and every other test in this package exercises one or the other. This one drives both from the
+    // same configuration and fails if they ever disagree - including on which second they disagree at.
+    const fuzz = {
+      seed: Number(process.env.FUZZ_SEED ?? 20260904),
+      rounds: Number(process.env.FUZZ_ROUNDS ?? 10),
+    };
+
+    this.timeout(180000);
+
+    it('should revert a swap exactly when the view says trading is closed', async function () {
+      const { plugin1, mockPool, manager } = await loadFixture(deployFixture);
+      await mockPool.setPluginConfig(await plugin1.defaultPluginConfig());
+      await plugin1.connect(manager).setEnabled(true);
+
+      const rand = mulberry32(fuzz.seed);
+      const clamp = (second: number) => Math.max(0, Math.min(SECONDS_PER_DAY - 1, second));
+      // two days of slack, so the first round's configuration is written well before its own probes
+      let day = dayStart(await time.latest()) + 2 * SECONDS_PER_DAY;
+
+      let blocked = 0;
+      let allowed = 0;
+
+      for (let round = 0; round < fuzz.rounds; round++) {
+        const start = Math.floor(rand() * (SECONDS_PER_DAY - 1));
+        const end = start + 1 + Math.floor(rand() * (SECONDS_PER_DAY - start));
+        const windowStart = Math.floor(rand() * (SECONDS_PER_DAY - 1));
+        const windowEnd = windowStart + 1 + Math.floor(rand() * (SECONDS_PER_DAY - windowStart));
+        // an empty mask often enough that the weekday guard does not swallow most of the probes
+        const mask = rand() < 0.5 ? NO_DAYS_MASK : Math.floor(rand() * 128);
+        const offset = Math.floor(rand() * 172800) - SECONDS_PER_DAY;
+
+        await plugin1.connect(manager).setTradingHours(start, end);
+        await plugin1.connect(manager).setBlockedWeekdays(mask);
+        await plugin1.connect(manager).setDayOfWeekOffset(offset);
+        await plugin1.connect(manager).setBlockedWindow(day, 0, windowStart, windowEnd);
+
+        // Straddle each threshold, and ascending: every probe pins the timestamp of the next block, so
+        // a second that has already been mined can never be revisited.
+        const thresholds = [start, clamp(start - 1), clamp(end - 1), clamp(end), windowStart, clamp(windowStart - 1), clamp(windowEnd)];
+        const seconds = [...new Set(thresholds)].sort((a, b) => a - b);
+
+        for (const second of seconds) {
+          const instant = day + second;
+          const open = await plugin1.isTradingAllowed(instant);
+
+          await time.setNextBlockTimestamp(instant);
+          if (open) {
+            await expect(mockPool.swapToTick(0), `view says open at ${instant}`).to.not.be.reverted;
+            allowed++;
+          } else {
+            await expect(mockPool.swapToTick(0), `view says closed at ${instant}`).to.be.revertedWithCustomError(
+              plugin1,
+              'TradingNotAllowed'
+            );
+            blocked++;
+          }
+        }
+
+        await plugin1.connect(manager).setBlockedWindow(day, 0, 0, 0);
+        day += SECONDS_PER_DAY * (1 + Math.floor(rand() * 3));
+      }
+
+      // A run that answered one way throughout would pass against a gate wired to a constant, so both
+      // outcomes have to show up. Expressed per round, to survive a raised FUZZ_ROUNDS.
+      expect(blocked, 'swaps the gate refused').to.be.greaterThan(fuzz.rounds);
+      expect(allowed, 'swaps the gate let through').to.be.greaterThan(fuzz.rounds);
+    });
+  });
+
+  describe('Fuzz: the event log reconstructs the stored schedule', function () {
+    // An indexer, or the admin panel someone will build on top of this, never reads storage - it
+    // replays events. Two things make that non-trivial here: BlockedWindowUpdated reports the day
+    // floored to UTC midnight rather than the argument that was passed, and a batch emits one event
+    // per entry, including entries a later entry in the same call overwrites. So a replay has to land
+    // on exactly what the getters return, and the existing cases only check one event at a time.
+    const fuzz = {
+      seed: Number(process.env.FUZZ_SEED ?? 20260904),
+      rounds: Number(process.env.FUZZ_ROUNDS ?? 16),
+    };
+    const SLOT_COUNT = 5;
+
+    this.timeout(180000);
+
+    it('should fold every emitted event back into the state the getters report', async function () {
+      const { plugin1, manager } = await loadFixture(deployFixture);
+      const rand = mulberry32(fuzz.seed + 5);
+
+      const base = dayStart(await time.latest()) + SECONDS_PER_DAY;
+      const days = [base, base + SECONDS_PER_DAY, base + 2 * SECONDS_PER_DAY];
+
+      // initialize emits no Trading Hours event of its own, so a replay cannot discover the defaults
+      // the factory passed in and has to seed itself from them. Everything after this point has to
+      // come out of the log.
+      const [initialStart, initialEnd] = await plugin1.getTradingHours();
+      const model = {
+        start: Number(initialStart),
+        end: Number(initialEnd),
+        mask: Number(await plugin1.getBlockedWeekdays()),
+        offset: Number(await plugin1.getDayOfWeekOffset()),
+        enabled: await plugin1.getEnabled(),
+        windows: new Map(days.map((day) => [day, Array.from({ length: SLOT_COUNT }, () => ({ start: 0, end: 0 }))])),
+      };
+
+      let windowEvents = 0;
+      let overwrites = 0;
+      let clears = 0;
+
+      function fold(receipt: any) {
+        for (const log of receipt.logs) {
+          const parsed = plugin1.interface.parseLog(log);
+          if (!parsed) continue;
+
+          if (parsed.name === 'TradingHoursUpdated') {
+            model.start = Number(parsed.args[0]);
+            model.end = Number(parsed.args[1]);
+          } else if (parsed.name === 'BlockedWeekdaysUpdated') {
+            model.mask = Number(parsed.args[0]);
+          } else if (parsed.name === 'DayOfWeekOffsetUpdated') {
+            model.offset = Number(parsed.args[0]);
+          } else if (parsed.name === 'EnabledUpdated') {
+            model.enabled = parsed.args[0];
+          } else if (parsed.name === 'BlockedWindowUpdated') {
+            const day = Number(parsed.args[0]);
+            const index = Number(parsed.args[1]);
+            const slots = model.windows.get(day);
+            expect(slots, `event reported day ${day}, which is not one of the days written to`).to.not.be.undefined;
+
+            const start = Number(parsed.args[2]);
+            const end = Number(parsed.args[3]);
+            const previous = slots![index];
+            if (previous.start !== 0 || previous.end !== 0) {
+              if (start === 0 && end === 0) clears++;
+              else overwrites++;
+            }
+            slots![index] = { start, end };
+            windowEvents++;
+          }
+        }
+      }
+
+      // Days are passed unfloored - a random second inside the target day - so the replay only lines up
+      // if the event carries the floored day the getters are keyed by.
+      const anySecondIn = (day: number) => day + Math.floor(rand() * SECONDS_PER_DAY);
+
+      // Slots are aimed at what the replay has already seen filled, so that overwrites and clears -
+      // the two ways a fold can drift from storage - actually happen instead of being left to chance.
+      function drawOp() {
+        const day = days[Math.floor(rand() * days.length)];
+        const populated = model.windows
+          .get(day)!
+          .map((slot, index) => (slot.start !== 0 || slot.end !== 0 ? index : -1))
+          .filter((index) => index >= 0);
+
+        const index =
+          populated.length > 0 && rand() < 0.6 ? populated[Math.floor(rand() * populated.length)] : Math.floor(rand() * SLOT_COUNT);
+
+        if (rand() < 0.3) return { day: anySecondIn(day), index, startSeconds: 0, endSeconds: 0 }; // clearing sentinel
+        const startSeconds = Math.floor(rand() * (SECONDS_PER_DAY - 1));
+        return {
+          day: anySecondIn(day),
+          index,
+          startSeconds,
+          endSeconds: startSeconds + 1 + Math.floor(rand() * (SECONDS_PER_DAY - startSeconds - 1)),
+        };
+      }
+
+      // send the call, then fold what it emitted - the only way state reaches the model in this test
+      const send = async (call: Promise<any>) => fold((await (await call).wait())!);
+
+      for (let round = 0; round < fuzz.rounds; round++) {
+        if (rand() < 0.5) {
+          // entries drawn together, so a batch can name the same slot twice: both are emitted, one stored
+          const inputs = Array.from({ length: 1 + Math.floor(rand() * 4) }, drawOp);
+          await send(plugin1.connect(manager).setBlockedWindows(inputs));
+        } else {
+          const op = drawOp();
+          await send(plugin1.connect(manager).setBlockedWindow(op.day, op.index, op.startSeconds, op.endSeconds));
+        }
+
+        // the scalar setters, so the replay has to keep up with those too
+        if (rand() < 0.4) {
+          const start = Math.floor(rand() * (SECONDS_PER_DAY - 1));
+          const end = start + 1 + Math.floor(rand() * (SECONDS_PER_DAY - start - 1));
+          await send(plugin1.connect(manager).setTradingHours(start, end));
+        }
+        if (rand() < 0.4) await send(plugin1.connect(manager).setBlockedWeekdays(Math.floor(rand() * 128)));
+        if (rand() < 0.4) await send(plugin1.connect(manager).setDayOfWeekOffset(Math.floor(rand() * 172800) - SECONDS_PER_DAY));
+        if (rand() < 0.4) await send(plugin1.connect(manager).setEnabled(rand() < 0.5));
+      }
+
+      const [start, end] = await plugin1.getTradingHours();
+      expect(Number(start), 'trading window start').to.equal(model.start);
+      expect(Number(end), 'trading window end').to.equal(model.end);
+      expect(Number(await plugin1.getBlockedWeekdays()), 'weekday mask').to.equal(model.mask);
+      expect(Number(await plugin1.getDayOfWeekOffset()), 'day-of-week offset').to.equal(model.offset);
+      expect(await plugin1.getEnabled(), 'enabled flag').to.equal(model.enabled);
+
+      for (const day of days) {
+        for (let index = 0; index < SLOT_COUNT; index++) {
+          const [slotStart, slotEnd] = await plugin1.getBlockedWindow(day, index);
+          const expected = model.windows.get(day)![index];
+          expect([Number(slotStart), Number(slotEnd)], `day ${day} slot ${index}`).to.deep.equal([expected.start, expected.end]);
+        }
+      }
+
+      // A replay that only ever saw untouched slots would agree with storage for the wrong reason, so
+      // the run has to have overwritten and cleared populated slots along the way.
+      expect(windowEvents, 'window events folded').to.be.greaterThan(fuzz.rounds);
+      expect(overwrites, 'events that landed on a populated slot').to.be.greaterThan(0);
+      expect(clears, 'events that cleared a populated slot').to.be.greaterThan(0);
     });
   });
 });

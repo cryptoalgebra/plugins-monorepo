@@ -1102,5 +1102,165 @@ describe('TradingHoursPluginImplementation', function () {
       expect(fullDays, 'days observed with all five slots populated').to.be.greaterThan(fuzz.sequences * 0.1);
       expect(blockedByHigherSlot, 'probes blocked by a slot past the first').to.be.greaterThan(fuzz.sequences * 4);
     });
+
+    it('should match the reference model either side of local midnight, at any offset', async function () {
+      const { tradingHours } = await loadFixture(deployFixture);
+      const rand = mulberry32(fuzz.seed + 3);
+
+      // The property above draws its probes around the hours and the window, so the weekday guard is
+      // only ever reached at seconds that have nothing to do with it. Its answer can change at exactly
+      // one instant - local midnight - and that instant is what this one aims at, with the hours held
+      // open and no window set so nothing blocks the probe before the mask gets to.
+      await tradingHours.setTradingHours(0, SECONDS_PER_DAY);
+      await tradingHours.setEnabled(true);
+
+      let flips = 0;
+      let extremeOffsets = 0;
+
+      for (let i = 0; i < fuzz.configs; i++) {
+        // exactly one weekday blocked, so a boundary bordering it flips and the rest stay open
+        const mask = 1 << Math.floor(rand() * 7);
+        // Most draws are ordinary time zones. The rest are the far ends of int32, which setDayOfWeekOffset
+        // does not bound and no hand-written case combines with a boundary probe. The base day moves with
+        // the offset to keep local time positive: below zero the contract wraps in uint256 and the JS
+        // model stops describing it - that wrap is pinned by a case of its own in "Blocked weekdays".
+        const extreme = rand() < 0.25;
+        if (extreme) extremeOffsets++;
+        const offset = extreme
+          ? Math.floor(rand() * 2147483647) * (rand() < 0.5 ? -1 : 1)
+          : Math.floor(rand() * 97200) - 43200; // -12h .. +15h
+
+        await tradingHours.setBlockedWeekdays(mask);
+        await tradingHours.setDayOfWeekOffset(offset);
+
+        const config: Config = {
+          start: 0,
+          end: SECONDS_PER_DAY,
+          offset,
+          mask,
+          windowDay: -1, // no window on any real day
+          windowStart: 0,
+          windowEnd: 0,
+        };
+
+        const base = utc(2024, 1, 1) + Math.max(0, -offset) + Math.floor(rand() * 14) * SECONDS_PER_DAY;
+        // the first local midnight strictly after `base`, back in UTC terms
+        const localMidnight = (Math.floor((base + offset) / SECONDS_PER_DAY) + 1) * SECONDS_PER_DAY - offset;
+
+        for (const boundary of [localMidnight, localMidnight + SECONDS_PER_DAY]) {
+          const before = referenceIsTradingAllowed(boundary - 1, config);
+          const after = referenceIsTradingAllowed(boundary, config);
+          if (before !== after) flips++;
+
+          expect(await tradingHours.isTradingAllowed(boundary - 1), `last second before ${boundary}, offset ${offset}`).to.equal(before);
+          expect(await tradingHours.isTradingAllowed(boundary), `local midnight ${boundary}, offset ${offset}`).to.equal(after);
+        }
+      }
+
+      // Without this the probes could all sit inside one weekday and never cross the boundary at all.
+      // Eight seeds put the flips at 19-31 of the 80 boundaries 40 configurations produce, and the
+      // extreme offsets at 7-16; the floors sit below the worst of those, per config so they hold when
+      // FUZZ_RUNS is raised.
+      expect(flips, 'boundaries where the weekday answer changed').to.be.greaterThan(fuzz.configs * 0.25);
+      expect(extremeOffsets, 'configurations drawn from the far ends of int32').to.be.greaterThan(0);
+    });
+
+    it('should match a combined model where hours, weekdays and five windows all apply at once', async function () {
+      const rand = mulberry32(fuzz.seed + 4);
+
+      // The two properties above each silence the other's guards: the first writes one window and the
+      // packed-word one leaves the hours open and the mask empty. Nothing drives all three together,
+      // which is the state a configured pool is actually in.
+      interface Slot {
+        start: number;
+        end: number;
+      }
+
+      function referenceCombined(timestamp: number, c: Config, slots: Slot[]): boolean {
+        const secondsInDay = timestamp % SECONDS_PER_DAY;
+        if (secondsInDay < c.start || secondsInDay >= c.end) return false;
+        if ((c.mask >> new Date((timestamp + c.offset) * 1000).getUTCDay()) & 1) return false;
+
+        for (const slot of slots) {
+          if (slot.start === 0 && slot.end === 0) break; // a zero lane ends the scan
+          if (secondsInDay >= slot.start && secondsInDay < slot.end) return false;
+        }
+        return true;
+      }
+
+      let blockedByHours = 0;
+      let blockedByWeekday = 0;
+      let blockedBySlot = 0;
+      let allowed = 0;
+
+      for (let i = 0; i < fuzz.configs; i++) {
+        const { tradingHours } = await loadFixture(deployFixture);
+
+        // hours wide enough that the other two guards get probes to work with
+        const start = Math.floor(rand() * 6 * 3600);
+        const end = SECONDS_PER_DAY - Math.floor(rand() * 6 * 3600);
+        const offset = Math.floor(rand() * 97200) - 43200;
+        const day = utc(2024, 1, 1) + Math.floor(rand() * 14) * SECONDS_PER_DAY;
+
+        // The mask is drawn relative to the day being probed, not independently: an unrelated weekday
+        // leaves the guard deciding nothing on 6 days out of 7, and a run where it never decided would
+        // be a combination in name only.
+        const localWeekday = new Date((day + offset) * 1000).getUTCDay();
+        const maskRoll = rand();
+        const mask = maskRoll < 0.35 ? 1 << localWeekday : maskRoll < 0.7 ? 1 << ((localWeekday + 3) % 7) : 0;
+
+        // contiguous from slot 0, so every one of them is reachable by the scan
+        const slots: Slot[] = [];
+        const populated = 1 + Math.floor(rand() * SLOT_COUNT);
+        let cursor = start;
+        for (let s = 0; s < populated; s++) {
+          const gap = Math.floor(rand() * 3600);
+          const length = 1 + Math.floor(rand() * 3600);
+          if (cursor + gap + length >= end) break;
+          slots.push({ start: cursor + gap, end: cursor + gap + length });
+          cursor = cursor + gap + length;
+        }
+        while (slots.length < SLOT_COUNT) slots.push({ start: 0, end: 0 });
+
+        await tradingHours.setTradingHours(start, end);
+        await tradingHours.setBlockedWeekdays(mask);
+        await tradingHours.setDayOfWeekOffset(offset);
+        await tradingHours.setBlockedWindows(
+          slots.map((slot, index) => ({ day, index, startSeconds: slot.start, endSeconds: slot.end }))
+        );
+        await tradingHours.setEnabled(true);
+
+        // Config's single-window fields are unused here - referenceCombined takes the five slots
+        // separately - so they are left empty rather than duplicating slot 0
+        const config: Config = { start, end, offset, mask, windowDay: day, windowStart: 0, windowEnd: 0 };
+
+        const seconds = new Set<number>([Math.max(start - 1, 0), start, end - 1, Math.min(end, SECONDS_PER_DAY - 1)]);
+        for (const slot of slots) {
+          if (slot.start === 0 && slot.end === 0) continue;
+          for (const second of [slot.start - 1, slot.start, slot.end - 1, slot.end]) {
+            seconds.add(Math.max(0, Math.min(SECONDS_PER_DAY - 1, second)));
+          }
+        }
+
+        for (const second of seconds) {
+          const timestamp = day + second;
+          const expected = referenceCombined(timestamp, config, slots);
+          expect(await tradingHours.isTradingAllowed(timestamp), `second ${second} of day ${day}`).to.equal(expected);
+
+          if (second < start || second >= end) blockedByHours++;
+          else if ((mask >> new Date((timestamp + offset) * 1000).getUTCDay()) & 1) blockedByWeekday++;
+          else if (!expected) blockedBySlot++;
+          else allowed++;
+        }
+      }
+
+      // Every guard has to have been the one that decided, at least sometimes, or the combination is
+      // nominal. Eight seeds give 80 (two probes per configuration, always), 104-183, 156-193 and
+      // 223-261; the floors sit below the worst of those, per config so a raised FUZZ_RUNS keeps them.
+      expect(blockedByHours, 'probes the hours refused').to.be.greaterThan(fuzz.configs);
+      expect(blockedByWeekday, 'probes the weekday mask refused').to.be.greaterThan(fuzz.configs * 2);
+      expect(blockedBySlot, 'probes a blocked window refused').to.be.greaterThan(fuzz.configs * 3);
+      expect(allowed, 'probes that got past all three').to.be.greaterThan(fuzz.configs * 4);
+    });
   });
 });

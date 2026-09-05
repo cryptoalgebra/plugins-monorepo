@@ -139,6 +139,15 @@ describe('OnchainIdAllowlistChecker', function () {
       await expect(checker.connect(other).setRequiredTopic(42)).to.be.revertedWithCustomError(checker, 'OnlyAdmin');
     });
 
+    it('should refuse a batch of issuers from anyone else', async function () {
+      const { other, claimIssuer, checker } = await loadFixture(deployFixture);
+
+      await expect(checker.connect(other).setTrustedIssuersBatch([claimIssuer.target], [true])).to.be.revertedWithCustomError(
+        checker,
+        'OnlyAdmin'
+      );
+    });
+
     it('should refuse a batch whose arrays disagree in length', async function () {
       const { admin, claimIssuer, checker } = await loadFixture(deployFixture);
 

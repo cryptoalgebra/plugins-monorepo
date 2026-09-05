@@ -513,5 +513,105 @@ describe('RebalanceManager', function () {
       expect(product).to.be.greaterThan((parityProduct * 9999n) / 10000n);
       expect(product).to.be.lessThan((parityProduct * 10001n) / 10000n);
     });
+
+    // sqrtPriceX96 passes type(uint128).max at a tick around 443,636, and the pair of arms above that
+    // line had never run. Which arm a vault takes is decided by comparing the paired token's address
+    // against the deposit token's, and a deployment address is not something a test can choose, so
+    // these two vaults hold the same pair in opposite orders instead of relying on where the fixture's
+    // tokens landed. Both allow token1, so the only thing that differs is the comparison under test.
+    async function vaultOrdered(pairedFirst: boolean, fixture: any) {
+      const [lower, higher] =
+        BigInt(fixture.token0.target) < BigInt(fixture.token1.target)
+          ? [fixture.token0, fixture.token1]
+          : [fixture.token1, fixture.token0];
+      const [asToken0, asToken1] = pairedFirst ? [lower, higher] : [higher, lower];
+
+      const vault = await (await ethers.getContractFactory('MockVault')).deploy(fixture.pool.target, false, true);
+      await vault.setTokens(asToken0.target, asToken1.target);
+      return vault;
+    }
+
+    it('should multiply above the uint128 boundary when the paired token sorts first', async function () {
+      const fixture = await loadFixture(deployFixture);
+      await fixture.pool.setPlugin(fixture.user.address);
+
+      const price = await priceAt(await vaultOrdered(true, fixture), 500000, fixture);
+
+      // The price carries the paired token's decimals, and which of the two sorts lower is not fixed,
+      // so this lands at about 5 * 10**27 or 5 * 10**39 depending on the run. Both are astronomically
+      // above parity, which is the point; the bound clears either.
+      expect(price).to.be.greaterThan(10n ** 24n);
+    });
+
+    it('should divide away to nothing above the boundary when the deposit token sorts first', async function () {
+      const fixture = await loadFixture(deployFixture);
+      await fixture.pool.setPlugin(fixture.user.address);
+
+      // a zero price is one the manager refuses to act on, so it never gets as far as recording one
+      expect(await priceAt(await vaultOrdered(false, fixture), 500000, fixture)).to.be.eq(0n);
+    });
+  });
+
+  // Every rule lives twice, in the constructor and in the setter that owns the field, and the two
+  // copies do not agree on which states are legal: a setter checks its argument against whatever its
+  // partner field holds right now, and no setter re-checks the rule its partner owns. So a pair of
+  // calls, each accepted on its own, leaves a threshold set the constructor would have refused.
+  // These are characterization tests. If the setters are tightened, they are expected to change.
+  describe('Threshold rules the setters do not re-check', function () {
+    // Reads the stored thresholds back and offers them to the constructor, which is the only place
+    // the whole set is validated at once
+    async function redeploy(fixture: any) {
+      const stored = await fixture.rebalanceManager.thresholds();
+      return fixture.RebalanceManager.deploy(fixture.vaultAllowingToken1.target, 3600, {
+        depositTokenUnusedThreshold: stored.depositTokenUnusedThreshold,
+        simulate: stored.simulate,
+        normalThreshold: stored.normalThreshold,
+        underInventoryThreshold: stored.underInventoryThreshold,
+        overInventoryThreshold: stored.overInventoryThreshold,
+        priceChangeThreshold: stored.priceChangeThreshold,
+        extremeVolatility: stored.extremeVolatility,
+        highVolatility: stored.highVolatility,
+        someVolatility: stored.someVolatility,
+        dtrDelta: stored.dtrDelta,
+        baseLowPct: stored.baseLowPct,
+        baseHighPct: stored.baseHighPct,
+        limitReservePct: stored.limitReservePct,
+      });
+    }
+
+    it('should let someVolatility be raised past highVolatility in two steps', async function () {
+      const fixture = await loadFixture(deployFixture);
+      const asManager = fixture.rebalanceManager.connect(fixture.manager);
+
+      // Each call is checked against the value its partner holds at that moment, and each passes
+      await asManager.setHighVolatility(200);
+      await asManager.setSomeVolatility(300);
+
+      expect((await fixture.rebalanceManager.thresholds()).highVolatility).to.equal(200);
+      expect((await fixture.rebalanceManager.thresholds()).someVolatility).to.equal(300);
+      await expect(redeploy(fixture)).to.be.revertedWith('_highVolatility must be >= someVolatility');
+    });
+
+    it('should let highVolatility be raised past extremeVolatility', async function () {
+      const fixture = await loadFixture(deployFixture);
+
+      await fixture.rebalanceManager.connect(fixture.manager).setHighVolatility(1000);
+
+      expect((await fixture.rebalanceManager.thresholds()).extremeVolatility).to.equal(THRESHOLDS.extremeVolatility);
+      await expect(redeploy(fixture)).to.be.revertedWith('_extremeVolatility must be >= highVolatility');
+    });
+
+    it('should let simulate be raised past what limitReservePct leaves', async function () {
+      const fixture = await loadFixture(deployFixture);
+      const asManager = fixture.rebalanceManager.connect(fixture.manager);
+
+      // 900 is legal against the stored simulate of 9000, which leaves 1000
+      await asManager.setPercentages(3000, 1500, 900);
+      // and setTriggers never looks at limitReservePct, so it may leave only 600
+      await asManager.setTriggers(9400, 9200, 9100, 9300);
+
+      expect((await fixture.rebalanceManager.thresholds()).limitReservePct).to.equal(900);
+      await expect(redeploy(fixture)).to.be.revertedWith('Invalid limit reserve percent');
+    });
   });
 });

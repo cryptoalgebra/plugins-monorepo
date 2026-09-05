@@ -976,16 +976,35 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       await plugin.advanceTime(1000);
       await mockPool.swapToTick(120);
 
+      // A cumulative pair is what the average tick is derived from, so pinning the pair across the
+      // upgrade pins the calculation this case is named for. Asserting only that a later swap goes
+      // through says nothing about whether the history behind it survived.
+      const WINDOW = 2000;
+      const [cumulativeNowBefore] = await plugin.getSingleTimepoint(0);
+      const [cumulativeThenBefore] = await plugin.getSingleTimepoint(WINDOW);
+
       // Upgrade
 
       const newImpl = await upgradePluginsTo('MockTimeUpgradedPlugin');
 
-     
+
+      // Read back through the upgraded implementation. This one keeps the mock clock, so the two sides
+      // are looking at the same moment and the pair has to come back identical.
       const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await plugin.getAddress()) as any;
+      const [cumulativeNowAfter] = await upgradedPlugin.getSingleTimepoint(0);
+      const [cumulativeThenAfter] = await upgradedPlugin.getSingleTimepoint(WINDOW);
+
+      expect(cumulativeNowAfter).to.eq(cumulativeNowBefore);
+      expect(cumulativeThenAfter).to.eq(cumulativeThenBefore);
+      // and the window really spans a tick move, so the equality above is not two copies of one number
+      expect(cumulativeNowAfter).to.not.eq(cumulativeThenAfter);
+
       await upgradedPlugin.advanceTime(100);
-      
-      // Should not revert - TWAP calculation uses preserved timepoints
-      await expect(mockPool.swapToTick(80)).to.not.be.reverted;
+
+      const indexBeforeSwap = await upgradedPlugin.timepointIndex();
+      await mockPool.swapToTick(80);
+      // the oracle kept writing on top of the history it inherited
+      expect(await upgradedPlugin.timepointIndex()).to.be.gt(indexBeforeSwap);
     });
   });
 

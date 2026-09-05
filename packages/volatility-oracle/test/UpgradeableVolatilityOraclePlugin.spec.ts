@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { expect } from 'chai';
 import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
-import { encodePriceSqrt } from 'test-utils/utilities';
+import { encodePriceSqrt, PLUGIN_FLAGS } from 'test-utils/utilities';
 
 describe('UpgradeableVolatilityOraclePlugin', function () {
   const TWAP_PERIOD = 3600;
@@ -210,9 +210,46 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       await expect(plugin1.initialize()).to.be.revertedWith('Pool is not initialized');
     });
 
-    // This harness reads the real block.timestamp, so two swaps are always a second apart and the
-    // same-second case cannot be reached here. It is covered in default-plugin, whose MockTime plugin
-    // holds its own clock still.
+    // Every other case here reaches the oracle through afterInitialize, which is the pool's route in.
+    // The public entry point is the other one, for a plugin attached to a pool that already trades,
+    // and nothing had ever driven it to completion: both existing cases stop at one of its guards.
+    it('should seed itself from a pool that already has a price', async function () {
+      const { plugin1, mockPool } = await loadFixture(deployFixture);
+
+      // Detach first, so initializing the pool does not run afterInitialize and seed it that way
+      await mockPool.setPlugin(ethers.ZeroAddress);
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+      await mockPool.setPlugin(plugin1.target);
+      expect(await plugin1.isInitialized()).to.be.false;
+
+      await plugin1.initialize();
+
+      expect(await plugin1.isInitialized()).to.be.true;
+      expect(await plugin1.timepointIndex()).to.equal(0);
+      expect(await plugin1.lastTimepointTimestamp()).to.equal(await time.latest());
+      // seeded from the pool's own tick, not from a default
+      const { tick } = await mockPool.globalState();
+      expect((await plugin1.timepoints(0)).tick).to.equal(tick);
+
+      await expect(plugin1.initialize()).to.be.revertedWith('Already initialized');
+    });
+
+    // A pool can be told to call the plugin before the oracle has been seeded, and the module refuses
+    // rather than writing into an empty ring
+    it('should refuse to record a swap before the oracle is seeded', async function () {
+      const { plugin1, mockPool } = await loadFixture(deployFixture);
+
+      expect(await plugin1.isInitialized()).to.be.false;
+      await mockPool.setPluginConfig(PLUGIN_FLAGS.BEFORE_SWAP_FLAG);
+
+      await expect(mockPool.swapToTick(100)).to.be.revertedWith('Not initialized');
+    });
+
+    // This harness reads the real block.timestamp, so two swaps through a plugin are always a second
+    // apart. The implementation takes the timestamp as an argument and can be called twice with the
+    // same one, but that proves nothing: VolatilityOracle.write repeats the check, so the early return
+    // above it only saves the call. Both arms leave identical storage. default-plugin drives the pair
+    // through a MockTime plugin that holds its clock still, which is where the behaviour is pinned.
     it('should write a timepoint on a swap once time has passed', async function () {
       const { plugin1, mockPool } = await initializedFixture();
 
@@ -374,6 +411,27 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       expect(written.initialized).to.be.true;
       expect(written.blockTimestamp).to.equal(await time.latest());
       expect(await plugin1.timepointIndex()).to.equal(1);
+    });
+
+    it('should refuse to prepay a slot a written timepoint already occupies', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      // Slot 0 carries the seed timepoint. Prepaying only ever makes sense for slots nothing has
+      // written, and the case below shows why the guard does not catch a re-prepay: prepaying writes
+      // blockTimestamp and leaves initialized false.
+      await expect(plugin1.prepayTimepointsStorageSlots(0, 5)).to.be.revertedWith('Already initialized');
+    });
+
+    it('should refuse a prepay of no slots at all', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.prepayTimepointsStorageSlots(1, 0)).to.be.revertedWith('Invalid amount');
+    });
+
+    it('should refuse a prepay that would run past the end of the ring', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.prepayTimepointsStorageSlots(65535, 2)).to.be.revertedWith('Invalid amount');
     });
 
     it('should keep prepaying idempotent over a range already paid for', async function () {

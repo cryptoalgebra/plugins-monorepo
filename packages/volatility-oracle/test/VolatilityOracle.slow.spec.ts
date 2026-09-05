@@ -200,6 +200,23 @@ describe('VolatilityOracle', () => {
         }
       }
       expect(await volatilityOracle.index()).to.eq(164);
+
+      // The index alone only says the arithmetic wrapped. What the second wrap is really about is that
+      // the buffer stays readable through it, so walk the whole span the ring now holds.
+      const oldestIndex = await volatilityOracle.getOldestIndex();
+      expect(oldestIndex).to.eq(165);
+
+      const oldest = await volatilityOracle.timepoints(oldestIndex);
+      const now = await volatilityOracle.time();
+      const oldestSecondsAgo = Number(now - oldest.blockTimestamp);
+
+      const { tickCumulatives } = await volatilityOracle.getTimepoints([0, oldestSecondsAgo]);
+      expect(tickCumulatives[0]).to.not.eq(tickCumulatives[1]);
+      // and one second past the oldest is refused rather than silently answering from a stale slot
+      await expect(volatilityOracle.getTimepoints([oldestSecondsAgo + 1])).to.be.revertedWithCustomError(
+        volatilityOracle,
+        'targetIsTooOld'
+      );
     });
   });
 });

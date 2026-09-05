@@ -282,6 +282,27 @@ describe('VolatilityOracle', () => {
       expect(volatility).to.be.eq(3333);
     });
 
+    // Bessel's correction takes one off the denominator, and the guard above it stops that turning a
+    // one second sample into a division by zero. Every other case here is at least two seconds wide.
+    // The pair has to be written directly: over a single second the average tick follows the tick
+    // exactly, so a normal write accumulates nothing and there would be no difference to divide.
+    it('applies no correction to a one second sample', async () => {
+      await volatilityOracle.initialize({ tick: 7200, time: 1000000 });
+      await volatilityOracle.writeTimepointDirectly(1, {
+        initialized: true,
+        blockTimestamp: 1000001,
+        tickCumulative: 7300,
+        volatilityCumulative: 5000,
+        tick: 7300,
+        averageTick: 7200,
+        windowStartIndex: 0,
+      });
+      await volatilityOracle.setState(1000001, 1);
+
+      // the whole accumulation, not a fraction of it
+      expect(await volatilityOracle.getAverageVolatility()).to.be.eq(5000);
+    });
+
     it('specific case for binary search (atOrAfter)', async () => {
       await volatilityOracle.initialize({ tick: 7200, time: 1000 });
       await volatilityOracle.update({ advanceTimeBy: 2, tick: 7300 });
@@ -362,6 +383,20 @@ describe('VolatilityOracle', () => {
         await volatilityOracle.initialize({ tick: 2, time: 5 });
         const { tickCumulative } = await getSingleTimepoint(0);
         expect(tickCumulative).to.eq(0);
+      });
+
+      // The search narrows itself to the last window when the target falls inside it. A target further
+      // back than that cannot use the shortcut and has to be found over the whole array, and every
+      // other case here queries seconds rather than days.
+      it('searches the whole array for a target older than the window', async () => {
+        const DAY = 24 * 60 * 60;
+        await volatilityOracle.initialize({ tick: 2, time: 5 });
+        await volatilityOracle.update({ advanceTimeBy: 3 * DAY, tick: 1500 });
+
+        // the tick was 2 for the whole stretch before the update, so the answer is that tick times
+        // the seconds elapsed since initialization
+        const { tickCumulative } = await getSingleTimepoint(2 * DAY);
+        expect(tickCumulative).to.be.eq(2 * DAY);
       });
 
       it('timepoint does not change after time', async () => {

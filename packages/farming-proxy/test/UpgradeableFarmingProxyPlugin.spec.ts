@@ -341,6 +341,15 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
     });
 
+    // The mirror of the case above: an incentive may be disconnected from a detached plugin, but not
+    // connected to one, because the hook that would notify it is never going to be called
+    it('should refuse to connect an incentive while the pool points at another plugin', async () => {
+      await mockPool.setPlugin(other.address);
+
+      await expect(pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE)).to.be.revertedWith('Plugin not attached');
+      expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
+    });
+
     it('should leave the pool config alone when it already carries the hook', async () => {
       const withAfterSwap = await pluginProxy.defaultPluginConfig();
       await mockPool.setPluginConfig(withAfterSwap);

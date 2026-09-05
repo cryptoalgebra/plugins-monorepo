@@ -741,6 +741,46 @@ describe('AlgebraUpgradeablePlugin', () => {
       await expect(mockPool.burn(-120, 120, 100, '0x')).to.not.be.reverted;
     });
 
+    // Every gate this plugin applies runs through one bit in the pool's own plugin config, and every
+    // place the plugin writes that config is a hook the pool decides to call. So whoever administers
+    // the pool can clear the bit, and from then on the pool never shows the plugin a swap at all while
+    // the plugin still reports itself configured. This is the one way the module stops working silently.
+    it('stops gating when the pool clears the plugin config bit', async () => {
+      await registry.setPoolStatus(mockPool, DISABLED);
+      await expect(mockPool.swapToTick(10)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
+
+      await mockPool.setPluginConfig(0);
+
+      await expect(mockPool.swapToTick(10)).to.not.be.reverted;
+      // and it still answers as though it were enforcing
+      expect(await plugin.getSecurityRegistry()).to.be.eq(await registry.getAddress());
+      expect(await plugin.defaultPluginConfig()).to.not.be.eq(0);
+    });
+
+    // Nothing puts the bit back, and the reason is worth stating exactly: afterModifyPosition and
+    // afterFlash do write the whole default config back into the pool, but they are hooks, so the pool
+    // only calls them while their own flags are set, and clearing the config clears those too. A second
+    // pool initialize would go through beforeInitialize, but the oracle module refuses it before that
+    // write can stick. Repointing the pool at some other pool's plugin is not a way out either: the
+    // proxy binds its pool address, so every hook from a different pool is refused with OnlyPool.
+    it('cannot restore the gate once the pool has cleared the config bit', async () => {
+      await registry.setPoolStatus(mockPool, DISABLED);
+      await mockPool.setPluginConfig(0);
+      await expect(mockPool.swapToTick(10)).to.not.be.reverted;
+
+      // the two hooks that would rewrite the config are gated by the bits that were cleared
+      await mockPool.mint(wallet.address, wallet.address, -120, 120, 100, '0x');
+      await mockPool.flash(wallet.address, 1, 1, '0x');
+      expect((await mockPool.globalState()).pluginConfig).to.be.eq(0);
+
+      // The error belongs to the VolatilityOracle library, which the plugin only ever reaches by
+      // delegatecall, so it is not in the plugin's own ABI. Attach the module that does carry it.
+      const asOracle = (await ethers.getContractFactory('VolatilityOraclePluginImplementation')).attach(plugin.target) as any;
+      await expect(initializeAtZeroTick(mockPool)).to.be.revertedWithCustomError(asOracle, 'volatilityOracleAlreadyInitialized');
+      expect((await mockPool.globalState()).pluginConfig).to.be.eq(0);
+      await expect(mockPool.swapToTick(10)).to.not.be.reverted;
+    });
+
     // One registry serves every pool, so a status set on one must not reach the others
     it('disabling one pool leaves another pool on the same registry untouched', async () => {
       const otherPool = (await (await ethers.getContractFactory('MockPool')).deploy()) as any as MockPool;

@@ -113,6 +113,18 @@ describe('PermissionedPoolPlugin', function () {
         .to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed')
         .withArgs(router.target);
     });
+
+    it('reverts with RouterMsgSenderCallFailed for an approved router that cannot report a sender', async function () {
+      const { mockPool, owner, plugin1, manager } = await loadFixture(deployFixture);
+      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
+
+      // Approving an ordinary contract as a router is an operational mistake rather than an attack, and
+      // the plugin has to name it rather than pass on a bare revert from a missing selector
+      const router = await (await ethers.getContractFactory('MockRouterWithoutMsgSender')).deploy();
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callSwap(mockPool.target, 10)).to.be.revertedWithCustomError(plugin1, 'RouterMsgSenderCallFailed');
+    });
   });
 
   describe('Add liquidity: gated independently by LIQUIDITY_ALLOWED', function () {
@@ -150,6 +162,25 @@ describe('PermissionedPoolPlugin', function () {
       await expect(router.callMint(mockPool.target, disallowedUser.address, -60, 60, 1000))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, disallowedUser.address);
+    });
+  });
+
+  // Every allowed account above holds either one flag or the 0xFFFF catch-all. The grant a real
+  // checker composes is the two operation flags together, and nothing had shown that such an account
+  // passes both gates.
+  describe('Both operation flags at once', function () {
+    it('lets an account granted SWAP_ALLOWED | LIQUIDITY_ALLOWED do both', async function () {
+      const { mockPool, owner, allowedUser, checker0, plugin1, manager, MockRouter } = await loadFixture(deployFixture);
+      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
+      await checker0.grantSwapAndLiquidity(allowedUser.address);
+
+      expect(await checker0.flags(allowedUser.address)).to.equal('0x0003');
+
+      const router = await MockRouter.deploy(allowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callMint(mockPool.target, allowedUser.address, -60, 60, 1000)).to.not.be.reverted;
+      await expect(router.callSwap(mockPool.target, 10)).to.not.be.reverted;
     });
   });
 
@@ -290,8 +321,11 @@ describe('PermissionedPoolPlugin', function () {
       const { plugin1, mockPool, disallowedUser } = await loadFixture(deployFixture);
 
       await mockPool.initialize(SQRT_PRICE_TICK_0);
-      // The pool calls the plugin directly here, so it is the router check that stops it first
-      await expect(mockPool.connect(disallowedUser).swapToTick(10)).to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed');
+      // The pool calls the plugin directly here, so it is the router check that stops it first, and the
+      // address it names is the swapper rather than any router
+      await expect(mockPool.connect(disallowedUser).swapToTick(10))
+        .to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed')
+        .withArgs(disallowedUser.address);
 
       await plugin1.setAllowlistCheckerRegistry(ethers.ZeroAddress);
 

@@ -475,7 +475,8 @@ describe('LimitOrders', () => {
     });
 
     it('reverts if caller is not plugin manager', async () => {
-      await expect(loModule.connect(other).setTickSpacing(pool, 120)).to.be.reverted
+      // the guard is a require with no reason string, so this pins it and not some other revert
+      await expect(loModule.connect(other).setTickSpacing(pool, 120)).to.be.revertedWithoutReason()
     });
 
   })
@@ -497,6 +498,28 @@ describe('LimitOrders', () => {
       let {amount0, amount1} = await loModule.kill.staticCall(poolKeyWnative, -60, 0, 10n**8n, false, wallet);
       expect(amount0).to.be.eq(0);
       expect(amount1).to.be.eq(299535);
+    });
+
+    // wnative sorts between the two test tokens, so it is token1 in pool0Wnative and token0 in
+    // poolWnative1. Every other native case here runs against the first, which left the token0 half of
+    // the unwrap in claimTo without a caller: the two halves are separate code, one per side.
+    it('works correct wnative on the token0 side', async () => {
+      await initializeAtZeroTick(poolWnative1);
+      const pluginContractFactory = await ethers.getContractFactory('UpgradeableLimitOrderPluginTest');
+      const plugin = pluginContractFactory.attach(await poolWnative1.plugin()) as any;
+      await plugin.setLimitOrderManager(loModule);
+
+      const poolKeyWnative1 = { token0: await wnative.getAddress(), token1: await token1.getAddress(), deployer: ZeroAddress };
+      // a range entirely above the current tick is funded from token0 alone
+      await loModule.place(poolKeyWnative1, 60, true, 10n ** 8n, { value: 1299536 });
+
+      const balanceBefore = await ethers.provider.getBalance(other.address);
+      await loModule.kill(poolKeyWnative1, 60, 120, 10n ** 8n, true, other.address);
+      const balanceAfter = await ethers.provider.getBalance(other.address);
+
+      // paid out unwrapped, and nothing stayed behind in the wrapper
+      expect(balanceAfter - balanceBefore).to.be.eq(298638);
+      expect(await wnative.balanceOf(loModule)).to.be.eq(0);
     });
 
     it('works correct for partial filled lo', async () => {

@@ -254,6 +254,286 @@ describe('#AlmPlugin', () => {
 		});
 	});
 
+	// Everything a reading can be refused for before the range builder runs: the guard on a zero price,
+	// and the two volatility arms of _decideRebalance. None of the three had a named case. The same-block
+	// brake was unreachable from every suite, because a recorded lastBlockTimestamp never matches the
+	// block a test mines, and the extreme volatility arm is only reached incidentally by the property.
+	describe('#volatility arms', () => {
+		const thresholds = {
+			depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
+			simulate: sample.state.simulateTrigger,
+			normalThreshold: sample.state.normalTrigger,
+			underInventoryThreshold: sample.state.underTrigger,
+			overInventoryThreshold: sample.state.overTrigger,
+			priceChangeThreshold: sample.state.priceChangeTrigger,
+			extremeVolatility: sample.state.extremeVolatility,
+			highVolatility: sample.state.highVolatility,
+			someVolatility: sample.state.someVolatility,
+			dtrDelta: sample.state.dtrDelta,
+			baseLowPct: sample.state.baseLowPct,
+			baseHighPct: sample.state.baseHighPct,
+			limitReservePct: sample.state.limitReservePct,
+		};
+
+		// someVolatility is 2%, highVolatility 9% and extremeVolatility 25%, so this trio sits high but
+		// not extreme: the slow and fast prices are 10.7% apart and the fast and current 2.7%.
+		const SLOW = 100n * 10n ** 18n;
+		const FAST = 112n * 10n ** 18n;
+		const CURRENT = 109n * 10n ** 18n;
+		// 28.5% apart, over the extreme threshold
+		const EXTREME_FAST = 140n * 10n ** 18n;
+
+		const TICK = 1200n;
+
+		async function deployed(state: number, prices: [bigint, bigint, bigint] = [SLOW, FAST, CURRENT]) {
+			const { almPlugin, mockVault } = await deployedFor(thresholds, 60, true, false);
+
+			await almPlugin.setDecimals(18, 18);
+			await mockVault.setTotalAmounts(10n ** 22n, 10n ** 22n);
+			await almPlugin.setPrices(prices[0], prices[1], prices[2]);
+			await almPlugin.setState(BigInt(state));
+
+			return { almPlugin, mockVault };
+		}
+
+		// The argument names the same block the call is mined in, which is the only way twapResult.sameBlock
+		// comes out true. Nothing in the contract says what it takes that to mean, so this pins the effect
+		// rather than a reading of the intent.
+		it('refuses to act on a high volatility reading from the same block', async () => {
+			const { almPlugin, mockVault } = await deployed(1); // State.Normal
+
+			// The argument has to equal the timestamp of the block the call is mined in, so pin that
+			// rather than passing whatever time.latest() reported before the transaction
+			const sameBlock = (await time.latest()) + 1;
+			await time.setNextBlockTimestamp(sameBlock);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, sameBlock)).to.not.emit(mockVault, 'MockRebalance');
+			// It returns before the transition at the end of the high volatility branch, so the state it
+			// was in survives
+			expect(await almPlugin.state()).to.be.eq(1);
+		});
+
+		// The same reading one block later, which is the half that makes the case above mean something
+		it('parks itself in Special for the same reading from an earlier block', async () => {
+			const { almPlugin, mockVault } = await deployed(1);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.state()).to.be.eq(3);
+		});
+
+		it('closes the vault to deposits and pauses on extreme volatility', async () => {
+			const { almPlugin, mockVault } = await deployed(1, [SLOW, EXTREME_FAST, CURRENT]);
+			// Seed both caps so writing zero is a change and not the value they already held
+			await mockVault.setDepositMax(10n ** 20n, 10n ** 20n);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n))
+				.to.emit(mockVault, 'MockDepositMax')
+				.withArgs(0n, 0n);
+
+			expect(await mockVault.deposit0Max()).to.be.eq(0);
+			expect(await mockVault.deposit1Max()).to.be.eq(0);
+			expect(await almPlugin.paused()).to.be.true;
+			expect(await almPlugin.state()).to.be.eq(3);
+		});
+
+		it('does not rebalance on extreme volatility', async () => {
+			const { almPlugin, mockVault } = await deployed(1, [SLOW, EXTREME_FAST, CURRENT]);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+
+		// A price of zero is what _getTwapPrices returns when the pool has no history to average, and
+		// every downstream percentage divides by one of the three. Each is its own arm of the guard.
+		for (const [name, prices] of [
+			['slow', [0n, FAST, CURRENT]],
+			['fast', [SLOW, 0n, CURRENT]],
+			['current', [SLOW, FAST, 0n]],
+		] as [string, [bigint, bigint, bigint]][]) {
+			it(`returns without deciding anything when the ${name} price is zero`, async () => {
+				const { almPlugin, mockVault } = await deployed(1, prices);
+
+				await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.not.emit(mockVault, 'MockRebalance');
+				// It returns before _decideRebalance, so not even the high volatility transition happened
+				expect(await almPlugin.state()).to.be.eq(1);
+			});
+		}
+	});
+
+	// The manager refuses to call a vault it cannot pay for, and the guard is an absolute floor rather
+	// than a share of the budget, so it only shows up when the caller sets a limit of its own. The check
+	// sits after the range builder and the width guard, so reaching it at all proves the whole path ran.
+	describe('#gas floor', () => {
+		// Any limit under the floor fails the check, since gasleft() can never exceed the limit the caller
+		// set. 1.5M is picked to leave room for the path under coverage instrumentation, which costs more
+		// gas to reach the same line, so the case runs in both modes rather than being tagged out of one.
+		it('refuses a rebalance that would arrive with less than the reserve', async () => {
+			const { almPlugin, currentTick } = await fixtureAtSample();
+
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n, { gasLimit: 1_500_000 })).to.be.revertedWith(
+				'Not enough gas left'
+			);
+		});
+	});
+
+	// A range narrower than 300 ticks is dropped rather than handed to the vault, and the check covers
+	// the base and the limit side separately. Only the limit side had ever tripped it: the recorded
+	// threshold sets carry a baseLowPct between 20% and 50%, so the base range is thousands of ticks
+	// wide before rounding and never comes close to the floor.
+	describe('#range width floor', () => {
+		function thresholdsWithBaseLow(baseLowPct: number) {
+			return {
+				depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
+				simulate: sample.state.simulateTrigger,
+				normalThreshold: sample.state.normalTrigger,
+				underInventoryThreshold: sample.state.underTrigger,
+				overInventoryThreshold: sample.state.overTrigger,
+				priceChangeThreshold: sample.state.priceChangeTrigger,
+				extremeVolatility: sample.state.extremeVolatility,
+				highVolatility: sample.state.highVolatility,
+				someVolatility: sample.state.someVolatility,
+				dtrDelta: sample.state.dtrDelta,
+				baseLowPct,
+				baseHighPct: sample.state.baseHighPct,
+				limitReservePct: sample.state.limitReservePct,
+			};
+		}
+
+		// Flat prices so the reading is not volatile, and State.Special so _updateStatus skips the block it
+		// keeps for a manager that already has a state to reason from and answers off the holdings alone.
+		// A deposit share of 85% is what makes that answer State.Normal. The
+		// limit side of the range runs to the rounded MIN_TICK in that state, so only the base side is in
+		// question and baseLowPct alone decides how wide it is.
+		async function deployedWithBaseLow(baseLowPct: number) {
+			const { almPlugin, mockVault } = await deployedFor(thresholdsWithBaseLow(baseLowPct), 60, true, false);
+
+			await almPlugin.setDecimals(18, 18);
+			await mockVault.setTotalAmounts(10n ** 22n, 17647n * 10n ** 15n);
+			const price = 100n * 10n ** 18n;
+			await almPlugin.setPrices(price, price, price);
+			await almPlugin.setState(3n); // State.Special
+
+			return { almPlugin, mockVault };
+		}
+
+		it('drops a rebalance whose base range is narrower than the floor', async () => {
+			const { almPlugin, mockVault } = await deployedWithBaseLow(100); // 1%, about 100 ticks
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+
+		it('hands over the same rebalance once the base range is wide enough', async () => {
+			const { almPlugin, mockVault } = await deployedWithBaseLow(3000); // 30%, what the sampled recording carries
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+	});
+
+	// A vault with nothing on its deposit side is a state the manager checks for and declines to act on,
+	// and the guard is load bearing: _getPriceBounds divides by totalDepositToken. No recording is in it,
+	// all 2990 across the two corpora have a funded deposit side, though three do have an empty paired
+	// side. The empty vault below is reached by the property from time to time but by no named case.
+	describe('#degenerate holdings', () => {
+		const thresholds = {
+			depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
+			simulate: sample.state.simulateTrigger,
+			normalThreshold: sample.state.normalTrigger,
+			underInventoryThreshold: sample.state.underTrigger,
+			overInventoryThreshold: sample.state.overTrigger,
+			priceChangeThreshold: sample.state.priceChangeTrigger,
+			extremeVolatility: sample.state.extremeVolatility,
+			highVolatility: sample.state.highVolatility,
+			someVolatility: sample.state.someVolatility,
+			dtrDelta: sample.state.dtrDelta,
+			baseLowPct: sample.state.baseLowPct,
+			baseHighPct: sample.state.baseHighPct,
+			limitReservePct: sample.state.limitReservePct,
+		};
+
+		async function deployedHolding(amount0: bigint, amount1: bigint) {
+			const { almPlugin, mockVault } = await deployedFor(thresholds, 60, true, false);
+
+			await almPlugin.setDecimals(18, 18);
+			await mockVault.setTotalAmounts(amount0, amount1);
+			const price = 100n * 10n ** 18n;
+			await almPlugin.setPrices(price, price, price);
+			await almPlugin.setState(3n); // State.Special, so _updateStatus reads the holdings and nothing else
+
+			return { almPlugin, mockVault };
+		}
+
+		// The deposit side is empty but the paired side is not, so the manager gets past the "holds
+		// nothing at all" check and has to refuse on the second one instead
+		it('declines a rebalance while the vault holds none of the deposit token', async () => {
+			const { almPlugin, mockVault } = await deployedHolding(0n, 10n ** 20n);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+
+		it('rebalances once the deposit side is funded', async () => {
+			const { almPlugin, mockVault } = await deployedHolding(10n ** 22n, 10n ** 20n);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+
+		it('declines a rebalance while the vault holds nothing at all', async () => {
+			const { almPlugin, mockVault } = await deployedHolding(0n, 0n);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+	});
+
+	// A Normal state rebalance is skipped when the paired holdings are no more than the limit reserve.
+	// That guard is load bearing too: _getPriceBounds subtracts the reserve from the paired total in
+	// checked arithmetic, so without it the call would revert on the underflow. Reaching it needs the
+	// reserve set to everything the simulate trigger leaves, since below that the deposit share the
+	// Normal state requires and the paired share the guard requires cannot both hold.
+	describe('#limit reserve floor', () => {
+		function thresholdsWithLimitReserve(limitReservePct: number) {
+			return {
+				depositTokenUnusedThreshold: sample.state.depositTokenUnusedThreshold,
+				simulate: sample.state.simulateTrigger,
+				normalThreshold: sample.state.normalTrigger,
+				underInventoryThreshold: sample.state.underTrigger,
+				overInventoryThreshold: sample.state.overTrigger,
+				priceChangeThreshold: sample.state.priceChangeTrigger,
+				extremeVolatility: sample.state.extremeVolatility,
+				highVolatility: sample.state.highVolatility,
+				someVolatility: sample.state.someVolatility,
+				dtrDelta: sample.state.dtrDelta,
+				baseLowPct: sample.state.baseLowPct,
+				baseHighPct: sample.state.baseHighPct,
+				limitReservePct,
+			};
+		}
+
+		// The reserve is 6%, which is exactly what a simulate trigger of 9400 leaves. The deposit side is
+		// 9400 of 10000 too, so the paired side lands exactly on the reserve.
+		async function deployedWithPaired(amount1: bigint) {
+			const { almPlugin, mockVault } = await deployedFor(thresholdsWithLimitReserve(600), 60, true, false);
+
+			await almPlugin.setDecimals(18, 18);
+			await mockVault.setTotalAmounts(94n * 10n ** 20n, amount1);
+			const price = 100n * 10n ** 18n;
+			await almPlugin.setPrices(price, price, price);
+			await almPlugin.setState(3n); // State.Special, so _updateStatus reads the holdings and nothing else
+
+			return { almPlugin, mockVault };
+		}
+
+		it('leaves the vault alone when the paired side is exactly the reserve', async () => {
+			// 6 * 10**18 of paired token at a price of 100 is 6 * 10**20, exactly 6% of the total
+			const { almPlugin, mockVault } = await deployedWithPaired(6n * 10n ** 18n);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+
+		it('rebalances once the paired side is over the reserve', async () => {
+			const { almPlugin, mockVault } = await deployedWithPaired(7n * 10n ** 18n);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+	});
+
 	// almRebalances3.json holds 1365 recorded rebalances, 460 of them with a limit position, and every
 	// one of them runs here. Two are held out. The ranges in the file are calldata an off-chain keeper
 	// passed to the vault through a Safe, not the output of a deployed manager, so where the recording

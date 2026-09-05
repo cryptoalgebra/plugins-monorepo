@@ -22,6 +22,9 @@ const dtArb = fc.oneof(
   fc.integer({ min: 1, max: 4_294_967_295 })
 );
 
+// Short enough to rebuild the answer by summing every second of the interval
+const smallDtArb = fc.integer({ min: 1, max: 200 });
+
 describe('VolatilityOracle properties', function () {
   async function volatilityOracleFixture() {
     return (await (await ethers.getContractFactory('VolatilityOracleTest')).deploy()) as any;
@@ -106,6 +109,51 @@ describe('VolatilityOracle properties', function () {
           const result = await oracle.volatilityOnRange(dt, t0, t1, a0, a1);
 
           expect(result).to.equal(BigInt(dt) * deviation * deviation);
+        }),
+        fuzz
+      );
+    });
+
+    // Everything above is a symmetry or a bound, and the one exact case holds the deviation constant,
+    // which sets the slope term to zero. So the coefficient on that term is pinned nowhere: replaying
+    // these generators against a sumOfSquares of dt*(dt+1)*(2*dt) instead of dt*(dt+1)*(2*dt+1), four
+    // of the five properties never notice and the fifth catches it on 0 to 4 draws in 200 across six
+    // seeds, and only because the numerator goes negative and the cast wraps.
+    // This one rebuilds the answer from the definition in the comment above the function rather than
+    // from its closed form: the deviation is a straight line between the two endpoints, and the result
+    // is the sum of its square at every second in the interval. Small dt only, since it is a real sum.
+    it('equals the sum of the squared deviation second by second', async function () {
+      const oracle = await loadFixture(volatilityOracleFixture);
+
+      const reference = (dt: bigint, t0: bigint, t1: bigint, a0: bigint, a1: bigint) => {
+        const slope = t1 - t0 - (a1 - a0); // the deviation's slope, scaled by dt
+        const start = (t0 - a0) * dt; // and its value at t = 0, on the same scale
+        let numerator = 0n;
+        for (let t = 1n; t <= dt; t++) {
+          const scaled = start + slope * t;
+          numerator += scaled * scaled;
+        }
+        return numerator / (dt * dt);
+      };
+
+      await fc.assert(
+        fc.asyncProperty(smallDtArb, tickArb, tickArb, tickArb, tickArb, async (dt, t0, t1, a0, a1) => {
+          const expected = reference(BigInt(dt), BigInt(t0), BigInt(t1), BigInt(a0), BigInt(a1));
+
+          expect(await oracle.volatilityOnRange(dt, t0, t1, a0, a1)).to.equal(expected);
+        }),
+        fuzz
+      );
+    });
+
+    // write and _getVolatilityCumulative both cast the result to uint88 without checking, on the
+    // strength of the comment above the function, and nothing had held it to that
+    it('fits the uint88 its callers cast it to', async function () {
+      const oracle = await loadFixture(volatilityOracleFixture);
+
+      await fc.assert(
+        fc.asyncProperty(dtArb, tickArb, tickArb, tickArb, tickArb, async (dt, t0, t1, a0, a1) => {
+          expect(await oracle.volatilityOnRange(dt, t0, t1, a0, a1)).to.be.lt(1n << 88n);
         }),
         fuzz
       );

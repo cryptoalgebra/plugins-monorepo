@@ -825,22 +825,20 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       expect(isInitialized).to.equal(true);
 
      // Verify upgraded module functions are NO LONGER available
+      // The downgraded implementation has no such selector and no fallback, so the call reverts with
+      // no return data at all. revertedWithoutReason pins that, and would fail if a later downgrade
+      // kept the function and made it revert for a reason of its own.
       
       const superPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
       await expect(
         superPluginProxy.getAdvancedFeeMode.staticCall()
-      ).to.be.reverted;  
-
+      ).to.be.revertedWithoutReason();
       await expect(
         superPluginProxy.getSecurityEmergencyMode.staticCall()
-      ).to.be.reverted; 
-
+      ).to.be.revertedWithoutReason();
       await expect(
         superPluginProxy.getFarmingPausedMode.staticCall()
-      ).to.be.reverted;  
-
-      
-
+      ).to.be.revertedWithoutReason();
       // Verify base security function still works (if implemented)
       const securityRegistry = await basePlugin.getSecurityRegistry();
       expect(securityRegistry).to.not.be.undefined;

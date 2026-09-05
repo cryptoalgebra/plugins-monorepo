@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { deployBeaconPluginFixture } from 'test-utils/beaconPlugin';
+import { encodePriceSqrt } from 'test-utils/utilities';
 import fc from 'fast-check';
 
 // Fixed seed so a green run stays green and a failure is reproducible.
@@ -86,6 +87,76 @@ describe('SlidingFee properties', function () {
           expect(await plugin1.lastFee()).to.equal(expected);
         }
       }),
+      fuzz
+    );
+  });
+
+  // The two properties above are satisfied by an implementation that moves the pair the wrong way:
+  // complementarity is symmetric, and the quoted fee is derived from whatever the factors ended up as.
+  // Which way they move is the module's whole subject, and only the hand written cases pin it, at one
+  // tick delta per factor value.
+  it('shifts the pair towards the direction the price moved', async function () {
+    await fc.assert(
+      fc.asyncProperty(fc.array(swapArb, { minLength: 1, maxLength: 8 }), async (swaps) => {
+        const { plugin1 } = await loadFixture(deployFixture);
+
+        for (const swap of swaps) {
+          await plugin1.setPriceChangeFactor(swap.priceChangeFactor);
+          const [zeroToOneBefore, oneToZeroBefore] = await plugin1.feeFactors();
+
+          await plugin1.getFeeForSwap(swap.zeroToOne, swap.lastTick, swap.currentTick);
+
+          const [zeroToOneAfter, oneToZeroAfter] = await plugin1.feeFactors();
+          // Not strict: a small delta or a zero priceChangeFactor rounds the impact to nothing, and the
+          // clamped branches park the pair at its bounds, which is still the right direction.
+          if (swap.currentTick > swap.lastTick) {
+            // the price rose, so oneToZero is the direction that has been pushing it
+            expect(oneToZeroAfter).to.be.gte(oneToZeroBefore);
+            expect(zeroToOneAfter).to.be.lte(zeroToOneBefore);
+          } else if (swap.currentTick < swap.lastTick) {
+            expect(oneToZeroAfter).to.be.lte(oneToZeroBefore);
+            expect(zeroToOneAfter).to.be.gte(zeroToOneBefore);
+          } else {
+            expect(oneToZeroAfter).to.equal(oneToZeroBefore);
+            expect(zeroToOneAfter).to.equal(zeroToOneBefore);
+          }
+        }
+      }),
+      fuzz
+    );
+  });
+
+  // Both properties above hand the harness both ticks, so the sequence never exercises the bookkeeping
+  // production depends on: beforeSwap reads the pool's tick itself and stores it for the next swap, so
+  // what a real sequence measures is the move between two swaps rather than anything a caller passes.
+  it('measures the move between swaps when the pool drives it', async function () {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.integer({ min: -100_000, max: 100_000 }), { minLength: 2, maxLength: 8 }),
+        fc.boolean(),
+        fc.integer({ min: 1, max: 65535 }),
+        async (targets, zeroToOne, baseFee) => {
+          const { plugin1, mockPool } = await loadFixture(deployFixture);
+          // beforeInitialize is what puts the hook flags on the pool, so the swaps below reach the plugin
+          await mockPool.initialize(encodePriceSqrt(1, 1));
+          await plugin1.setBaseFee(baseFee);
+
+          let tickBeforeSwap = 0n;
+          for (const target of targets) {
+            await mockPool.swapToTickWithDirection(target, zeroToOne);
+
+            // the hook saw the pool as it stood before this swap, and kept that tick for the next one
+            expect(await plugin1.lastTick()).to.equal(tickBeforeSwap);
+
+            const [zeroToOneFactor, oneToZeroFactor] = await plugin1.feeFactors();
+            const shifted = (BigInt(baseFee) * (zeroToOne ? zeroToOneFactor : oneToZeroFactor)) >> FEE_FACTOR_SHIFT;
+            const expected = shifted > 65535n ? 65535n : shifted === 0n ? 1n : shifted;
+            expect(await mockPool.overrideFee()).to.equal(expected);
+
+            tickBeforeSwap = BigInt(target);
+          }
+        }
+      ),
       fuzz
     );
   });

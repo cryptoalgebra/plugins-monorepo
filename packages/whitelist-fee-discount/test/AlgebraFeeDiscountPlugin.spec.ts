@@ -128,7 +128,7 @@ describe('AlgebraFeeDiscountPlugin', () => {
     });
 
     it('only owner can set registry address', async () => {
-      await expect(plugin.connect(other).setFeeDiscountRegistry(ZeroAddress)).to.be.reverted;
+      await expect(plugin.connect(other).setFeeDiscountRegistry(ZeroAddress)).to.be.revertedWith('Not authorized');
     });
 
   });
@@ -144,7 +144,7 @@ describe('AlgebraFeeDiscountPlugin', () => {
       });
 
       it('only owner or with fee discount manager can set discounts', async () => {
-        await expect(registry.connect(other).setFeeDiscount(wallet.address, [mockPool.target], [500])).to.be.reverted
+        await expect(registry.connect(other).setFeeDiscount(wallet.address, [mockPool.target], [500])).to.be.revertedWith('Unauthorized')
         await mockFactory.grantRole(await registry.FEE_DISCOUNT_MANAGER(), other.address);
         await expect(registry.connect(other).setFeeDiscount(wallet.address, [mockPool.target], [500])).to.not.be.reverted
         await expect(registry.connect(wallet).setFeeDiscount(wallet.address, [mockPool.target], [500])).to.not.be.reverted

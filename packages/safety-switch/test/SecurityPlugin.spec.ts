@@ -97,7 +97,7 @@ describe('SecurityPlugin', () => {
     });
 
     it('only owner can set registry address', async () => {
-      await expect(plugin.connect(other).setSecurityRegistry(ZeroAddress)).to.be.reverted;
+      await expect(plugin.connect(other).setSecurityRegistry(ZeroAddress)).to.be.revertedWith('Not authorized');
     });
 
   });
@@ -127,10 +127,11 @@ describe('SecurityPlugin', () => {
       });
 
       it('only owner can set all pool status', async () => {
-        await expect(registry.connect(other).setPoolsStatus([wallet], [1])).to.be.reverted
+        await expect(registry.connect(other).setPoolsStatus([wallet], [1])).to.be.revertedWith('Only owner')
+        // The guard role does not help here: BURN_ONLY and ENABLED are the owner's to set
         await mockFactory.grantRole(await registry.GUARD(), other.address);
-        await expect(registry.connect(other).setPoolsStatus([wallet], [0])).to.be.reverted
-        await expect(registry.connect(other).setPoolsStatus([wallet], [1])).to.be.reverted
+        await expect(registry.connect(other).setPoolsStatus([wallet], [0])).to.be.revertedWith('Only owner')
+        await expect(registry.connect(other).setPoolsStatus([wallet], [1])).to.be.revertedWith('Only owner')
       });
 
       it('address without the guard role cannot set DISABLED pool status', async () => {
@@ -155,11 +156,11 @@ describe('SecurityPlugin', () => {
           expect(await registry.globalStatus()).to.be.eq(0);
         });
 
-        it('only owner can set all pool status', async () => {
-          await expect(registry.connect(other).setGlobalStatus(1)).to.be.reverted
+        it('only owner can set the global status', async () => {
+          await expect(registry.connect(other).setGlobalStatus(1)).to.be.revertedWith('Only owner')
           await mockFactory.grantRole(await registry.GUARD(), other.address);
-          await expect(registry.connect(other).setGlobalStatus(1)).to.be.reverted
-          await expect(registry.connect(other).setGlobalStatus(0)).to.be.reverted
+          await expect(registry.connect(other).setGlobalStatus(1)).to.be.revertedWith('Only owner')
+          await expect(registry.connect(other).setGlobalStatus(0)).to.be.revertedWith('Only owner')
         });
 
         it('address with guard role can set DISABLED pool status', async () => {

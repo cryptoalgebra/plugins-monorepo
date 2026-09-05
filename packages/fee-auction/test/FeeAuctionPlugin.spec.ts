@@ -123,15 +123,13 @@ describe('FeeAuctionPlugin', () => {
 
     it('should not allow double initialization', async () => {
       await initializePlugin(pluginProxy);
-      await expect(
-        initializePlugin(pluginProxy)
-      ).to.be.reverted;
+      await expect(initializePlugin(pluginProxy)).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
     it('should only allow admin to initialize', async () => {
       await expect(
         pluginProxy.connect(other).initialize(DEFAULT_BASE_FEE, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED)
-      ).to.be.reverted;
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 
@@ -154,7 +152,7 @@ describe('FeeAuctionPlugin', () => {
     });
 
     it('should revert if called by non-admin', async () => {
-      await expect(pluginProxy.connect(other).setBaseFee(5000)).to.be.reverted;
+      await expect(pluginProxy.connect(other).setBaseFee(5000)).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 
@@ -182,7 +180,10 @@ describe('FeeAuctionPlugin', () => {
     });
 
     it('should revert if called by non-admin', async () => {
-      await expect(pluginProxy.connect(other).setMevTaxParameters(2000, 20000)).to.be.reverted;
+      await expect(pluginProxy.connect(other).setMevTaxParameters(2000, 20000)).to.be.revertedWithCustomError(
+        pluginProxy,
+        'OnlyAdministrator'
+      );
     });
   });
 
@@ -207,7 +208,7 @@ describe('FeeAuctionPlugin', () => {
     });
 
     it('should revert if called by non-admin', async () => {
-      await expect(pluginProxy.connect(other).setMevTaxEnabled(false)).to.be.reverted;
+      await expect(pluginProxy.connect(other).setMevTaxEnabled(false)).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 

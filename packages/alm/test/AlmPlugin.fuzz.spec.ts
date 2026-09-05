@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 import { ZERO_ADDRESS } from 'test-utils/consts';
 import fc from 'fast-check';
 import { rebalances } from './almRebalances.json';
@@ -74,6 +74,15 @@ const drawArb = (tickSpacing: number) =>
     sameBlock: fc.boolean(),
   });
 
+// sameBlock is true only when the argument equals the timestamp of the block the call is mined in, so
+// the draw has to pin that block rather than pass a literal. It was passing 1 against a chain clock in
+// the billions, which no draw could ever match, and the arm that reads the flag stayed dead.
+const rebalanceAt = async (almPlugin: any, tick: number, sameBlock: boolean) => {
+  const next = (await time.latest()) + 1;
+  await time.setNextBlockTimestamp(next);
+  return almPlugin.rebalance(tick, tick, tick, sameBlock ? next : 0);
+};
+
 describe('AlmPlugin properties', function () {
   for (const [tickSpacing, allowToken0, allowToken1] of [
     [60, true, false],
@@ -123,9 +132,7 @@ describe('AlmPlugin properties', function () {
             await mockVault.setTotalAmounts(amount0, TOTAL_LIQUIDITY - amount0);
             await almPlugin.setDepositTokenBalance((BigInt(draw.unusedShare) * TOTAL_LIQUIDITY) / 100_000_000n);
 
-            const receipt = await (
-              await almPlugin.rebalance(draw.currentTick, draw.currentTick, draw.currentTick, draw.sameBlock ? 1 : 0)
-            ).wait();
+            const receipt = await (await rebalanceAt(almPlugin, draw.currentTick, draw.sameBlock)).wait();
 
             for (const log of receipt.logs) {
               let parsed: any;

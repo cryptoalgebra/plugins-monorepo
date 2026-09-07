@@ -3,58 +3,73 @@ pragma solidity =0.8.20;
 
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
-import '../interfaces/IAllowlistChecker.sol';
-import '../libraries/PermissionFlags.sol';
+import '../interfaces/ace/IAceIdentityRegistry.sol';
+import '../interfaces/ace/IAceCredentialRegistry.sol';
 
 /// @title Test Permissioned ERC20
-/// @notice Demo token that gates its own transfers through the same IAllowlistChecker the pool uses.
-/// @dev Both sides of a transfer are checked, mirroring how a permissioned RWA token behaves. Because
-/// a swap moves tokens to and from the pool, the pool and every router must be exempt (or hold the
-/// credential themselves) or trading will revert — see `setExempt`.
-/// Test scaffolding only: ownership is a plain EOA and minting is unrestricted for the owner.
+/// @notice Demo token that reads Chainlink ACE credentials itself, the way a real RWA token would.
 contract TestPermissionedERC20 is ERC20, Ownable {
-  /// @notice The account is missing the permissions this token requires
+  /// @notice The account does not hold the credential this token requires
   error TransferNotAllowed(address account);
 
-  event CheckerUpdated(address indexed checker);
-  event RequiredFlagUpdated(PermissionFlag requiredFlag);
+  event RegistriesUpdated(address indexed identityRegistry, address indexed credentialRegistry);
+  event RequiredCredentialTypeIdUpdated(bytes32 requiredCredentialTypeId);
   event ExemptUpdated(address indexed account, bool exempt);
 
-  /// @notice The allowlist checker consulted on every transfer; when unset the token is unrestricted
-  IAllowlistChecker public checker;
+  /// @notice The ACE IdentityRegistry resolving a wallet to its CCID; when unset the token is unrestricted
+  address public identityRegistry;
 
-  /// @notice The permissions an account must hold to send or receive this token
-  PermissionFlag public requiredFlag;
+  /// @notice The ACE CredentialRegistry queried for credential validity
+  address public credentialRegistry;
+
+  /// @notice The ACE credential type hash an account must hold, e.g. keccak256("common.kyc")
+  /// @dev This is the platform's `credential_type_hash`, not the `credential_type_id` UUID
+  bytes32 public requiredCredentialTypeId;
 
   /// @notice Accounts that bypass the check entirely, such as pools, routers and the treasury
   mapping(address account => bool exempt) public isExempt;
 
-  constructor(string memory name_, string memory symbol_, address checker_) ERC20(name_, symbol_) {
-    checker = IAllowlistChecker(checker_);
-    requiredFlag = PermissionFlags.SWAP_ALLOWED;
+  constructor(
+    string memory name_,
+    string memory symbol_,
+    address identityRegistry_,
+    address credentialRegistry_,
+    bytes32 requiredCredentialTypeId_
+  ) ERC20(name_, symbol_) {
+    identityRegistry = identityRegistry_;
+    credentialRegistry = credentialRegistry_;
+    requiredCredentialTypeId = requiredCredentialTypeId_;
     isExempt[msg.sender] = true;
-    emit CheckerUpdated(checker_);
+    emit RegistriesUpdated(identityRegistry_, credentialRegistry_);
+    emit RequiredCredentialTypeIdUpdated(requiredCredentialTypeId_);
     emit ExemptUpdated(msg.sender, true);
   }
 
   /// @notice Whether `account` may currently send or receive this token
-  /// @dev Exposed for front ends so they can explain a rejection before submitting a transaction
+  /// @dev Exposed for front ends so they can explain a rejection before submitting a transaction.
+  /// Reverts rather than returning false if a registry is unreachable.
   function isAllowed(address account) public view returns (bool) {
-    if (address(checker) == address(0) || isExempt[account]) return true;
-    PermissionFlag flags = checker.checkAllowlist(account, address(this));
-    return (flags & requiredFlag) == requiredFlag;
+    if (isExempt[account]) return true;
+    if (identityRegistry == address(0)) return true;
+
+    bytes32 ccid = IAceIdentityRegistry(identityRegistry).getIdentity(account);
+    // A wallet with no identity on this chain can hold no credentials
+    if (ccid == bytes32(0)) return false;
+
+    return IAceCredentialRegistry(credentialRegistry).validate(ccid, requiredCredentialTypeId, '');
   }
 
-  /// @notice Point the token at a different checker, or at address(0) to lift all restrictions
-  function setChecker(address newChecker) external onlyOwner {
-    checker = IAllowlistChecker(newChecker);
-    emit CheckerUpdated(newChecker);
+  /// @notice Point the token at a different pair of ACE registries, or at address(0) to lift all restrictions
+  function setRegistries(address newIdentityRegistry, address newCredentialRegistry) external onlyOwner {
+    identityRegistry = newIdentityRegistry;
+    credentialRegistry = newCredentialRegistry;
+    emit RegistriesUpdated(newIdentityRegistry, newCredentialRegistry);
   }
 
-  /// @notice Change which permissions this token demands, e.g. to also require LIQUIDITY_ALLOWED
-  function setRequiredFlag(PermissionFlag newRequiredFlag) external onlyOwner {
-    requiredFlag = newRequiredFlag;
-    emit RequiredFlagUpdated(newRequiredFlag);
+  /// @notice Change which credential this token demands
+  function setRequiredCredentialTypeId(bytes32 newRequiredCredentialTypeId) external onlyOwner {
+    requiredCredentialTypeId = newRequiredCredentialTypeId;
+    emit RequiredCredentialTypeIdUpdated(newRequiredCredentialTypeId);
   }
 
   /// @notice Exempt an address from the check; needed for the pool and every router that trades this token
@@ -83,7 +98,7 @@ contract TestPermissionedERC20 is ERC20, Ownable {
   /// cannot hold a credential; the real counterparty of a mint or burn is still checked.
   function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
     super._beforeTokenTransfer(from, to, amount);
-    if (address(checker) == address(0)) return;
+    if (identityRegistry == address(0)) return;
 
     if (from != address(0) && !isAllowed(from)) revert TransferNotAllowed(from);
     if (to != address(0) && !isAllowed(to)) revert TransferNotAllowed(to);

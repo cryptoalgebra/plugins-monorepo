@@ -174,26 +174,32 @@ describe('AceAllowlistChecker', function () {
     });
   });
 
-  describe('defensive behaviour', function () {
-    it('returns no permissions instead of reverting when the identity registry fails', async function () {
+  // A misconfigured address must not be folded into "this account holds nothing": that denies every
+  // swap anyway, and looks identical to a credential that was never issued.
+  describe('misconfiguration surfaces loudly', function () {
+    it('reverts when the identity registry fails', async function () {
       const { wallet, token, identityRegistry, credentialRegistry, checker } = await loadFixture(deployFixture);
 
       await credentialRegistry.setCredential(CCID, KYC, true);
       await identityRegistry.setShouldRevert(true);
 
-      expect(await checker.checkAllowlist(wallet.address, token.address)).to.equal(NONE);
+      await expect(checker.checkAllowlist(wallet.address, token.address)).to.be.revertedWith(
+        'MockAceIdentityRegistry: forced revert'
+      );
     });
 
-    it('returns no permissions instead of reverting when the credential registry fails', async function () {
+    it('reverts when the credential registry fails', async function () {
       const { wallet, token, credentialRegistry, checker } = await loadFixture(deployFixture);
 
       await credentialRegistry.setCredential(CCID, KYC, true);
       await credentialRegistry.setShouldRevert(true);
 
-      expect(await checker.checkAllowlist(wallet.address, token.address)).to.equal(NONE);
+      await expect(checker.checkAllowlist(wallet.address, token.address)).to.be.revertedWith(
+        'MockAceCredentialRegistry: forced revert'
+      );
     });
 
-    it('ignores only the failing rule when a validator reverts', async function () {
+    it('reverts when a validator fails, rather than silently dropping its flags', async function () {
       const { admin, wallet, token, credentialRegistry, validator, checker } = await loadFixture(deployFixture);
 
       await checker
@@ -206,8 +212,10 @@ describe('AceAllowlistChecker', function () {
       await validator.setValid(wallet.address, true);
       await validator.setShouldRevert(true);
 
-      // The credential rule still contributes its flag
-      expect(await checker.checkAllowlist(wallet.address, token.address)).to.equal(SWAP_ALLOWED);
+      // Previously the credential rule's flag would still come back, hiding the broken validator
+      await expect(checker.checkAllowlist(wallet.address, token.address)).to.be.revertedWith(
+        'MockAceIdentityValidator: forced revert'
+      );
     });
   });
 

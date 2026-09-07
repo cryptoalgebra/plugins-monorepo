@@ -12,14 +12,6 @@ import './libraries/PermissionFlags.sol';
 
 /// @title ACE Allowlist Checker
 /// @notice IAllowlistChecker implementation gating on Chainlink ACE credentials.
-/// @dev Unlike the OnchainID checker, permissions are graded rather than all-or-nothing: each rule
-/// contributes its own flags, and an account receives the union of every rule it satisfies. That is
-/// what lets `common.kyc` grant swaps while `common.accredited` also grants liquidity provision.
-/// A rule is satisfied either by reading the ACE registries directly, or by delegating to an ACE
-/// identity validator so requirements stay reconfigurable on the ACE platform.
-/// No separate kill switch. To stop trading, have the credential issuer revoke the credentials, or
-/// clear the rules here. AllowlistCheckerRegistry.setChecker(token, address(0)) fully unpermissions
-/// a token.
 contract AceAllowlistChecker is IAceAllowlistChecker, ERC165 {
   /// @inheritdoc IAceAllowlistChecker
   address public immutable override admin;
@@ -65,21 +57,15 @@ contract AceAllowlistChecker is IAceAllowlistChecker, ERC165 {
       bool satisfied;
       if (rule.kind == RuleKind.Validator) {
         // The validator resolves the account itself, so it needs no CCID from us
-        try IAceIdentityValidator(rule.validator).validate(account, '') returns (bool valid) {
-          satisfied = valid;
-        } catch {}
+        satisfied = IAceIdentityValidator(rule.validator).validate(account, '');
       } else {
         if (!ccidResolved) {
           ccidResolved = true;
-          try IAceIdentityRegistry(identityRegistry).getIdentity(account) returns (bytes32 accountCcid) {
-            ccid = accountCcid;
-          } catch {}
+          ccid = IAceIdentityRegistry(identityRegistry).getIdentity(account);
         }
         // A wallet with no identity on this chain can hold no credentials
         if (ccid != bytes32(0)) {
-          try IAceCredentialRegistry(credentialRegistry).validate(ccid, rule.credentialTypeId, '') returns (bool valid) {
-            satisfied = valid;
-          } catch {}
+          satisfied = IAceCredentialRegistry(credentialRegistry).validate(ccid, rule.credentialTypeId, '');
         }
       }
 

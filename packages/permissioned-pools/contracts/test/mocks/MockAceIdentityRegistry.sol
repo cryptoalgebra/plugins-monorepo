@@ -8,7 +8,7 @@ import '../../interfaces/ace/IAceIdentityRegistry.sol';
 contract MockAceIdentityRegistry is IAceIdentityRegistry {
   mapping(address wallet => bytes32 ccid) private ccids;
 
-  /// @notice When set, getIdentity reverts, exercising the checker's defensive guard
+  /// @notice When set, getIdentity reverts, standing in for a misconfigured registry address
   bool public shouldRevert;
 
   function setIdentity(address wallet, bytes32 ccid) external {

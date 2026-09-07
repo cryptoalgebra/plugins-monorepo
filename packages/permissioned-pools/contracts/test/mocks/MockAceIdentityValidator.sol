@@ -8,7 +8,7 @@ import '../../interfaces/ace/IAceIdentityValidator.sol';
 contract MockAceIdentityValidator is IAceIdentityValidator {
   mapping(address account => bool valid) private results;
 
-  /// @notice When set, validate reverts, exercising the checker's defensive guard
+  /// @notice When set, validate reverts, standing in for a misconfigured validator address
   bool public shouldRevert;
 
   function setValid(address account, bool valid) external {

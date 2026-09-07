@@ -8,7 +8,7 @@ import '../../interfaces/ace/IAceCredentialRegistry.sol';
 contract MockAceCredentialRegistry is IAceCredentialRegistry {
   mapping(bytes32 ccid => mapping(bytes32 credentialTypeId => bool valid)) private credentials;
 
-  /// @notice When set, validate reverts, exercising the checker's defensive guard
+  /// @notice When set, validate reverts, standing in for a misconfigured registry address
   bool public shouldRevert;
 
   function setCredential(bytes32 ccid, bytes32 credentialTypeId, bool valid) external {

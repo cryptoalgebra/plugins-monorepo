@@ -3,21 +3,10 @@ import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 describe('TestPermissionedERC20', function () {
-  const SWAP_ALLOWED = '0x0001';
-  const SWAP_AND_LIQUIDITY = '0x0003';
-  const KIND_CREDENTIAL = 0;
-
   const KYC = ethers.keccak256(ethers.toUtf8Bytes('common.kyc'));
   const ACCREDITED = ethers.keccak256(ethers.toUtf8Bytes('common.accredited'));
 
   const ccidOf = (n: number) => '0x' + n.toString(16).padStart(2, '0').repeat(32);
-
-  const credentialRule = (credentialTypeId: string, flags: string) => ({
-    validator: ethers.ZeroAddress,
-    flags,
-    kind: KIND_CREDENTIAL,
-    credentialTypeId,
-  });
 
   async function deployFixture() {
     const [owner, alice, bob, outsider, pool] = await ethers.getSigners();
@@ -25,22 +14,15 @@ describe('TestPermissionedERC20', function () {
     const identityRegistry = await (await ethers.getContractFactory('MockAceIdentityRegistry')).deploy();
     const credentialRegistry = await (await ethers.getContractFactory('MockAceCredentialRegistry')).deploy();
 
-    const checker = await (
-      await ethers.getContractFactory('AceAllowlistChecker')
-    ).deploy(owner.address, identityRegistry.target, credentialRegistry.target, [
-      credentialRule(ACCREDITED, SWAP_AND_LIQUIDITY),
-      credentialRule(KYC, SWAP_ALLOWED),
-    ]);
-
     const token = await (
       await ethers.getContractFactory('TestPermissionedERC20')
-    ).deploy('Permissioned Test Token', 'PTT', checker.target);
+    ).deploy('Permissioned Test Token', 'PTT', identityRegistry.target, credentialRegistry.target, KYC);
 
     // Alice passes KYC, Bob does not
     await identityRegistry.setIdentity(alice.address, ccidOf(1));
     await credentialRegistry.setCredential(ccidOf(1), KYC, true);
 
-    return { owner, alice, bob, outsider, pool, identityRegistry, credentialRegistry, checker, token };
+    return { owner, alice, bob, outsider, pool, identityRegistry, credentialRegistry, token };
   }
 
   it('exempts the deployer so the token can be funded before anyone is onboarded', async function () {
@@ -55,6 +37,15 @@ describe('TestPermissionedERC20', function () {
     const { alice, bob, token } = await loadFixture(deployFixture);
 
     expect(await token.isAllowed(alice.address)).to.equal(true);
+    expect(await token.isAllowed(bob.address)).to.equal(false);
+  });
+
+  it('denies an account that has a CCID but not the required credential', async function () {
+    const { bob, identityRegistry, token } = await loadFixture(deployFixture);
+
+    // Registered on this chain, but holding no credential of the required type
+    await identityRegistry.setIdentity(bob.address, ccidOf(2));
+
     expect(await token.isAllowed(bob.address)).to.equal(false);
   });
 
@@ -132,11 +123,11 @@ describe('TestPermissionedERC20', function () {
     expect(await token.isExempt(outsider.address)).to.equal(true);
   });
 
-  it('tightens the requirement to accreditation', async function () {
+  it('switches the required credential type', async function () {
     const { owner, alice, token, credentialRegistry } = await loadFixture(deployFixture);
 
     await token.mint(alice.address, 100n);
-    await token.setRequiredFlag(SWAP_AND_LIQUIDITY);
+    await token.setRequiredCredentialTypeId(ACCREDITED);
 
     // Alice only holds kyc, which no longer suffices
     expect(await token.isAllowed(alice.address)).to.equal(false);
@@ -149,14 +140,46 @@ describe('TestPermissionedERC20', function () {
     expect(await token.isAllowed(alice.address)).to.equal(true);
   });
 
-  it('lifts every restriction when the checker is unset', async function () {
+  it('lifts every restriction when the registries are unset', async function () {
     const { alice, bob, token } = await loadFixture(deployFixture);
 
     await token.mint(alice.address, 100n);
-    await token.setChecker(ethers.ZeroAddress);
+    await token.setRegistries(ethers.ZeroAddress, ethers.ZeroAddress);
 
     expect(await token.isAllowed(bob.address)).to.equal(true);
     await expect(token.connect(alice).transfer(bob.address, 10n)).to.not.be.reverted;
+  });
+
+  it('points at a different pair of registries', async function () {
+    const { alice, bob, token } = await loadFixture(deployFixture);
+
+    const identityRegistry = await (await ethers.getContractFactory('MockAceIdentityRegistry')).deploy();
+    const credentialRegistry = await (await ethers.getContractFactory('MockAceCredentialRegistry')).deploy();
+    await identityRegistry.setIdentity(bob.address, ccidOf(3));
+    await credentialRegistry.setCredential(ccidOf(3), KYC, true);
+
+    await token.setRegistries(identityRegistry.target, credentialRegistry.target);
+
+    // Bob is credentialled in the new registries, Alice only in the old ones
+    expect(await token.isAllowed(bob.address)).to.equal(true);
+    expect(await token.isAllowed(alice.address)).to.equal(false);
+  });
+
+  it('surfaces a broken registry loudly instead of reporting a missing credential', async function () {
+    const { alice, bob, identityRegistry, credentialRegistry, token } = await loadFixture(deployFixture);
+
+    await token.mint(alice.address, 100n);
+
+    // A misconfigured registry must not be indistinguishable from "this account has no credential"
+    await identityRegistry.setShouldRevert(true);
+    await expect(token.isAllowed(bob.address)).to.be.revertedWith('MockAceIdentityRegistry: forced revert');
+    await expect(token.connect(alice).transfer(bob.address, 10n)).to.be.revertedWith(
+      'MockAceIdentityRegistry: forced revert'
+    );
+
+    await identityRegistry.setShouldRevert(false);
+    await credentialRegistry.setShouldRevert(true);
+    await expect(token.isAllowed(alice.address)).to.be.revertedWith('MockAceCredentialRegistry: forced revert');
   });
 
   it('lets a credentialled holder burn', async function () {
@@ -171,7 +194,12 @@ describe('TestPermissionedERC20', function () {
   it('restricts configuration to the owner', async function () {
     const { bob, token } = await loadFixture(deployFixture);
 
-    await expect(token.connect(bob).setChecker(ethers.ZeroAddress)).to.be.revertedWith('Ownable: caller is not the owner');
+    await expect(token.connect(bob).setRegistries(ethers.ZeroAddress, ethers.ZeroAddress)).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    );
+    await expect(token.connect(bob).setRequiredCredentialTypeId(KYC)).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    );
     await expect(token.connect(bob).setExempt(bob.address, true)).to.be.revertedWith('Ownable: caller is not the owner');
     await expect(token.connect(bob).mint(bob.address, 1n)).to.be.revertedWith('Ownable: caller is not the owner');
   });

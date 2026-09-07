@@ -109,7 +109,7 @@ export default {
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
     baseTestnet: {
-      url: `https://base-sepolia-public.nodies.app`,
+      url: `https://sepolia.base.org`,
       chainId: 84532,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },

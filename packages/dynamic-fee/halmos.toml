@@ -1,0 +1,4 @@
+[global]
+solver = "z3"
+match-contract = "Spec$"
+forge-build-out = "halmos/artifacts"

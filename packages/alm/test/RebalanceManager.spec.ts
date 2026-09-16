@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
+import {
+  abi as TICK_MATH_ABI,
+  bytecode as TICK_MATH_BYTECODE,
+} from '@cryptoalgebra/integral-core/artifacts/contracts/test/TickMathTest.sol/TickMathTest.json';
 
 // Everything else in this package drives AlmPluginTest, a harness that overrides the four functions
 // connecting the manager to its vault and pool. That leaves the shipped RebalanceManager untouched:
@@ -229,6 +233,45 @@ describe('RebalanceManager', function () {
         const { rebalanceManager, manager } = await loadFixture(deployFixture);
 
         await expect(call(rebalanceManager.connect(manager))).to.be.revertedWith(message);
+      });
+    }
+
+    // The rejections above sit one past each inclusive bound, so the value on the bound itself is pinned here.
+    // The two volatility setters already land on their bounds in the characterization cases at the end.
+    const onTheBound: [string, Partial<typeof THRESHOLDS>, ((m: any) => Promise<any>)?][] = [
+      ['baseLowPct at the floor', { baseLowPct: 100 }, (m) => m.setPercentages(100, 1500, 500)],
+      ['baseLowPct at the ceiling', { baseLowPct: 10000 }, (m) => m.setPercentages(10000, 1500, 500)],
+      ['baseHighPct at the floor', { baseHighPct: 100 }, (m) => m.setPercentages(3000, 100, 500)],
+      ['baseHighPct at the ceiling', { baseHighPct: 10000 }, (m) => m.setPercentages(3000, 10000, 500)],
+      ['limitReservePct at the floor', { limitReservePct: 100 }, (m) => m.setPercentages(3000, 1500, 100)],
+      // What simulate leaves, 10000 - 9000
+      ['limitReservePct at what simulate leaves', { limitReservePct: 1000 }, (m) => m.setPercentages(3000, 1500, 1000)],
+      ['dtrDelta at the ceiling', { dtrDelta: 10000 }, (m) => m.setDtrDelta(10000)],
+      ['highVolatility equal to someVolatility', { highVolatility: 200 }],
+      ['someVolatility at the ceiling', { someVolatility: 300 }],
+      ['extremeVolatility equal to highVolatility', { extremeVolatility: 500 }, (m) => m.setExtremeVolatility(500)],
+      ['depositTokenUnusedThreshold at the floor', { depositTokenUnusedThreshold: 100 }, (m) => m.setDepositTokenUnusedThreshold(100)],
+      ['depositTokenUnusedThreshold at the ceiling', { depositTokenUnusedThreshold: 10000 }, (m) => m.setDepositTokenUnusedThreshold(10000)],
+    ];
+
+    for (const [name, override, setter] of onTheBound) {
+      const [[field, value]] = Object.entries(override);
+
+      it(`should accept ${name}`, async function () {
+        const { RebalanceManager, vaultAllowingToken1 } = await loadFixture(deployFixture);
+
+        const accepted = await RebalanceManager.deploy(vaultAllowingToken1.target, 3600, { ...THRESHOLDS, ...override });
+
+        expect(((await accepted.thresholds()) as any)[field]).to.equal(value);
+      });
+
+      if (!setter) continue;
+      it(`should accept ${name} through its setter`, async function () {
+        const { rebalanceManager, manager } = await loadFixture(deployFixture);
+
+        await setter(rebalanceManager.connect(manager));
+
+        expect(((await rebalanceManager.thresholds()) as any)[field]).to.equal(value);
       });
     }
 
@@ -541,6 +584,27 @@ describe('RebalanceManager', function () {
       // so this lands at about 5 * 10**27 or 5 * 10**39 depending on the run. Both are astronomically
       // above parity, which is the point; the bound clears either.
       expect(price).to.be.greaterThan(10n ** 24n);
+    });
+
+    // The bound above has to clear two readings 10**12 apart, so it cannot see the constants in the formula.
+    // Two 18 decimal tokens fix the paired decimals whichever one sorts first, which makes the price exact.
+    it('should price exactly above the uint128 boundary when the paired token sorts first', async function () {
+      const fixture = await loadFixture(deployFixture);
+      await fixture.pool.setPlugin(fixture.user.address);
+
+      const MockERC20 = await ethers.getContractFactory('MockERC20');
+      const tokens = [await MockERC20.deploy('A', 'A', 18), await MockERC20.deploy('B', 'B', 18)];
+      const [paired, deposit] = BigInt(tokens[0].target as string) < BigInt(tokens[1].target as string) ? tokens : [tokens[1], tokens[0]];
+      const vault = await (await ethers.getContractFactory('MockVault')).deploy(fixture.pool.target, false, true);
+      await vault.setTokens(paired.target, deposit.target);
+
+      const TICK = 500000;
+      const price = await priceAt(vault, TICK, fixture);
+
+      const tickMath: any = await (await ethers.getContractFactory(TICK_MATH_ABI, TICK_MATH_BYTECODE)).deploy();
+      const sqrtPrice: bigint = await tickMath.getSqrtRatioAtTick(TICK);
+      const priceX128 = (sqrtPrice * sqrtPrice) / 2n ** 64n;
+      expect(price).to.equal((priceX128 * 10n ** 18n) / 2n ** 128n);
     });
 
     it('should divide away to nothing above the boundary when the deposit token sorts first', async function () {

@@ -109,10 +109,13 @@ describe('AccessListRegistry', function () {
       );
 
       // Remove user1 but keep user2
-      await accessListRegistry.connect(accessListManager).setWhitelistedBatch(
-        [user1.address, user2.address],
-        [false, true]
-      );
+      await expect(
+        accessListRegistry.connect(accessListManager).setWhitelistedBatch([user1.address, user2.address], [false, true])
+      )
+        .to.emit(accessListRegistry, 'UserWhitelistUpdated')
+        .withArgs(user1.address, false)
+        .and.to.emit(accessListRegistry, 'UserWhitelistUpdated')
+        .withArgs(user2.address, true);
 
       expect(await accessListRegistry.isWhitelisted(user1.address)).to.be.false;
       expect(await accessListRegistry.isWhitelisted(user2.address)).to.be.true;

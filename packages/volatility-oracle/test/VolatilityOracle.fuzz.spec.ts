@@ -146,6 +146,43 @@ describe('VolatilityOracle properties', function () {
       );
     });
 
+    // A target between two timepoints is answered by interpolating along the straight line between them,
+    // and nothing had held the result to that line: every case above reads one exact point.
+    it('answers a target between two timepoints from between their cumulatives', async function () {
+      const layoutArb = fc.array(
+        fc.record({ advanceTimeBy: fc.integer({ min: 1, max: 5000 }), tick: fc.integer({ min: -50_000, max: 50_000 }) }),
+        { minLength: 3, maxLength: 8 }
+      );
+
+      await fc.assert(
+        fc.asyncProperty(layoutArb, fc.integer({ min: 0, max: 1_000_000 }), async (layout, pick) => {
+          const oracle = await loadFixture(volatilityOracleFixture);
+          await oracle.initialize({ tick: 0, time: 0 });
+          await oracle.batchUpdate(layout);
+
+          const points = [];
+          for (let i = 0; i <= layout.length; i++) {
+            const timepoint = await oracle.timepoints(i);
+            points.push({ at: Number(timepoint.blockTimestamp), cumulative: timepoint.tickCumulative as bigint });
+          }
+
+          // Inside the recorded stretch, so the answer is an interpolation and not an extrapolation
+          const last = points[points.length - 1].at;
+          const target = points[0].at + Math.floor(((last - points[0].at) * pick) / 1_000_000);
+          const answer = BigInt(await oracle.getTickCumulativeAt(last - target));
+
+          const before = points.filter((point) => point.at <= target).pop()!;
+          const after = points.find((point) => point.at >= target) ?? before;
+          const low = before.cumulative < after.cumulative ? before.cumulative : after.cumulative;
+          const high = before.cumulative < after.cumulative ? after.cumulative : before.cumulative;
+
+          expect(answer).to.be.gte(low);
+          expect(answer).to.be.lte(high);
+        }),
+        fuzz
+      );
+    });
+
     // write and _getVolatilityCumulative both cast the result to uint88 without checking, on the
     // strength of the comment above the function, and nothing had held it to that
     it('fits the uint88 its callers cast it to', async function () {

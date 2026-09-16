@@ -327,6 +327,30 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(truncated - 1n);
     });
 
+    it('should average the difference of two nonzero cumulatives, with no rounding correction', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      // The price moves before the window opens, so the reading a period back is not the seeded zero,
+      // and again inside the window, so the delta does not divide evenly by the period
+      await mockPool.swapToTick(600);
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(300);
+      await time.increase(1000);
+      await mockPool.swapToTick(100);
+
+      const [now] = await plugin1.getSingleTimepoint(0);
+      const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+      const delta = now - then;
+
+      // What makes the case bite: a cumulative to subtract, a positive delta, and a remainder
+      expect(then).to.not.equal(0n);
+      expect(delta).to.be.greaterThan(0n);
+      expect(delta % BigInt(TWAP_PERIOD)).to.not.equal(0n);
+
+      // The correction is for negative averages only, so this one is plain truncation
+      expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(delta / BigInt(TWAP_PERIOD));
+    });
+
     it('should report no volatility for a flat tick and some once it moves', async function () {
       const { plugin1, mockPool } = await initializedFixture();
 
@@ -432,6 +456,16 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const { plugin1 } = await initializedFixture();
 
       await expect(plugin1.prepayTimepointsStorageSlots(65535, 2)).to.be.revertedWith('Invalid amount');
+    });
+
+    // startIndex + amount may reach 65535, and the loop stops one slot short of that index
+    it('should prepay up to the end of the ring and no further', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.prepayTimepointsStorageSlots(65534, 1)).to.not.be.reverted;
+
+      expect((await plugin1.timepoints(65534)).blockTimestamp).to.equal(1);
+      expect((await plugin1.timepoints(65535)).blockTimestamp).to.equal(0);
     });
 
     it('should keep prepaying idempotent over a range already paid for', async function () {

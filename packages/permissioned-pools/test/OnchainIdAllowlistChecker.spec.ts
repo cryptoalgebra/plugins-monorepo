@@ -89,7 +89,9 @@ describe('OnchainIdAllowlistChecker', function () {
     await addValidClaim(identity, claimIssuer, REQUIRED_TOPIC);
     expect(await checker.isEligible(wallet.address)).to.equal(true);
 
-    await checker.connect(admin).setTrustedIssuer(claimIssuer.target, false);
+    await expect(checker.connect(admin).setTrustedIssuer(claimIssuer.target, false))
+      .to.emit(checker, 'TrustedIssuerUpdated')
+      .withArgs(claimIssuer.target, false);
     expect(await checker.isEligible(wallet.address)).to.equal(false);
   });
 
@@ -159,7 +161,11 @@ describe('OnchainIdAllowlistChecker', function () {
     it('should apply a batch of issuers', async function () {
       const { admin, other, claimIssuer, checker } = await loadFixture(deployFixture);
 
-      await checker.connect(admin).setTrustedIssuersBatch([claimIssuer.target, other.address], [true, false]);
+      await expect(checker.connect(admin).setTrustedIssuersBatch([claimIssuer.target, other.address], [true, false]))
+        .to.emit(checker, 'TrustedIssuerUpdated')
+        .withArgs(claimIssuer.target, true)
+        .and.to.emit(checker, 'TrustedIssuerUpdated')
+        .withArgs(other.address, false);
 
       expect(await checker.isTrustedIssuer(claimIssuer.target)).to.be.true;
       expect(await checker.isTrustedIssuer(other.address)).to.be.false;

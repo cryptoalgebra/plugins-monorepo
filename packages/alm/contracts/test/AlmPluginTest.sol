@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import '../base/BaseRebalanceManager.sol';
+import './MockVault.sol';
 
 contract AlmPluginTest is BaseRebalanceManager {
   uint256 public depositTokenBalance;
@@ -10,6 +11,21 @@ contract AlmPluginTest is BaseRebalanceManager {
   uint256 public currentPrice;
   uint8 public depositDecimals;
   uint8 public pairedDecimals;
+
+  /// @dev Every input a replayed reading injects. The corpora replay about two thousand readings,
+  /// and one call replaces six for each of them.
+  struct Reading {
+    uint8 depositDecimals;
+    uint8 pairedDecimals;
+    uint256 totalAmount0;
+    uint256 totalAmount1;
+    uint256 slowPrice;
+    uint256 fastPrice;
+    uint256 currentPrice;
+    uint256 depositTokenBalance;
+    uint256 lastRebalanceCurrentPrice;
+    State state;
+  }
 
   constructor(address _vault, uint32 _minTimeBetweenRebalances, Thresholds memory _thresholds, int24 _tickSpacing) {
     paused = false;
@@ -49,6 +65,15 @@ contract AlmPluginTest is BaseRebalanceManager {
   function rebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) public {
     TwapResult memory twapResult = _obtainTWAPs(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
     _rebalance(twapResult);
+  }
+
+  function setReading(Reading calldata reading) external {
+    setDecimals(reading.depositDecimals, reading.pairedDecimals);
+    MockVault(vault).setTotalAmounts(reading.totalAmount0, reading.totalAmount1);
+    setPrices(reading.slowPrice, reading.fastPrice, reading.currentPrice);
+    depositTokenBalance = reading.depositTokenBalance;
+    lastRebalanceCurrentPrice = reading.lastRebalanceCurrentPrice;
+    state = reading.state;
   }
 
   function setDepositTokenBalance(uint256 _depositTokenBalance) public {

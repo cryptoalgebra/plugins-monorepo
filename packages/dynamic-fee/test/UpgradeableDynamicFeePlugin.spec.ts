@@ -161,6 +161,29 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       expect(config.baseFee).to.eq(ALT_FEE_CONFIG.baseFee);
     });
 
+    // Between the layouts every field boundary has a set bit against a clear one, both ways round, and the
+    // top bit of the word is set, so a field offset shifted by one or a narrowed mask changes some read.
+    const PACKING_LAYOUTS = {
+      'first of each pair topped': { alpha1: 0x8001, alpha2: 0x0002, beta1: 0x80000001, beta2: 0x00000002, gamma1: 0x8001, gamma2: 0x0002, baseFee: 0x0005 },
+      'second of each pair topped': { alpha1: 0x0002, alpha2: 0x8001, beta1: 0x00000002, beta2: 0x80000001, gamma1: 0x0002, gamma2: 0x8001, baseFee: 0x7ffc },
+      'base fee topped': { alpha1: 0x0001, alpha2: 0x0002, beta1: 0x00000001, beta2: 0x00000002, gamma1: 0x0001, gamma2: 0x0002, baseFee: 0x8001 },
+    };
+
+    for (const [layout, packed] of Object.entries(PACKING_LAYOUTS)) {
+      it(`should read back every field with the ${layout}`, async () => {
+        await pluginProxy.changeFeeConfiguration(packed);
+
+        const config = await pluginProxy.feeConfig.staticCall();
+        expect(config.alpha1).to.eq(packed.alpha1);
+        expect(config.alpha2).to.eq(packed.alpha2);
+        expect(config.beta1).to.eq(packed.beta1);
+        expect(config.beta2).to.eq(packed.beta2);
+        expect(config.gamma1).to.eq(packed.gamma1);
+        expect(config.gamma2).to.eq(packed.gamma2);
+        expect(config.baseFee).to.eq(packed.baseFee);
+      });
+    }
+
     it('should emit FeeConfiguration event', async () => {
       await expect(pluginProxy.changeFeeConfiguration(ALT_FEE_CONFIG))
         .to.emit(pluginProxy, 'FeeConfiguration');
@@ -245,6 +268,19 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       expect(await dynamicFeeImplementation.getCurrentFee(1000000)).to.eq(flat.baseFee);
       expect(await pluginProxy.getCurrentFeeForVolatility(1000000)).to.eq(flat.baseFee);
     });
+
+    // Only both alphas off short circuits. With one off, the other sigmoid still counts in both copies.
+    for (const zeroed of ['alpha1', 'alpha2'] as const) {
+      it(`does not short circuit when only ${zeroed} is off`, async () => {
+        const oneSided = { ...DEFAULT_FEE_CONFIG, [zeroed]: 0 };
+        await pluginProxy.changeFeeConfiguration(oneSided);
+        await dynamicFeeImplementation.changeFeeConfiguration(oneSided);
+
+        const fromConnector = await pluginProxy.getCurrentFeeForVolatility(1000000);
+        expect(fromConnector).to.be.greaterThan(oneSided.baseFee);
+        expect(await dynamicFeeImplementation.getCurrentFee(1000000)).to.eq(fromConnector);
+      });
+    }
 
     it('reports the same configuration as the connector', async () => {
       const fromImplementation = await dynamicFeeImplementation.getFeeConfig();

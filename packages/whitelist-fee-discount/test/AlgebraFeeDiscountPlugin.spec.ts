@@ -138,7 +138,7 @@ describe('AlgebraFeeDiscountPlugin', () => {
     describe('#setFeeDiscount', async () => {
       it('works correct', async () => {
         await registry.setFeeDiscount(wallet.address, [mockPool.target], [500])
-        await registry.setFeeDiscount(other.address, [mockPool.target], [400])
+        await expect(registry.setFeeDiscount(other.address, [mockPool.target], [400])).to.emit(registry, 'FeeDiscount').withArgs(other.address, mockPool.target, 400)
         expect(await registry.feeDiscounts(wallet.address, mockPool.target)).to.be.eq(500);
         expect(await registry.feeDiscounts(other.address, mockPool.target)).to.be.eq(400);        
       });

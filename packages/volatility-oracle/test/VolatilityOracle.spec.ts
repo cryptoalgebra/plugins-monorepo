@@ -185,6 +185,39 @@ describe('VolatilityOracle', () => {
       expect(await volatilityOracle.getTickCumulativeAt(window - 1)).to.be.eq(tickCumulative + 7300n * 2n);
     });
 
+    // A target exactly a window back takes the search heuristic, and here its first step moves right over a
+    // range of a few timepoints, where a jump of eight would land past the newest one
+    it('finds a tick cumulative a window back with few timepoints inside the window', async () => {
+      const hour = 60 * 60;
+      await volatilityOracle.initialize({ tick: 10, time: 0 });
+      // Six hourly timepoints, a gap, then timepoints at 29h, 30h, 31h, 32h and 33h
+      await volatilityOracle.batchUpdate([
+        ...Array(6).fill({ advanceTimeBy: hour, tick: 10 }),
+        { advanceTimeBy: 23 * hour, tick: 10 },
+        ...Array(4).fill({ advanceTimeBy: hour, tick: 10 }),
+      ]);
+      // A window back from 55.5h is 31.5h, between the timepoints at 31h and 32h
+      await volatilityOracle.advanceTime(22.5 * hour);
+
+      expect(await volatilityOracle.getTickCumulativeAt(window)).to.be.eq(10n * BigInt(31.5 * hour));
+    });
+
+    // What a write stores as the start of its window is the index the same search returns, and a target
+    // landing exactly on a timepoint that is not the newest takes the branch returning the one after it
+    it('records the window start at the timepoint the target lands on', async () => {
+      const hour = 60 * 60;
+      await volatilityOracle.initialize({ tick: 10, time: 0 });
+      await volatilityOracle.batchUpdate([
+        { advanceTimeBy: hour, tick: 10 },
+        { advanceTimeBy: hour, tick: 10 },
+        { advanceTimeBy: hour, tick: 10 },
+        // A window on from the timepoint at 2h, which is index 2
+        { advanceTimeBy: 23 * hour, tick: 10 },
+      ]);
+
+      expect((await volatilityOracle.timepoints(4)).windowStartIndex).to.be.eq(2);
+    });
+
     describe('oldest timepoint is more than WINDOW seconds ago', async () => {
       beforeEach('initialize', async () => {
         await volatilityOracle.initialize({ tick: 7200, time: 1000 });

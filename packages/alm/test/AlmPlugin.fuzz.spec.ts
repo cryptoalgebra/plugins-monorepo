@@ -119,18 +119,20 @@ describe('AlmPlugin properties', function () {
             // silently emptied the rest of the run.
             const { almPlugin, mockVault } = await loadFixture(deployFixture);
 
-            await almPlugin.setState(draw.state);
-            await almPlugin.setLastRebalanceCurrentPrice(
-              draw.lastRebalancePriceOffset === null ? 0n : priceIn(30_000_000, draw.lastRebalancePriceOffset)
-            );
-            await almPlugin.setPrices(
-              priceIn(draw.band, draw.slowOffset),
-              priceIn(draw.band, draw.fastOffset),
-              priceIn(draw.band, draw.currentOffset)
-            );
             const amount0 = (BigInt(draw.depositShare) * TOTAL_LIQUIDITY) / 1_000_000n;
-            await mockVault.setTotalAmounts(amount0, TOTAL_LIQUIDITY - amount0);
-            await almPlugin.setDepositTokenBalance((BigInt(draw.unusedShare) * TOTAL_LIQUIDITY) / 100_000_000n);
+            await almPlugin.setReading({
+              depositDecimals: 18,
+              pairedDecimals: 18,
+              totalAmount0: amount0,
+              totalAmount1: TOTAL_LIQUIDITY - amount0,
+              slowPrice: priceIn(draw.band, draw.slowOffset),
+              fastPrice: priceIn(draw.band, draw.fastOffset),
+              currentPrice: priceIn(draw.band, draw.currentOffset),
+              depositTokenBalance: (BigInt(draw.unusedShare) * TOTAL_LIQUIDITY) / 100_000_000n,
+              lastRebalanceCurrentPrice:
+                draw.lastRebalancePriceOffset === null ? 0n : priceIn(30_000_000, draw.lastRebalancePriceOffset),
+              state: draw.state,
+            });
 
             const receipt = await (await rebalanceAt(almPlugin, draw.currentTick, draw.sameBlock)).wait();
 
@@ -153,6 +155,12 @@ describe('AlmPlugin properties', function () {
               // here: the builder adds or subtracts a spacing in a dozen places and nothing checks it.
               expect(baseLower).to.be.lessThan(baseUpper);
               expect(limitLower).to.be.lessThan(limitUpper);
+              // The two positions the vault mints must not overlap, or it puts liquidity in the same band twice.
+              // Every arm of both builders touches them at an endpoint at most, so a stray spacing shows up here.
+              expect(baseUpper <= limitLower || limitUpper <= baseLower, 'the two ranges overlap').to.be.true;
+              // The width guard sits right before the call, so nothing narrower than its floor can reach the vault
+              expect(baseUpper - baseLower).to.be.greaterThan(300n);
+              expect(limitUpper - limitLower).to.be.greaterThan(300n);
               for (const tick of [baseLower, baseUpper, limitLower, limitUpper]) {
                 expect(tick).to.be.gte(MIN_TICK);
                 expect(tick).to.be.lte(MAX_TICK);

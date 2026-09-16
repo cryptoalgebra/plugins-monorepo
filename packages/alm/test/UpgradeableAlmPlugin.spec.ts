@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { UpgradeableAlmPluginTest, AlmPluginImplementation, MockFactory } from '../typechain';
 import { ZERO_ADDRESS } from 'test-utils/consts';
@@ -19,20 +20,18 @@ describe('#UpgradeableAlmPlugin', () => {
   const MOCK_PLUGIN_FACTORY = '0x0000000000000000000000000000000000000004';
   const MOCK_REBALANCE_MANAGER = '0x0000000000000000000000000000000000000003';
 
-  beforeEach(async () => {
-    [wallet, other] = await (ethers as any).getSigners();
-
+  async function deployFixture() {
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');
-    mockFactory = await MockFactoryFactory.deploy() as any as MockFactory;
+    const mockFactory = await MockFactoryFactory.deploy() as any as MockFactory;
 
     // Deploy ALM Implementation (shared logic)
     const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-    almImplementation = await almImplFactory.deploy() as any as AlmPluginImplementation;
+    const almImplementation = await almImplFactory.deploy() as any as AlmPluginImplementation;
 
     // Deploy Plugin Logic (with real factory, pluginFactory, and implementation address as immutables)
     const pluginLogicFactory = await ethers.getContractFactory('UpgradeableAlmPluginTest');
-    pluginLogic = await pluginLogicFactory.deploy(
+    const pluginLogic = await pluginLogicFactory.deploy(
       await mockFactory.getAddress(),
       MOCK_PLUGIN_FACTORY,
       await almImplementation.getAddress()
@@ -50,7 +49,15 @@ describe('#UpgradeableAlmPlugin', () => {
     );
 
     // Get proxy as UpgradeableAlmPluginTest interface
-    pluginProxy = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy.getAddress()) as any as UpgradeableAlmPluginTest;
+    const pluginProxy = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy.getAddress()) as any as UpgradeableAlmPluginTest;
+
+    return { mockFactory, almImplementation, pluginLogic, pluginProxy };
+  }
+
+  // Every test reverts to one deployment rather than deploying the five contracts again
+  beforeEach(async () => {
+    [wallet, other] = await (ethers as any).getSigners();
+    ({ mockFactory, almImplementation, pluginLogic, pluginProxy } = await loadFixture(deployFixture));
   });
 
   describe('#initialization', () => {
@@ -99,6 +106,12 @@ describe('#UpgradeableAlmPlugin', () => {
       await expect(
         pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, 100, 200)
       ).to.be.revertedWith('_slowTwapPeriod must be >= _fastTwapPeriod');
+    });
+
+    it('should accept equal slow and fast periods', async () => {
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, FAST_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(FAST_TWAP_PERIOD);
     });
 
     it('should revert if rebalanceManager is zero address', async () => {
@@ -159,6 +172,16 @@ describe('#UpgradeableAlmPlugin', () => {
       await expect(
         pluginProxy.setSlowTwapPeriod(100) // less than FAST_TWAP_PERIOD
       ).to.be.revertedWith('_slowTwapPeriod must be >= fastTwapPeriod');
+    });
+
+    it('should accept setSlowTwapPeriod equal to fastTwapPeriod', async () => {
+      await pluginProxy.setSlowTwapPeriod(FAST_TWAP_PERIOD);
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(FAST_TWAP_PERIOD);
+    });
+
+    it('should accept setFastTwapPeriod equal to slowTwapPeriod', async () => {
+      await pluginProxy.setFastTwapPeriod(SLOW_TWAP_PERIOD);
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(SLOW_TWAP_PERIOD);
     });
 
     it('should revert setFastTwapPeriod if greater than slowTwapPeriod', async () => {
@@ -243,6 +266,14 @@ describe('#UpgradeableAlmPlugin', () => {
       // 'other' is not owner and has no role
       await expect(
         pluginProxy.connect(other).initialize(MOCK_POOL)
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
+    });
+
+    it('should revert when unauthorized user calls initializeALM', async () => {
+      await pluginProxy.initialize(MOCK_POOL);
+
+      await expect(
+        pluginProxy.connect(other).initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD)
       ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 

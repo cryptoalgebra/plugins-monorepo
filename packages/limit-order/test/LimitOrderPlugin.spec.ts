@@ -217,7 +217,8 @@ describe('LimitOrders', () => {
 
     it('cross & close lo zeroToOne false', async () => {
         await loModule.place(poolKey, -60, false, 10n**8n);
-        await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(98,100), wallet);
+        // The fill names the order's side, which is the inverse of the swap that crossed it
+        await expect(swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(98,100), wallet)).to.emit(loModule, 'Fill').withArgs(1, -60, false);
 
         const {filled, liquidityTotal, token0Total, token1Total} = await loModule.epochInfos(1);
 
@@ -231,7 +232,7 @@ describe('LimitOrders', () => {
 
     it('cross & close lo zeroToOne true', async () => {
       await loModule.place(poolKey, 0, true, 10n**8n);
-      await swapTarget.swapToHigherSqrtPrice(pool, encodePriceSqrt(102,100), wallet);
+      await expect(swapTarget.swapToHigherSqrtPrice(pool, encodePriceSqrt(102,100), wallet)).to.emit(loModule, 'Fill').withArgs(1, 0, true);
 
       const {filled, liquidityTotal, token0Total, token1Total} = await loModule.epochInfos(1);
 
@@ -346,7 +347,7 @@ describe('LimitOrders', () => {
         await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(99,100), wallet);
 
         let balanceBefore = await token0.balanceOf(wallet);
-        await loModule.withdraw(1, wallet);
+        await expect(loModule.withdraw(1, wallet)).to.emit(loModule, 'Withdraw').withArgs(wallet.address, 1, 10n**8n);
         let balanceAfter =  await token0.balanceOf(wallet);
         expect(balanceAfter - balanceBefore).to.be.eq(300435)
     });
@@ -412,14 +413,19 @@ describe('LimitOrders', () => {
       await loModule.connect(other).place(poolKey, -60, false, 10n**8n);
       await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(99,100), wallet);
 
+      const { token0Total: filled } = await loModule.epochInfos(1);
       const before = await token0.balanceOf(wallet);
       const otherBefore = await token0.balanceOf(other);
 
       await loModule.withdraw(1, wallet);
       await loModule.connect(other).withdraw(1, other);
 
-      const total = (await token0.balanceOf(wallet)) - before + ((await token0.balanceOf(other)) - otherBefore);
-      expect(total).to.be.greaterThan(0);
+      // Equal stakes split the filled tokens to the last unit, and the drained epoch books nothing
+      expect((await token0.balanceOf(wallet)) - before).to.be.eq(filled / 2n);
+      expect((await token0.balanceOf(other)) - otherBefore).to.be.eq(filled - filled / 2n);
+      const drained = await loModule.epochInfos(1);
+      expect(drained.liquidityTotal).to.be.eq(0);
+      expect(drained.token0Total).to.be.eq(0);
 
       // Nothing is left for a third party to claim out of the drained epoch
       await expect(loModule.connect(other).withdraw(1, other)).to.be.revertedWithCustomError(loModule, 'ZeroLiquidity');
@@ -448,7 +454,7 @@ describe('LimitOrders', () => {
     });
 
     it('should emit event', async () => {
-      expect(await loModule.setTickSpacing(pool, 120)).to.emit(loModule, 'LimitOrderTickSpacing').withArgs(pool, 120);
+      await expect(loModule.setTickSpacing(pool, 120)).to.emit(loModule, 'LimitOrderTickSpacing').withArgs(pool, 120);
     });
 
     it('withdraw works correct after tickSpacing change', async () => {
@@ -487,7 +493,7 @@ describe('LimitOrders', () => {
         await loModule.place(poolKey, -60, false, 10n**8n);
 
         let balanceBefore = await token1.balanceOf(other);
-        await loModule.kill(poolKey, -60, 0, 10n ** 8n, false, other);
+        await expect(loModule.kill(poolKey, -60, 0, 10n ** 8n, false, other)).to.emit(loModule, 'Kill').withArgs(wallet.address, 1, -60, false, 10n ** 8n);
         let balanceAfter =  await token1.balanceOf(other);
         await expect(balanceAfter - balanceBefore).to.be.eq(299535)
     });
@@ -581,6 +587,7 @@ describe('LimitOrders', () => {
       await expect(balanceAfter - balanceBefore).to.be.eq(149767)   
       await expect(filled).to.be.eq(false)
       await expect(liquidityTotal).to.be.eq((10n ** 8n)/2n)
+      expect(await loModule.getEpochLiquidity(1, wallet)).to.be.eq((10n ** 8n)/2n)
     });
 
   })

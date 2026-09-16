@@ -350,6 +350,14 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
     });
 
+    it('should turn the hook on when the pool config does not carry it', async () => {
+      await mockPool.setPluginConfig(0);
+
+      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
+
+      expect((await mockPool.globalState()).pluginConfig).to.eq(await pluginProxy.defaultPluginConfig());
+    });
+
     it('should leave the pool config alone when it already carries the hook', async () => {
       const withAfterSwap = await pluginProxy.defaultPluginConfig();
       await mockPool.setPluginConfig(withAfterSwap);

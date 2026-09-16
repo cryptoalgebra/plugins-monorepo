@@ -66,6 +66,20 @@ describe('#AlmPlugin', () => {
 		return loadFixture(fixture);
 	}
 
+	// A recorded state as the single harness call that injects it, which the two corpora make two thousand times over
+	const readingOf = (state: any, depositDecimals: number, pairedDecimals: number) => ({
+		depositDecimals,
+		pairedDecimals,
+		totalAmount0: BigInt(state.usedToken0),
+		totalAmount1: BigInt(state.usedToken1),
+		slowPrice: BigInt(state.twapSlow),
+		fastPrice: BigInt(state.twapFast),
+		currentPrice: BigInt(state.currentPrice),
+		depositTokenBalance: BigInt(state.depositTokenBalance),
+		lastRebalanceCurrentPrice: BigInt(state.lastRebalancePrice),
+		state: BigInt(state.state),
+	});
+
 	// A recorded case that actually rebalances, shared by the sequence and pause suites below
 	const sample = rebalances.find((r) => r.rebalance.limitPosition != null)!;
 
@@ -86,12 +100,7 @@ describe('#AlmPlugin', () => {
 			limitReservePct: sample.state.limitReservePct,
 		}, 60, true, false);
 
-		await almPlugin.setDecimals(18, 18);
-		await mockVault.setTotalAmounts(BigInt(sample.state.usedToken0), BigInt(sample.state.usedToken1));
-		await almPlugin.setPrices(BigInt(sample.state.twapSlow), BigInt(sample.state.twapFast), BigInt(sample.state.currentPrice));
-		await almPlugin.setDepositTokenBalance(sample.state.depositTokenBalance);
-		await almPlugin.setLastRebalanceCurrentPrice(BigInt(sample.state.lastRebalancePrice));
-		await almPlugin.setState(BigInt(sample.state.state));
+		await almPlugin.setReading(readingOf(sample.state, 18, 18));
 
 		return { almPlugin, mockVault, currentTick: BigInt(sample.state.currentTick) };
 	}
@@ -142,23 +151,7 @@ describe('#AlmPlugin', () => {
 					const slowTick = 0n;
 					const fastTick = 0n;
 
-					await almPlugin.setDecimals(18, 18);
-
-					await mockVault.setTotalAmounts(
-						BigInt(state.usedToken0),
-						BigInt(state.usedToken1)
-					);
-
-					await almPlugin.setPrices(
-						BigInt(state.twapSlow),
-						BigInt(state.twapFast),
-						BigInt(state.currentPrice)
-					);
-
-					await almPlugin.setDepositTokenBalance(state.depositTokenBalance);
-
-					await almPlugin.setLastRebalanceCurrentPrice(BigInt(state.lastRebalancePrice));
-					await almPlugin.setState(BigInt(state.state));
+					await almPlugin.setReading(readingOf(state, 18, 18));
 
 					await expect(almPlugin.rebalance(currentTick, slowTick, fastTick, lastBlockTimestamp)).to.emit(mockVault, 'MockRebalance')
 						.withArgs(rebalance.rebalance.basePosition.bottomTick, rebalance.rebalance.basePosition.topTick, rebalance.rebalance.limitPosition.bottomTick, rebalance.rebalance.limitPosition.topTick);
@@ -206,6 +199,18 @@ describe('#AlmPlugin', () => {
 
 			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
 			expect(await almPlugin.lastRebalanceTimestamp()).to.be.greaterThan(firstTimestamp);
+		});
+
+		// Only strictly inside the window is too soon, so the second it ends already admits the next rebalance
+		it('allows the next rebalance at the very second the window ends', async () => {
+			const { almPlugin, mockVault, currentTick } = await fixtureAtSample();
+
+			await almPlugin.rebalance(currentTick, 0n, 0n, 0n);
+			const firstTimestamp = await almPlugin.lastRebalanceTimestamp();
+			await almPlugin.setState(BigInt(sample.state.state));
+
+			await time.setNextBlockTimestamp(firstTimestamp + 7200n);
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
 		});
 	});
 
@@ -534,6 +539,232 @@ describe('#AlmPlugin', () => {
 		});
 	});
 
+	// Every comparison the decision makes is inclusive on one side, so these land a reading exactly on its threshold
+	const BOUNDARY_THRESHOLDS = {
+		depositTokenUnusedThreshold: 100,
+		simulate: 9300,
+		normalThreshold: 8000,
+		underInventoryThreshold: 7700,
+		overInventoryThreshold: 9100,
+		priceChangeThreshold: 100,
+		extremeVolatility: 2500,
+		highVolatility: 900,
+		someVolatility: 200,
+		dtrDelta: 300,
+		baseLowPct: 3000,
+		baseHighPct: 1500,
+		limitReservePct: 500,
+	};
+	// In State enum order
+	const [OVER, NORMAL, UNDER, SPECIAL] = [0n, 1n, 2n, 3n];
+	const E18 = 10n ** 18n;
+
+	async function deployedWith(
+		overrides: Partial<typeof BOUNDARY_THRESHOLDS>,
+		allowToken1: boolean,
+		state: bigint,
+		amounts: [bigint, bigint],
+		prices: [bigint, bigint, bigint]
+	) {
+		const { almPlugin, mockVault } = await deployedFor({ ...BOUNDARY_THRESHOLDS, ...overrides }, 60, !allowToken1, allowToken1);
+
+		await almPlugin.setDecimals(18, 18);
+		await mockVault.setTotalAmounts(amounts[0], amounts[1]);
+		await almPlugin.setPrices(prices[0], prices[1], prices[2]);
+		await almPlugin.setState(state);
+
+		return { almPlugin, mockVault };
+	}
+
+	describe('#decision thresholds', () => {
+		const PRICE = 100n * E18;
+		const TICK = 1200n;
+
+		// The deposit token holds depositShare of 10000, and at PRICE the paired side is exactly the rest
+		const deployed = (state: bigint, depositShare: bigint, prices: [bigint, bigint, bigint] = [PRICE, PRICE, PRICE]) =>
+			deployedWith({}, false, state, [depositShare * E18, ((10000n - depositShare) * E18) / 100n], prices);
+
+		// 75 against 100 is 25% apart, exactly extremeVolatility, whichever two of the three prices it separates
+		for (const [reading, prices] of [
+			['a fast price that far off the slow one', [PRICE, 75n * E18, 75n * E18]],
+			['a current price that far off the fast one', [PRICE, PRICE, 75n * E18]],
+		] as [string, [bigint, bigint, bigint]][]) {
+			it(`treats ${reading} as extreme volatility`, async () => {
+				const { almPlugin, mockVault } = await deployed(NORMAL, 8500n, prices);
+
+				await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockDepositMax').withArgs(0n, 0n);
+				expect(await almPlugin.paused()).to.be.true;
+			});
+		}
+
+		// 91 against 100 is 9% apart, exactly highVolatility, which parks the manager in Special
+		it('treats a current price exactly highVolatility off the fast one as high', async () => {
+			const { almPlugin, mockVault } = await deployed(NORMAL, 8500n, [PRICE, PRICE, 91n * E18]);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.state()).to.be.eq(SPECIAL);
+		});
+
+		// A slow price 9% under the fast one is high volatility, and a current price 2% off is exactly someVolatility
+		it('refuses a same block high volatility reading whose current price is exactly someVolatility off', async () => {
+			const { almPlugin, mockVault } = await deployed(NORMAL, 8500n, [91n * E18, PRICE, 98n * E18]);
+			const sameBlock = (await time.latest()) + 1;
+			await time.setNextBlockTimestamp(sameBlock);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, sameBlock)).to.not.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.state()).to.be.eq(NORMAL);
+		});
+
+		it('holds a rebalance back while the current price is exactly someVolatility off the fast one', async () => {
+			const { almPlugin, mockVault } = await deployed(SPECIAL, 8500n, [PRICE, PRICE, 98n * E18]);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+
+		it('rebalances once the current price is inside someVolatility of the fast one', async () => {
+			const { almPlugin, mockVault } = await deployed(SPECIAL, 8500n, [PRICE, PRICE, 99n * E18]);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+
+		// underInventoryThreshold - dtrDelta is 7400, and a share on it is not yet below
+		it('lets a share exactly dtrDelta under the under inventory trigger through to the state update', async () => {
+			const { almPlugin, mockVault } = await deployed(NORMAL, 7400n);
+			await almPlugin.setLastRebalanceCurrentPrice(PRICE);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.state()).to.be.eq(UNDER);
+		});
+
+		// Title, starting state, whether a price was recorded, deposit share, and the state the rebalance has to leave
+		const onTrigger: [string, bigint, boolean, bigint, bigint][] = [
+			['puts a fresh share exactly at simulate in Normal', SPECIAL, false, 9300n, NORMAL],
+			['puts a fresh share exactly at the under inventory trigger in Normal', SPECIAL, false, 7700n, NORMAL],
+			['moves an under inventory manager with a share exactly at simulate to Normal', UNDER, true, 9300n, NORMAL],
+			['moves an over inventory manager with a share exactly at the under inventory trigger to Normal', OVER, true, 7700n, NORMAL],
+		];
+
+		for (const [name, state, recorded, share, expected] of onTrigger) {
+			it(name, async () => {
+				const { almPlugin, mockVault } = await deployed(state, share);
+				if (recorded) await almPlugin.setLastRebalanceCurrentPrice(PRICE);
+
+				await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+				expect(await almPlugin.state()).to.be.eq(expected);
+			});
+		}
+
+		// On the edge of its band a Normal manager has nothing to do, and records the reading without a rebalance
+		for (const share of [9300n, 7700n]) {
+			it(`leaves a Normal manager alone at a share of ${share}, on the edge of its band`, async () => {
+				const { almPlugin, mockVault } = await deployed(NORMAL, share);
+				await almPlugin.setLastRebalanceCurrentPrice(PRICE);
+
+				await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.not.emit(mockVault, 'MockRebalance');
+				expect(await almPlugin.state()).to.be.eq(NORMAL);
+				expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(await time.latest());
+			});
+		}
+
+		it('leaves a Normal manager alone while exactly depositTokenUnusedThreshold of the holdings sits unused', async () => {
+			const { almPlugin, mockVault } = await deployed(NORMAL, 8500n);
+			await almPlugin.setLastRebalanceCurrentPrice(PRICE);
+			// 10**20 of a 10**22 total is 1%, exactly the threshold
+			await almPlugin.setDepositTokenBalance(10n ** 20n);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.not.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(await time.latest());
+		});
+
+		it('rebalances a Normal manager once more than depositTokenUnusedThreshold sits unused', async () => {
+			const { almPlugin, mockVault } = await deployed(NORMAL, 8500n);
+			await almPlugin.setLastRebalanceCurrentPrice(PRICE);
+			await almPlugin.setDepositTokenBalance(101n * E18);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+
+		// 99 recorded against 100 now is 1% apart, exactly priceChangeThreshold
+		it('leaves an under inventory manager alone after a price move of exactly priceChangeThreshold', async () => {
+			const { almPlugin, mockVault } = await deployed(UNDER, 7500n);
+			await almPlugin.setLastRebalanceCurrentPrice(99n * E18);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.not.emit(mockVault, 'MockRebalance');
+			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(await time.latest());
+		});
+
+		it('rebalances an under inventory manager after a larger price move', async () => {
+			const { almPlugin, mockVault } = await deployed(UNDER, 7500n);
+			await almPlugin.setLastRebalanceCurrentPrice(98n * E18);
+
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+		});
+	});
+
+	describe('#range arithmetic', () => {
+		// A predicate matches any value, for a tick the case is not about
+		const anyTick = () => true;
+
+		// A current price 9% off the fast one is high volatility, which builds both ranges off the current tick alone
+		const HIGH: [bigint, bigint, bigint] = [100n * E18, 100n * E18, 91n * E18];
+		const PARITY: [bigint, bigint, bigint] = [E18, E18, E18];
+
+		it('ends the limit range one spacing under a round current tick when token0 is the deposit side', async () => {
+			const { almPlugin, mockVault } = await deployedWith({}, false, NORMAL, [10n ** 22n, 10n ** 22n], HIGH);
+
+			await expect(almPlugin.rebalance(1200n, 1200n, 1200n, 0n))
+				.to.emit(mockVault, 'MockRebalance')
+				.withArgs(1200, 887220, -887220, 1140);
+		});
+
+		it('starts the limit range one spacing over a round current tick when token1 is the deposit side', async () => {
+			const { almPlugin, mockVault } = await deployedWith({}, true, NORMAL, [10n ** 22n, 10n ** 22n], HIGH);
+
+			await expect(almPlugin.rebalance(1200n, 1200n, 1200n, 0n))
+				.to.emit(mockVault, 'MockRebalance')
+				.withArgs(-887220, 1200, 1260, 887220);
+		});
+
+		// A 95% deposit share is over inventory, and its ranges are swapped at the end, so the base upper bound
+		// built one spacing under the current tick comes out as the limit upper bound
+		it('ends the limit range one spacing under a round current tick on an over inventory rebalance', async () => {
+			const price = 100n * E18;
+			const { almPlugin, mockVault } = await deployedWith({}, true, SPECIAL, [5n * E18, 9500n * E18], [price, price, price]);
+
+			await expect(almPlugin.rebalance(46080n, 46080n, 46080n, 0n))
+				.to.emit(mockVault, 'MockRebalance')
+				.withArgs(46080, 887220, anyTick, 46020);
+		});
+
+		// At parity the target sits on tick 0, since the paired side is over the reserve by too little to move it.
+		// A 4% lower price bound then rounds to tick 360 and a 3.2% one to tick 300, the width of the base range.
+		it('hands over a base range 360 ticks wide', async () => {
+			const { almPlugin, mockVault } = await deployedWith({ limitReservePct: 700, baseLowPct: 400 }, false, SPECIAL, [9299n * E18, 701n * E18], PARITY);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(0, 360, -887220, 0);
+		});
+
+		it('drops a base range exactly 300 ticks wide', async () => {
+			const { almPlugin, mockVault } = await deployedWith({ limitReservePct: 700, baseLowPct: 320 }, false, SPECIAL, [9299n * E18, 701n * E18], PARITY);
+
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+
+		// Over inventory at parity, the limit range runs from a spacing over the current tick to a spacing over
+		// the lower price bound at tick 3540, so the current tick alone sets its width
+		it('hands over a limit range 360 ticks wide', async () => {
+			const { almPlugin, mockVault } = await deployedWith({}, false, SPECIAL, [9500n * E18, 500n * E18], PARITY);
+
+			await expect(almPlugin.rebalance(3181n, 3181n, 3181n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-887220, 3240, 3240, 3600);
+		});
+
+		it('drops a limit range exactly 300 ticks wide', async () => {
+			const { almPlugin, mockVault } = await deployedWith({}, false, SPECIAL, [9500n * E18, 500n * E18], PARITY);
+
+			await expect(almPlugin.rebalance(3241n, 3241n, 3241n, 0n)).to.not.emit(mockVault, 'MockRebalance');
+		});
+	});
+
 	// almRebalances3.json holds 1365 recorded rebalances, 460 of them with a limit position, and every
 	// one of them runs here. Two are held out. The ranges in the file are calldata an off-chain keeper
 	// passed to the vault through a Safe, not the output of a deployed manager, so where the recording
@@ -574,23 +805,7 @@ describe('#AlmPlugin', () => {
 					const slowTick = 0n;
 					const fastTick = 0n;
 
-					await almPlugin.setDecimals(6, 18);
-
-					await mockVault.setTotalAmounts(
-						BigInt(state.usedToken0),
-						BigInt(state.usedToken1)
-					);
-
-					await almPlugin.setPrices(
-						BigInt(state.twapSlow),
-						BigInt(state.twapFast),
-						BigInt(state.currentPrice)
-					);
-
-					await almPlugin.setDepositTokenBalance(state.depositTokenBalance);
-
-					await almPlugin.setLastRebalanceCurrentPrice(BigInt(state.lastRebalancePrice));
-					await almPlugin.setState(BigInt(state.state));
+					await almPlugin.setReading(readingOf(state, 6, 18));
 
 					await expect(almPlugin.rebalance(currentTick, slowTick, fastTick, lastBlockTimestamp)).to.emit(mockVault, 'MockRebalance')
 						.withArgs(rebalance.rebalance.basePosition.bottomTick, rebalance.rebalance.basePosition.topTick, rebalance.rebalance.limitPosition.bottomTick, rebalance.rebalance.limitPosition.topTick);
@@ -625,12 +840,7 @@ describe('#AlmPlugin', () => {
 					limitReservePct: state.limitReservePct,
 				}, 200, false, true);
 
-				await almPlugin.setDecimals(6, 18);
-				await mockVault.setTotalAmounts(BigInt(state.usedToken0), BigInt(state.usedToken1));
-				await almPlugin.setPrices(BigInt(state.twapSlow), BigInt(state.twapFast), BigInt(state.currentPrice));
-				await almPlugin.setDepositTokenBalance(state.depositTokenBalance);
-				await almPlugin.setLastRebalanceCurrentPrice(BigInt(state.lastRebalancePrice));
-				await almPlugin.setState(BigInt(state.state));
+				await almPlugin.setReading(readingOf(state, 6, 18));
 
 				return { almPlugin, mockVault, currentTick: BigInt(state.currentTick), recorded: rebalance.rebalance, recordedState: BigInt(state.state) };
 			}

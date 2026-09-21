@@ -15,6 +15,10 @@ const config = {
   // Allowlist Checker Registry address for the Permissioned Pool module
   // (optional, deploy via permissioned-pools/scripts/deployAllowlistChecker.ts and set here, or later via setAllowlistCheckerRegistry)
   allowlistCheckerRegistry: ZERO_ADDRESS,
+
+  // Limit Order Manager address for the Limit Order module
+  // (optional, can be set later via setLimitOrderManager)
+  limitOrderManager: ZERO_ADDRESS,
 };
 
 async function main() {
@@ -45,10 +49,10 @@ async function main() {
   await securityImpl.waitForDeployment();
   console.log("SecurityImpl:", await securityImpl.getAddress());
 
-  const PriceConvergenceImpl = await ethers.getContractFactory("PriceConvergencePluginImplementation");
-  const priceConvergenceImpl = await PriceConvergenceImpl.deploy();
-  await priceConvergenceImpl.waitForDeployment();
-  console.log("PriceConvergenceImpl:", await priceConvergenceImpl.getAddress());
+  const LimitOrderImpl = await ethers.getContractFactory("LimitOrderPluginImplementation");
+  const limitOrderImpl = await LimitOrderImpl.deploy();
+  await limitOrderImpl.waitForDeployment();
+  console.log("LimitOrderImpl:", await limitOrderImpl.getAddress());
 
   const PermissionedPoolImpl = await ethers.getContractFactory("PermissionedPoolPluginImplementation");
   const permissionedPoolImpl = await PermissionedPoolImpl.deploy();
@@ -87,7 +91,7 @@ async function main() {
     await volatilityOracleImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await securityImpl.getAddress(),
-    await priceConvergenceImpl.getAddress(),
+    await limitOrderImpl.getAddress(),
     await permissionedPoolImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
@@ -155,6 +159,13 @@ async function main() {
     console.log("Set AllowlistCheckerRegistry:", config.allowlistCheckerRegistry);
   }
 
+  // Set LimitOrderManager
+  if (config.limitOrderManager !== ZERO_ADDRESS) {
+    const tx4 = await factory.setLimitOrderManager(config.limitOrderManager);
+    await tx4.wait();
+    console.log("Set LimitOrderManager:", config.limitOrderManager);
+  }
+
   // Set DefaultPluginFactory in AlgebraFactory
   const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
   const tx9 = await algebraFactory.setDefaultPluginFactory(factoryProxyAddress);
@@ -176,7 +187,7 @@ async function main() {
   console.log("VolatilityOracle:", await volatilityOracleImpl.getAddress());
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
-  console.log("PriceConvergence:", await priceConvergenceImpl.getAddress());
+  console.log("LimitOrder:", await limitOrderImpl.getAddress());
   console.log("PermissionedPool:", await permissionedPoolImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");

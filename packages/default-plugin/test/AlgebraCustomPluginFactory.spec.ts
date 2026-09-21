@@ -30,7 +30,7 @@ async function customFactoryFixture() {
   const volatilityOracleImpl = await (await ethers.getContractFactory('VolatilityOraclePluginImplementation')).deploy();
   const farmingProxyImpl = await (await ethers.getContractFactory('FarmingProxyPluginImplementation')).deploy();
   const securityImpl = await (await ethers.getContractFactory('SecurityPluginImplementation')).deploy();
-  const priceConvergenceImpl = await (await ethers.getContractFactory('PriceConvergencePluginImplementation')).deploy();
+  const limitOrderImpl = await (await ethers.getContractFactory('LimitOrderPluginImplementation')).deploy();
 
   // The plugin implementation binds pluginFactory to the proxy address (known before initialize).
   const pluginImpl = await (await ethers.getContractFactory('AlgebraUpgradeablePlugin')).deploy(
@@ -39,7 +39,7 @@ async function customFactoryFixture() {
     await volatilityOracleImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await securityImpl.getAddress(),
-    await priceConvergenceImpl.getAddress(),
+    await limitOrderImpl.getAddress(),
     ZERO_ADDRESS
   );
 

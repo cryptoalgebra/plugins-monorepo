@@ -129,7 +129,8 @@ contract AlgebraCustomPluginFactory is Initializable, IAlgebraCustomPluginFactor
     // Initialize plugin with the security registry. Custom pools created through this factory
     // don't configure an allowlist checker registry, so the Permissioned Pool module stays
     // fully open (isTraderEligible short-circuits to ALL_ALLOWED for a zero registry).
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry, address(0));
+    // The limit order manager is also left unset, so the Limit Order hook is a no-op.
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry, address(0), address(0));
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);

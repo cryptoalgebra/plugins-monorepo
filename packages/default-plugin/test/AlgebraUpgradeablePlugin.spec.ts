@@ -270,6 +270,41 @@ describe('AlgebraUpgradeablePlugin', () => {
     });
   });
 
+  describe('#LimitOrderPlugin', () => {
+    let manager: any;
+
+    beforeEach('deploy manager and connect pool', async () => {
+      manager = await (await ethers.getContractFactory('MockLimitOrderManager')).deploy();
+      await mockPool.setPlugin(plugin);
+      await initializeAtZeroTick(mockPool);
+    });
+
+    it('manager is unset by default', async () => {
+      expect(await plugin.limitOrderManager()).to.be.eq(ZeroAddress);
+    });
+
+    it('swap works while manager is unset', async () => {
+      await mockPool.swapToTick(10);
+    });
+
+    it('only administrator can set manager', async () => {
+      await expect(plugin.connect(other).setLimitOrderManager(manager)).to.be.revertedWithCustomError(plugin, 'OnlyAdministrator');
+      await expect(plugin.setLimitOrderManager(manager)).to.emit(plugin, 'LimitOrderManager').withArgs(await manager.getAddress());
+      expect(await plugin.limitOrderManager()).to.be.eq(await manager.getAddress());
+    });
+
+    it('afterSwap notifies manager', async () => {
+      await plugin.setLimitOrderManager(manager);
+      await mockPool.swapToTick(10);
+
+      expect(await manager.getSwapCallsCount()).to.be.eq(1);
+      const [pool, zeroToOne, tick] = await manager.getLastSwapCall();
+      expect(pool).to.be.eq(await mockPool.getAddress());
+      expect(zeroToOne).to.be.eq(true);
+      expect(tick).to.be.eq(10);
+    });
+  });
+
   describe('#ModuleIdentification', () => {
     beforeEach('connect plugin to pool', async () => {
       await mockPool.setPlugin(plugin);
@@ -297,7 +332,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect(moduleNames).to.include('Volatility Oracle Plugin');
         expect(moduleNames).to.include('Farming Proxy Plugin');
         expect(moduleNames).to.include('Security Plugin');
-        expect(moduleNames).to.include('Price Convergence Plugin');
+        expect(moduleNames).to.include('Limit Order Plugin');
         expect(moduleNames).to.include('Permissioned Pool Plugin');
 
         // Verify module count

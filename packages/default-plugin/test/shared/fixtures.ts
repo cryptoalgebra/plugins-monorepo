@@ -35,9 +35,9 @@ async function deployImplementations() {
   const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
   const securityImpl = await securityImplFactory.deploy();
 
-  // Price Convergence Implementation
-  const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
-  const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
+  // Limit Order Implementation
+  const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+  const limitOrderImpl = await limitOrderImplFactory.deploy();
 
   // Permissioned Pool Implementation
   const permissionedPoolImplFactory = await ethers.getContractFactory('PermissionedPoolPluginImplementation');
@@ -47,7 +47,7 @@ async function deployImplementations() {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     securityImpl: await securityImpl.getAddress(),
-    priceConvergenceImpl: await priceConvergenceImpl.getAddress(),
+    limitOrderImpl: await limitOrderImpl.getAddress(),
     permissionedPoolImpl: await permissionedPoolImpl.getAddress(),
   };
 }
@@ -70,7 +70,7 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
     implementations.volatilityOracleImpl,
     implementations.farmingProxyImpl,
     implementations.securityImpl,
-    implementations.priceConvergenceImpl
+    implementations.limitOrderImpl
   )) as any as MockTimeDSFactory;
 
   // Deploy MockPool
@@ -84,8 +84,6 @@ export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<
   // Attach to plugin
   const pluginContractFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const plugin = pluginContractFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
-  const [wallet] = await ethers.getSigners();
-  await plugin.setVault(wallet.address);
 
   return {
     plugin,
@@ -137,7 +135,7 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
     implementations.volatilityOracleImpl,
     implementations.farmingProxyImpl,
     implementations.securityImpl,
-    implementations.priceConvergenceImpl,
+    implementations.limitOrderImpl,
     implementations.permissionedPoolImpl
   );
 
@@ -173,7 +171,7 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
     implementations.volatilityOracleImpl,
     implementations.farmingProxyImpl,
     implementations.securityImpl,
-    implementations.priceConvergenceImpl
+    implementations.limitOrderImpl
   )) as any as MockTimeUpgradeablePluginFactory;
 
   // Deploy MockPool
@@ -187,8 +185,6 @@ export const upgradeablePluginFixture: Fixture<UpgradeablePluginFixture> = async
   // Attach to plugin
   const pluginContractFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
   const plugin = pluginContractFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
-  const [wallet] = await ethers.getSigners();
-  await plugin.setVault(wallet.address);
 
   return {
     plugin,
@@ -207,7 +203,7 @@ interface NewMockTimeUpgradeablePluginFactoryFixture extends MockFactoryFixture 
     volatilityOracleImpl: string;
     farmingProxyImpl: string;
     securityImpl: string;
-    priceConvergenceImpl: string;
+    limitOrderImpl: string;
     permissionedPoolImpl: string;
   };
 }
@@ -240,7 +236,7 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
     activeImplementations.volatilityOracleImpl,
     activeImplementations.farmingProxyImpl,
     activeImplementations.securityImpl,
-    activeImplementations.priceConvergenceImpl,
+    activeImplementations.limitOrderImpl,
     activeImplementations.permissionedPoolImpl
   );
 
@@ -257,7 +253,7 @@ export const newMockTimeUpgradeablePluginFactoryFixture: Fixture<NewMockTimeUpgr
       volatilityOracleImpl: activeImplementations.volatilityOracleImpl,
       farmingProxyImpl: activeImplementations.farmingProxyImpl,
       securityImpl: activeImplementations.securityImpl,
-      priceConvergenceImpl: activeImplementations.priceConvergenceImpl,
+      limitOrderImpl: activeImplementations.limitOrderImpl,
       permissionedPoolImpl: activeImplementations.permissionedPoolImpl,
     },
   };

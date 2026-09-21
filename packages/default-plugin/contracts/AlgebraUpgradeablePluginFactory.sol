@@ -32,6 +32,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address securityRegistry;
     // Permissioned Pool
     address allowlistCheckerRegistry;
+    // Limit Order
+    address limitOrderManager;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -114,7 +116,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry, s.allowlistCheckerRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry, s.allowlistCheckerRegistry, s.limitOrderManager);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -137,6 +139,11 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     return _getStorage().allowlistCheckerRegistry;
   }
 
+  /// @inheritdoc IAlgebraDefaultPluginFactory
+  function limitOrderManager() external view override returns (address) {
+    return _getStorage().limitOrderManager;
+  }
+
   // ========== Configuration Setters ==========
 
   /// @inheritdoc IFarmingPluginFactory
@@ -157,6 +164,12 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   function setAllowlistCheckerRegistry(address newAllowlistCheckerRegistry) external override onlyAdministrator {
     _getStorage().allowlistCheckerRegistry = newAllowlistCheckerRegistry;
     emit AllowlistCheckerRegistry(newAllowlistCheckerRegistry);
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
   }
 
   // ========== Upgrade Management ==========

@@ -7,14 +7,14 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnector.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
-import '@cryptoalgebra/price-convergence-plugin/contracts/PriceConvergenceConnector.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 import '@cryptoalgebra/permissioned-pools-plugin/contracts/PermissionedPoolConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security, Price Convergence and Permissioned Pool
+/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security, Limit Order and Permissioned Pool
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -22,7 +22,7 @@ contract AlgebraUpgradeablePlugin is
   VolatilityOracleConnector,
   FarmingProxyConnector,
   SecurityConnector,
-  PriceConvergenceConnector,
+  LimitOrderConnector,
   PermissionedPoolConnector
 {
   using Plugins for uint8;
@@ -33,7 +33,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _volatilityOracleImpl VolatilityOracle implementation address
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _securityImpl Security implementation address
-  /// @param _priceConvergenceImpl Price Convergence implementation address
+  /// @param _limitOrderImpl Limit Order implementation address
   /// @param _permissionedPoolImpl Permissioned Pool implementation address
   constructor(
     address _factory,
@@ -41,25 +41,27 @@ contract AlgebraUpgradeablePlugin is
     address _volatilityOracleImpl,
     address _farmingProxyImpl,
     address _securityImpl,
-    address _priceConvergenceImpl,
+    address _limitOrderImpl,
     address _permissionedPoolImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
     FarmingProxyConnector(_farmingProxyImpl)
     SecurityConnector(_securityImpl)
-    PriceConvergenceConnector(_priceConvergenceImpl)
+    LimitOrderConnector(_limitOrderImpl)
     PermissionedPoolConnector(_permissionedPoolImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
   function initialize(
     address securityRegistry,
-    address allowlistCheckerRegistry
+    address allowlistCheckerRegistry,
+    address limitOrderManager
   ) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeSecurity(securityRegistry);
     _initializePermissionedPool(allowlistCheckerRegistry);
+    _initializeLimitOrder(limitOrderManager);
 
     emit PluginInitialized(_getPool());
   }
@@ -69,7 +71,7 @@ contract AlgebraUpgradeablePlugin is
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = FARMING_PROXY_MODULE_NAME;
     activeModules[2] = SECURITY_MODULE_NAME;
-    activeModules[3] = PRICE_CONVERGENCE_MODULE_NAME;
+    activeModules[3] = LIMIT_ORDER_MODULE_NAME;
     activeModules[4] = PERMISSIONED_POOL_MODULE_NAME;
     return activeModules;
   }
@@ -79,7 +81,7 @@ contract AlgebraUpgradeablePlugin is
       VOLATILITY_ORACLE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       SECURITY_PLUGIN_CONFIG |
-      PRICE_CONVERGENCE_PLUGIN_CONFIG |
+      LIMIT_ORDER_PLUGIN_CONFIG |
       PERMISSIONED_POOL_PLUGIN_CONFIG;
   }
 
@@ -153,9 +155,7 @@ contract AlgebraUpgradeablePlugin is
       _checkStatusOnBurn(msg.sender);
     } else {
       _checkStatus(msg.sender);
-      _checkModifyPositionCaller(sender);
-      // The vault doesn't need KYC - only gate other callers reaching this pool.
-      if (sender != vault()) _permissionedPoolVerifyAddLiquidity(msg.sender, sender);
+      _permissionedPoolVerifyAddLiquidity(msg.sender, sender);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
@@ -211,6 +211,9 @@ contract AlgebraUpgradeablePlugin is
 
     // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
+
+    // Notify limit order manager
+    _updateLimitOrderManagerState(msg.sender, zeroToOne, tick);
 
     return IAlgebraPlugin.afterSwap.selector;
   }

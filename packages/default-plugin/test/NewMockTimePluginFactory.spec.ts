@@ -18,7 +18,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     volatilityOracleImpl: string;
     farmingProxyImpl: string;
     securityImpl: string;
-    priceConvergenceImpl: string;
+    limitOrderImpl: string;
     permissionedPoolImpl: string;
   };
 
@@ -199,7 +199,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -226,7 +226,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -335,7 +335,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -367,7 +367,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -397,7 +397,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -459,7 +459,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -485,7 +485,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -701,7 +701,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(), // NEW security impl!
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -732,7 +732,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -765,7 +765,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -808,7 +808,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -843,7 +843,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         await upgradedSecurityImpl.getAddress(),
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -922,7 +922,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -955,7 +955,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -999,7 +999,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -1039,7 +1039,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 
@@ -1080,7 +1080,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
         implementations.volatilityOracleImpl,
         implementations.farmingProxyImpl,
         implementations.securityImpl,
-        implementations.priceConvergenceImpl,
+        implementations.limitOrderImpl,
         implementations.permissionedPoolImpl
       );
 

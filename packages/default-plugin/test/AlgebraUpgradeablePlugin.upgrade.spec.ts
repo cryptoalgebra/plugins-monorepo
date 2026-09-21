@@ -31,8 +31,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
-    const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
-    const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
+    const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+    const limitOrderImpl = await limitOrderImplFactory.deploy();
 
     // Deploy MockTimeDSFactory (doesn't require msg.sender == algebraFactory)
     const pluginFactoryFactory = await ethers.getContractFactory('MockTimeDSFactory');
@@ -41,7 +41,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       volatilityOracleImpl,
       farmingProxyImpl,
       securityImpl,
-      priceConvergenceImpl
+      limitOrderImpl
     )) as any as MockTimeDSFactory;
 
     // Deploy two mock pools
@@ -60,9 +60,6 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
     const plugin1 = pluginContractFactory.attach(plugin1Address) as any as MockTimeAlgebraUpgradeablePlugin;
     const plugin2 = pluginContractFactory.attach(plugin2Address) as any as MockTimeAlgebraUpgradeablePlugin;
 
-    await plugin1.setVault(wallet.address);
-    await plugin2.setVault(wallet.address);
-
     // Get beacon from factory
     const beacon = await ethers.getContractAt('UpgradeableBeacon', await pluginFactory.beacon());
     const originalImplementation = await beacon.implementation();
@@ -75,7 +72,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       volatilityOracleImpl,
       farmingProxyImpl,
       securityImpl,
-      priceConvergenceImpl,
+      limitOrderImpl,
       ZERO_ADDRESS
     );
 

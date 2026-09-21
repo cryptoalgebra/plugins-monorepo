@@ -24,7 +24,7 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
     address _volatilityOracleImpl,
     address _farmingProxyImpl,
     address _securityImpl,
-    address _priceConvergenceImpl,
+    address _limitOrderImpl,
     address _permissionedPoolImpl
   )
     AlgebraUpgradeablePlugin(
@@ -33,7 +33,7 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
       _volatilityOracleImpl,
       _farmingProxyImpl,
       _securityImpl,
-      _priceConvergenceImpl,
+      _limitOrderImpl,
       _permissionedPoolImpl
     )
   {}

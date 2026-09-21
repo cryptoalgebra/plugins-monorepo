@@ -20,7 +20,7 @@ async function deployImplementations() {
     volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
     farmingProxyImpl: await farmingProxyImpl.getAddress(),
     securityImpl: await securityImpl.getAddress(),
-    priceConvergenceImpl: ZERO_ADDRESS,
+    limitOrderImpl: ZERO_ADDRESS,
   };
 }
 
@@ -43,7 +43,7 @@ describe('OracleTWAP', () => {
       implementations.volatilityOracleImpl,
       implementations.farmingProxyImpl,
       implementations.securityImpl,
-      implementations.priceConvergenceImpl
+      implementations.limitOrderImpl
     );
 
     const oracleTWAPFactory = await ethers.getContractFactory('OracleTWAP');

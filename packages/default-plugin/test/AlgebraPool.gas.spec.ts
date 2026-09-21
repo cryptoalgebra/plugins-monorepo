@@ -50,14 +50,14 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
     const securityImplFactory = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await securityImplFactory.deploy();
 
-    const priceConvergenceImplFactory = await ethers.getContractFactory('PriceConvergencePluginImplementation');
-    const priceConvergenceImpl = await priceConvergenceImplFactory.deploy();
+    const limitOrderImplFactory = await ethers.getContractFactory('LimitOrderPluginImplementation');
+    const limitOrderImpl = await limitOrderImplFactory.deploy();
 
     return {
       volatilityOracleImpl: await volatilityOracleImpl.getAddress(),
       farmingProxyImpl: await farmingProxyImpl.getAddress(),
       securityImpl: await securityImpl.getAddress(),
-      priceConvergenceImpl: await priceConvergenceImpl.getAddress()
+      limitOrderImpl: await limitOrderImpl.getAddress()
     };
   }
 
@@ -72,7 +72,7 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
       implementations.volatilityOracleImpl,
       implementations.farmingProxyImpl,
       implementations.securityImpl,
-      implementations.priceConvergenceImpl
+      implementations.limitOrderImpl
     )) as any as MockTimeDSFactory;
 
     await mockPluginFactory.beforeCreatePoolHook(pool, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x');
@@ -80,7 +80,6 @@ describe('AlgebraPool gas tests [ @skip-on-coverage ]', () => {
 
     const mockDSOperatorFactory = await ethers.getContractFactory('MockTimeAlgebraUpgradeablePlugin');
     const plugin = mockDSOperatorFactory.attach(pluginAddress) as any as MockTimeAlgebraUpgradeablePlugin;
-    await plugin.setVault(await fix.swapTargetCallee.getAddress());
 
     await pool.setPlugin(plugin);
 

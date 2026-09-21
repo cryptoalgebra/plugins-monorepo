@@ -31,8 +31,8 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
   /// @notice Address of Security implementation
   address public immutable securityImplementation;
 
-  /// @notice Address of Price Convergence implementation
-  address public immutable priceConvergenceImplementation;
+  /// @notice Address of Limit Order implementation
+  address public immutable limitOrderImplementation;
 
   /// @inheritdoc IBasePluginFactory
   mapping(address => address) public override pluginByPool;
@@ -48,13 +48,13 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     address _volatilityOracleImpl,
     address _farmingProxyImpl,
     address _securityImpl,
-    address _priceConvergenceImpl
+    address _limitOrderImpl
   ) {
     algebraFactory = _algebraFactory;
     volatilityOracleImplementation = _volatilityOracleImpl;
     farmingProxyImplementation = _farmingProxyImpl;
     securityImplementation = _securityImpl;
-    priceConvergenceImplementation = _priceConvergenceImpl;
+    limitOrderImplementation = _limitOrderImpl;
 
     // Deploy beacon with MockTimeAlgebraUpgradeablePlugin implementation
     MockTimeAlgebraUpgradeablePlugin impl = new MockTimeAlgebraUpgradeablePlugin(
@@ -63,7 +63,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
       _volatilityOracleImpl,
       _farmingProxyImpl,
       _securityImpl,
-      _priceConvergenceImpl,
+      _limitOrderImpl,
       address(0)
     );
     beacon = address(new UpgradeableBeacon(address(impl)));
@@ -99,7 +99,7 @@ contract MockTimeUpgradeablePluginFactory is IFarmingPluginFactory, IBasePluginF
     plugin = address(new AlgebraPluginProxy(beacon, pool, ''));
 
     // Initialize plugin
-    IAlgebraUpgradeablePlugin(plugin).initialize(securityRegistry, address(0));
+    IAlgebraUpgradeablePlugin(plugin).initialize(securityRegistry, address(0), address(0));
 
     pluginByPool[pool] = plugin;
     return plugin;

@@ -28,15 +28,15 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "SecurityImpl"
   });
 
-  const priceConvergenceImpl = m.contract("PriceConvergencePluginImplementation", [], {
-    id: "PriceConvergenceImpl"
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
   });
 
   return {
     volatilityOracleImpl,
     farmingProxyImpl,
     securityImpl,
-    priceConvergenceImpl
+    limitOrderImpl
   };
 });
 
@@ -88,7 +88,7 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     volatilityOracleImpl,
     farmingProxyImpl,
     securityImpl,
-    priceConvergenceImpl
+    limitOrderImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -98,7 +98,7 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     volatilityOracleImpl,
     farmingProxyImpl,
     securityImpl,
-    priceConvergenceImpl
+    limitOrderImpl
   ], {
     id: "PluginImplementation"
   });
@@ -108,7 +108,7 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     volatilityOracleImpl,
     farmingProxyImpl,
     securityImpl,
-    priceConvergenceImpl
+    limitOrderImpl
   };
 });
 

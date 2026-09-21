@@ -76,10 +76,10 @@ async function main() {
   await waitForDeployment(securityImpl);
   console.log("SecurityImpl:", await securityImpl.getAddress());
 
-  const PriceConvergenceImpl = await ethers.getContractFactory("PriceConvergencePluginImplementation");
-  const priceConvergenceImpl = await PriceConvergenceImpl.deploy();
-  await waitForDeployment(priceConvergenceImpl);
-  console.log("PriceConvergenceImpl:", await priceConvergenceImpl.getAddress());
+  const LimitOrderImpl = await ethers.getContractFactory("LimitOrderPluginImplementation");
+  const limitOrderImpl = await LimitOrderImpl.deploy();
+  await waitForDeployment(limitOrderImpl);
+  console.log("LimitOrderImpl:", await limitOrderImpl.getAddress());
   console.log("");
 
   // ============= 2. DEPLOY PROXY ADMIN =============
@@ -115,7 +115,7 @@ async function main() {
     await volatilityOracleImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
     await securityImpl.getAddress(),
-    await priceConvergenceImpl.getAddress()
+    await limitOrderImpl.getAddress()
   );
   await waitForDeployment(pluginImpl);
   const pluginImplAddress = await pluginImpl.getAddress();
@@ -190,7 +190,7 @@ async function main() {
   console.log("VolatilityOracle:", await volatilityOracleImpl.getAddress());
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
-  console.log("PriceConvergence:", await priceConvergenceImpl.getAddress());
+  console.log("LimitOrder:", await limitOrderImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");
   console.log("SecurityRegistry:", await securityRegistry.getAddress());

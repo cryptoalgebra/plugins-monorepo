@@ -273,4 +273,32 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       expect(await pluginFactory.securityRegistry()).to.eq(other.address);
     });
   });
+
+  describe('#setLimitOrderManager', () => {
+    it('fails if caller is not administrator', async () => {
+      await expect(pluginFactory.connect(other).setLimitOrderManager(wallet.address)).to.be.revertedWithCustomError(
+        pluginFactory,
+        'OnlyAdministrator'
+      );
+    });
+
+    it('updates limitOrderManager', async () => {
+      expect(await pluginFactory.limitOrderManager()).to.eq(ZERO_ADDRESS);
+      await pluginFactory.setLimitOrderManager(other.address);
+      expect(await pluginFactory.limitOrderManager()).to.eq(other.address);
+    });
+
+    it('emits event', async () => {
+      await expect(pluginFactory.setLimitOrderManager(other.address)).to.emit(pluginFactory, 'LimitOrderManager').withArgs(other.address);
+    });
+
+    it('is passed to new plugins on initialization', async () => {
+      await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
+      await pluginFactory.setLimitOrderManager(wallet.address);
+
+      await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
+      const plugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', await pluginFactory.pluginByPool(other.address));
+      expect(await plugin.limitOrderManager()).to.eq(wallet.address);
+    });
+  });
 });

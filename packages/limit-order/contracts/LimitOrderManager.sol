@@ -10,8 +10,9 @@ import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.s
 
 import './interfaces/ILimitOrderManager.sol';
 import './base/LimitOrderPayments.sol';
+import './base/MsgSender.sol';
 
-contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
+contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments, MsgSender {
   constructor(
     address _wNativeToken,
     address _poolDeployer,
@@ -151,7 +152,12 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
     _refundNativeToken(decoded.payer);
   }
 
-  function place(PoolAddress.PoolKey memory poolKey, int24 tickLower, bool zeroForOne, uint128 liquidity) external payable override {
+  function place(
+    PoolAddress.PoolKey memory poolKey,
+    int24 tickLower,
+    bool zeroForOne,
+    uint128 liquidity
+  ) external payable override reportSender {
     if (liquidity == 0) revert ZeroLiquidity();
 
     address pool = PoolAddress.computeAddress(poolDeployer, poolKey);

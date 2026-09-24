@@ -7,17 +7,18 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: ZERO_ADDRESS,
+  algebraFactory: "0x4439199c3743161ca22bB8F8B6deC5bF6fF65b04", // X Layer
 
   // Farming center address (optional, can be set later)
-  farmingCenter: ZERO_ADDRESS,
+  farmingCenter: "0x50FCbF85d23aF7C91f94842FeCd83d16665d27bA",
 
   // Allowlist Checker Registry address for the Permissioned Pool module
   // (optional, deploy via permissioned-pools/scripts/deployAllowlistChecker.ts and set here, or later via setAllowlistCheckerRegistry)
-  allowlistCheckerRegistry: ZERO_ADDRESS,
+  allowlistCheckerRegistry: "0xB8C2125a316429669bD8CE88fB674843E71caDE8", // X Layer
 
-  // Limit Order Manager address for the Limit Order module
-  // (optional, can be set later via setLimitOrderManager)
+  // Limit Order Manager address for the Limit Order module.
+  // The manager needs this factory's PROXY address at construction, so it is deployed after this
+  // script (limit-order/scripts/deployLimitOrderManager.ts) and registered via setLimitOrderManager.
   limitOrderManager: ZERO_ADDRESS,
 };
 

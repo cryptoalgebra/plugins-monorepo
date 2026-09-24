@@ -124,12 +124,25 @@ export default {
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    xlayer: {
+      url: `https://rpc.xlayer.tech`,
+      chainId: 196,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: `${ETHERSCAN_API_KEY}`,
     customChains: [
+      {
+        network: 'xlayer',
+        chainId: 196,
+        urls: {
+          apiURL: 'https://www.oklink.com/api/v5/explorer/contract/verify-source-code-plugin/xlayer',
+          browserURL: 'https://web3.okx.com/explorer/x-layer/evm',
+        },
+      },
       {
         network: 'seiTestnet',
         chainId: 713715,

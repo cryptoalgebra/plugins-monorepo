@@ -9,12 +9,11 @@ import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnec
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
 import '@cryptoalgebra/price-convergence-plugin/contracts/PriceConvergenceConnector.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
-import '@cryptoalgebra/permissioned-pools-plugin/contracts/PermissionedPoolConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.2.2 Upgradeable Plugin
-/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security, Price Convergence and Permissioned Pool
+/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security and Price Convergence
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -22,8 +21,7 @@ contract AlgebraUpgradeablePlugin is
   VolatilityOracleConnector,
   FarmingProxyConnector,
   SecurityConnector,
-  PriceConvergenceConnector,
-  PermissionedPoolConnector
+  PriceConvergenceConnector
 {
   using Plugins for uint8;
 
@@ -34,43 +32,35 @@ contract AlgebraUpgradeablePlugin is
   /// @param _farmingProxyImpl FarmingProxy implementation address
   /// @param _securityImpl Security implementation address
   /// @param _priceConvergenceImpl Price Convergence implementation address
-  /// @param _permissionedPoolImpl Permissioned Pool implementation address
   constructor(
     address _factory,
     address _pluginFactory,
     address _volatilityOracleImpl,
     address _farmingProxyImpl,
     address _securityImpl,
-    address _priceConvergenceImpl,
-    address _permissionedPoolImpl
+    address _priceConvergenceImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
     FarmingProxyConnector(_farmingProxyImpl)
     SecurityConnector(_securityImpl)
     PriceConvergenceConnector(_priceConvergenceImpl)
-    PermissionedPoolConnector(_permissionedPoolImpl)
   {}
 
   /// @inheritdoc IAlgebraUpgradeablePlugin
-  function initialize(
-    address securityRegistry,
-    address allowlistCheckerRegistry
-  ) external override initializer onlyPluginFactory {
+  function initialize(address securityRegistry) external override initializer onlyPluginFactory {
     // Initialize modules that require state setup
     _initializeSecurity(securityRegistry);
-    _initializePermissionedPool(allowlistCheckerRegistry);
 
     emit PluginInitialized(_getPool());
   }
 
   function getActiveModuleNames() external pure override returns (string[] memory) {
-    string[] memory activeModules = new string[](5);
+    string[] memory activeModules = new string[](4);
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = FARMING_PROXY_MODULE_NAME;
     activeModules[2] = SECURITY_MODULE_NAME;
     activeModules[3] = PRICE_CONVERGENCE_MODULE_NAME;
-    activeModules[4] = PERMISSIONED_POOL_MODULE_NAME;
     return activeModules;
   }
 
@@ -79,8 +69,7 @@ contract AlgebraUpgradeablePlugin is
       VOLATILITY_ORACLE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
       SECURITY_PLUGIN_CONFIG |
-      PRICE_CONVERGENCE_PLUGIN_CONFIG |
-      PERMISSIONED_POOL_PLUGIN_CONFIG;
+      PRICE_CONVERGENCE_PLUGIN_CONFIG;
   }
 
   // ========== Connector Implementations ==========
@@ -154,8 +143,6 @@ contract AlgebraUpgradeablePlugin is
     } else {
       _checkStatus(msg.sender);
       _checkModifyPositionCaller(sender);
-      // The vault doesn't need KYC - only gate other callers reaching this pool.
-      if (sender != vault()) _permissionedPoolVerifyAddLiquidity(msg.sender, sender);
     }
 
     return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
@@ -178,7 +165,7 @@ contract AlgebraUpgradeablePlugin is
 
   /// @inheritdoc IAlgebraPlugin
   function beforeSwap(
-    address sender,
+    address,
     address,
     bool,
     int256,
@@ -189,8 +176,6 @@ contract AlgebraUpgradeablePlugin is
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
-    // Permissioned Pool check
-    _permissionedPoolVerifySwap(msg.sender, sender);
 
     _writeTimepoint();
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);

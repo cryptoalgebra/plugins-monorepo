@@ -75,8 +75,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       volatilityOracleImpl,
       farmingProxyImpl,
       securityImpl,
-      priceConvergenceImpl,
-      ZERO_ADDRESS
+      priceConvergenceImpl
     );
 
     return {

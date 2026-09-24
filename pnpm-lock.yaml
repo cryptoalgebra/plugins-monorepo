@@ -125,9 +125,6 @@ importers:
       '@cryptoalgebra/integral-periphery':
         specifier: 1.2.4
         version: 1.2.4
-      '@cryptoalgebra/permissioned-pools-plugin':
-        specifier: workspace:^
-        version: link:../permissioned-pools
       '@cryptoalgebra/price-convergence-plugin':
         specifier: workspace:^
         version: link:../price-convergence

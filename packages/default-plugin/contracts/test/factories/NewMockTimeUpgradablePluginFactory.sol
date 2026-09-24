@@ -32,8 +32,6 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     address farmingAddress;
     // Security
     address securityRegistry;
-    // Permissioned Pool
-    address allowlistCheckerRegistry;
     // Module implementations (for creating beacon)
     address volatilityOracleImplementation;
     address farmingProxyImplementation;
@@ -122,7 +120,7 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     plugin = address(new AlgebraPluginProxy(s.beacon, pool, ''));
 
     // Initialize plugin with pool address and all configurations
-    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry, s.allowlistCheckerRegistry);
+    IAlgebraUpgradeablePlugin(plugin).initialize(s.securityRegistry);
 
     s.pluginByPool[pool] = plugin;
     emit PluginCreated(pool, plugin);
@@ -140,10 +138,6 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     return _getStorage().securityRegistry;
   }
 
-  /// @inheritdoc IPermissionedPoolPluginFactory
-  function allowlistCheckerRegistry() external view override returns (address) {
-    return _getStorage().allowlistCheckerRegistry;
-  }
 
   // ========== Configuration Setters ==========
 
@@ -161,11 +155,6 @@ contract NewMockTimeUpgradeablePluginFactory is Initializable, IAlgebraDefaultPl
     emit SecurityRegistry(newSecurityRegistry);
   }
 
-  /// @inheritdoc IPermissionedPoolPluginFactory
-  function setAllowlistCheckerRegistry(address newAllowlistCheckerRegistry) external override {
-    _getStorage().allowlistCheckerRegistry = newAllowlistCheckerRegistry;
-    emit AllowlistCheckerRegistry(newAllowlistCheckerRegistry);
-  }
 
   // ========== Upgrade Management ==========
 

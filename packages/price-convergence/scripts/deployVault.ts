@@ -3,10 +3,10 @@ import { ethers, network } from "hardhat";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 // Fill these before running the script.
-const POOL = "0x677deB381d39E44dE0641EaCB6E36637318043F7";
-const ERC4626_VAULT = "0xFF05E1bD696900dc6A52CA35Ca61Bb1024eDa8e2";
-const FACTORY = "0x53400eD24c77515397fC3A559fF1363DaB81B5c7"; // Leave zero to read factory from POOL.
-const PRICE_CONVERGENCE_PLUGIN = "0xcC0B75a60E62430e0C51b8A49eF050EDfC192337"; // Optional: plugin proxy address.
+const POOL = ZERO_ADDRESS; // wMSTRx / USDT pool on X Layer - fill in after the pool is created.
+const ERC4626_VAULT = "0x30987adf0b11dc698438a99ba04ec3a1ab2c7eab"; // wMSTRx
+const FACTORY = "0x4439199c3743161ca22bB8F8B6deC5bF6fF65b04"; // AlgebraFactory on X Layer. Leave zero to read factory from POOL.
+const PRICE_CONVERGENCE_PLUGIN = ZERO_ADDRESS; // Optional: plugin proxy address, fill in after the pool is created.
 
 // Leave zero to grant to the deployer.
 const VAULT_MANAGER = ZERO_ADDRESS;
@@ -23,7 +23,7 @@ const TWAP_PERIOD = 120;
 const SET_REBALANCE_ENTRYPOINT = true;
 const DEPLOY_PLUGIN_IMPLEMENTATION = false;
 
-const THRESHOLD_TOKEN = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Fill in before running.
+const THRESHOLD_TOKEN = "0x4ae46a509f6b1d9056937ba4500cb143933d2dc8"; // USDG on X Layer.
 const THRESHOLD_AMOUNT_HUMAN = "1000"; // In THRESHOLD_TOKEN's own decimals.
 
 const DEPLOY_CONFIRMATIONS = 1;

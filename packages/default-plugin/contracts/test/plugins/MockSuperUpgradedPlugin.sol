@@ -24,8 +24,7 @@ contract MockSuperUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
     address _dynamicFeeImpl, // ← V2 DynamicFee
     address _farmingProxyImpl, // ← V2 FarmingProxy
     address _almImpl, // ← V2 ALM
-    address _securityImpl, // ← V2 Security
-    address _permissionedPoolImpl
+    address _securityImpl // ← V2 Security
   )
     MockTimeAlgebraUpgradeablePlugin(
       _factory,
@@ -33,8 +32,7 @@ contract MockSuperUpgradedPlugin is MockTimeAlgebraUpgradeablePlugin {
       _volatilityOracleImpl,
       _farmingProxyImpl,
       _securityImpl,
-      address(0),
-      _permissionedPoolImpl
+      address(0)
     )
   {
     dynamicFeeImplementation = _dynamicFeeImpl;

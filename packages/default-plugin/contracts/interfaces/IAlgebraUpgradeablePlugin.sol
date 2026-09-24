@@ -2,14 +2,13 @@
 pragma solidity >=0.5.0;
 
 /// @title The interface for Algebra Upgradeable Plugin
-/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security, Price Convergence and Permissioned Pool
+/// @notice Upgradeable plugin with VolatilityOracle, FarmingProxy, Security and Price Convergence
 interface IAlgebraUpgradeablePlugin {
   /// @notice Emitted when plugin is initialized
   /// @param pool The pool address
   event PluginInitialized(address indexed pool);
 
-  /// @notice Initialize plugin with security registry and allowlist checker registry
+  /// @notice Initialize plugin with security registry
   /// @param securityRegistry The security registry address
-  /// @param allowlistCheckerRegistry The allowlist checker registry address for the Permissioned Pool module
-  function initialize(address securityRegistry, address allowlistCheckerRegistry) external;
+  function initialize(address securityRegistry) external;
 }

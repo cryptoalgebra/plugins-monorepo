@@ -5,19 +5,19 @@ import { ethers } from "hardhat";
 
 const config = {
   // Algebra Core Factory address (used for PERMISSIONED_POOL_MANAGER role checks)
-  algebraFactory: "0x000000000000000000000000000000000000000000",
+  algebraFactory: "0x4439199c3743161ca22bB8F8B6deC5bF6fF65b04",
 
   // Admin address for the OnchainIdAllowlistChecker (manages trusted issuers / required topic)
   checkerAdmin: "0x000000000000000000000000000000000000000000",
 
   // OnchainID identity factory used to resolve a wallet's identity contract
-  identityFactory: "0x000000000000000000000000000000000000000000",
+  identityFactory: "0x520341700b76c30089E0a14Bf6CF78716Da39AC6",
 
   // Claim topic required for eligibility
   requiredTopic: 1,
 
   // Trusted claim issuers to register on the checker at deploy time (optional)
-  trustedIssuers: [] as string[],
+  trustedIssuers: ["0xB5A82D5e8E30dAc53519907470c8c5143b1d178A"] as string[],
 
   // Tokens to immediately point at the deployed checker via the registry (optional)
   // Requires the deployer to hold PERMISSIONED_POOL_MANAGER on algebraFactory

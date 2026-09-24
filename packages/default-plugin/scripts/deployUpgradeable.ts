@@ -10,7 +10,7 @@ const config = {
   algebraFactory: "0x4439199c3743161ca22bB8F8B6deC5bF6fF65b04", // X Layer
 
   // Farming center address (optional, can be set later)
-  farmingCenter: ZERO_ADDRESS,
+  farmingCenter: "0x50FCbF85d23aF7C91f94842FeCd83d16665d27bA",
 
 };
 
@@ -139,13 +139,6 @@ async function main() {
   await tx2.wait();
   console.log("Set SecurityRegistry");
 
-
-  // Set DefaultPluginFactory in AlgebraFactory
-  const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
-  const tx9 = await algebraFactory.setDefaultPluginFactory(factoryProxyAddress);
-  await tx9.wait();
-  console.log("Set DefaultPluginFactory in AlgebraFactory");
-  console.log("");
 
   // ============= SUMMARY =============
   console.log("========================================");

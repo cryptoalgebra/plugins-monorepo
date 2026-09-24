@@ -3,14 +3,14 @@ import { ethers, network } from "hardhat";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 // Fill these before running the script.
-const POOL = ZERO_ADDRESS; // wMSTRx / USDT pool on X Layer - fill in after the pool is created.
-const ERC4626_VAULT = "0x30987adf0b11dc698438a99ba04ec3a1ab2c7eab"; // wMSTRx
+const POOL = "0xA436604c9fBEdcFf6e38223e03BCe22fa837B56b"; // wMSTRx / USDG on X Layer
+const ERC4626_VAULT = "0x30987adF0B11dc698438a99BA04ec3a1AB2c7EaB"; // wMSTRx
 const FACTORY = "0x4439199c3743161ca22bB8F8B6deC5bF6fF65b04"; // AlgebraFactory on X Layer. Leave zero to read factory from POOL.
-const PRICE_CONVERGENCE_PLUGIN = ZERO_ADDRESS; // Optional: plugin proxy address, fill in after the pool is created.
+const PRICE_CONVERGENCE_PLUGIN = "0xe9F1E6933768A407Bd3E523421555314bd1ECb8F"; // Plugin attached to the wMSTRx / USDG pool.
 
 // Leave zero to grant to the deployer.
 const VAULT_MANAGER = ZERO_ADDRESS;
-const REBALANCER = "0x00009cc27c811a3e0FdD2Fd737afCc721B67eE8e";
+const REBALANCER = "0xEd30FA8d6A63508d52389622cC02443D64f781b9";
 const PLUGIN_MANAGER = ZERO_ADDRESS;
 const GRANT_ROLES = true;
 
@@ -23,7 +23,7 @@ const TWAP_PERIOD = 120;
 const SET_REBALANCE_ENTRYPOINT = true;
 const DEPLOY_PLUGIN_IMPLEMENTATION = false;
 
-const THRESHOLD_TOKEN = "0x4ae46a509f6b1d9056937ba4500cb143933d2dc8"; // USDG on X Layer.
+const THRESHOLD_TOKEN = "0x4ae46a509F6b1D9056937BA4500cb143933D2dc8"; // USDG on X Layer.
 const THRESHOLD_AMOUNT_HUMAN = "1000"; // In THRESHOLD_TOKEN's own decimals.
 
 const DEPLOY_CONFIRMATIONS = 1;
@@ -193,7 +193,8 @@ async function main() {
   requireAddress(THRESHOLD_TOKEN, "THRESHOLD_TOKEN");
   const token0Address = await vault.token0();
   const token1Address = await vault.token1();
-  if (THRESHOLD_TOKEN !== token0Address && THRESHOLD_TOKEN !== token1Address) {
+  const thresholdToken = ethers.getAddress(THRESHOLD_TOKEN);
+  if (thresholdToken !== ethers.getAddress(token0Address) && thresholdToken !== ethers.getAddress(token1Address)) {
     throw new Error(
       `THRESHOLD_TOKEN ${THRESHOLD_TOKEN} is neither of the vault's tokens ` +
         `(${token0Address}, ${token1Address})`,

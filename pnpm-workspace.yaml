@@ -1,2 +1,5 @@
 packages:
   - packages/*
+linkWorkspacePackages: true
+minimumReleaseAgeExclude:
+  - '@cryptoalgebra/abstract-plugin@2.2.1'

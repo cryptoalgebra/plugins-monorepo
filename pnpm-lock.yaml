@@ -82,7 +82,7 @@ importers:
   packages/access-list:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -104,7 +104,7 @@ importers:
   packages/alm:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/alm-vault':
         specifier: 1.2.2
@@ -172,7 +172,7 @@ importers:
   packages/dynamic-fee:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -194,7 +194,7 @@ importers:
   packages/farming-proxy:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -216,7 +216,7 @@ importers:
   packages/fee-auction:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -238,7 +238,7 @@ importers:
   packages/limit-order:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -260,7 +260,7 @@ importers:
   packages/managed-fee:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -282,7 +282,7 @@ importers:
   packages/mevx:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -298,7 +298,7 @@ importers:
   packages/permissioned-pools:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -320,7 +320,7 @@ importers:
   packages/reflex:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -336,7 +336,7 @@ importers:
   packages/safety-switch:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -358,7 +358,29 @@ importers:
   packages/sliding-fee:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
+        specifier: ^2.2.1
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.10
+        version: 1.2.10
+      '@cryptoalgebra/integral-periphery':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
+      '@openzeppelin/contracts-upgradeable':
+        specifier: ^4.9.3
+        version: 4.9.6
+    devDependencies:
+      test-utils:
         specifier: workspace:^
+        version: link:../test-utils
+
+  packages/stable-pair-fee:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -401,10 +423,32 @@ importers:
         specifier: ^1.1.6
         version: 1.1.6
 
+  packages/trading-hours:
+    dependencies:
+      '@cryptoalgebra/abstract-plugin':
+        specifier: ^2.2.1
+        version: link:../abstract-plugin
+      '@cryptoalgebra/integral-core':
+        specifier: 1.2.10
+        version: 1.2.10
+      '@cryptoalgebra/integral-periphery':
+        specifier: 1.2.5
+        version: 1.2.5
+      '@openzeppelin/contracts':
+        specifier: ^4.9.3
+        version: 4.9.3
+      '@openzeppelin/contracts-upgradeable':
+        specifier: ^4.9.3
+        version: 4.9.6
+    devDependencies:
+      test-utils:
+        specifier: workspace:^
+        version: link:../test-utils
+
   packages/volatility-oracle:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -426,7 +470,7 @@ importers:
   packages/whitelist-fee-discount:
     dependencies:
       '@cryptoalgebra/abstract-plugin':
-        specifier: workspace:^
+        specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
@@ -627,8 +671,8 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@cryptoalgebra/abstract-plugin@2.1.0':
-    resolution: {integrity: sha512-H7m6P6Dlr/yyUJnY3LOeKXVHBZsaN7r77cCT5w8ofqWlE8ieWA1qecYeNE0D4DmGwvUp3HFN76XOciaHqdn3TA==}
+  '@cryptoalgebra/abstract-plugin@2.2.1':
+    resolution: {integrity: sha512-N5w5rWng/CTOIQC32eGxe1mAg+R333XOfx7vhuuw4yaThV57dyt9OAuYGJxZanh182weWKpme42nFeXAg6H0BA==}
 
   '@cryptoalgebra/alm-vault@1.2.2':
     resolution: {integrity: sha512-niS8oWbeEz4iMFClYKNw82ukMk8B2fjS++3iOSYB4HH/SaZNp/cvMsJzHHdwvWHIbeypDu7EuTudmAaOr2E64w==}
@@ -5157,10 +5201,12 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@cryptoalgebra/abstract-plugin@2.1.0':
+  '@cryptoalgebra/abstract-plugin@2.2.1':
     dependencies:
-      '@cryptoalgebra/integral-core': 1.2.9
-      '@cryptoalgebra/integral-periphery': 1.2.4
+      '@cryptoalgebra/integral-core': 1.2.10
+      '@cryptoalgebra/integral-periphery': 1.2.5
+      '@openzeppelin/contracts': 4.9.3
+      '@openzeppelin/contracts-upgradeable': 4.9.6
 
   '@cryptoalgebra/alm-vault@1.2.2':
     dependencies:
@@ -5173,7 +5219,7 @@ snapshots:
 
   '@cryptoalgebra/farming-proxy-plugin@2.1.0':
     dependencies:
-      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/abstract-plugin': 2.2.1
       '@cryptoalgebra/integral-core': 1.2.9
       '@cryptoalgebra/integral-periphery': 1.2.4
 
@@ -5211,7 +5257,7 @@ snapshots:
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
     dependencies:
-      '@cryptoalgebra/abstract-plugin': 2.1.0
+      '@cryptoalgebra/abstract-plugin': 2.2.1
       '@cryptoalgebra/integral-core': 1.2.9
       '@cryptoalgebra/integral-periphery': 1.2.4
 

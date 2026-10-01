@@ -1,7 +1,7 @@
 {
-  "name": "@cryptoalgebra/reflex-plugin",
-  "version": "2.2.3",
-  "description": "",
+  "name": "@cryptoalgebra/trading-hours-plugin",
+  "version": "2.2.0",
+  "description": "Trading Hours plugin for Algebra Integral (daily hours, weekends, per-day holiday/temporary-block overrides)",
   "publishConfig": {
     "access": "public"
   },
@@ -14,7 +14,9 @@
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "^2.2.1",
     "@cryptoalgebra/integral-core": "1.2.10",
-    "@openzeppelin/contracts": "4.9.3"
+    "@cryptoalgebra/integral-periphery": "1.2.5",
+    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
     "test-utils": "workspace:^"

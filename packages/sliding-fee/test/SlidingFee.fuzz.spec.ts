@@ -36,6 +36,10 @@ const swapArb = fc
   .map((swap) => ({ ...swap, currentTick: Math.min(MAX_TICK, Math.max(MIN_TICK, swap.lastTick + swap.delta)) }));
 
 describe('SlidingFee properties', function () {
+  // Grows with FUZZ_RUNS, about four times the slowest property's measured cost per run. Hitting
+  // mocha's timeout strands fast-check, and the properties after it fail on a broken snapshot.
+  this.timeout(Math.max(this.timeout(), fuzz.numRuns * 200));
+
   async function deployFixture() {
     return deployBeaconPluginFixture({
       pluginContract: 'UpgradeableSlidingFeePluginTest',

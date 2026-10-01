@@ -84,6 +84,10 @@ const resolvedSigmoidInputArb = fc
   .map(([gamma, beta, sixths]) => ({ gamma, beta, x: beta + Math.trunc((gamma * sixths) / 1_000_000) }));
 
 describe('AdaptiveFee properties', function () {
+  // Grows with FUZZ_RUNS, about four times the slowest property's measured cost per run. Hitting
+  // mocha's timeout strands fast-check, and the properties after it fail on a broken snapshot.
+  this.timeout(Math.max(this.timeout(), fuzz.numRuns * 100));
+
   async function adaptiveFeeFixture() {
     return (await (await ethers.getContractFactory('AdaptiveFeePropertiesTest')).deploy()) as any;
   }
@@ -93,9 +97,7 @@ describe('AdaptiveFee properties', function () {
 
     await fc.assert(
       fc.asyncProperty(feeConfigArb, volatilityArb, async (config, volatility) => {
-        await adaptiveFee.setFeeConfig(config);
-
-        const fee = await adaptiveFee.getFee(volatility);
+        const fee = await adaptiveFee.feeFor(config, volatility);
 
         expect(fee).to.be.gte(config.baseFee);
         expect(fee).to.be.lte(config.baseFee + config.alpha1 + config.alpha2);
@@ -109,14 +111,13 @@ describe('AdaptiveFee properties', function () {
 
     await fc.assert(
       fc.asyncProperty(feeConfigArb, fc.array(volatilityArb, { minLength: 2, maxLength: 12 }), async (config, draws) => {
-        await adaptiveFee.setFeeConfig(config);
         const ladder = [...draws].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
         // The sigmoid is increasing in x, but getFee reaches it through a truncated series with
         // table values that switch at multiples of gamma. Monotonicity is what could break there.
         let previous = 0n;
         for (const volatility of ladder) {
-          const fee = await adaptiveFee.getFee(volatility);
+          const fee = await adaptiveFee.feeFor(config, volatility);
           expect(fee).to.be.gte(previous);
           previous = fee;
         }

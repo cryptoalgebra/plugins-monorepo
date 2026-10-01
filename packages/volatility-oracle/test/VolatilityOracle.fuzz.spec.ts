@@ -26,6 +26,10 @@ const dtArb = fc.oneof(
 const smallDtArb = fc.integer({ min: 1, max: 200 });
 
 describe('VolatilityOracle properties', function () {
+  // Grows with FUZZ_RUNS, about four times the slowest property's measured cost per run. Hitting
+  // mocha's timeout strands fast-check, and the properties after it fail on a broken snapshot.
+  this.timeout(Math.max(this.timeout(), fuzz.numRuns * 60));
+
   async function volatilityOracleFixture() {
     return (await (await ethers.getContractFactory('VolatilityOracleTest')).deploy()) as any;
   }

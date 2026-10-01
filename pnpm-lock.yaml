@@ -385,9 +385,6 @@ importers:
       '@cryptoalgebra/integral-core':
         specifier: 1.2.10
         version: 1.2.10
-      '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
         version: 5.8.0

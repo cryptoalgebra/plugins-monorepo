@@ -84,6 +84,10 @@ const rebalanceAt = async (almPlugin: any, tick: number, sameBlock: boolean) => 
 };
 
 describe('AlmPlugin properties', function () {
+  // Grows with FUZZ_RUNS, about four times the slowest property's measured cost per run. Hitting
+  // mocha's timeout strands fast-check, and the properties after it fail on a broken snapshot.
+  this.timeout(Math.max(this.timeout(), fuzz.numRuns * 50));
+
   for (const [tickSpacing, allowToken0, allowToken1] of [
     [60, true, false],
     [60, false, true],

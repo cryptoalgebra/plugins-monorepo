@@ -265,7 +265,9 @@ class Withdraw implements fc.AsyncCommand<Model, Real> {
 }
 
 describe('LimitOrderManager model', function () {
-  this.timeout(20 * 60 * 1000);
+  // Grows with FUZZ_RUNS, about four times the slowest property's measured cost per run. Hitting
+  // mocha's timeout strands fast-check, and the properties after it fail on a broken snapshot.
+  this.timeout(Math.max(20 * 60 * 1000, fuzz.numRuns * 800));
 
   it('should keep every epoch in step with a model across place, swap, kill and withdraw sequences', async function () {
     const owner = fc.integer({ min: 0, max: 1 });

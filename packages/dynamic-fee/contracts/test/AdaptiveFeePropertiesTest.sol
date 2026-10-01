@@ -27,6 +27,12 @@ contract AdaptiveFeePropertiesTest {
     return AdaptiveFee.getFee(volatility, feeConfig.pack());
   }
 
+  /// @dev Pure twin of getFee, so a property can sweep configs without a transaction per draw.
+  /// Validation stays the job of setFeeConfig.
+  function feeFor(AlgebraFeeConfiguration calldata config, uint88 volatility) external pure returns (uint256 fee) {
+    return AdaptiveFee.getFee(volatility, AlgebraFeeConfigurationU144Lib.pack(config));
+  }
+
   /// @dev The library guarantees a sigmoid never exceeds its alpha.
   /// Exposed directly so that can be checked on arbitrary inputs, not only the two getFee composes.
   function sigmoid(uint256 x, uint16 g, uint16 alpha, uint256 beta) external pure returns (uint256) {

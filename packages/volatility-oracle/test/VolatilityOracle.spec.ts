@@ -55,12 +55,19 @@ describe('VolatilityOracle', () => {
     it('gas  [ @skip-on-coverage ]', async () => {
       await snapshotGasCost(volatilityOracle.initialize({ tick: 1, time: 1 }));
     });
+    // The last two timepoints sit more than a window apart, and the query lands strictly between them.
+    // The tick moved just before the gap, so the average starts it away from the tick and volatility accrues.
     it('should return interpolated volatility with gap > window', async () => {
+      const window = 24 * 60 * 60;
       await volatilityOracle.initialize({ tick: 46054, time: 1 });
       await volatilityOracle.update({ advanceTimeBy: 100, tick: 80054 });
-      await volatilityOracle.update({ advanceTimeBy: 1, tick: 46054 });
-      await volatilityOracle.getTimepoints([0]);
-      await volatilityOracle.getTimepoints([1]);
+      await volatilityOracle.update({ advanceTimeBy: window + 100, tick: 46054 });
+
+      // now is window + 201, so this targets window / 2 + 101, between the timepoints at 101 and window + 201
+      const { tickCumulatives, volatilityCumulatives } = await volatilityOracle.getTimepoints([window / 2 + 100]);
+      // Pinned from a run
+      expect(tickCumulatives[0]).to.eq(3462938200n);
+      expect(volatilityCumulatives[0]).to.eq(16646111323200n);
     });
   });
 

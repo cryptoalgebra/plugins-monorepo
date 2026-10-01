@@ -24,7 +24,6 @@ export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // Monday, October 5, 2020 9:00:00 AM GMT-05:00
 export const TEST_POOL_START_TIME = 1601906400;
-export const TEST_POOL_DAY_BEFORE_START = 1601906400 - 24 * 60 * 60;
 
 interface LimitOrderPluginFixture{
   loModule: LimitOrderManager;

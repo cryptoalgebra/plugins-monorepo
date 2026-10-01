@@ -132,7 +132,7 @@ interface PluginFixture extends MockFactoryFixture {
   implementations: ModuleImplementations;
 }
 
-export const pluginFixture: Fixture<PluginFixture> = async function (): Promise<PluginFixture> {
+const pluginFixture: Fixture<PluginFixture> = async function (): Promise<PluginFixture> {
   const { mockFactory } = await mockFactoryFixture();
   const implementations = await deployImplementations();
   const { mockPluginFactory } = await deployPluginFactory(mockFactory, implementations);

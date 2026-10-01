@@ -11,7 +11,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
   let wallet: Wallet, other: Wallet, almManager: Wallet;
 
   let mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
-  let factoryImpl: any;
   let proxyAdmin: any;
   let proxyAdminOwner: any;
   let mockAlgebraFactory: MockFactory;
@@ -26,7 +25,6 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
   beforeEach('deploy test pluginFactory', async () => {
     ({ 
       mockPluginFactory, 
-      factoryImpl, 
       proxyAdmin, 
       proxyAdminOwner, 
       mockFactory: mockAlgebraFactory,
@@ -177,7 +175,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Deploy MockUpgradedPlugin
       // Upgrade
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Verify upgrade
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -191,7 +189,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Deploy and upgrade to MockUpgradedPlugin
       
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Verify storage preserved
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -209,29 +207,21 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
   // ALM configuration reaches a plugin through its own initializeALM instead.
   describe('#ALM Configuration (harness only)', () => {
     describe('#setDefaultRebalanceManager', () => {
-      it('updates defaultRebalanceManager', async () => {
-        await mockPluginFactory.setDefaultRebalanceManager(almManager.address);
-        expect(await mockPluginFactory.defaultRebalanceManager()).to.eq(almManager.address);
-      });
-
-      it('emits RebalanceManager event', async () => {
+      it('updates defaultRebalanceManager and emits it', async () => {
         await expect(mockPluginFactory.setDefaultRebalanceManager(almManager.address))
           .to.emit(mockPluginFactory, 'RebalanceManager')
           .withArgs(almManager.address);
+        expect(await mockPluginFactory.defaultRebalanceManager()).to.eq(almManager.address);
       });
     });
 
     describe('#setDefaultAlmTwapPeriods', () => {
-      it('updates TWAP periods', async () => {
-        await mockPluginFactory.setDefaultAlmTwapPeriods(7200, 1200);
-        expect(await mockPluginFactory.defaultSlowTwapPeriod()).to.eq(7200);
-        expect(await mockPluginFactory.defaultFastTwapPeriod()).to.eq(1200);
-      });
-
-      it('emits AlmTwapPeriods event', async () => {
+      it('updates TWAP periods and emits them', async () => {
         await expect(mockPluginFactory.setDefaultAlmTwapPeriods(7200, 1200))
           .to.emit(mockPluginFactory, 'AlmTwapPeriods')
           .withArgs(7200, 1200);
+        expect(await mockPluginFactory.defaultSlowTwapPeriod()).to.eq(7200);
+        expect(await mockPluginFactory.defaultFastTwapPeriod()).to.eq(1200);
       });
 
       it('reverts if slowPeriod < fastPeriod', async () => {
@@ -307,7 +297,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Deploy new implementation
       // Single upgrade call affects ALL plugins
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Both plugins now use new implementation
       const upgraded1 = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -333,7 +323,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Deploy and upgrade
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Verify ALL storage preserved
       const upgraded1 = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -363,7 +353,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     it('new functions available after plugin upgrade', async () => {
       const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgraded = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
 
@@ -424,7 +414,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     it('existing functions still work after plugin upgrade', async () => {
       const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgraded = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
 
@@ -439,7 +429,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     it('new plugins after upgrade use new implementation', async () => {
 
       // Upgrade plugins
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Create NEW pool and plugin AFTER upgrade
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
@@ -690,7 +680,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // Deploy new plugin with upgraded security impl
 
       // Upgrade all plugins via beacon
-      const newPluginImpl = await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       // Verify security registry PRESERVED in both plugins
       const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
@@ -707,7 +697,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Deploy and upgrade plugin
 
-      const newPluginImpl = await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
@@ -727,7 +717,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
 
-      const newPluginImpl = await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
@@ -758,7 +748,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
 
       // Single upgrade call
-      const newPluginImpl = await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       // BOTH plugins upgraded
       const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
@@ -779,7 +769,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
 
-      const newPluginImpl = await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
@@ -845,7 +835,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Upgrade plugin
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Read oracle state AFTER upgrade
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -865,7 +855,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Upgrade
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
       const lastTimestampAfter = await upgradedPlugin.lastTimepointTimestamp();
@@ -896,7 +886,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Upgrade
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Read timepoint data AFTER upgrade
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -923,7 +913,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Upgrade
 
-      const newImpl = await upgradePluginsTo('MockTimeUpgradedPlugin');
+      await upgradePluginsTo('MockTimeUpgradedPlugin');
 
       // Use upgraded plugin to write NEW timepoints
       const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await plugin.getAddress()) as any;
@@ -950,7 +940,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Upgrade
 
-      const newImpl = await upgradePluginsTo('MockUpgradedPlugin');
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
 
@@ -985,7 +975,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // Upgrade
 
-      const newImpl = await upgradePluginsTo('MockTimeUpgradedPlugin');
+      await upgradePluginsTo('MockTimeUpgradedPlugin');
 
 
       // Read back through the upgraded implementation. This one keeps the mock clock, so the two sides

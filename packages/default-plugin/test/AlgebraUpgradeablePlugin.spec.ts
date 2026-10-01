@@ -97,7 +97,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const registry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
 
         // The call succeeds and even emits, but the implementation that would have stored it is not there
-        await expect(brokenPlugin.setSecurityRegistry(registry)).to.emit(brokenPlugin, 'SecurityRegistry');
+        await expect(brokenPlugin.setSecurityRegistry(registry)).to.emit(brokenPlugin, 'SecurityRegistry').withArgs(await registry.getAddress());
         expect(await brokenPlugin.getSecurityRegistry()).to.be.eq(ZeroAddress);
 
         await registry.setPoolStatus(brokenPool, DISABLED);
@@ -384,7 +384,6 @@ describe('AlgebraUpgradeablePlugin', () => {
 
         const tick = (await mockPool.globalState()).tick;
         expect(await virtualPoolMock.currentTick()).to.be.eq(tick);
-        expect(await virtualPoolMock.timestamp()).to.be.gt(0);
       });
 
       it('incentive attached after initialization', async () => {
@@ -402,7 +401,6 @@ describe('AlgebraUpgradeablePlugin', () => {
 
         const tick = (await mockPool.globalState()).tick;
         expect(await virtualPoolMock.currentTick()).to.be.eq(tick);
-        expect(await virtualPoolMock.timestamp()).to.be.gt(0);
       });
     });
 

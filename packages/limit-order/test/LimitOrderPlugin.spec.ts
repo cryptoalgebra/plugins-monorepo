@@ -62,7 +62,7 @@ describe('LimitOrders', () => {
     
   });
 
-  it('initialize on place works correct', async () => {
+  it('initializes a pool on its first place and records its current tick lower', async () => {
       
     await initializeAtZeroTick(poolWnative1)
 
@@ -85,7 +85,7 @@ describe('LimitOrders', () => {
 
   describe('#place', async () => {
 
-    describe('works correct', async () => {
+    describe('succeeds', async () => {
 
       it('place lo at negative tick', async () => {
           await loModule.place(poolKey, -60, false, 10n**8n);
@@ -163,7 +163,7 @@ describe('LimitOrders', () => {
         expect(await wnative.balanceOf(pool0Wnative)).to.be.eq(299536)
       });
 
-      it('native refund works correct', async () => {
+      it('refunds native value sent above the order amount', async () => {
         const balanceBefore = await ethers.provider.getBalance(wallet.address);
         const tx = await loModule.place(poolKeyWnative, -60, false, 10n**8n, {value: 1299536});
         const receipt = await tx.wait();
@@ -447,17 +447,12 @@ describe('LimitOrders', () => {
 
   describe('#setTickSpacing', () => { 
     
-    it('works correct', async () => {
-      await loModule.setTickSpacing(pool, 120)
-
+    it('stores the tick spacing it is given and emits it', async () => {
+      await expect(loModule.setTickSpacing(pool, 120)).to.emit(loModule, 'LimitOrderTickSpacing').withArgs(pool, 120);
       expect(await loModule.tickSpacings(pool)).to.be.eq(120)
     });
 
-    it('should emit event', async () => {
-      await expect(loModule.setTickSpacing(pool, 120)).to.emit(loModule, 'LimitOrderTickSpacing').withArgs(pool, 120);
-    });
-
-    it('withdraw works correct after tickSpacing change', async () => {
+    it('withdraws a filled order spanning the new tick spacing', async () => {
       await loModule.setTickSpacing(pool, 120)
 
       await loModule.place(poolKey, -120, false, 10n**8n);
@@ -469,7 +464,7 @@ describe('LimitOrders', () => {
       expect(balanceAfter - balanceBefore).to.be.eq(601773)
     });
 
-    it('kill works correct after tickSpacing ', async () => {
+    it('kills an order spanning the new tick spacing', async () => {
       await loModule.setTickSpacing(pool, 120)
 
       await loModule.place(poolKey, -120, false, 10n**8n);
@@ -489,16 +484,17 @@ describe('LimitOrders', () => {
 
   describe('#kill', async () => {
 
-    it('works correct', async () => {
+    it('refunds an unfilled order to the recipient and emits Kill', async () => {
         await loModule.place(poolKey, -60, false, 10n**8n);
 
         let balanceBefore = await token1.balanceOf(other);
         await expect(loModule.kill(poolKey, -60, 0, 10n ** 8n, false, other)).to.emit(loModule, 'Kill').withArgs(wallet.address, 1, -60, false, 10n ** 8n);
         let balanceAfter =  await token1.balanceOf(other);
+        // One wei under the 299536 that place took from the wallet
         await expect(balanceAfter - balanceBefore).to.be.eq(299535)
     });
 
-    it('works correct wnative', async () => {
+    it('returns the unfilled wnative from kill on the token1 side', async () => {
       await loModule.place(poolKeyWnative, -60, false, 10n**8n, {value: 299536});
 
       let {amount0, amount1} = await loModule.kill.staticCall(poolKeyWnative, -60, 0, 10n**8n, false, wallet);
@@ -509,7 +505,7 @@ describe('LimitOrders', () => {
     // wnative sorts between the two test tokens, so it is token1 in pool0Wnative and token0 in
     // poolWnative1. Every other native case here runs against the first, which left the token0 half of
     // the unwrap in claimTo without a caller: the two halves are separate code, one per side.
-    it('works correct wnative on the token0 side', async () => {
+    it('unwraps a killed order to native on the wnative token0 side', async () => {
       await initializeAtZeroTick(poolWnative1);
       const pluginContractFactory = await ethers.getContractFactory('UpgradeableLimitOrderPluginTest');
       const plugin = pluginContractFactory.attach(await poolWnative1.plugin()) as any;
@@ -528,7 +524,7 @@ describe('LimitOrders', () => {
       expect(await wnative.balanceOf(loModule)).to.be.eq(0);
     });
 
-    it('works correct for partial filled lo', async () => {
+    it('splits a partially filled order between both tokens on kill', async () => {
       await loModule.place(poolKey, -60, false, 10n**8n);
       await swapTarget.swapToLowerSqrtPrice(pool, encodePriceSqrt(995,1000), wallet);
 
@@ -541,7 +537,7 @@ describe('LimitOrders', () => {
       await expect(balanceAfter0 - balanceBefore0).to.be.eq(250941)   
     });
 
-    it('works correct for partial filled lo on tick with few los', async () => {
+    it('kills one partially filled order and leaves the others on its tick', async () => {
       await loModule.place(poolKey, -60, false, 10n**8n);
       await loModule.connect(other).place(poolKey, -60, false, 10n**8n);
       await loModule.connect(other).place(poolKey, -60, false, 10n**8n);

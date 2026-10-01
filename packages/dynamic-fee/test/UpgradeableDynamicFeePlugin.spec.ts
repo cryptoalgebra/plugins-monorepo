@@ -9,7 +9,6 @@ describe('#UpgradeableDynamicFeePlugin', () => {
   let pluginLogic: UpgradeableDynamicFeePluginTest;
   let pluginProxy: UpgradeableDynamicFeePluginTest;
   let mockFactory: MockFactory;
-  let wallet: Wallet;
   let other: Wallet;
 
   const MOCK_POOL = '0x0000000000000000000000000000000000000001';
@@ -38,7 +37,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
   };
 
   beforeEach(async () => {
-    [wallet, other] = await (ethers as any).getSigners();
+    [, other] = await (ethers as any).getSigners();
 
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');
@@ -186,7 +185,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
     it('should emit FeeConfiguration event', async () => {
       await expect(pluginProxy.changeFeeConfiguration(ALT_FEE_CONFIG))
-        .to.emit(pluginProxy, 'FeeConfiguration');
+        .to.emit(pluginProxy, 'FeeConfiguration').withArgs([ALT_FEE_CONFIG.alpha1, ALT_FEE_CONFIG.alpha2, ALT_FEE_CONFIG.beta1, ALT_FEE_CONFIG.beta2, ALT_FEE_CONFIG.gamma1, ALT_FEE_CONFIG.gamma2, ALT_FEE_CONFIG.baseFee]);
     });
 
     it('should revert with invalid configuration', async () => {

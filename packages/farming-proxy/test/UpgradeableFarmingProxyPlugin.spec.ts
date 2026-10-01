@@ -17,14 +17,13 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
   let mockFactory: MockFactory;
   let mockPluginFactory: MockFarmingPluginFactory;
   let mockPool: MockPool;
-  let wallet: Wallet;
   let other: Wallet;
   let farmingAddress: Wallet;
 
   const MOCK_INCENTIVE = '0x0000000000000000000000000000000000000099';
 
   beforeEach(async () => {
-    [wallet, other, farmingAddress] = await (ethers as any).getSigners();
+    [, other, farmingAddress] = await (ethers as any).getSigners();
 
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');
@@ -94,15 +93,11 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       await pluginProxy.initialize(poolAddress);
     });
 
-    it('should allow farming address to set incentive', async () => {
-      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
-      expect(await pluginProxy.incentive()).to.eq(MOCK_INCENTIVE);
-    });
-
-    it('should emit Incentive event', async () => {
+    it('should let the farming address set the incentive and emit it', async () => {
       await expect(pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE))
         .to.emit(pluginProxy, 'Incentive')
         .withArgs(MOCK_INCENTIVE);
+      expect(await pluginProxy.incentive()).to.eq(MOCK_INCENTIVE);
     });
 
     it('should revert when non-farming address tries to set incentive', async () => {

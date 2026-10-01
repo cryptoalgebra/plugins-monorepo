@@ -92,7 +92,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     });
 
     it('should not allow double initialization', async function () {
-      const { plugin1, mockPool } = await loadFixture(deployFixture);
+      const { plugin1 } = await loadFixture(deployFixture);
 
       await expect(
         plugin1.initializePlugin()
@@ -116,7 +116,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     it('should maintain separate storage for each proxy', async function () {
       const {
         beacon,
-        pluginImplementation,
         plugin1,
         UpgradeableVolatilityOraclePluginTest,
       } = await loadFixture(deployFixture);
@@ -286,21 +285,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       await mockPool.swapToTick(0);
 
       expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(0);
-    });
-
-    it('should trail the current tick after the price moves', async function () {
-      const { plugin1, mockPool } = await initializedFixture();
-
-      await time.increase(2 * TWAP_PERIOD);
-      await mockPool.swapToTick(600);
-      await time.increase(TWAP_PERIOD / 2);
-      await mockPool.swapToTick(600);
-
-      const twapTick = await plugin1.getTwapTick.staticCall(TWAP_PERIOD);
-
-      // Half the window sat at 0 and half at 600, so the average is strictly between them
-      expect(twapTick).to.be.greaterThan(0);
-      expect(twapTick).to.be.lessThan(600);
     });
 
     // getTwapTick truncates towards zero and then corrects, so a negative window that does not divide

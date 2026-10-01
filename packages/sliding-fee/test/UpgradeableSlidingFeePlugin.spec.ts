@@ -176,14 +176,14 @@ describe('UpgradeableSlidingFeePlugin', function () {
 
       // Owner should be able to set base fee
       await expect(plugin1.connect(owner).setBaseFee(5000))
-        .to.emit(plugin1, 'BaseFee');
+        .to.emit(plugin1, 'BaseFee').withArgs(5000);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setBaseFee(5000))
-        .to.emit(plugin1, 'BaseFee');
+        .to.emit(plugin1, 'BaseFee').withArgs(5000);
     });
 
     it('should reject unauthorized users', async function () {

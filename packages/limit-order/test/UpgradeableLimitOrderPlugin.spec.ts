@@ -144,14 +144,14 @@ describe('UpgradeableLimitOrderPlugin', function () {
 
       // Owner should be able to set limitOrderManager
       await expect(plugin1.connect(owner).setLimitOrderManager(user.address))
-        .to.emit(plugin1, 'LimitOrderManager');
+        .to.emit(plugin1, 'LimitOrderManager').withArgs(user.address);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager, user } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setLimitOrderManager(user.address))
-        .to.emit(plugin1, 'LimitOrderManager');
+        .to.emit(plugin1, 'LimitOrderManager').withArgs(user.address);
     });
 
     it('should reject unauthorized users', async function () {

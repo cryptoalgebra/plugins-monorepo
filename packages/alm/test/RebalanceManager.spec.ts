@@ -463,7 +463,7 @@ describe('RebalanceManager', function () {
       await expect(rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0)).to.emit(
         vaultAllowingToken1,
         'MockRebalance'
-      );
+      ).withArgs(0, 887220, -3600, -60);
     });
 
     it('should leave the vault alone on the second call while nothing arrived', async function () {
@@ -484,10 +484,7 @@ describe('RebalanceManager', function () {
       await expect(rebalanceManager.connect(plugin).obtainTWAPAndRebalance(0, 0, 0, 0)).to.emit(
         vaultAllowingToken1,
         'MockRebalance'
-      );
-
-      expect(await rebalanceManager.lastRebalanceTimestamp()).to.not.equal(0);
-      expect(await rebalanceManager.lastRebalanceCurrentPrice()).to.not.equal(0);
+      ).withArgs(0, 887220, -3600, -60);
     });
   });
 

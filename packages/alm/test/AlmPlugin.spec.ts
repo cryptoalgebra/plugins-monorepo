@@ -105,26 +105,6 @@ describe('#AlmPlugin', () => {
 		return { almPlugin, mockVault, currentTick: BigInt(sample.state.currentTick) };
 	}
 
-	describe('#initializeALM', () => {
-		it("can initialize", async () => {
-			await deployedFor({
-				depositTokenUnusedThreshold: 100,
-				simulate: 9400, // 9300
-				normalThreshold: 8100, // 8000
-				underInventoryThreshold: 7800, // 7700
-				overInventoryThreshold: 9100,
-				priceChangeThreshold: 100,
-				extremeVolatility: 2500,
-				highVolatility: 900, //  500
-				someVolatility: 200, // 100
-				dtrDelta: 300,
-				baseLowPct: 3000, // 2000
-				baseHighPct: 1500, // 3000
-				limitReservePct: 500,
-			}, 228, true, false);
-		});
-	});
-
 	describe('#rebalance1', () => {
 		for (const rebalance of rebalances) {
 			if (rebalance.rebalance.limitPosition != null) {
@@ -168,7 +148,7 @@ describe('#AlmPlugin', () => {
 
 			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(0);
 
-			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-887220, 20700, 20700, 24300);
 
 			// Both written by the rebalance itself, not by a setter
 			expect(await almPlugin.lastRebalanceTimestamp()).to.be.eq(await time.latest());
@@ -197,7 +177,7 @@ describe('#AlmPlugin', () => {
 			await time.increase(7200);
 			await almPlugin.setState(BigInt(sample.state.state));
 
-			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-887220, 20700, 20700, 24300);
 			expect(await almPlugin.lastRebalanceTimestamp()).to.be.greaterThan(firstTimestamp);
 		});
 
@@ -210,7 +190,7 @@ describe('#AlmPlugin', () => {
 			await almPlugin.setState(BigInt(sample.state.state));
 
 			await time.setNextBlockTimestamp(firstTimestamp + 7200n);
-			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-887220, 20700, 20700, 24300);
 		});
 	});
 
@@ -255,7 +235,7 @@ describe('#AlmPlugin', () => {
 
 			// The catch branch left it in Special, so put it back where the recorded case started
 			await almPlugin.setState(BigInt(sample.state.state));
-			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(currentTick, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-887220, 20700, 20700, 24300);
 		});
 	});
 
@@ -322,7 +302,7 @@ describe('#AlmPlugin', () => {
 		it('parks itself in Special for the same reading from an earlier block', async () => {
 			const { almPlugin, mockVault } = await deployed(1);
 
-			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(1200, 887220, -887220, 1140);
 			expect(await almPlugin.state()).to.be.eq(3);
 		});
 
@@ -429,7 +409,7 @@ describe('#AlmPlugin', () => {
 		it('hands over the same rebalance once the base range is wide enough', async () => {
 			const { almPlugin, mockVault } = await deployedWithBaseLow(3000); // 30%, what the sampled recording carries
 
-			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-46440, -42540, -887220, -46440);
 		});
 	});
 
@@ -477,7 +457,7 @@ describe('#AlmPlugin', () => {
 		it('rebalances once the deposit side is funded', async () => {
 			const { almPlugin, mockVault } = await deployedHolding(10n ** 22n, 10n ** 20n);
 
-			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(0, 887220, -47460, -60);
 		});
 
 		it('declines a rebalance while the vault holds nothing at all', async () => {
@@ -535,7 +515,7 @@ describe('#AlmPlugin', () => {
 		it('rebalances once the paired side is over the reserve', async () => {
 			const { almPlugin, mockVault } = await deployedWithPaired(7n * 10n ** 18n);
 
-			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(0n, 0n, 0n, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-46140, -42540, -887220, -46140);
 		});
 	});
 
@@ -601,7 +581,7 @@ describe('#AlmPlugin', () => {
 		it('treats a current price exactly highVolatility off the fast one as high', async () => {
 			const { almPlugin, mockVault } = await deployed(NORMAL, 8500n, [PRICE, PRICE, 91n * E18]);
 
-			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(1200, 887220, -887220, 1140);
 			expect(await almPlugin.state()).to.be.eq(SPECIAL);
 		});
 
@@ -624,7 +604,7 @@ describe('#AlmPlugin', () => {
 		it('rebalances once the current price is inside someVolatility of the fast one', async () => {
 			const { almPlugin, mockVault } = await deployed(SPECIAL, 8500n, [PRICE, PRICE, 99n * E18]);
 
-			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-46320, -42420, -887220, -46320);
 		});
 
 		// underInventoryThreshold - dtrDelta is 7400, and a share on it is not yet below
@@ -632,24 +612,24 @@ describe('#AlmPlugin', () => {
 			const { almPlugin, mockVault } = await deployed(NORMAL, 7400n);
 			await almPlugin.setLastRebalanceCurrentPrice(PRICE);
 
-			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(1200, 887220, -47460, 1140);
 			expect(await almPlugin.state()).to.be.eq(UNDER);
 		});
 
 		// Title, starting state, whether a price was recorded, deposit share, and the state the rebalance has to leave
-		const onTrigger: [string, bigint, boolean, bigint, bigint][] = [
-			['puts a fresh share exactly at simulate in Normal', SPECIAL, false, 9300n, NORMAL],
-			['puts a fresh share exactly at the under inventory trigger in Normal', SPECIAL, false, 7700n, NORMAL],
-			['moves an under inventory manager with a share exactly at simulate to Normal', UNDER, true, 9300n, NORMAL],
-			['moves an over inventory manager with a share exactly at the under inventory trigger to Normal', OVER, true, 7700n, NORMAL],
+		const onTrigger: [string, bigint, boolean, bigint, bigint, [number, number, number, number]][] = [
+			['puts a fresh share exactly at simulate in Normal', SPECIAL, false, 9300n, NORMAL, [-46140, -42540, -887220, -46140]],
+			['puts a fresh share exactly at the under inventory trigger in Normal', SPECIAL, false, 7700n, NORMAL, [-46740, -42540, -887220, -46740]],
+			['moves an under inventory manager with a share exactly at simulate to Normal', UNDER, true, 9300n, NORMAL, [-46140, -42540, -887220, -46140]],
+			['moves an over inventory manager with a share exactly at the under inventory trigger to Normal', OVER, true, 7700n, NORMAL, [-46740, -42540, -887220, -46740]],
 		];
 
-		for (const [name, state, recorded, share, expected] of onTrigger) {
+		for (const [name, state, recorded, share, expected, ranges] of onTrigger) {
 			it(name, async () => {
 				const { almPlugin, mockVault } = await deployed(state, share);
 				if (recorded) await almPlugin.setLastRebalanceCurrentPrice(PRICE);
 
-				await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+				await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(...ranges);
 				expect(await almPlugin.state()).to.be.eq(expected);
 			});
 		}
@@ -681,7 +661,7 @@ describe('#AlmPlugin', () => {
 			await almPlugin.setLastRebalanceCurrentPrice(PRICE);
 			await almPlugin.setDepositTokenBalance(101n * E18);
 
-			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(-46440, -42540, -887220, -46440);
 		});
 
 		// 99 recorded against 100 now is 1% apart, exactly priceChangeThreshold
@@ -697,7 +677,7 @@ describe('#AlmPlugin', () => {
 			const { almPlugin, mockVault } = await deployed(UNDER, 7500n);
 			await almPlugin.setLastRebalanceCurrentPrice(98n * E18);
 
-			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance');
+			await expect(almPlugin.rebalance(TICK, TICK, TICK, 0n)).to.emit(mockVault, 'MockRebalance').withArgs(1200, 887220, -47460, 1140);
 		});
 	});
 

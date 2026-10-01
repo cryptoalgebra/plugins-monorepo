@@ -9,7 +9,6 @@ import {
   MockFactory, 
   MockPool, 
   MockTimeAlgebraUpgradeablePlugin,
-  MockUpgradedPlugin
 } from '../typechain';
 
 describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {

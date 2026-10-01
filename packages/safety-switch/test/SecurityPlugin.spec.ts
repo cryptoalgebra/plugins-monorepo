@@ -61,7 +61,7 @@ describe('SecurityPlugin', () => {
 
   describe('#SecurityPlugin', () => {
     describe('ENABLE status', async () => {
-      it('works correct', async () => {
+      it('allows swap, mint and burn', async () => {
         await expect(pool.swapToTick(0)).to.not.be.reverted;
         await expect(pool.mint(ZeroAddress, wallet.address, -60, 60, 1, '0x')).to.not.be.reverted;
         await expect(pool.burn(-60, 60, 1, '0x')).to.not.be.reverted;
@@ -69,7 +69,7 @@ describe('SecurityPlugin', () => {
     });
 
     describe('BURN_ONLY status', async () => {
-      it('works correct', async () => {
+      it('rejects swap and mint, allows burn', async () => {
         await registry.setGlobalStatus(1)
         await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
         await expect(pool.mint(ZeroAddress, wallet.address, -60, 60, 1, '0x')).to.be.revertedWithCustomError(plugin, 'BurnOnly');
@@ -78,7 +78,7 @@ describe('SecurityPlugin', () => {
     });
 
     describe('DISABLED status', async () => {
-      it('works correct', async () => {
+      it('rejects swap, mint and burn', async () => {
         await registry.setGlobalStatus(2)
         await expect(pool.swapToTick(0)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
         await expect(pool.burn(-60, 60, 1, '0x')).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
@@ -89,10 +89,10 @@ describe('SecurityPlugin', () => {
 
   describe('AlgebaraSecurityPlugin external methods', () => {
      
-    it('set registry contract works correct', async () => {
+    it('replaces the registry and emits SecurityRegistry', async () => {
       await mockFactory.grantRole(await plugin.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
       await plugin.setSecurityRegistry(ZeroAddress);
-      await expect(plugin.setSecurityRegistry(registry)).to.emit(plugin, 'SecurityRegistry');
+      await expect(plugin.setSecurityRegistry(registry)).to.emit(plugin, 'SecurityRegistry').withArgs(await registry.getAddress());
       expect(await plugin.getSecurityRegistry()).to.be.eq(registry);
     });
 
@@ -105,7 +105,7 @@ describe('SecurityPlugin', () => {
   describe('#SecurtityRegistry', () => {
 
     describe('#setPoolStatus', async () => {
-      it('works correct', async () => {
+      it('round trips a pool through every status', async () => {
         await registry.setPoolsStatus([wallet], [1]);
         expect(await registry.poolStatus(wallet)).to.be.eq(1);
         await registry.setPoolsStatus([wallet], [2]);
@@ -140,14 +140,14 @@ describe('SecurityPlugin', () => {
 
       it('address with guard role can set DISABLED pool status', async () => {
         await mockFactory.grantRole(await registry.GUARD(), other.address);
-        await expect(registry.connect(other).setPoolsStatus([wallet], [2])).to.emit(registry, 'PoolStatus');
+        await expect(registry.connect(other).setPoolsStatus([wallet], [2])).to.emit(registry, 'PoolStatus').withArgs(wallet.address, 2);
         expect(await registry.poolStatus(wallet)).to.be.eq(2);
       });
     });
 
 
     describe('#setGlobalStatus', async () => {
-        it('works correct', async () => {
+        it('round trips the global status through every value', async () => {
           await registry.setGlobalStatus(1);
           expect(await registry.globalStatus()).to.be.eq(1);
           await registry.setGlobalStatus(2);
@@ -163,9 +163,9 @@ describe('SecurityPlugin', () => {
           await expect(registry.connect(other).setGlobalStatus(0)).to.be.revertedWith('Only owner')
         });
 
-        it('address with guard role can set DISABLED pool status', async () => {
+        it('address with guard role can set DISABLED global status', async () => {
           await mockFactory.grantRole(await registry.GUARD(), other.address);
-          await expect(registry.connect(other).setGlobalStatus(2)).to.emit(registry, 'GlobalStatus');
+          await expect(registry.connect(other).setGlobalStatus(2)).to.emit(registry, 'GlobalStatus').withArgs(2);
           expect(await registry.globalStatus()).to.be.eq(2);
         });
     });

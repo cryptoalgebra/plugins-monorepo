@@ -144,14 +144,14 @@ describe('UpgradeableFeeDiscountPlugin', function () {
 
       // Owner should be able to set feeDiscountRegistry
       await expect(plugin1.connect(owner).setFeeDiscountRegistry(user.address))
-        .to.emit(plugin1, 'FeeDiscountRegistry');
+        .to.emit(plugin1, 'FeeDiscountRegistry').withArgs(user.address);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager, user } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setFeeDiscountRegistry(user.address))
-        .to.emit(plugin1, 'FeeDiscountRegistry');
+        .to.emit(plugin1, 'FeeDiscountRegistry').withArgs(user.address);
     });
 
     it('should reject unauthorized users', async function () {

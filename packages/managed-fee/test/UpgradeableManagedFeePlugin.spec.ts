@@ -144,14 +144,14 @@ describe('UpgradeableManagedFeePlugin', function () {
       const { plugin1, owner, user } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(owner).setWhitelistStatus(user.address, true))
-        .to.emit(plugin1, 'WhitelistedAddress');
+        .to.emit(plugin1, 'WhitelistedAddress').withArgs(user.address, true);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager, user } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setWhitelistStatus(user.address, true))
-        .to.emit(plugin1, 'WhitelistedAddress');
+        .to.emit(plugin1, 'WhitelistedAddress').withArgs(user.address, true);
     });
 
     it('should reject unauthorized users', async function () {

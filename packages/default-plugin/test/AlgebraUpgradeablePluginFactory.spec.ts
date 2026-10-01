@@ -156,7 +156,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       await expect(fresh.initialize(await mockAlgebraFactory.getAddress(), beaconTarget, DEFAULT_FEE_CONFIGURATION)).to.emit(
         fresh,
         'DefaultFeeConfiguration'
-      );
+      ).withArgs([DEFAULT_FEE_CONFIGURATION.alpha1, DEFAULT_FEE_CONFIGURATION.alpha2, DEFAULT_FEE_CONFIGURATION.beta1, DEFAULT_FEE_CONFIGURATION.beta2, DEFAULT_FEE_CONFIGURATION.gamma1, DEFAULT_FEE_CONFIGURATION.gamma2, DEFAULT_FEE_CONFIGURATION.baseFee]);
     });
   });
 
@@ -318,13 +318,9 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       );
     });
 
-    it('updates farmingAddress', async () => {
-      await pluginFactory.setFarmingAddress(other.address);
-      expect(await pluginFactory.farmingAddress()).to.eq(other.address);
-    });
-
-    it('emits event', async () => {
+    it('updates farmingAddress and emits it', async () => {
       await expect(pluginFactory.setFarmingAddress(other.address)).to.emit(pluginFactory, 'FarmingAddress').withArgs(other.address);
+      expect(await pluginFactory.farmingAddress()).to.eq(other.address);
     });
 
     it('cannot set current address', async () => {
@@ -406,13 +402,9 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       ).to.be.revertedWithCustomError(pluginFactory, 'OnlyAdministrator');
     });
 
-    it('updates securityRegistry', async () => {
-      await pluginFactory.setSecurityRegistry(other.address);
-      expect(await pluginFactory.securityRegistry()).to.eq(other.address);
-    });
-
-    it('emits event', async () => {
+    it('updates securityRegistry and emits it', async () => {
       await expect(pluginFactory.setSecurityRegistry(other.address)).to.emit(pluginFactory, 'SecurityRegistry').withArgs(other.address);
+      expect(await pluginFactory.securityRegistry()).to.eq(other.address);
     });
 
     it('reaches only plugins created after the change', async () => {

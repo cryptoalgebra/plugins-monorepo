@@ -334,14 +334,14 @@ describe('UpgradeableAccessListPlugin', function () {
       const { plugin1, owner, nonWhitelistedUser } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(owner).setAccessListRegistry(nonWhitelistedUser.address))
-        .to.emit(plugin1, 'AccessListRegistryUpdated');
+        .to.emit(plugin1, 'AccessListRegistryUpdated').withArgs(nonWhitelistedUser.address);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager, nonWhitelistedUser } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setAccessListRegistry(nonWhitelistedUser.address))
-        .to.emit(plugin1, 'AccessListRegistryUpdated');
+        .to.emit(plugin1, 'AccessListRegistryUpdated').withArgs(nonWhitelistedUser.address);
     });
 
     it('should reject unauthorized users', async function () {

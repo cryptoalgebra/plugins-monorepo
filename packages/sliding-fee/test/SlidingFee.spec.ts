@@ -73,8 +73,9 @@ describe('SlidingFee', () => {
 
           if (factor == 1000) {
             const [zeroToOneFeeFactor, oneToZeroFeeFactor] = await slidingFeePlugin.feeFactors();
-            expect(oneToZeroFeeFactor).to.be.approximately(2n << 96n, 1n << 81n); // 2
-            expect(zeroToOneFeeFactor).to.be.approximately(0n << 96n, 1n << 81n); // 0
+            // The impact overshoots, so this is the clamped branch and its literals are exact
+            expect(oneToZeroFeeFactor).to.be.eq(2n << 96n); // 2
+            expect(zeroToOneFeeFactor).to.be.eq(0n << 96n); // 0
           }
 
           if (factor == 2000) {
@@ -87,7 +88,7 @@ describe('SlidingFee', () => {
       it("Shifts correct with negative price change, factor is " + factor, async function () {
           await slidingFeePlugin.setPriceChangeFactor(factor)
 
-          // swap, price decreased x0.25 (zto)
+          // swap, price decreased x0.5 (zto)
           let lastTick = 16932  
           let currentTick  = 10000 
 
@@ -101,8 +102,8 @@ describe('SlidingFee', () => {
 
           if (factor == 1000) {
             const [zeroToOneFeeFactor, oneToZeroFeeFactor] = await slidingFeePlugin.feeFactors();
-            expect(oneToZeroFeeFactor).to.be.approximately(1n << 95n, 1n << 81n); // 0
-            expect(zeroToOneFeeFactor).to.be.approximately((3n << 96n) / 2n, 1n << 81n); // 2
+            expect(oneToZeroFeeFactor).to.be.approximately(1n << 95n, 1n << 81n); // 0.5
+            expect(zeroToOneFeeFactor).to.be.approximately((3n << 96n) / 2n, 1n << 81n); // 1.5
           }
 
           if (factor == 2000) {

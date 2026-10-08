@@ -20,6 +20,11 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     await helpers.reset(BASE_FORK.url, BASE_FORK.blockNumber);
   });
 
+  // Hardhat does not sort spec files, so the suites after this one would otherwise run on the fork
+  after('drop the Base fork', async () => {
+    await helpers.reset();
+  });
+
   // Leaves the beacon on the implementation deployed to Base, where an upgrade of a live pool starts.
   async function deployShippedFixture() {
     await helpers.mine();

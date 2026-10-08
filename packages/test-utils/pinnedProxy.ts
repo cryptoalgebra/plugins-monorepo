@@ -17,8 +17,8 @@ import BeaconProxyDeployerArtifact from './pinned/BeaconProxyDeployer.json';
 /// its proxies with `new AlgebraPluginProxy(...)` inside its own compilation unit, so default-plugin is
 /// unaffected by any of this.
 ///
-/// Regenerate with `node packages/test-utils/scripts/regeneratePinned.js <package>` after a plain
-/// compile. The drift guard spec fails if these fall behind the sources.
+/// Regenerate with `node packages/test-utils/scripts/regeneratePinned.js test-utils` after a plain
+/// compile in access-list. The drift guard spec fails if these fall behind the sources.
 export const ALGEBRA_PLUGIN_PROXY = AlgebraPluginProxyArtifact;
 export const BEACON_PROXY_DEPLOYER = BeaconProxyDeployerArtifact;
 

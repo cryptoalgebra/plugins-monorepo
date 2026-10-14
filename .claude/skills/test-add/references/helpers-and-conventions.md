@@ -47,11 +47,12 @@ Some suites feed generated inputs to a contract instead of fixed ones and assert
 
 ## Suites that build heavy on-chain state
 
-Filling a large structure (a ring buffer with tens of thousands of slots, a long price history) needs three things together, and they are easy to get partly right:
+Filling a large structure (a ring buffer with tens of thousands of slots, a long price history) needs four things together, and they are easy to get partly right:
 
 - A **batching method on the `contracts/test/` harness** that advances many entries per transaction. Doing it one call at a time from TypeScript is orders of magnitude slower.
 - **`this.timeout(...)` on the `describe`**, which requires the non-arrow `function () { ... }` form — inside an arrow callback `this` is not the mocha context, so under a `function` describe the timeout silently misses its tests, and at top level the file fails to load with `this.timeout is not a function`. See `packages/volatility-oracle/test/VolatilityOracle.spec.ts`.
 - **A raised wallet balance** when the loop's total gas exceeds default funding: `await ethers.provider.send('hardhat_setBalance', [wallet.address, '0xFFFF...'])`. The failure without it looks like an out-of-funds error deep inside a batch, not like a test-setup problem.
+- **An explicit `gasLimit` on any batch above 2^24 gas.** Hardhat defaults a transaction's gas limit to 16,777,216, the EIP-7825 cap, whatever the configured hardfork, so a larger batch fails with `Transaction ran out of gas` while `estimateGas` reports a higher number that would have fit. Pass `{ gasLimit }` explicitly, as `BATCH_GAS_LIMIT` does in `packages/volatility-oracle/test/VolatilityOracle.spec.ts`; an explicit limit above the cap is accepted.
 
 Build it inside the fixture and load it with `loadFixture` so the whole thing is constructed once and snapshotted, not rebuilt per `it`.
 

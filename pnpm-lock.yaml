@@ -73,8 +73,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -91,8 +91,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -116,8 +116,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -153,8 +153,8 @@ importers:
         specifier: workspace:^
         version: link:../volatility-oracle
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -181,8 +181,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -203,8 +203,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -225,8 +225,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -247,8 +247,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -269,8 +269,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -288,8 +288,8 @@ importers:
         specifier: 1.2.10
         version: 1.2.10
       '@openzeppelin/contracts':
-        specifier: 4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -307,8 +307,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -326,8 +326,8 @@ importers:
         specifier: 1.2.10
         version: 1.2.10
       '@openzeppelin/contracts':
-        specifier: 4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -345,8 +345,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -367,8 +367,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -389,8 +389,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -411,8 +411,8 @@ importers:
         specifier: ^5.8.0
         version: 5.8.0
       '@openzeppelin/contracts':
-        specifier: 4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       bignumber.js:
         specifier: ^9.2.1
         version: 9.2.1
@@ -435,8 +435,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -457,8 +457,8 @@ importers:
         specifier: 1.2.5
         version: 1.2.5
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       '@openzeppelin/contracts-upgradeable':
         specifier: ^4.9.3
         version: 4.9.6
@@ -483,8 +483,8 @@ importers:
         version: 4.9.6
     devDependencies:
       '@openzeppelin/contracts':
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: 5.4.0
+        version: 5.4.0
       test-utils:
         specifier: workspace:^
         version: link:../test-utils
@@ -1449,6 +1449,9 @@ packages:
 
   '@openzeppelin/contracts@4.9.3':
     resolution: {integrity: sha512-He3LieZ1pP2TNt5JbkPA4PNT9WC3gOTOlDcFGJW4Le4QKqwmiNJCRt44APfxMxvq7OugU/cqYuPcSBzOw38DAg==}
+
+  '@openzeppelin/contracts@5.4.0':
+    resolution: {integrity: sha512-eCYgWnLg6WO+X52I16TZt8uEjbtdkgLC0SUX/xnAksjjrQI4Xfn4iBRoI5j55dmlOhDv1Y7BoR3cU7e3WWhC6A==}
 
   '@parcel/watcher-android-arm64@2.6.0':
     resolution: {integrity: sha512-trgpLSCKRC/huFjXX/Smh+0sWe4+YtKfktIToiMl59ghz7z+qkH6kMvNnUbLyRs9N11t8l4svSCs1+5B3rOAhA==}
@@ -6301,6 +6304,8 @@ snapshots:
   '@openzeppelin/contracts-upgradeable@4.9.6': {}
 
   '@openzeppelin/contracts@4.9.3': {}
+
+  '@openzeppelin/contracts@5.4.0': {}
 
   '@parcel/watcher-android-arm64@2.6.0':
     optional: true

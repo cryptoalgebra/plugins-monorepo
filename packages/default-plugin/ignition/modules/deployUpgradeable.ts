@@ -56,16 +56,6 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
   };
 });
 
-// ============= PROXY ADMIN =============
-
-const ProxyAdminModule = buildModule("ProxyAdmin", (m) => {
-  const proxyAdmin = m.contract("ProxyAdmin", [], {
-    id: "ProxyAdmin"
-  });
-
-  return { proxyAdmin };
-});
-
 // ============= FACTORY IMPLEMENTATION =============
 
 const FactoryImplementationModule = buildModule("FactoryImplementation", (m) => {
@@ -80,21 +70,35 @@ const FactoryImplementationModule = buildModule("FactoryImplementation", (m) => 
 // ============= FACTORY PROXY =============
 
 const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
-  const { proxyAdmin } = m.useModule(ProxyAdminModule);
+  const { factoryImpl } = m.useModule(FactoryImplementationModule);
 
-  // Deploy TransparentUpgradeableProxy
-  // We use ProxyAdmin as a placeholder 
-  // The proxy is later upgraded to the real factory implementation and initialized
-  // via ProxyAdmin.upgradeAndCall.
+  // The proxy deploys its own ProxyAdmin, owned by the deployer, and initializes in its constructor,
+  // so no one can initialize it first. The plugin implementation needs the proxy address, so the
+  // beacon starts on the factory implementation and is moved to the plugin once that is deployed.
+  const initData = m.encodeFunctionCall(factoryImpl, "initialize", [
+    config.algebraFactory,
+    factoryImpl,
+    config.defaultFeeConfig
+  ], {
+    id: "FactoryInitData"
+  });
+
   const factoryProxy = m.contract("TransparentUpgradeableProxy", [
-    proxyAdmin,
-    proxyAdmin,
-    "0x"
+    factoryImpl,
+    m.getAccount(0),
+    initData
   ], {
     id: "FactoryProxy"
   });
 
-  return { factoryProxy };
+  const proxyAdminAddress = m.readEventArgument(factoryProxy, "AdminChanged", "newAdmin", {
+    id: "ProxyAdminAddress"
+  });
+  const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress, {
+    id: "ProxyAdmin"
+  });
+
+  return { factoryProxy, proxyAdmin };
 });
 
 // ============= PLUGIN IMPLEMENTATION =============
@@ -137,38 +141,20 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // 1. Deploy all module implementations first
   const moduleImpls = m.useModule(ModuleImplementationsModule);
   
-  // 2. Deploy ProxyAdmin
-  const { proxyAdmin } = m.useModule(ProxyAdminModule);
+  // 2. Deploy factory implementation and its initialized proxy
+  const { factoryImpl } = m.useModule(FactoryImplementationModule);
+  const { factoryProxy, proxyAdmin } = m.useModule(FactoryProxyModule);
 
-  // 3. Deploy factory proxy (placeholder implementation)
-  const { factoryProxy } = m.useModule(FactoryProxyModule);
-  
-  // 4. Deploy plugin implementation (needs factoryProxy address)
+  // 3. Deploy plugin implementation (needs factoryProxy address)
   const { pluginImpl } = m.useModule(PluginImplementationModule);
 
-  // 5. Deploy factory implementation
-  const { factoryImpl } = m.useModule(FactoryImplementationModule);
-
-  // 6. Upgrade proxy to the real implementation and initialize it in one tx
-  const initData = m.encodeFunctionCall(factoryImpl, "initialize", [
-    config.algebraFactory,
-    pluginImpl,
-    config.defaultFeeConfig
-  ], {
-    id: "FactoryInitData"
-  });
-
-  const upgradeAndInitialize = m.call(proxyAdmin, "upgradeAndCall", [
-    factoryProxy,
-    factoryImpl,
-    initData
-  ], {
-    id: "UpgradeAndInitializeFactory"
-  });
-
+  // 4. Point the beacon at the plugin implementation
   const factory = m.contractAt("AlgebraUpgradeablePluginFactory", factoryProxy, {
-    id: "Factory",
-    after: [upgradeAndInitialize]
+    id: "Factory"
+  });
+
+  const setPluginImplementation = m.call(factory, "upgradePlugins", [pluginImpl], {
+    id: "SetPluginImplementation"
   });
 
   const algebraFactory = m.contractAt("IAlgebraFactory", config.algebraFactory, {
@@ -185,26 +171,27 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
     m.call(factory, "setFarmingAddress", [config.farmingCenter], {
       id: "SetFarmingAddress",
-      after: [upgradeAndInitialize]
+      after: [setPluginImplementation]
     });
   }
 
   // Always set SecurityRegistry (either provided or freshly deployed)
   m.call(factory, "setSecurityRegistry", [securityRegistry], {
     id: "SetSecurityRegistry",
-    after: [upgradeAndInitialize, securityRegistry]
+    after: [setPluginImplementation, securityRegistry]
   });
 
   // Set DefaultPluginFactory in AlgebraFactory
   m.call(algebraFactory, "setDefaultPluginFactory", [factoryProxy], {
     id: "SetDefaultPluginFactory",
-    after: [upgradeAndInitialize]
+    after: [setPluginImplementation]
   });
 
   return {
     factory,
     factoryImpl,
     factoryProxy,
+    proxyAdmin,
     securityRegistry,
     ...m.useModule(PluginImplementationModule)
   };

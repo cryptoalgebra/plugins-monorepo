@@ -9,6 +9,7 @@ import {
   moduleArgs,
   impersonateAlgebraFactory,
   pluginFactoryFixture,
+  deployTransparentProxy,
 } from './shared/fixtures';
 
 import { MockFactory } from '../typechain';
@@ -73,8 +74,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
       // Other user (not proxyAdminOwner) cannot upgrade via ProxyAdmin
       await expect(
-        proxyAdmin.connect(other).upgrade(proxyAddress, await newFactoryImpl.getAddress())
-      ).to.be.revertedWith('Ownable: caller is not the owner');
+        proxyAdmin.connect(other).upgradeAndCall(proxyAddress, await newFactoryImpl.getAddress(), '0x')
+      ).to.be.revertedWithCustomError(proxyAdmin, 'OwnableUnauthorizedAccount').withArgs(other.address);
     });
 
     it('ProxyAdmin owner can upgrade factory', async () => {
@@ -84,8 +85,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
       const proxyAddress = await pluginFactory.getAddress();
 
-      // Upgrade should succeed for ProxyAdmin owner (use upgrade, not upgradeAndCall)
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(proxyAddress, await newFactoryImpl.getAddress());
+      // Upgrade should succeed for ProxyAdmin owner
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(proxyAddress, await newFactoryImpl.getAddress(), '0x');
 
       // Verify factory still works after upgrade
       const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
@@ -113,8 +114,8 @@ describe('AlgebraUpgradeablePluginFactory', () => {
 
       const proxyAddress = await pluginFactory.getAddress();
 
-      // Upgrade via ProxyAdmin (use upgrade, not upgradeAndCall)
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(proxyAddress, await newFactoryImpl.getAddress());
+      // Upgrade via ProxyAdmin
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(proxyAddress, await newFactoryImpl.getAddress(), '0x');
 
       // Verify storage is preserved
       const newConfig = await pluginFactory.defaultFeeConfiguration();
@@ -129,11 +130,10 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const implFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
       const impl = await implFactory.deploy();
 
-      const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
-      const proxy = await TransparentProxyFactory.deploy(await impl.getAddress(), await proxyAdmin.getAddress(), '0x');
+      const { proxyAddress } = await deployTransparentProxy(await impl.getAddress(), proxyAdminOwner);
 
       // The beacon needs a contract to point at, the factory implementation itself will do
-      return { fresh: implFactory.attach(await proxy.getAddress()) as any, beaconTarget: await impl.getAddress() };
+      return { fresh: implFactory.attach(proxyAddress) as any, beaconTarget: await impl.getAddress() };
     }
 
     it('rejects a fee configuration whose maximum exceeds uint16', async () => {

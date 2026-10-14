@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @title Base Connector
 /// @notice Abstract base contract for all plugin connectors providing common delegatecall utilities

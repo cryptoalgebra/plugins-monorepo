@@ -62,9 +62,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // Upgrade factory
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(), 
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Verify storage preserved
@@ -489,9 +490,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Beacon preserved
@@ -513,9 +515,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // ALL configs preserved
@@ -538,9 +541,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Plugin mapping preserved
@@ -552,9 +556,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Create NEW pool after factory upgrade
@@ -580,9 +585,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Can still modify configs
@@ -607,9 +613,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Existing plugin still works (factory upgrade doesn't affect plugins!)

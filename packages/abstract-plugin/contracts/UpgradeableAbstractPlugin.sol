@@ -21,7 +21,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
   using Plugins for uint8;
 
   /// @dev Offset in AlgebraPluginProxy bytecode
-  uint256 public constant POOL_ADDRESS_OFFSET = 75;
+  uint256 public constant POOL_ADDRESS_OFFSET = 56;
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 

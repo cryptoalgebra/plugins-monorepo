@@ -18,7 +18,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
-    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts": "5.4.0",
     "test-utils": "workspace:^"
   },
   "gitHead": "58081df6ce09c538a1155b8f7d2d855b410c12f2"

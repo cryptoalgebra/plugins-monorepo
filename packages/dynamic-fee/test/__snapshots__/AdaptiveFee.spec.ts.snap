@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`AdaptiveFee #getFee fee grid snapshot 1`] = `
 "[Volt: 0] Fee:100 Correct: 100 Error: 0.00% 
@@ -41,8 +41,8 @@ Max error: 0.27%
 "
 `;
 
-exports[`AdaptiveFee #getFee gas cost  [ @skip-on-coverage ] gas cost of 0 volatility 1`] = `548`;
+exports[`AdaptiveFee #getFee gas cost  [ @skip-on-coverage ] gas cost of 0 volatility 1`] = `542`;
 
-exports[`AdaptiveFee #getFee gas cost  [ @skip-on-coverage ] gas cost of 100 volatility 1`] = `548`;
+exports[`AdaptiveFee #getFee gas cost  [ @skip-on-coverage ] gas cost of 100 volatility 1`] = `542`;
 
-exports[`AdaptiveFee #getFee gas cost  [ @skip-on-coverage ] gas cost of 2000 volatility 1`] = `1272`;
+exports[`AdaptiveFee #getFee gas cost  [ @skip-on-coverage ] gas cost of 2000 volatility 1`] = `1265`;

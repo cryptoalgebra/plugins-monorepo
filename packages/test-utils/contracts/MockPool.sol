@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 pragma abicoder v1;
 
-import '@cryptoalgebra/integral-core/contracts/libraries/TickManagement.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Constants.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
@@ -23,6 +22,16 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
     uint8 pluginConfig;
     uint16 communityFee;
     bool unlocked;
+  }
+
+  /// @dev Copy of TickManagement.Tick. The core library pins solc 0.8.20, so it cannot be imported.
+  struct Tick {
+    uint256 liquidityTotal;
+    int128 liquidityDelta;
+    int24 prevTick;
+    int24 nextTick;
+    uint256 outerFeeGrowth0Token;
+    uint256 outerFeeGrowth1Token;
   }
 
   /// @inheritdoc IAlgebraPoolState
@@ -55,7 +64,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   address public override communityVault;
 
   /// @inheritdoc IAlgebraPoolState
-  mapping(int24 => TickManagement.Tick) public override ticks;
+  mapping(int24 => Tick) public override ticks;
 
   /// @inheritdoc IAlgebraPoolState
   mapping(int16 => uint256) public override tickTable;

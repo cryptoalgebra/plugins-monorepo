@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraDynamicFeePlugin.sol';

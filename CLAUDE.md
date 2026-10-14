@@ -53,7 +53,7 @@ There is no `coverage` script in any `package.json`. `npx hardhat coverage` stil
 
 ## Build config
 
-- Solidity `0.8.20` in every package. `evmVersion: paris`, optimizer on at 1,000,000 runs, `bytecodeHash: none`.
+- Solidity `0.8.26` in every package. `evmVersion: cancun`, optimizer on at 1,000,000 runs, `bytecodeHash: none`.
 - Each package has its own `hardhat.config.ts` that imports the root `hardhat.base.config.ts` for networks, etherscan and typechain settings.
 - Typechain output goes to `packages/<dir>/typechain`. Import contract types from there, never hand-write an interface.
 - A contract from another workspace package or from OpenZeppelin is only compiled into a package's artifacts if it is listed in that package's `dependencyCompiler.paths`. A missing entry shows up as `HH700: Artifact for contract "X" not found`.

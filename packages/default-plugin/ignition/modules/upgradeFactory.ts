@@ -8,7 +8,7 @@ const config = {
   // Factory proxy address from initial deployment
   factoryProxyAddress: "0x0000000000000000000000000000000000000000",
   
-  // ProxyAdmin address from initial deployment
+  // ProxyAdmin the factory proxy deployed, printed by the initial deployment
   proxyAdminAddress: "0x0000000000000000000000000000000000000000",
 };
 

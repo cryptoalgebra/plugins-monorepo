@@ -94,6 +94,21 @@ interface PluginFactoryDeployment {
   proxyAdminOwner: any;
 }
 
+// ERC-1967 admin slot, the only place an OZ 5 transparent proxy exposes its admin
+const PROXY_ADMIN_SLOT = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103';
+
+// The proxy deploys its own ProxyAdmin, owned by proxyAdminOwner
+export async function deployTransparentProxy(implementation: string, proxyAdminOwner: { address: string }, initData = '0x') {
+  const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+  const proxy = await TransparentProxyFactory.deploy(implementation, proxyAdminOwner.address, initData);
+  const proxyAddress = await proxy.getAddress();
+
+  const adminWord = await ethers.provider.getStorage(proxyAddress, PROXY_ADMIN_SLOT);
+  const proxyAdmin = await ethers.getContractAt('ProxyAdmin', ethers.getAddress(ethers.dataSlice(adminWord, 12)));
+
+  return { proxy, proxyAddress, proxyAdmin };
+}
+
 // Deploy the mock plugin factory behind a TransparentUpgradeableProxy, matching production wiring
 export async function deployPluginFactory(
   mockFactory: any,
@@ -104,15 +119,11 @@ export async function deployPluginFactory(
 
   const signers = await ethers.getSigners();
   const proxyAdminOwner = signers[signers.length - 1];
-  const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
-  const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
 
   const factoryImplFactory = await pinnedMockTimePluginFactory();
   const factoryImpl = await factoryImplFactory.deploy();
 
-  const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
-  const proxy = await TransparentProxyFactory.deploy(await factoryImpl.getAddress(), await proxyAdmin.getAddress(), '0x');
-  const proxyAddress = await proxy.getAddress();
+  const { proxyAddress, proxyAdmin } = await deployTransparentProxy(await factoryImpl.getAddress(), proxyAdminOwner);
 
   // The plugin implementation needs the factory proxy address, so it is deployed after the proxy
   const pluginImplFactory = await ethers.getContractFactory(pluginContractName);
@@ -179,16 +190,10 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
   const signers = await ethers.getSigners();
   const proxyAdminOwner = signers[signers.length - 1]; // Use last signer as ProxyAdmin owner
 
-  const ProxyAdminFactory = await ethers.getContractFactory('ProxyAdmin');
-  const proxyAdmin = await ProxyAdminFactory.connect(proxyAdminOwner).deploy();
-
   const pluginFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
   const pluginFactoryImpl = await pluginFactoryImplFactory.deploy();
 
-  const TransparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
-  const proxy = await TransparentProxyFactory.deploy(await pluginFactoryImpl.getAddress(), await proxyAdmin.getAddress(), '0x');
-
-  const proxyAddress = await proxy.getAddress();
+  const { proxyAddress, proxyAdmin } = await deployTransparentProxy(await pluginFactoryImpl.getAddress(), proxyAdminOwner);
 
   // Now deploy plugin implementation with the REAL proxy address as pluginFactory
   // The shipped plugin takes the five module addresses positionally, only the harnesses take a struct

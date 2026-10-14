@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @notice Subset of Solady FixedPointMathLib: expWad and lnWad only
 /// @author Solady (https://github.com/vectorized/solady/blob/acd959aa4bd04720d640bf4e6a5c71037510cc4b/src/utils/FixedPointMathLib.sol)

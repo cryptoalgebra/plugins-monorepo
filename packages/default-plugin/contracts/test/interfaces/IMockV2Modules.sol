@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @dev V2 surface each upgraded module mock adds on top of the shipped implementation.
 /// @dev The plugin level accessors encode against these, so a renamed mock function breaks at compile time

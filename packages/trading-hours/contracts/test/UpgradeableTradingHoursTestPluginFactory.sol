@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import '@cryptoalgebra/abstract-plugin/contracts/interfaces/IBasePluginFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
@@ -35,7 +35,7 @@ contract UpgradeableTradingHoursTestPluginFactory is IBasePluginFactory {
 
     tradingHoursImplementation = address(new TradingHoursPluginImplementation());
     pluginImplementation = address(new UpgradeableTradingHoursPluginTest(_algebraFactory, address(this), tradingHoursImplementation));
-    beacon = new UpgradeableBeacon(pluginImplementation);
+    beacon = new UpgradeableBeacon(pluginImplementation, address(this));
   }
 
   /// @inheritdoc IAlgebraPluginFactory

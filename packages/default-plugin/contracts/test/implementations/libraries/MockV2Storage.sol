@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @dev Namespaced storage for the V2 fields the upgraded module mocks add.
 /// @dev Kept apart from the modules own namespaces so the mocks never restate a production layout.

@@ -7,7 +7,12 @@ const config: HardhatUserConfig = {
   networks: baseConfig.networks,
   etherscan: baseConfig.etherscan,
   typechain: baseConfig.typechain,
-  solidity: "0.8.20",
+  solidity: {
+    version: '0.8.26',
+    settings: {
+      evmVersion: 'cancun',
+    },
+  },
 };
 
 export default config;

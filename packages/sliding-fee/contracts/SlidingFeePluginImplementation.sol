@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import { TickMath } from '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import { FullMath } from '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';

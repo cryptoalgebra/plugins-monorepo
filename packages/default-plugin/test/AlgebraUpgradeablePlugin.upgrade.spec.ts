@@ -128,7 +128,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       // Other user cannot upgrade
       await expect(
         fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation)
-      ).to.be.revertedWith('Ownable: caller is not the owner');
+      ).to.be.revertedWithCustomError(fixture.beacon, 'OwnableUnauthorizedAccount').withArgs(other.address);
     });
 
     it('owner can upgrade beacon', async () => {
@@ -177,7 +177,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
       await expect(
         fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation)
-      ).to.be.revertedWith('Ownable: caller is not the owner');
+      ).to.be.revertedWithCustomError(fixture.beacon, 'OwnableUnauthorizedAccount').withArgs(other.address);
     });
 
     it('owner of algebraFactory cannot upgrade beacon directly (owner-only beacon)', async () => {
@@ -190,7 +190,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       
       await expect(
         beacon.connect(wallet).upgradeTo(fixture.upgradedImplementation)
-      ).to.be.revertedWith('Ownable: caller is not the owner');
+      ).to.be.revertedWithCustomError(beacon, 'OwnableUnauthorizedAccount').withArgs(wallet.address);
     });
   });
 

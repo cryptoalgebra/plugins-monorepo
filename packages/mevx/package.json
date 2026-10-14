@@ -14,7 +14,7 @@
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "^2.2.1",
     "@cryptoalgebra/integral-core": "1.2.10",
-    "@openzeppelin/contracts": "4.9.3"
+    "@openzeppelin/contracts": "5.4.0"
   },
   "devDependencies": {
     "test-utils": "workspace:^"

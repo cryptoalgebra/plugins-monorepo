@@ -1,7 +1,7 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`SlidingFee #getFee gas cost  [ @skip-on-coverage ] gas cost of same tick 1`] = `47204`;
+exports[`SlidingFee #getFee gas cost  [ @skip-on-coverage ] gas cost of same tick 1`] = `44727`;
 
-exports[`SlidingFee #getFee gas cost  [ @skip-on-coverage ] gas cost of tick decrease 1`] = `52311`;
+exports[`SlidingFee #getFee gas cost  [ @skip-on-coverage ] gas cost of tick decrease 1`] = `49816`;
 
-exports[`SlidingFee #getFee gas cost  [ @skip-on-coverage ] gas cost of tick increase 1`] = `52202`;
+exports[`SlidingFee #getFee gas cost  [ @skip-on-coverage ] gas cost of tick increase 1`] = `49705`;

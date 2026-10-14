@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
@@ -69,7 +69,7 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   ) external initializer {
     PluginFactoryStorage storage s = _getStorage();
     s.algebraFactory = _algebraFactory;
-    s.beacon = address(new UpgradeableBeacon(pluginImplementation));
+    s.beacon = address(new UpgradeableBeacon(pluginImplementation, address(this)));
 
     // Validate and set initial fee configuration
     AdaptiveFee.validateFeeConfiguration(initialFeeConfig);

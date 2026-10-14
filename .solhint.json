@@ -5,7 +5,7 @@
     "compiler-version": ["error", "^0.8.20"],
     "quotes": ["error", "single"],
     "func-visibility": ["warn", { "ignoreConstructors": true }],
-    "max-line-length": ["warn", 120],
+    "max-line-length": "off",
     "no-empty-blocks": "off",
     "no-inline-assembly": "off",
     "not-rely-on-time": "off",

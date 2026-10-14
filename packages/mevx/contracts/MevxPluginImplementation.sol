@@ -40,7 +40,7 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     bytes memory initData = abi.encodeCall(IMevxRouter.initializePoolExternally, (poolId, ALGEBRA_POOL_TYPE, data));
 
     // Failsafe: keep pool initialization non-blocking for the main flow.
-    address(router).call{gas: layout.callGasBudget}(initData);
+    address(router).call{ gas: layout.callGasBudget }(initData);
   }
 
   function setConfigId(bytes32 configId) external {
@@ -125,14 +125,7 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     }
   }
 
-  function mevxAfterSwap(
-    address pool,
-    address sender,
-    address recipient,
-    bool zeroToOne,
-    int256 amount0,
-    int256 amount1
-  ) external {
+  function mevxAfterSwap(address pool, address sender, address recipient, bool zeroToOne, int256 amount0, int256 amount1) external {
     MevxStorage.Layout storage layout = MevxStorage.layout();
 
     if (sender != layout.mevxExecutor) {
@@ -144,30 +137,17 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
       (bytes32(uint256(uint160(pool))), zeroToOne, amount0, amount1, sender, recipient)
     );
 
-    address(this).call{gas: layout.callGasBudget}(branchData);
+    address(this).call{ gas: layout.callGasBudget }(branchData);
   }
 
-  function runArbitrage(
-    bytes32 poolId,
-    bool zeroToOne,
-    int256 amount0,
-    int256 amount1,
-    address sender,
-    address recipient
-  ) external {
+  function runArbitrage(bytes32 poolId, bool zeroToOne, int256 amount0, int256 amount1, address sender, address recipient) external {
     require(msg.sender == address(this), 'self only');
 
-    bytes memory initialArbCheckCallData = abi.encodeWithSelector(
-      IMevxRouter.initialArbCheck.selector,
-      poolId,
-      !zeroToOne
-    );
+    bytes memory initialArbCheckCallData = abi.encodeWithSelector(IMevxRouter.initialArbCheck.selector, poolId, !zeroToOne);
 
     MevxStorage.Layout storage layout = MevxStorage.layout();
 
-    (bool successInitialArbCheck, bytes memory returnDataInitialArbCheck) = address(layout.mevxRouter).call(
-      initialArbCheckCallData
-    );
+    (bool successInitialArbCheck, bytes memory returnDataInitialArbCheck) = address(layout.mevxRouter).call(initialArbCheckCallData);
 
     if (sender == layout.mevxExecutor) {
       return;
@@ -184,12 +164,12 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     }
 
     bytes memory callData = abi.encodeWithSelector(
-        IMevxRouter.constructArbitrageRoute.selector,
-        poolId,
-        zeroToOne,
-        arbData,
-        amount0,
-        amount1
+      IMevxRouter.constructArbitrageRoute.selector,
+      poolId,
+      zeroToOne,
+      arbData,
+      amount0,
+      amount1
     );
 
     (bool success, bytes memory returnData) = address(layout.mevxRouter).call(callData);
@@ -200,31 +180,16 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     bytes memory encodedRoute;
 
     if (success && returnData.length >= 224) {
-        (isArbPossible, profitToken, pools, amountIn, encodedRoute) = abi
-            .decode(returnData, (bool, address, address[], uint256, bytes));
+      (isArbPossible, profitToken, pools, amountIn, encodedRoute) = abi.decode(returnData, (bool, address, address[], uint256, bytes));
     }
-    
+
     //add variables to avoid stack too deep error
-    address _recipient = recipient; 
+    address _recipient = recipient;
     address _mevxProfitDistributor = layout.mevxProfitDistributor;
     if (isArbPossible) {
-        try
-            IMevxExecutor(layout.mevxExecutor).executeRoute(
-                encodedRoute,
-                pools,
-                amountIn,
-                profitToken,
-                address(_mevxProfitDistributor)
-            )
-        {
-            try
-                IProfitDistributor(_mevxProfitDistributor).distributeProfit(
-                    layout.mevxConfigId,
-                    profitToken,
-                    _recipient
-                )
-            {} catch {}
-        } catch {}
+      try IMevxExecutor(layout.mevxExecutor).executeRoute(encodedRoute, pools, amountIn, profitToken, address(_mevxProfitDistributor)) {
+        try IProfitDistributor(_mevxProfitDistributor).distributeProfit(layout.mevxConfigId, profitToken, _recipient) {} catch {}
+      } catch {}
     }
   }
 }

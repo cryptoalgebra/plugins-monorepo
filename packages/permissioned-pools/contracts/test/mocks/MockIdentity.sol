@@ -42,7 +42,12 @@ contract MockIdentity is IIdentity {
   /// @inheritdoc IIdentity
   function getClaim(
     bytes32 _claimId
-  ) external view override returns (uint256 topic, uint256 scheme, address issuer, bytes memory signature, bytes memory data, string memory uri) {
+  )
+    external
+    view
+    override
+    returns (uint256 topic, uint256 scheme, address issuer, bytes memory signature, bytes memory data, string memory uri)
+  {
     Claim storage claim = claims[_claimId];
     return (claim.topic, claim.scheme, claim.issuer, claim.signature, claim.data, claim.uri);
   }

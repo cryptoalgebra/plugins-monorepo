@@ -3,8 +3,6 @@ pragma solidity ^0.8.20;
 
 /// @title IReflexPlugin
 interface IReflexPlugin {
-
-
   /// @notice Updates the Reflex router address
   /// @param router New router address to set
   function setReflexRouter(address router) external;

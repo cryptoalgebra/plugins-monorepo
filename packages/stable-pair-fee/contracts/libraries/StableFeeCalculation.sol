@@ -34,9 +34,8 @@ library StableFeeCalculation {
   /// @notice Price ratio of two sqrt prices, smaller over larger
   /// @return priceRatioX96 Ratio in Q96, always <= Q96
   function calculatePriceRatioX96(uint256 sqrtPrice1X96, uint256 sqrtPrice2X96) internal pure returns (uint256 priceRatioX96) {
-    uint256 sqrtPriceRatioX48 = sqrtPrice1X96 < sqrtPrice2X96
-      ? (sqrtPrice1X96 * Q48) / sqrtPrice2X96
-      : (sqrtPrice2X96 * Q48) / sqrtPrice1X96;
+    uint256 sqrtPriceRatioX48 =
+      sqrtPrice1X96 < sqrtPrice2X96 ? (sqrtPrice1X96 * Q48) / sqrtPrice2X96 : (sqrtPrice2X96 * Q48) / sqrtPrice1X96;
     priceRatioX96 = sqrtPriceRatioX48 * sqrtPriceRatioX48;
   }
 

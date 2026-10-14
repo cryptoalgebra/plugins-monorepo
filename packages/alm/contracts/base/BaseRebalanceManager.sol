@@ -211,7 +211,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
             obtainTWAPsResult.totalDepositToken == 0 ||
             (newState == State.Normal &&
               obtainTWAPsResult.totalPairedInDeposit <=
-              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
+                _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
           ) return;
           ranges = _getRangesWithState(newState, obtainTWAPsResult);
         } else {

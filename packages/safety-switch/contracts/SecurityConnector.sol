@@ -13,8 +13,9 @@ abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
   using Plugins for uint8;
 
   string internal constant SECURITY_MODULE_NAME = 'Security Plugin';
-  uint8 internal constant SECURITY_PLUGIN_CONFIG =
-    uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
+  uint8 internal constant SECURITY_PLUGIN_CONFIG = uint8(
+    Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG
+  );
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable securityImplementation;

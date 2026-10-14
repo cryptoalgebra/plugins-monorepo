@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 /// https://github.com/Uniswap/v4-periphery/blob/main/src/hooks/permissionedPools/libraries/PermissionFlags.sol
 type PermissionFlag is bytes2;
 
-using {or as |} for PermissionFlag global;
-using {and as &} for PermissionFlag global;
-using {eq as ==} for PermissionFlag global;
+using { or as | } for PermissionFlag global;
+using { and as & } for PermissionFlag global;
+using { eq as == } for PermissionFlag global;
 
 function or(PermissionFlag a, PermissionFlag b) pure returns (PermissionFlag) {
   return PermissionFlag.wrap(PermissionFlag.unwrap(a) | PermissionFlag.unwrap(b));

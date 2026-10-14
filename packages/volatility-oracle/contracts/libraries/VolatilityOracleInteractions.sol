@@ -50,14 +50,12 @@ library VolatilityOracleInteractions {
     // Calculate quoteAmount with better precision if it doesn't overflow when multiplied by itself
     if (sqrtRatioX96 <= type(uint128).max) {
       uint256 ratioX192 = uint256(sqrtRatioX96) * sqrtRatioX96;
-      quoteAmount = baseToken < quoteToken
-        ? FullMath.mulDiv(ratioX192, baseAmount, 1 << 192)
-        : FullMath.mulDiv(1 << 192, baseAmount, ratioX192);
+      quoteAmount =
+        baseToken < quoteToken ? FullMath.mulDiv(ratioX192, baseAmount, 1 << 192) : FullMath.mulDiv(1 << 192, baseAmount, ratioX192);
     } else {
       uint256 ratioX128 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, 1 << 64);
-      quoteAmount = baseToken < quoteToken
-        ? FullMath.mulDiv(ratioX128, baseAmount, 1 << 128)
-        : FullMath.mulDiv(1 << 128, baseAmount, ratioX128);
+      quoteAmount =
+        baseToken < quoteToken ? FullMath.mulDiv(ratioX128, baseAmount, 1 << 128) : FullMath.mulDiv(1 << 128, baseAmount, ratioX128);
     }
   }
 

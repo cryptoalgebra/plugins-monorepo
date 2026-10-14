@@ -57,10 +57,6 @@ contract AccessListRegistry is IAccessListRegistry {
   }
 
   function _checkManager() internal view {
-    require(
-      IAlgebraFactory(algebraFactory).hasRoleOrOwner(ACCESS_LIST_MANAGER, msg.sender),
-      'Only Access List manager'
-    );
+    require(IAlgebraFactory(algebraFactory).hasRoleOrOwner(ACCESS_LIST_MANAGER, msg.sender), 'Only Access List manager');
   }
-
 }

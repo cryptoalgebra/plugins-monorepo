@@ -38,7 +38,15 @@ contract MockRouter is IMsgSender {
 
   function callMint(address pool, address recipient, int24 bottomTick, int24 topTick, uint128 liquidityDesired) external {
     (bool success, bytes memory returnData) = pool.call(
-      abi.encodeWithSignature('mint(address,address,int24,int24,uint128,bytes)', address(this), recipient, bottomTick, topTick, liquidityDesired, '')
+      abi.encodeWithSignature(
+        'mint(address,address,int24,int24,uint128,bytes)',
+        address(this),
+        recipient,
+        bottomTick,
+        topTick,
+        liquidityDesired,
+        ''
+      )
     );
     if (!success) {
       if (returnData.length > 0) {

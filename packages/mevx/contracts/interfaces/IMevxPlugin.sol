@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 /// @title IMevxPlugin
 interface IMevxPlugin {
-
   /// @notice Returns the current MEVX router address
   function getMevxRouter() external view returns (address);
 

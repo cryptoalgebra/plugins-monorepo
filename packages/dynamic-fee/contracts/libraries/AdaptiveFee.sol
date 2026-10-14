@@ -38,8 +38,9 @@ library AdaptiveFee {
   function getFee(uint88 volatility, AlgebraFeeConfigurationU144 config) internal pure returns (uint16 fee) {
     unchecked {
       volatility /= 15; // normalize for 15 sec interval
-      uint256 sumOfSigmoids = sigmoid(volatility, config.gamma1(), config.alpha1(), config.beta1()) +
-        sigmoid(volatility, config.gamma2(), config.alpha2(), config.beta2());
+      uint256 sumOfSigmoids =
+        sigmoid(volatility, config.gamma1(), config.alpha1(), config.beta1()) +
+          sigmoid(volatility, config.gamma2(), config.alpha2(), config.beta2());
 
       uint256 result = uint256(config.baseFee()) + sumOfSigmoids;
       assert(result <= type(uint16).max); // should always be true

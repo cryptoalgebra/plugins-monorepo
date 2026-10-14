@@ -135,11 +135,9 @@ library VolatilityOracle {
       );
 
       targetTimepoint.tickCumulative +=
-        ((tickCumulativeAfter - targetTimepoint.tickCumulative) / int56(uint56(timepointTimeDelta))) *
-        int56(uint56(targetDelta));
+        ((tickCumulativeAfter - targetTimepoint.tickCumulative) / int56(uint56(timepointTimeDelta))) * int56(uint56(targetDelta));
       targetTimepoint.volatilityCumulative +=
-        ((atOrAfter.volatilityCumulative - targetTimepoint.volatilityCumulative) / timepointTimeDelta) *
-        targetDelta;
+        ((atOrAfter.volatilityCumulative - targetTimepoint.volatilityCumulative) / timepointTimeDelta) * targetDelta;
     }
   }
 
@@ -457,8 +455,7 @@ library VolatilityOracle {
       (uint32 timepointTimeDelta, uint32 targetDelta) = (timestampAfter - timestampBefore, target - timestampBefore);
       return (
         tickCumulativeBefore +
-          ((tickCumulativeAfter - tickCumulativeBefore) / int56(uint56(timepointTimeDelta))) *
-          int56(uint56(targetDelta)),
+          ((tickCumulativeAfter - tickCumulativeBefore) / int56(uint56(timepointTimeDelta))) * int56(uint56(targetDelta)),
         _indexBeforeOrAt
       );
     }

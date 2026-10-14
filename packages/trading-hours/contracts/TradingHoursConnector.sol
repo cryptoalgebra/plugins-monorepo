@@ -58,7 +58,10 @@ abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
   /// @inheritdoc ITradingHoursPlugin
   function setTradingHours(uint32 startSeconds, uint32 endSeconds) external override {
     _authorize();
-    _delegateCall(tradingHoursImplementation, abi.encodeCall(ITradingHoursPluginImplementation.setTradingHours, (startSeconds, endSeconds)));
+    _delegateCall(
+      tradingHoursImplementation,
+      abi.encodeCall(ITradingHoursPluginImplementation.setTradingHours, (startSeconds, endSeconds))
+    );
     emit TradingHoursUpdated(startSeconds, endSeconds);
   }
 

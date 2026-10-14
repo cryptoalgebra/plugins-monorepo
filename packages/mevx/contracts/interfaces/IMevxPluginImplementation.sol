@@ -5,7 +5,6 @@ pragma solidity ^0.8.20;
 /// @notice Interface for MEVX plugin implementation contract
 /// @dev Used for type-safe delegatecall encoding in MevxConnector
 interface IMevxPluginImplementation {
-
   event ConfigIdSet(bytes32 oldConfigId, bytes32 newConfigId);
   event ProfitDistributorSet(address oldProfitDistributor, address newProfitDistributor);
   event MevxExecutorSet(address oldMevxExecutor, address newMevxExecutor);
@@ -28,14 +27,7 @@ interface IMevxPluginImplementation {
   function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external;
 
   function mevxAfterSwap(address pool, address sender, address recipient, bool zeroToOne, int256 amount0, int256 amount1) external;
-  function runArbitrage(
-    bytes32 poolId,
-    bool zeroToOne,
-    int256 amount0,
-    int256 amount1,
-    address sender,
-    address recipient
-  ) external;
+  function runArbitrage(bytes32 poolId, bool zeroToOne, int256 amount0, int256 amount1, address sender, address recipient) external;
 
   /// @notice Distributes collected plugin fees to the profit distributor
   /// @param pool The pool address (to read token0/token1)

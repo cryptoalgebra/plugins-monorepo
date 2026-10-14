@@ -2,11 +2,11 @@
 pragma solidity ^0.8.20;
 
 interface IMevxExecutor {
-	function executeRoute(
-		bytes calldata encodedRoute,
-		address[] memory pools,
-		uint256 amountIn,
-		address profitToken,
-		address profitRecipient
-	) external;
+  function executeRoute(
+    bytes calldata encodedRoute,
+    address[] memory pools,
+    uint256 amountIn,
+    address profitToken,
+    address profitRecipient
+  ) external;
 }

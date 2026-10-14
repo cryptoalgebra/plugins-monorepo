@@ -21,6 +21,13 @@
     "no-complex-fallback": "off",
     "immutable-vars-naming": ["warn", { "immutablesAsConstants": false }],
     "gas-custom-errors": "off",
+    "gas-indexed-events": "off",
+    "gas-strict-inequalities": "off",
+    "gas-small-strings": "off",
+    "gas-increment-by-one": "off",
+    "gas-calldata-parameters": "off",
+    "gas-struct-packing": "off",
+    "use-natspec": "off",
     "one-contract-per-file": "off"
   }
 }

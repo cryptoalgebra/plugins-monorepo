@@ -22,7 +22,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {
-    "decimal.js": "^10.5.0",
+    "decimal.js": "^10.6.0",
     "hardhat-contract-sizer": "^2.10.0",
     "test-utils": "workspace:^"
   }

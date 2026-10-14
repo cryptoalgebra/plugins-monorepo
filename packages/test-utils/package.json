@@ -14,10 +14,10 @@
     "@ethersproject/abstract-provider": "^5.8.0",
     "@openzeppelin/contracts": "4.9.3",
     "bignumber.js": "^9.2.1",
-    "hardhat": "^2.22.19",
-    "mocha-chai-jest-snapshot": "^1.1.6"
+    "hardhat": "^2.29.1",
+    "mocha-chai-jest-snapshot": "^1.1.8"
   },
   "peerDependencies": {
-    "hardhat": "^2.22.19"
+    "hardhat": "^2.29.1"
   }
 }

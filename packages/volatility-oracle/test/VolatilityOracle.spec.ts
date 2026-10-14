@@ -801,6 +801,8 @@ describe('VolatilityOracle', () => {
     let volatilityOracle: VolatilityOracleTest;
 
     let BATCH_SIZE = 1000;
+    // A full batch takes ~24M gas, over the 2^24 gas limit hardhat defaults a transaction to since EIP-7825.
+    const BATCH_GAS_LIMIT = 30_000_000;
     let step = 1;
 
     const STARTING_TIME = TEST_POOL_START_TIME;
@@ -814,9 +816,9 @@ describe('VolatilityOracle', () => {
       for (let i = 1; i < 65536; i += BATCH_SIZE) {
         if (i + BATCH_SIZE > 65536) {
           BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
+          await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE, { gasLimit: BATCH_GAS_LIMIT });
         } else {
-          await _volatilityOracle.batchUpdateFast(BATCH_SIZE);
+          await _volatilityOracle.batchUpdateFast(BATCH_SIZE, { gasLimit: BATCH_GAS_LIMIT });
         }
       }
       return _volatilityOracle;

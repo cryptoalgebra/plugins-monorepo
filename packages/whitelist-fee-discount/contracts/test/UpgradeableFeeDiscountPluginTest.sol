@@ -35,8 +35,10 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
     moduleNames[0] = FEE_DISCOUNT_MODULE_NAME;
   }
 
+  /// @dev Core needs DYNAMIC_FEE for a fee override
+  /// @dev Shipped plugins get it from a fee module, this harness has none
   function defaultPluginConfig() public view override returns (uint8) {
-    return FEE_DISCOUNT_PLUGIN_CONFIG;
+    return FEE_DISCOUNT_PLUGIN_CONFIG | uint8(Plugins.DYNAMIC_FEE);
   }
 
   // ###### HOOKS ######

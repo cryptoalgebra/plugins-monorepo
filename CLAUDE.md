@@ -57,7 +57,7 @@ There is no `coverage` script in any `package.json`. `npx hardhat coverage` stil
 - Each package has its own `hardhat.config.ts` that imports the root `hardhat.base.config.ts` for networks, etherscan and typechain settings.
 - Typechain output goes to `packages/<dir>/typechain`. Import contract types from there, never hand-write an interface.
 - A contract from another workspace package or from OpenZeppelin is only compiled into a package's artifacts if it is listed in that package's `dependencyCompiler.paths`. A missing entry shows up as `HH700: Artifact for contract "X" not found`.
-- The root `.env` supplies `ANKR_API_KEY`, `ETHERSCAN_API_KEY`, `MNEMONIC`, `INFURA_ID_PROJECT`. The hardhat network forks Base at a pinned block, so fork-based tests need a reachable RPC.
+- The root `.env` supplies `ANKR_API_KEY`, `ETHERSCAN_API_KEY`, `MNEMONIC`, `INFURA_ID_PROJECT`. The hardhat network does not fork. Only the `default-plugin` integration suite resets to a pinned Base block, so it needs a reachable RPC.
 
 ## Conventions
 

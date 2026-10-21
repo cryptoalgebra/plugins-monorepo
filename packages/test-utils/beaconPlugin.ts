@@ -64,7 +64,7 @@ export async function deployBeaconPluginFixture(options: {
   const PluginContract = await ethers.getContractFactory(options.pluginContract);
   const pluginImplementation = await PluginContract.deploy(mockFactory.target, proxyDeployer.target, ...pluginArgs);
 
-  const beacon = await (await ethers.getContractFactory('UpgradeableBeacon')).deploy(pluginImplementation.target);
+  const beacon = await (await ethers.getContractFactory('UpgradeableBeacon')).deploy(pluginImplementation.target, owner);
 
   const deployProxy = async (pool: any, args: any[] = initArgs) => {
     const initData = pluginImplementation.interface.encodeFunctionData(initFunction, args);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @title Minimal pool stand-in for RebalanceManager
 /// @dev The shared MockPool has no factory()

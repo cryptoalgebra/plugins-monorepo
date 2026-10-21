@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @title Mock Router Without IMsgSender
 /// @notice Reaches the pool like a router but has no msgSender()

@@ -57,7 +57,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
     // Deploy Beacon Proxy (using OpenZeppelin's BeaconProxy)
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
     const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
@@ -298,7 +298,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
   describe('#storage isolation', () => {
     it('should have isolated storage between proxies', async () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
       const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy1 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
@@ -332,7 +332,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
     it('should share implementation address across proxies', async () => {
       // Deploy second proxy
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
       const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');

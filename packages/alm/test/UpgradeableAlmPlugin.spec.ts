@@ -39,7 +39,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
     // Deploy Beacon Proxy (using OpenZeppelin's BeaconProxy)
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
     const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
@@ -198,7 +198,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
       // Deploy second proxy
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
       const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
@@ -230,7 +230,7 @@ describe('#UpgradeableAlmPlugin', () => {
     it('should share implementation address across proxies', async () => {
       // Deploy second proxy
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
       const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');

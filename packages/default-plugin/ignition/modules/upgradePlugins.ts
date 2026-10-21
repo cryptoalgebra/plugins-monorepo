@@ -44,6 +44,8 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
 
 // ============= PLUGIN UPGRADE MODULE =============
 // Use this module to upgrade all plugins to a new implementation
+// Only for a factory deployed from this version. Proxies of an earlier deployment keep the pool
+// at offset 75, this code reads it at 56, and every hook would revert with OnlyPool()
 //
 // Usage:
 //   1. Update factoryProxyAddress in config above

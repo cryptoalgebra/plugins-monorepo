@@ -51,7 +51,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
 
     // Deploy Beacon Proxy (using OpenZeppelin's BeaconProxy)
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
     const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
@@ -147,7 +147,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
     it('should have isolated storage between proxies', async () => {
       // Deploy second proxy
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
       // Deploy second mock pool
       const MockPoolFactory = await ethers.getContractFactory('MockPool');
@@ -179,7 +179,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
     it('should share implementation address across proxies', async () => {
       // Deploy second proxy
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+      const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), wallet);
 
       // Use pool-aware proxy so _getPool works consistently
       const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();

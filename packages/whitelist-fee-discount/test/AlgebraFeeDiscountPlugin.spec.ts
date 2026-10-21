@@ -54,7 +54,8 @@ describe('AlgebraFeeDiscountPlugin', () => {
       );
 
     const beacon: UpgradeableBeacon = await new UpgradeableBeacon__factory(wallet).deploy(
-      pluginImplementation.target
+      pluginImplementation.target,
+      wallet
     );
 
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [

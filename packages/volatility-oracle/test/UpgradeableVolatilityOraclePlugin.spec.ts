@@ -43,7 +43,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
 
     // Deploy UpgradeableBeacon
     const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
+    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target, owner);
 
     // Deploy pool-aware proxy (required for POOL_ADDRESS_OFFSET-based pool discovery)
     const AlgebraPluginProxy = await pinnedPluginProxyFactory();

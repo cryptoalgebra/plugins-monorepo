@@ -62,10 +62,12 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // Upgrade factory
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      const proxy = await ethers.getContractAt('TransparentUpgradeableProxy', await mockPluginFactory.getAddress());
+      await expect(proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(), 
-        await newFactoryImpl.getAddress()
-      );
+        await newFactoryImpl.getAddress(),
+        '0x'
+      )).to.emit(proxy, 'Upgraded').withArgs(await newFactoryImpl.getAddress());
 
       // Verify storage preserved
       expect(await mockPluginFactory.farmingAddress()).to.eq(other.address);
@@ -489,9 +491,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Beacon preserved
@@ -513,9 +516,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // ALL configs preserved
@@ -538,9 +542,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Plugin mapping preserved
@@ -552,9 +557,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Create NEW pool after factory upgrade
@@ -580,9 +586,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Can still modify configs
@@ -607,9 +614,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(
+      await proxyAdmin.connect(proxyAdminOwner).upgradeAndCall(
         await mockPluginFactory.getAddress(),
-        await newFactoryImpl.getAddress()
+        await newFactoryImpl.getAddress(),
+        '0x'
       );
 
       // Existing plugin still works (factory upgrade doesn't affect plugins!)

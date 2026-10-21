@@ -54,7 +54,7 @@ There is no `coverage` script in any `package.json`. `npx hardhat coverage` stil
 
 ## Build config
 
-- Solidity `0.8.20` in every package, `evmVersion: paris`. The settings live once, in `hardhat.base.config.ts`:
+- Solidity `0.8.26` in every package, `evmVersion: cancun`. The settings live once, in `hardhat.base.config.ts`:
   `COMPILER_SETTINGS` (optimizer on at 1,000,000 runs, `bytecodeHash: none`) for most packages, `LOW_RUNS_COMPILER_SETTINGS`
   (runs 0) for `default-plugin`, and `abstract-plugin` builds without the optimizer.
 - Each package has its own `hardhat.config.ts` that imports the root `hardhat.base.config.ts` for networks, etherscan and typechain settings.

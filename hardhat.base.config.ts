@@ -14,8 +14,8 @@ export const BASE_FORK = {
   blockNumber: 40801000,
 };
 
-export const SOLC_VERSION = '0.8.20';
-export const EVM_VERSION = 'paris';
+export const SOLC_VERSION = '0.8.26';
+export const EVM_VERSION = 'cancun';
 
 // The production build, and the one the pinned bytecode in test-utils is compiled with
 export const COMPILER_SETTINGS = {
@@ -46,10 +46,9 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       loggingEnabled: false,
-      // Matches the evmVersion every package compiles with. Hardhat calls that fork 'merge', and the
-      // key it reads is 'hardfork': the 'evm' key it replaced was silently ignored, leaving the
-      // network on the latest fork while the bytecode targeted paris.
-      hardfork: 'merge',
+      // Matches the evmVersion every package compiles with. The key hardhat reads is 'hardfork':
+      // the 'evm' key it replaced was silently ignored, leaving the network on the latest fork.
+      hardfork: 'cancun',
       // The fork pinned the clock as a side effect, and dropping it started the suite on real time.
       // Matches the timestamp of Base block 40801000 so runs stay reproducible whenever they happen.
       // No gas snapshot depends on this any more, and none should: pin the value in the test instead.

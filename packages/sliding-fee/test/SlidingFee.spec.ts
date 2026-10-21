@@ -27,7 +27,7 @@ describe('SlidingFee', () => {
     );
 
     const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
+    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target, (await ethers.getSigners())[0]);
 
     const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target, 100]);
     await proxyDeployer.deploy(beacon.target, mockPool.target, initData);

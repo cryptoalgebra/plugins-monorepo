@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import '../contracts/types/AlgebraFeeConfiguration.sol';
 import { AlgebraFeeConfigurationU144, AlgebraFeeConfigurationU144Lib } from '../contracts/types/AlgebraFeeConfigurationU144.sol';

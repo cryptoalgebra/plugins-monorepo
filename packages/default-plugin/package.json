@@ -19,7 +19,7 @@
     "@cryptoalgebra/integral-periphery": "1.2.5",
     "@cryptoalgebra/safety-switch-plugin": "workspace:^",
     "@cryptoalgebra/volatility-oracle-plugin": "workspace:^",
-    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts": "5.4.0",
     "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "devDependencies": {

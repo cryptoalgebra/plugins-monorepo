@@ -9,8 +9,8 @@ import BeaconProxyDeployerArtifact from './pinned/BeaconProxyDeployer.json';
 ///
 /// UpgradeableAbstractPlugin._getPool() reads the pool address out of the proxy's own runtime code at
 /// POOL_ADDRESS_OFFSET, which only holds for those settings. `hardhat coverage` forces the optimizer
-/// off for every compilation job, which moves the immutable: the proxy grows from 457 to 542 bytes and
-/// the address lands at offset 130, so every hook reverts OnlyPool() and whole spec files die in their
+/// off for every compilation job, which moves the immutable: the proxy grows and the address lands at
+/// offset 106 instead of 56, so every hook reverts OnlyPool() and whole spec files die in their
 /// before hooks. Deploying the proxy from pinned bytecode keeps it identical to production while
 /// everything actually under test stays instrumented and measurable.
 ///

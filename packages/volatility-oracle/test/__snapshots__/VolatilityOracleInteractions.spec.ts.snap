@@ -1,5 +1,5 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`VolatilityOracleInteractions #consult gas test [ @skip-on-coverage ] 1`] = `12255`;
+exports[`VolatilityOracleInteractions #consult gas test [ @skip-on-coverage ] 1`] = `12211`;
 
-exports[`VolatilityOracleInteractions #getQuoteAtTick gas test [ @skip-on-coverage ] 1`] = `1134`;
+exports[`VolatilityOracleInteractions #getQuoteAtTick gas test [ @skip-on-coverage ] 1`] = `1128`;

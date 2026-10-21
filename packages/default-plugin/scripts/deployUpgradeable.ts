@@ -67,25 +67,40 @@ async function main() {
   console.log("SecurityImpl:", await securityImpl.getAddress());
 
 
-  // ============= 2. DEPLOY PROXY ADMIN =============
-  console.log("=== Deploying ProxyAdmin ===");
+  // ============= 2. DEPLOY FACTORY IMPLEMENTATION =============
+  console.log("=== Deploying Factory Implementation ===");
 
-  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const proxyAdmin = await ProxyAdmin.deploy();
-  await proxyAdmin.waitForDeployment();
-  const proxyAdminAddress = await proxyAdmin.getAddress();
-  console.log("ProxyAdmin:", proxyAdminAddress);
+  const FactoryImpl = await ethers.getContractFactory("AlgebraUpgradeablePluginFactory");
+  const factoryImpl = await FactoryImpl.deploy();
+  await factoryImpl.waitForDeployment();
+  const factoryImplAddress = await factoryImpl.getAddress();
+  console.log("FactoryImplementation:", factoryImplAddress);
   console.log("");
 
-  // ============= 3. DEPLOY FACTORY PROXY (placeholder) =============
+  // ============= 3. DEPLOY FACTORY PROXY =============
   console.log("=== Deploying Factory Proxy ===");
 
+  // The proxy deploys its own ProxyAdmin, owned by the deployer, and initializes in its constructor,
+  // so no one can initialize it first. The plugin implementation needs the proxy address, so the
+  // beacon starts on the factory implementation and is moved to the plugin in step 5.
+  const initData = FactoryImpl.interface.encodeFunctionData("initialize", [
+    config.algebraFactory,
+    factoryImplAddress,
+    config.defaultFeeConfig,
+  ]);
+
   const TransparentProxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
-  // Use ProxyAdmin as placeholder implementation, empty init data
-  const factoryProxy = await TransparentProxy.deploy(proxyAdminAddress, proxyAdminAddress, "0x");
+  const factoryProxy = await TransparentProxy.deploy(factoryImplAddress, deployer.address, initData);
   await factoryProxy.waitForDeployment();
   const factoryProxyAddress = await factoryProxy.getAddress();
   console.log("FactoryProxy:", factoryProxyAddress);
+
+  const proxyReceipt = await factoryProxy.deploymentTransaction()!.wait();
+  const adminChanged = proxyReceipt!.logs
+    .map((log) => TransparentProxy.interface.parseLog(log))
+    .find((event) => event?.name === "AdminChanged");
+  const proxyAdminAddress: string = adminChanged!.args.newAdmin;
+  console.log("ProxyAdmin:", proxyAdminAddress);
   console.log("");
 
   // ============= 4. DEPLOY PLUGIN IMPLEMENTATION =============
@@ -106,37 +121,16 @@ async function main() {
   console.log("PluginImplementation:", pluginImplAddress);
   console.log("");
 
-  // ============= 5. DEPLOY FACTORY IMPLEMENTATION =============
-  console.log("=== Deploying Factory Implementation ===");
+  // ============= 5. POINT THE BEACON AT THE PLUGIN =============
+  console.log("=== Setting Plugin Implementation ===");
 
-  const FactoryImpl = await ethers.getContractFactory("AlgebraUpgradeablePluginFactory");
-  const factoryImpl = await FactoryImpl.deploy();
-  await factoryImpl.waitForDeployment();
-  const factoryImplAddress = await factoryImpl.getAddress();
-  console.log("FactoryImplementation:", factoryImplAddress);
-  console.log("");
-
-  // ============= 6. UPGRADE PROXY & INITIALIZE =============
-  console.log("=== Upgrading Proxy & Initializing Factory ===");
-
-  // Encode initialize calldata
-  const factoryInterface = FactoryImpl.interface;
-  const initData = factoryInterface.encodeFunctionData("initialize", [
-    config.algebraFactory,
-    pluginImplAddress,
-    config.defaultFeeConfig,
-  ]);
-
-  // upgradeAndCall via ProxyAdmin
-  const tx = await proxyAdmin.upgradeAndCall(factoryProxyAddress, factoryImplAddress, initData);
-  await tx.wait();
-  console.log("Factory proxy upgraded and initialized");
-  console.log("");
-
-  // Get factory instance at proxy address
   const factory = await ethers.getContractAt("AlgebraUpgradeablePluginFactory", factoryProxyAddress);
+  const upgradeTx = await factory.upgradePlugins(pluginImplAddress);
+  await upgradeTx.wait();
+  console.log("Beacon implementation:", pluginImplAddress);
+  console.log("");
 
-  // ============= 7. DEPLOY AUXILIARY CONTRACTS =============
+  // ============= 6. DEPLOY AUXILIARY CONTRACTS =============
   console.log("=== Deploying Auxiliary Contracts ===");
 
   const SecurityRegistryFactory = await ethers.getContractFactory("SecurityRegistry");
@@ -145,7 +139,7 @@ async function main() {
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
 
 
-  // ============= 8. POST-DEPLOYMENT CONFIGURATION =============
+  // ============= 7. POST-DEPLOYMENT CONFIGURATION =============
   console.log("=== Post-Deployment Configuration ===");
 
   // Set farming address

@@ -4,6 +4,7 @@ import { expect } from 'test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { ADDRESSES,  SQRT_RATIO } from './constants';
+import { DEFAULT_FEE_CONFIGURATION, deployImplementations, deployTransparentProxy, moduleArgs } from '../shared/fixtures';
 import { MockSecurityRegistry } from '../../typechain';
 import {
   createAndInitializePool,
@@ -26,14 +27,14 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     await helpers.reset();
   });
 
-  // Leaves the beacon on the implementation deployed to Base, where an upgrade of a live pool starts.
-  async function deployShippedFixture() {
+  // A fresh factory stack wired into the live Algebra factory. This branch cannot upgrade the plugin
+  // factory deployed to Base: its proxies keep the pool address at the old bytecode offset.
+  async function deployFixture() {
     await helpers.mine();
     
     const algebraFactory = await ethers.getContractAt('IAlgebraFactory', ADDRESSES.ALGEBRA_FACTORY);
     const nft = await ethers.getContractAt('INonfungiblePositionManager', ADDRESSES.NFT_POSITION_MANAGER);
     const swapRouter = await ethers.getContractAt('ISwapRouter', ADDRESSES.SWAP_ROUTER);
-    const newPluginFactory = await ethers.getContractAt('AlgebraUpgradeablePluginFactory', ADDRESSES.PLUGIN_FACTORY);
     
     const owner = await algebraFactory.owner();
     await impersonateAccount(owner);
@@ -52,6 +53,18 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     const [token0, token1] = (await tokenAContract.getAddress()).toLowerCase() < (await tokenBContract.getAddress()).toLowerCase()
       ? [tokenAContract, tokenBContract]
       : [tokenBContract, tokenAContract];
+
+    const implementations = await deployImplementations();
+    const factoryImpl = await (await ethers.getContractFactory('AlgebraUpgradeablePluginFactory')).deploy();
+    const { proxyAddress } = await deployTransparentProxy(await factoryImpl.getAddress(), deployer);
+    const pluginImpl = await (await ethers.getContractFactory('AlgebraUpgradeablePlugin')).deploy(
+      ADDRESSES.ALGEBRA_FACTORY,
+      proxyAddress,
+      ...moduleArgs(implementations)
+    );
+    const newPluginFactory = await ethers.getContractAt('AlgebraUpgradeablePluginFactory', proxyAddress);
+    await newPluginFactory.initialize(ADDRESSES.ALGEBRA_FACTORY, await pluginImpl.getAddress(), DEFAULT_FEE_CONFIGURATION);
+    await newPluginFactory.connect(ownerSigner).setFarmingAddress(ADDRESSES.FARMING_ADDRESS);
     
     // Get beacon
     const beaconAddress = await newPluginFactory.beacon();
@@ -70,17 +83,9 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       swapRouter,
       newPluginFactory,
       beacon,
-      deployer
+      deployer,
+      implementations
     };
-  }
-
-  // Without the upgrade every pool would run the code deployed to Base instead of this branch.
-  async function deployFixture() {
-    // Through loadFixture, so this always builds on the shipped snapshot rather than on whatever ran last
-    const fixture = await loadFixture(deployShippedFixture);
-    const local = await deployNewPluginImplementation('AlgebraUpgradeablePlugin', fixture.algebraFactory, fixture.newPluginFactory);
-    await fixture.newPluginFactory.connect(fixture.ownerSigner).upgradePlugins(local.address);
-    return fixture;
   }
 
   type Deployment = Awaited<ReturnType<typeof deployFixture>>;
@@ -138,16 +143,16 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     expect(token1BalanceAfter - token1BalanceBefore).to.equal(998901198691428440702196n);
   });
 
-  describe('#Plugin Upgrade on Live Network', () => {
+  describe('#Plugin Upgrade', () => {
     let ownerSigner: Deployment['ownerSigner'];
     let algebraFactory: Deployment['algebraFactory'];
     let token0: Deployment['token0'], token1: Deployment['token1'];
     let nft: Deployment['nft'];
     let swapRouter: Deployment['swapRouter'];
     let newPluginFactory: Deployment['newPluginFactory'];
-    let beacon: Deployment['beacon'], implementationBefore: string;
+    let beacon: Deployment['beacon'];
     let pluginAddress: string, plugin: PoolSetup['plugin'];
-    let deployer: Deployment['deployer'];
+    let deployer: Deployment['deployer'], implementations: Deployment['implementations'];
     let mintAmount: bigint, swapAmount: bigint, swapSupply: bigint, deadline: number;
     let newImplAddress: string;
     let swapRouterAddress: string;
@@ -157,7 +162,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     
       
     beforeEach(async function(){
-      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer } = await loadFixture(deployShippedFixture));
+      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer, implementations } = await loadFixture(deployFixture));
 
       // Create pool and get plugin
       const poolData = await createAndInitializePool(nft, ownerSigner, token0, token1, algebraFactory);
@@ -189,15 +194,13 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       feeConfigBefore = await plugin.feeConfig.staticCall();
       poolBefore = await plugin.pool();
       factoryBefore = await plugin.pluginFactory();
-      implementationBefore = await beacon.implementation();
-      // The implementation deployed to Base; starting anywhere else upgrades this branch onto itself.
-      expect(implementationBefore).to.equal('0x87298e3721637cc76D315974a06652BE9bf7438E');
 
       // Deploy new implementation
       const result = await deployNewPluginImplementation(
         'AlgebraUpgradeablePlugin',
         algebraFactory,
-        newPluginFactory
+        newPluginFactory,
+        implementations
       );
       
       newImplAddress = result.address;
@@ -215,20 +218,20 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     });
 
     it('reverts when upgrading to zero address', async () => {
-      const { ownerSigner, newPluginFactory } = await loadFixture(deployShippedFixture);
+      const { ownerSigner, newPluginFactory, beacon } = await loadFixture(deployFixture);
 
       await expect(
         newPluginFactory.connect(ownerSigner).upgradePlugins(ethers.ZeroAddress)
-      ).to.be.revertedWith('UpgradeableBeacon: implementation is not a contract');
+      ).to.be.revertedWithCustomError(beacon, 'BeaconInvalidImplementation').withArgs(ethers.ZeroAddress);
     });
 
     it('reverts when upgrading to non-contract address', async () => {
-      const { ownerSigner, newPluginFactory } = await loadFixture(deployShippedFixture);
+      const { ownerSigner, newPluginFactory, beacon } = await loadFixture(deployFixture);
       const [randomAddress] = await ethers.getSigners();
 
       await expect(
         newPluginFactory.connect(ownerSigner).upgradePlugins(randomAddress.address)
-      ).to.be.revertedWith('UpgradeableBeacon: implementation is not a contract');
+      ).to.be.revertedWithCustomError(beacon, 'BeaconInvalidImplementation').withArgs(randomAddress.address);
     });
     it('upgrades plugin implementation via beacon and swaps still work', async () => {
       // Upgrade plugin
@@ -325,10 +328,10 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     let nft: Deployment['nft'], swapRouter: Deployment['swapRouter'];
     let newPluginFactory: Deployment['newPluginFactory'], beacon: Deployment['beacon'];
     let pool: PoolSetup['pool'], pluginAddress: string, deadline: number;
-    let deployer: Deployment['deployer'];
+    let deployer: Deployment['deployer'], implementations: Deployment['implementations'];
 
     beforeEach(async () => {
-      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer } = await loadFixture(deployFixture));
+      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer, implementations } = await loadFixture(deployFixture));
       
       // Setup pool with liquidity and one initial swap
       const poolData = await setupPoolWithLiquidity(
@@ -357,6 +360,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         'MockUpgradedPluginWithNewSecurity',
         algebraFactory,
         newPluginFactory,
+        implementations,
         { security: upgradedSecurityAddress }
       );
       
@@ -407,11 +411,11 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     let token0: Deployment['token0'], token1: Deployment['token1'];
     let nft: Deployment['nft'], swapRouter: Deployment['swapRouter'], newPluginFactory: Deployment['newPluginFactory'];
     let plugin: PoolSetup['plugin'], pluginAddress: string, deadline: number;
-    let deployer: Deployment['deployer'];
+    let deployer: Deployment['deployer'], implementations: Deployment['implementations'];
     let securityRegistry: MockSecurityRegistry, securityRegistryAddress: string;
 
     beforeEach(async () => {
-      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, deployer } = await loadFixture(deployFixture));
+      ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, deployer, implementations } = await loadFixture(deployFixture));
       
       // Deploy and set security registry
       const SecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
@@ -456,6 +460,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         'MockUpgradedPluginWithNewSecurity',
         algebraFactory,
         newPluginFactory,
+        implementations,
         { security: upgradedSecurityAddress }
       );
       
@@ -532,7 +537,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
   });
   
   it('upgrades FarmingProxy module and new functions work while plugin stays attached', async () => {
-      const { algebraFactory, ownerSigner, newPluginFactory, beacon, token0, token1, nft, deployer, swapRouter } = await loadFixture(deployFixture);
+      const { algebraFactory, ownerSigner, newPluginFactory, beacon, token0, token1, nft, deployer, swapRouter, implementations } = await loadFixture(deployFixture);
       
       // Create pool and add liquidity
       const mintAmount = ethers.parseEther('100000');
@@ -551,6 +556,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         'MockUpgradedPluginWithNewFarming',
         algebraFactory,
         newPluginFactory,
+        implementations,
         { farming: upgradedFarmingAddress }
       );
       
@@ -598,10 +604,11 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     let nft: Deployment['nft'], swapRouter: Deployment['swapRouter'];
     let newPluginFactory: Deployment['newPluginFactory'], beacon: Deployment['beacon'];
     let pool: PoolSetup['pool'], pluginAddress: string, deadline: number;
-    let deployer: Deployment['deployer'];
+    let deployer: Deployment['deployer'], implementations: Deployment['implementations'];
 
     beforeEach(async () => {
       const fixture = await loadFixture(deployFixture);
+      implementations = fixture.implementations;
       ownerSigner = fixture.ownerSigner;
       algebraFactory = fixture.algebraFactory;
 
@@ -802,8 +809,8 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       const result = await deployNewPluginImplementation(
         'AlgebraUpgradeablePlugin',
         algebraFactory,
-        newPluginFactory
-        
+        newPluginFactory,
+        implementations
       );
       
       // Downgrade to base plugin

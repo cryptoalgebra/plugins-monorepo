@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 // Re-export OpenZeppelin beacon proxy contracts for testing
 // Import these from @cryptoalgebra/test-utils instead of duplicating

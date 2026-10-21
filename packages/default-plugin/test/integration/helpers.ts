@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { MODULE_IMPLEMENTATIONS, POOL_CONSTANTS, SQRT_RATIO } from './constants';
+import { POOL_CONSTANTS, SQRT_RATIO } from './constants';
+import { ModuleImplementations } from '../shared/fixtures';
 
 /**
  * Helper function to create and initialize a pool
@@ -112,6 +113,7 @@ export async function deployNewPluginImplementation(
   contractName: string,
   algebraFactory: any,
   pluginFactory: any,
+  modules: ModuleImplementations,
   moduleOverrides?: {
     volatility?: string;
     dynamicFee?: string;
@@ -124,11 +126,11 @@ export async function deployNewPluginImplementation(
   const pluginFactoryAddress = await pluginFactory.getAddress();
 
   const impls = {
-    volatilityOracle: moduleOverrides?.volatility ?? MODULE_IMPLEMENTATIONS.VOLATILITY_ORACLE,
-    dynamicFee: moduleOverrides?.dynamicFee ?? MODULE_IMPLEMENTATIONS.DYNAMIC_FEE,
-    farmingProxy: moduleOverrides?.farming ?? MODULE_IMPLEMENTATIONS.FARMING_PROXY,
-    alm: moduleOverrides?.alm ?? MODULE_IMPLEMENTATIONS.ALM,
-    security: moduleOverrides?.security ?? MODULE_IMPLEMENTATIONS.SECURITY
+    volatilityOracle: moduleOverrides?.volatility ?? modules.volatilityOracle,
+    dynamicFee: moduleOverrides?.dynamicFee ?? modules.dynamicFee,
+    farmingProxy: moduleOverrides?.farming ?? modules.farmingProxy,
+    alm: moduleOverrides?.alm ?? modules.alm,
+    security: moduleOverrides?.security ?? modules.security
   };
 
   // The shipped plugin takes the five module addresses positionally, the harnesses take one struct

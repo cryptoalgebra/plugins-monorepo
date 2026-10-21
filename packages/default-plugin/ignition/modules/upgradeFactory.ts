@@ -8,12 +8,15 @@ const config = {
   // Factory proxy address from initial deployment
   factoryProxyAddress: "0x0000000000000000000000000000000000000000",
   
-  // ProxyAdmin address from initial deployment
+  // ProxyAdmin the factory proxy deployed, printed by the initial deployment
   proxyAdminAddress: "0x0000000000000000000000000000000000000000",
 };
 
 // ============= FACTORY UPGRADE MODULE =============
 // Use this module to upgrade the factory implementation to a new version
+// Only for a factory deployed from this version. On an earlier deployment the new factory would
+// build proxies with the pool at offset 56, while the beacon still serves a plugin that reads 75,
+// so the hooks of every pool created after the upgrade would revert with OnlyPool()
 //
 // Usage:
 //   1. Update addresses in config above

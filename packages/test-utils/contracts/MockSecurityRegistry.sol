@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @title Mock of the Algebra security registry for plugins testing
 /// @notice Simplified registry without access control

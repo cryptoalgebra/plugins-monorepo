@@ -1,4 +1,4 @@
-import hre from "hardhat";
+import hre, { ethers } from "hardhat";
 
 // ============= FILL IN DEPLOYED ADDRESSES =============
 // Paste addresses from deployment output
@@ -10,6 +10,8 @@ const deployed = {
   almImpl: "0x0000000000000000000000000000000000000000",
   securityImpl: "0x0000000000000000000000000000000000000000",
   proxyAdmin: "0x0000000000000000000000000000000000000000",
+  // The deployer, which owns the ProxyAdmin the factory proxy deployed
+  proxyAdminOwner: "0x0000000000000000000000000000000000000000",
   factoryProxy: "0x0000000000000000000000000000000000000000",
   pluginImpl: "0x0000000000000000000000000000000000000000",
   factoryImpl: "0x0000000000000000000000000000000000000000",
@@ -19,6 +21,15 @@ const deployed = {
 // ============= SAME CONFIG AS DEPLOY SCRIPT =============
 const config = {
   algebraFactory: "0x0000000000000000000000000000000000000000",
+  defaultFeeConfig: {
+    alpha1: 2900,
+    alpha2: 12000,
+    beta1: 360,
+    beta2: 60000,
+    gamma1: 59,
+    gamma2: 8500,
+    baseFee: 100,
+  },
 };
 
 async function verify(name: string, address: string, constructorArguments: any[]) {
@@ -54,7 +65,6 @@ async function main() {
     ["FarmingProxyPluginImplementation", deployed.farmingProxyImpl],
     ["AlmPluginImplementation", deployed.almImpl],
     ["SecurityPluginImplementation", deployed.securityImpl],
-    ["ProxyAdmin", deployed.proxyAdmin],
     ["AlgebraUpgradeablePluginFactory", deployed.factoryImpl],
   ] as const;
 
@@ -62,12 +72,19 @@ async function main() {
     await verify(name, address, []);
   }
 
-  // 2. TransparentUpgradeableProxy
-  await verify("TransparentUpgradeableProxy (FactoryProxy)", deployed.factoryProxy, [
-    deployed.proxyAdmin,
-    deployed.proxyAdmin,
-    "0x",
+  // 2. TransparentUpgradeableProxy and the ProxyAdmin it deployed
+  const factoryInterface = (await ethers.getContractFactory("AlgebraUpgradeablePluginFactory")).interface;
+  const initData = factoryInterface.encodeFunctionData("initialize", [
+    config.algebraFactory,
+    deployed.factoryImpl,
+    config.defaultFeeConfig,
   ]);
+  await verify("TransparentUpgradeableProxy (FactoryProxy)", deployed.factoryProxy, [
+    deployed.factoryImpl,
+    deployed.proxyAdminOwner,
+    initData,
+  ]);
+  await verify("ProxyAdmin", deployed.proxyAdmin, [deployed.proxyAdminOwner]);
 
   // 3. AlgebraUpgradeablePlugin
   await verify("AlgebraUpgradeablePlugin", deployed.pluginImpl, [

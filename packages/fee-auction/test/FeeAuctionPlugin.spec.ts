@@ -53,7 +53,7 @@ describe('FeeAuctionPlugin', () => {
 
     // Deploy Beacon
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
+    const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress(), deployer);
 
     // Deploy Proxy
     const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();

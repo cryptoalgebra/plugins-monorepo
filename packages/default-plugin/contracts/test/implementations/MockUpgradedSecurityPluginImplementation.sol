@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityPluginImplementation.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPlugin.sol';

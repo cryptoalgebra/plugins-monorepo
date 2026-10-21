@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @title ERC20 whose transfer returns nothing, the shape SafeTransfer exists for
 /// @dev Stands in for tokens like USDT

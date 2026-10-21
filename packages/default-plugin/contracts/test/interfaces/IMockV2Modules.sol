@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @dev V2 functions the upgraded module mocks add
 /// @dev Accessors encode against these, so a rename fails to compile instead of hitting the fallback

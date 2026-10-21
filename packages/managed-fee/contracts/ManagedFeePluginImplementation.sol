@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
 import './interfaces/IManagedSwapFeePlugin.sol';
 import './interfaces/IManagedFeePluginImplementation.sol';
 import './libraries/ManagedFeeStorage.sol';
@@ -40,7 +41,7 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation {
     // solhint-disable-next-line avoid-tx-origin
     if (user != tx.origin) revert IManagedSwapFeePlugin.NotAllowed();
 
-    _verifySignature(layout, ECDSA.toEthSignedMessageHash(_getParamsHash(nonce, _fee, user, expireTime)), signature);
+    _verifySignature(layout, MessageHashUtils.toEthSignedMessageHash(_getParamsHash(nonce, _fee, user, expireTime)), signature);
     layout.usedNonces[nonce] = true;
 
     return _fee;

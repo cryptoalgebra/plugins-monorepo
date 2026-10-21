@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.20;
+pragma solidity =0.8.26;
 
 /// @dev Base for module mocks that decorate the shipped implementation
 /// @dev Module functions are not virtual, so V1 is reached by delegatecall

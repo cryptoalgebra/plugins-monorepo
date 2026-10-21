@@ -123,6 +123,20 @@ describe('StableFeeCalculation', function () {
       expect(await calc.calculateDecayingFee(100n, 1_000_000n, K_Q24, 0)).to.equal(1_000_000n);
     });
 
+    it('should take the exact fast path up to 4 blocks', async function () {
+      const { calc } = await loadFixture(deployFixture);
+      // the CSV check is tolerant, so it cannot tell this path from the expWad one at 4 blocks
+      const fastPow = (k: bigint, n: bigint) => [1n << 24n, k, (k * k) >> 24n, (k * k * k) >> 48n, (k * k * (k * k)) >> 72n][Number(n)];
+      const target = 1_000n;
+      const previous = 10n ** 12n;
+      for (const k of [K_Q24, 16_000_000n, 2n ** 24n - 1n]) {
+        for (const n of [1n, 2n, 3n, 4n]) {
+          const expected = target + ((fastPow(k, n) * (previous - target)) >> 24n);
+          expect(await calc.calculateDecayingFee(target, previous, k, n), `k=${k} n=${n}`).to.equal(expected);
+        }
+      }
+    });
+
     it('should derive a nonzero logK for any k', async function () {
       const { calc } = await loadFixture(deployFixture);
       for (const k of [1n, 1000n, K_Q24, 2n ** 24n - 1n]) {

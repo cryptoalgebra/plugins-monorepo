@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, ALGEBRA_BASE_PLUGIN_MANAGER } from 'test-utils/beaconPlugin';
 
 describe('PermissionedPoolPlugin', function () {
   const SQRT_PRICE_TICK_0 = BigInt('79228162514264337593543950336');
@@ -10,85 +11,51 @@ describe('PermissionedPoolPlugin', function () {
   const LIQUIDITY_ALLOWED = '0x0002';
   const ALL_ALLOWED = '0xffff';
 
+  const PERMISSIONED_POOL_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('PERMISSIONED_POOL_MANAGER'));
+
   async function deployFixture() {
-    const [owner, manager, permissionedManager, allowedUser, disallowedUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeablePermissionedPoolPluginTest',
+      setup: async ({ owner, mockFactory, mockPool }) => {
+        const [, , permissionedManager, allowedUser, disallowedUser] = await ethers.getSigners();
 
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
+        const MockERC20 = await ethers.getContractFactory('MockERC20');
+        const token0 = await MockERC20.deploy('Token0', 'TK0', 18);
+        const token1 = await MockERC20.deploy('Token1', 'TK1', 18);
+        await mockPool.setTokens(token0.target, token1.target);
 
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
+        const registry = await (await ethers.getContractFactory('AllowlistCheckerRegistry')).deploy(mockFactory.target);
+        await mockFactory.grantRole(PERMISSIONED_POOL_MANAGER, permissionedManager.address);
 
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
+        const MockAllowlistChecker = await ethers.getContractFactory('MockAllowlistChecker');
+        const checker0 = await MockAllowlistChecker.deploy();
+        await registry.connect(permissionedManager).setChecker(token0.target, checker0.target);
+        await checker0.setFlags(allowedUser.address, ALL_ALLOWED);
+        await checker0.setFlags(owner.address, ALL_ALLOWED);
 
-    const MockERC20 = await ethers.getContractFactory('MockERC20');
-    const token0 = await MockERC20.deploy('Token0', 'TK0', 18);
-    const token1 = await MockERC20.deploy('Token1', 'TK1', 18);
-    await mockPool.setTokens(token0.target, token1.target);
+        const permissionedPoolImpl = await (await ethers.getContractFactory('PermissionedPoolPluginImplementation')).deploy();
+        const MockRouter = await ethers.getContractFactory('MockRouter');
 
-    const AllowlistCheckerRegistry = await ethers.getContractFactory('AllowlistCheckerRegistry');
-    const registry = await AllowlistCheckerRegistry.deploy(mockFactory.target);
-
-    const PERMISSIONED_POOL_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('PERMISSIONED_POOL_MANAGER'));
-    await mockFactory.grantRole(PERMISSIONED_POOL_MANAGER, permissionedManager.address);
-
-    const MockAllowlistChecker = await ethers.getContractFactory('MockAllowlistChecker');
-    const checker0 = await MockAllowlistChecker.deploy();
-    await registry.connect(permissionedManager).setChecker(token0.target, checker0.target);
-    await checker0.setFlags(allowedUser.address, ALL_ALLOWED);
-    await checker0.setFlags(owner.address, ALL_ALLOWED);
-
-    const PermissionedPoolPluginImplementation = await ethers.getContractFactory('PermissionedPoolPluginImplementation');
-    const permissionedPoolImpl = await PermissionedPoolPluginImplementation.deploy();
-
-    const UpgradeablePermissionedPoolPluginTest = await ethers.getContractFactory('UpgradeablePermissionedPoolPluginTest');
-    const pluginImplementation = await UpgradeablePermissionedPoolPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      permissionedPoolImpl.target
-    );
-
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [mockPool.target, registry.target]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    const plugin1 = UpgradeablePermissionedPoolPluginTest.attach(proxy1Address) as any;
-    await mockPool.setPlugin(proxy1Address);
-
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    const MockRouter = await ethers.getContractFactory('MockRouter');
-
-    return {
-      owner,
-      manager,
-      permissionedManager,
-      allowedUser,
-      disallowedUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      token0,
-      token1,
-      registry,
-      checker0,
-      MockAllowlistChecker,
-      permissionedPoolImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeablePermissionedPoolPluginTest,
-      MockRouter,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-      PERMISSIONED_POOL_MANAGER,
-    };
+        return {
+          pluginArgs: [permissionedPoolImpl.target],
+          initArgs: [mockPool.target, registry.target],
+          extra: {
+            permissionedManager,
+            allowedUser,
+            disallowedUser,
+            token0,
+            token1,
+            registry,
+            checker0,
+            MockAllowlistChecker,
+            permissionedPoolImpl,
+            MockRouter,
+            PERMISSIONED_POOL_MANAGER
+          }
+        };
+      }
+    });
   }
-
   describe('Pool initialization', function () {
     it('always succeeds, regardless of checker configuration', async function () {
       const { mockPool, owner } = await loadFixture(deployFixture);
@@ -146,6 +113,18 @@ describe('PermissionedPoolPlugin', function () {
         .to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed')
         .withArgs(router.target);
     });
+
+    it('reverts with RouterMsgSenderCallFailed for an approved router that cannot report a sender', async function () {
+      const { mockPool, owner, plugin1, manager } = await loadFixture(deployFixture);
+      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
+
+      // Approving an ordinary contract as a router is an operational mistake rather than an attack, and
+      // the plugin has to name it rather than pass on a bare revert from a missing selector
+      const router = await (await ethers.getContractFactory('MockRouterWithoutMsgSender')).deploy();
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callSwap(mockPool.target, 10)).to.be.revertedWithCustomError(plugin1, 'RouterMsgSenderCallFailed');
+    });
   });
 
   describe('Add liquidity: gated independently by LIQUIDITY_ALLOWED', function () {
@@ -183,6 +162,25 @@ describe('PermissionedPoolPlugin', function () {
       await expect(router.callMint(mockPool.target, disallowedUser.address, -60, 60, 1000))
         .to.be.revertedWithCustomError(plugin1, 'NotAllowed')
         .withArgs(token0.target, disallowedUser.address);
+    });
+  });
+
+  // Every allowed account above holds either one flag or the 0xFFFF catch-all. The grant a real
+  // checker composes is the two operation flags together, and nothing had shown that such an account
+  // passes both gates.
+  describe('Both operation flags at once', function () {
+    it('lets an account granted SWAP_ALLOWED | LIQUIDITY_ALLOWED do both', async function () {
+      const { mockPool, owner, allowedUser, checker0, plugin1, manager, MockRouter } = await loadFixture(deployFixture);
+      await mockPool.connect(owner).initialize(SQRT_PRICE_TICK_0);
+      await checker0.grantSwapAndLiquidity(allowedUser.address);
+
+      expect(await checker0.flags(allowedUser.address)).to.equal('0x0003');
+
+      const router = await MockRouter.deploy(allowedUser.address);
+      await plugin1.connect(manager).setRouterAllowed(router.target, true);
+
+      await expect(router.callMint(mockPool.target, allowedUser.address, -60, 60, 1000)).to.not.be.reverted;
+      await expect(router.callSwap(mockPool.target, 10)).to.not.be.reverted;
     });
   });
 
@@ -313,6 +311,36 @@ describe('PermissionedPoolPlugin', function () {
       const { plugin1, disallowedUser } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(disallowedUser).setAllowlistCheckerRegistry(ethers.ZeroAddress)).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  // Detaching the registry is the module's off switch. Every other case here runs with one attached,
+  // so the early exit that lets everything through had never been taken.
+  describe('Without a registry', function () {
+    it('should let a disallowed user swap once the registry is detached', async function () {
+      const { plugin1, mockPool, disallowedUser } = await loadFixture(deployFixture);
+
+      await mockPool.initialize(SQRT_PRICE_TICK_0);
+      // The pool calls the plugin directly here, so it is the router check that stops it first, and the
+      // address it names is the swapper rather than any router
+      await expect(mockPool.connect(disallowedUser).swapToTick(10))
+        .to.be.revertedWithCustomError(plugin1, 'RouterNotAllowed')
+        .withArgs(disallowedUser.address);
+
+      await plugin1.setAllowlistCheckerRegistry(ethers.ZeroAddress);
+
+      await expect(mockPool.connect(disallowedUser).swapToTick(10)).to.not.be.reverted;
+    });
+
+    it('should let a disallowed user add liquidity once the registry is detached', async function () {
+      const { plugin1, mockPool, disallowedUser } = await loadFixture(deployFixture);
+
+      await mockPool.initialize(SQRT_PRICE_TICK_0);
+      await plugin1.setAllowlistCheckerRegistry(ethers.ZeroAddress);
+
+      await expect(
+        mockPool.connect(disallowedUser).mint(disallowedUser.address, disallowedUser.address, -120, 120, 100, '0x')
+      ).to.not.be.reverted;
     });
   });
 });

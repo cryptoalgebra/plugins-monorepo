@@ -1,5 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { 
   UpgradeableFarmingProxyPluginTest, 
   FarmingProxyPluginImplementation, 
@@ -16,14 +17,13 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
   let mockFactory: MockFactory;
   let mockPluginFactory: MockFarmingPluginFactory;
   let mockPool: MockPool;
-  let wallet: Wallet;
   let other: Wallet;
   let farmingAddress: Wallet;
 
   const MOCK_INCENTIVE = '0x0000000000000000000000000000000000000099';
 
   beforeEach(async () => {
-    [wallet, other, farmingAddress] = await (ethers as any).getSigners();
+    [, other, farmingAddress] = await (ethers as any).getSigners();
 
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');
@@ -53,7 +53,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       await mockPool.getAddress(),
@@ -83,7 +83,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
 
       await expect(
         pluginProxy.initialize(poolAddress)
-      ).to.be.reverted;
+      ).to.be.revertedWith('Initializable: contract is already initialized');
     });
   });
 
@@ -93,15 +93,11 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       await pluginProxy.initialize(poolAddress);
     });
 
-    it('should allow farming address to set incentive', async () => {
-      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
-      expect(await pluginProxy.incentive()).to.eq(MOCK_INCENTIVE);
-    });
-
-    it('should emit Incentive event', async () => {
+    it('should let the farming address set the incentive and emit it', async () => {
       await expect(pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE))
         .to.emit(pluginProxy, 'Incentive')
         .withArgs(MOCK_INCENTIVE);
+      expect(await pluginProxy.incentive()).to.eq(MOCK_INCENTIVE);
     });
 
     it('should revert when non-farming address tries to set incentive', async () => {
@@ -157,7 +153,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const MockPoolFactory = await ethers.getContractFactory('MockPool');
       const mockPool2 = await MockPoolFactory.deploy() as any as MockPool;
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), await mockPool2.getAddress(), '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;
@@ -186,7 +182,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
       // Use pool-aware proxy so _getPool works consistently
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), await mockPool.getAddress(), '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableFarmingProxyPluginTest', await proxy2.getAddress()) as any as UpgradeableFarmingProxyPluginTest;
@@ -233,6 +229,137 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
       await pluginProxy.initialize(poolAddress);
 
       expect(await pluginProxy.getPool()).to.eq(poolAddress);
+    });
+  });
+
+  // Both of these are reached from afterSwap on a composed plugin, so on this branch they were only
+  // ever executed from default-plugin and had no coverage in their own package.
+  describe('#isIncentiveConnected', () => {
+    beforeEach(async () => {
+      await pluginProxy.initialize(await mockPool.getAddress());
+      await mockPool.setPluginConfig(await pluginProxy.defaultPluginConfig());
+      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
+    });
+
+    it('should report true while the incentive is the active one', async () => {
+      expect(await pluginProxy.isIncentiveConnected.staticCall(MOCK_INCENTIVE)).to.be.true;
+    });
+
+    it('should report false for any other address', async () => {
+      expect(await pluginProxy.isIncentiveConnected.staticCall(other.address)).to.be.false;
+    });
+
+    it('should report false once the pool drops the plugin', async () => {
+      await mockPool.setPlugin(other.address);
+
+      expect(await pluginProxy.isIncentiveConnected.staticCall(MOCK_INCENTIVE)).to.be.false;
+    });
+
+    it('should report false once the pool turns the afterSwap hook off', async () => {
+      await mockPool.setPluginConfig(0);
+
+      expect(await pluginProxy.isIncentiveConnected.staticCall(MOCK_INCENTIVE)).to.be.false;
+    });
+  });
+
+  describe('#updateVirtualPoolTick', () => {
+    beforeEach(async () => {
+      await pluginProxy.initialize(await mockPool.getAddress());
+    });
+
+    it('should forward the tick and the direction to the incentive', async () => {
+      const recorder = await (await ethers.getContractFactory('MockVirtualPoolRecorder')).deploy();
+      await pluginProxy.connect(farmingAddress).setIncentive(await recorder.getAddress());
+
+      await pluginProxy.updateVirtualPoolTick(true, -200);
+      expect(await recorder.crossToCount()).to.eq(1);
+      expect(await recorder.lastTick()).to.eq(-200);
+      expect(await recorder.lastZeroToOne()).to.be.true;
+
+      await pluginProxy.updateVirtualPoolTick(false, 300);
+      expect(await recorder.crossToCount()).to.eq(2);
+      expect(await recorder.lastTick()).to.eq(300);
+      expect(await recorder.lastZeroToOne()).to.be.false;
+    });
+
+    it('should do nothing while no incentive is set', async () => {
+      expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
+
+      await expect(pluginProxy.updateVirtualPoolTick(true, -200)).to.not.be.reverted;
+    });
+
+    it('should stop forwarding once the incentive is disconnected', async () => {
+      const recorder = await (await ethers.getContractFactory('MockVirtualPoolRecorder')).deploy();
+      await pluginProxy.connect(farmingAddress).setIncentive(await recorder.getAddress());
+      await pluginProxy.updateVirtualPoolTick(true, -200);
+
+      await pluginProxy.connect(farmingAddress).setIncentive(ethers.ZeroAddress);
+      await pluginProxy.updateVirtualPoolTick(true, -400);
+
+      expect(await recorder.crossToCount()).to.eq(1);
+    });
+  });
+
+  // The disconnect path has two access checks in a row and a config write it can skip, and the
+  // existing cases only ever walked one way through each of them.
+  describe('#setIncentive edge paths', () => {
+    beforeEach(async () => {
+      await pluginProxy.initialize(await mockPool.getAddress());
+      await mockPool.setPlugin(await pluginProxy.getAddress());
+    });
+
+    it('should let the farming address disconnect an incentive somebody else connected', async () => {
+      await mockPluginFactory.setFarmingAddress(other.address);
+      await pluginProxy.connect(other).setIncentive(MOCK_INCENTIVE);
+
+      // The last owner is `other`, so the first check fails and the farming address check decides
+      await mockPluginFactory.setFarmingAddress(farmingAddress.address);
+      await pluginProxy.connect(farmingAddress).setIncentive(ethers.ZeroAddress);
+
+      expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
+    });
+
+    it('should refuse to disconnect while nothing is connected', async () => {
+      expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
+
+      await expect(pluginProxy.connect(farmingAddress).setIncentive(ethers.ZeroAddress)).to.be.revertedWith('Already active');
+    });
+
+    it('should let the incentive be disconnected after the pool dropped the plugin', async () => {
+      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
+
+      // Connecting requires the plugin to be attached, disconnecting deliberately does not:
+      // an incentive must not be strandable by detaching the plugin from the pool
+      await mockPool.setPlugin(other.address);
+      await pluginProxy.connect(farmingAddress).setIncentive(ethers.ZeroAddress);
+
+      expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
+    });
+
+    // The mirror of the case above: an incentive may be disconnected from a detached plugin, but not
+    // connected to one, because the hook that would notify it is never going to be called
+    it('should refuse to connect an incentive while the pool points at another plugin', async () => {
+      await mockPool.setPlugin(other.address);
+
+      await expect(pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE)).to.be.revertedWith('Plugin not attached');
+      expect(await pluginProxy.incentive()).to.eq(ethers.ZeroAddress);
+    });
+
+    it('should turn the hook on when the pool config does not carry it', async () => {
+      await mockPool.setPluginConfig(0);
+
+      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
+
+      expect((await mockPool.globalState()).pluginConfig).to.eq(await pluginProxy.defaultPluginConfig());
+    });
+
+    it('should leave the pool config alone when it already carries the hook', async () => {
+      const withAfterSwap = await pluginProxy.defaultPluginConfig();
+      await mockPool.setPluginConfig(withAfterSwap);
+
+      await pluginProxy.connect(farmingAddress).setIncentive(MOCK_INCENTIVE);
+
+      expect((await mockPool.globalState()).pluginConfig).to.eq(withAfterSwap);
     });
   });
 });

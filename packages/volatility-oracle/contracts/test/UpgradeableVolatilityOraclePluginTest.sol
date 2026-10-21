@@ -62,6 +62,22 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
     return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
   }
 
+  // ###### Connector passthroughs ######
+  // Not view, since the connector delegatecalls the oracle
+  // Call them with staticCall
+
+  function getTwapTick(uint32 period) external returns (int24) {
+    return _getTwapTick(period);
+  }
+
+  function canGetTwap(uint32 period) external returns (bool) {
+    return _canGetTwap(period);
+  }
+
+  function getAverageVolatilityLast() external view returns (uint88) {
+    return _getAverageVolatilityLast();
+  }
+
   // ###### Required overrides ######
 
   function _getPoolState()

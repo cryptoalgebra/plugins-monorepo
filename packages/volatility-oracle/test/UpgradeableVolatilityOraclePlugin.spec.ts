@@ -1,8 +1,19 @@
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { expect } from 'chai';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
+import { encodePriceSqrt, PLUGIN_FLAGS } from 'test-utils/utilities';
 
 describe('UpgradeableVolatilityOraclePlugin', function () {
+  const TWAP_PERIOD = 3600;
+
+  // afterInitialize seeds the oracle, beforeSwap writes into it
+  async function initializedFixture() {
+    const fixture = await loadFixture(deployFixture);
+    await fixture.mockPool.initialize(encodePriceSqrt(1, 1));
+    return fixture;
+  }
+
   async function deployFixture() {
     const [owner, manager, user, otherUser] = await ethers.getSigners();
 
@@ -35,7 +46,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
     // Deploy pool-aware proxy (required for POOL_ADDRESS_OFFSET-based pool discovery)
-    const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxy = await pinnedPluginProxyFactory();
     const initData = pluginImplementation.interface.encodeFunctionData('initializePlugin');
     const proxy1 = await AlgebraPluginProxy.deploy(beacon.target, mockPool.target, initData);
 
@@ -81,7 +92,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     });
 
     it('should not allow double initialization', async function () {
-      const { plugin1, mockPool } = await loadFixture(deployFixture);
+      const { plugin1 } = await loadFixture(deployFixture);
 
       await expect(
         plugin1.initializePlugin()
@@ -105,7 +116,6 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
     it('should maintain separate storage for each proxy', async function () {
       const {
         beacon,
-        pluginImplementation,
         plugin1,
         UpgradeableVolatilityOraclePluginTest,
       } = await loadFixture(deployFixture);
@@ -115,7 +125,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxy = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxy.deploy(beacon.target, mockPool2.target, '0x');
       const plugin2 = UpgradeableVolatilityOraclePluginTest.attach(proxy2.target) as any;
 
@@ -144,7 +154,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       const mockPool2 = await MockPool.deploy();
 
       // Deploy second proxy
-      const AlgebraPluginProxy = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxy = await pinnedPluginProxyFactory();
       const initData2 = pluginImplementation.interface.encodeFunctionData('initializePlugin');
       const proxy2 = await AlgebraPluginProxy.deploy(beacon.target, mockPool2.target, initData2);
       const plugin2 = UpgradeableVolatilityOraclePluginTest.attach(proxy2.target) as any;
@@ -159,19 +169,303 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
   });
 
   describe('Authorization', function () {
+    // prepayTimepointsStorageSlots is the connector's only _authorize guarded entry point
     it('should allow owner to call authorized functions', async function () {
-      const { plugin1, owner } = await loadFixture(deployFixture);
+      const { plugin1 } = await loadFixture(deployFixture);
 
-      // Owner should be authorized - test by checking no revert on collectPluginFee
-      // (would need actual fee to collect, so just verify no revert on a simple call)
-      expect(await plugin1.factory()).to.not.be.undefined;
+      await expect(plugin1.prepayTimepointsStorageSlots(1, 10)).to.not.be.reverted;
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role', async function () {
       const { plugin1, manager } = await loadFixture(deployFixture);
 
-      // Manager should be authorized
-      expect(await plugin1.factory()).to.not.be.undefined;
+      await expect(plugin1.connect(manager).prepayTimepointsStorageSlots(1, 10)).to.not.be.reverted;
+    });
+
+    it('should reject a caller with neither ownership nor the role', async function () {
+      const { plugin1, user } = await loadFixture(deployFixture);
+
+      await expect(plugin1.connect(user).prepayTimepointsStorageSlots(1, 10)).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  // Everything above tests the proxy. The module's own logic - writing timepoints, the TWAP and the
+  // volatility average - is only reached through a composed plugin in another package, so none of it
+  // has a test at this layer. These drive it through MockPool, the way a real pool would.
+  describe('Oracle behaviour', function () {
+    it('should be initialized by the pool and refuse a second initialize', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      expect(await plugin1.isInitialized()).to.be.true;
+      expect(await plugin1.timepointIndex()).to.equal(0);
+      expect(await plugin1.lastTimepointTimestamp()).to.equal(await time.latest());
+
+      await expect(plugin1.initialize()).to.be.revertedWith('Already initialized');
+    });
+
+    it('should refuse initialize while the pool has no price', async function () {
+      const { plugin1 } = await loadFixture(deployFixture);
+
+      await expect(plugin1.initialize()).to.be.revertedWith('Pool is not initialized');
+    });
+
+    // Every other case here reaches the oracle through afterInitialize, which is the pool's route in.
+    // The public entry point is the other one, for a plugin attached to a pool that already trades,
+    // and nothing had ever driven it to completion: both existing cases stop at one of its guards.
+    it('should seed itself from a pool that already has a price', async function () {
+      const { plugin1, mockPool } = await loadFixture(deployFixture);
+
+      // Detach first, so initializing the pool does not run afterInitialize and seed it that way
+      await mockPool.setPlugin(ethers.ZeroAddress);
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+      await mockPool.setPlugin(plugin1.target);
+      expect(await plugin1.isInitialized()).to.be.false;
+
+      await plugin1.initialize();
+
+      expect(await plugin1.isInitialized()).to.be.true;
+      expect(await plugin1.timepointIndex()).to.equal(0);
+      expect(await plugin1.lastTimepointTimestamp()).to.equal(await time.latest());
+      // seeded from the pool's own tick, not from a default
+      const { tick } = await mockPool.globalState();
+      expect((await plugin1.timepoints(0)).tick).to.equal(tick);
+
+      await expect(plugin1.initialize()).to.be.revertedWith('Already initialized');
+    });
+
+    // A pool can be told to call the plugin before the oracle has been seeded, and the module refuses
+    // rather than writing into an empty ring
+    it('should refuse to record a swap before the oracle is seeded', async function () {
+      const { plugin1, mockPool } = await loadFixture(deployFixture);
+
+      expect(await plugin1.isInitialized()).to.be.false;
+      await mockPool.setPluginConfig(PLUGIN_FLAGS.BEFORE_SWAP_FLAG);
+
+      await expect(mockPool.swapToTick(100)).to.be.revertedWith('Not initialized');
+    });
+
+    // This harness reads the real block.timestamp, so two swaps through a plugin are always a second
+    // apart. The implementation takes the timestamp as an argument and can be called twice with the
+    // same one, but that proves nothing: VolatilityOracle.write repeats the check, so the early return
+    // above it only saves the call. Both arms leave identical storage. default-plugin drives the pair
+    // through a MockTime plugin that holds its clock still, which is where the behaviour is pinned.
+    it('should write a timepoint on a swap once time has passed', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      const indexAtStart = await plugin1.timepointIndex();
+
+      await time.increase(60);
+      await mockPool.swapToTick(100);
+
+      expect(await plugin1.timepointIndex()).to.equal(indexAtStart + 1n);
+      expect(await plugin1.lastTimepointTimestamp()).to.equal(await time.latest());
+    });
+
+    it('should refuse a zero TWAP period', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.getTwapTick.staticCall(0)).to.be.revertedWith('Period is zero');
+    });
+
+    it('should report canGetTwap only once the history reaches the period', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      expect(await plugin1.canGetTwap.staticCall(TWAP_PERIOD)).to.be.false;
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(0);
+
+      expect(await plugin1.canGetTwap.staticCall(TWAP_PERIOD)).to.be.true;
+    });
+
+    it('should average a flat tick to that tick', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(0);
+
+      expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(0);
+    });
+
+    // getTwapTick truncates towards zero and then corrects, so a negative window that does not divide
+    // evenly by the period has to come back one tick lower than plain integer division gives
+    it('should round a negative average down rather than towards zero', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(-100);
+      // A partial stretch at a negative tick, chosen so the cumulative delta leaves a remainder
+      await time.increase(1000);
+      await mockPool.swapToTick(-100);
+
+      const [now] = await plugin1.getSingleTimepoint(0);
+      const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+      const delta = now - then;
+
+      // Both halves of the correction's condition, so the case cannot drift into being trivial
+      expect(delta).to.be.lessThan(0n);
+      expect(delta % BigInt(TWAP_PERIOD)).to.not.equal(0n);
+
+      // BigInt division truncates towards zero, the contract must land one below it
+      const truncated = delta / BigInt(TWAP_PERIOD);
+      expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(truncated - 1n);
+    });
+
+    it('should average the difference of two nonzero cumulatives, with no rounding correction', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      // The price moves before the window opens, so the reading a period back is not the seeded zero,
+      // and again inside the window, so the delta does not divide evenly by the period
+      await mockPool.swapToTick(600);
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(300);
+      await time.increase(1000);
+      await mockPool.swapToTick(100);
+
+      const [now] = await plugin1.getSingleTimepoint(0);
+      const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+      const delta = now - then;
+
+      // What makes the case bite: a cumulative to subtract, a positive delta, and a remainder
+      expect(then).to.not.equal(0n);
+      expect(delta).to.be.greaterThan(0n);
+      expect(delta % BigInt(TWAP_PERIOD)).to.not.equal(0n);
+
+      // The correction is for negative averages only, so this one is plain truncation
+      expect(await plugin1.getTwapTick.staticCall(TWAP_PERIOD)).to.equal(delta / BigInt(TWAP_PERIOD));
+    });
+
+    it('should report no volatility for a flat tick and some once it moves', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(0);
+      expect(await plugin1.getAverageVolatilityLast()).to.equal(0);
+
+      await time.increase(TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+      await time.increase(TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+
+      expect(await plugin1.getAverageVolatilityLast()).to.be.greaterThan(0);
+    });
+
+    it('should return cumulatives that grow with the elapsed time', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+      await time.increase(TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+
+      const [cumulativeNow] = await plugin1.getSingleTimepoint(0);
+      const [cumulativeThen] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+
+      expect(cumulativeNow - cumulativeThen).to.equal(BigInt(TWAP_PERIOD) * (await plugin1.getTwapTick.staticCall(TWAP_PERIOD)));
+    });
+  });
+
+  // The connector exposes the raw ring buffer alongside the computed views, and neither raw reader
+  // had a caller. The guarded delegatecall in canGetTwap had none either.
+  describe('Raw timepoint access', function () {
+    it('should expose the seeded timepoint through the ring buffer getter', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      const tp = await plugin1.timepoints(0);
+
+      expect(tp.initialized).to.be.true;
+      expect(tp.blockTimestamp).to.equal(await time.latest());
+      expect(tp.tickCumulative).to.equal(0);
+    });
+
+    it('should return an empty slot for an index never written', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      const tp = await plugin1.timepoints(1);
+
+      expect(tp.initialized).to.be.false;
+      expect(tp.blockTimestamp).to.equal(0);
+    });
+
+    it('should answer a batch of secondsAgos consistently with the single reader', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await time.increase(2 * TWAP_PERIOD);
+      await mockPool.swapToTick(600);
+
+      const [batch] = await plugin1.getTimepoints([0, TWAP_PERIOD]);
+      const [now] = await plugin1.getSingleTimepoint(0);
+      const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
+
+      expect(batch[0]).to.equal(now);
+      expect(batch[1]).to.equal(then);
+    });
+
+    // prepayTimepointsStorageSlots exists so later writes land in slots that are already paid for.
+    // The three authorization cases call it and stop, so the sequence it exists for was never run.
+    it('should write timepoints into slots that were prepaid', async function () {
+      const { plugin1, mockPool } = await initializedFixture();
+
+      await plugin1.prepayTimepointsStorageSlots(1, 5);
+
+      // Prepaying must not look like a written timepoint to anything reading the buffer
+      expect((await plugin1.timepoints(1)).initialized).to.be.false;
+      expect(await plugin1.timepointIndex()).to.equal(0);
+
+      await time.increase(60);
+      await mockPool.swapToTick(100);
+
+      const written = await plugin1.timepoints(1);
+      expect(written.initialized).to.be.true;
+      expect(written.blockTimestamp).to.equal(await time.latest());
+      expect(await plugin1.timepointIndex()).to.equal(1);
+    });
+
+    it('should refuse to prepay a slot a written timepoint already occupies', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      // Slot 0 carries the seed timepoint. Prepaying only ever makes sense for slots nothing has
+      // written, and the case below shows why the guard does not catch a re-prepay: prepaying writes
+      // blockTimestamp and leaves initialized false.
+      await expect(plugin1.prepayTimepointsStorageSlots(0, 5)).to.be.revertedWith('Already initialized');
+    });
+
+    it('should refuse a prepay of no slots at all', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.prepayTimepointsStorageSlots(1, 0)).to.be.revertedWith('Invalid amount');
+    });
+
+    it('should refuse a prepay that would run past the end of the ring', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.prepayTimepointsStorageSlots(65535, 2)).to.be.revertedWith('Invalid amount');
+    });
+
+    // startIndex + amount may reach 65535, and the loop stops one slot short of that index
+    it('should prepay up to the end of the ring and no further', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await expect(plugin1.prepayTimepointsStorageSlots(65534, 1)).to.not.be.reverted;
+
+      expect((await plugin1.timepoints(65534)).blockTimestamp).to.equal(1);
+      expect((await plugin1.timepoints(65535)).blockTimestamp).to.equal(0);
+    });
+
+    it('should keep prepaying idempotent over a range already paid for', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      await plugin1.prepayTimepointsStorageSlots(1, 5);
+
+      await expect(plugin1.prepayTimepointsStorageSlots(1, 5)).to.not.be.reverted;
+      expect((await plugin1.timepoints(1)).initialized).to.be.false;
+    });
+
+    it('should report canGetTwap false rather than revert for a period beyond the clock', async function () {
+      const { plugin1 } = await initializedFixture();
+
+      // currentTime - period underflows inside the module, and the connector swallows that
+      expect(await plugin1.canGetTwap.staticCall(4294967295)).to.be.false;
     });
   });
 });

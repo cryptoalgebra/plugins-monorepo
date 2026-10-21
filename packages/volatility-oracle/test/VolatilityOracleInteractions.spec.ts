@@ -83,6 +83,16 @@ describe('VolatilityOracleInteractions', () => {
       expect(oracleLibraryTick).to.equal(-1n);
     });
 
+    it('correct output for negative tick that divides evenly', async () => {
+      const period = 3;
+      const tickCumulatives = [-6n, -12n];
+      const mockVolatilityOracle = await mockVolatilityOracleFactory.deploy([period, 0], tickCumulatives);
+      const oracleLibraryTick = await oracleLibraryTest.consult(mockVolatilityOracle, period);
+
+      // Already a whole tick, so rounding to negative infinity must not take one off
+      expect(oracleLibraryTick).to.equal(-2n);
+    });
+
     it('gas test [ @skip-on-coverage ]', async () => {
       const period = 3;
       const tickCumulatives = [7n, 12n];

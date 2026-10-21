@@ -89,7 +89,9 @@ describe('OnchainIdAllowlistChecker', function () {
     await addValidClaim(identity, claimIssuer, REQUIRED_TOPIC);
     expect(await checker.isEligible(wallet.address)).to.equal(true);
 
-    await checker.connect(admin).setTrustedIssuer(claimIssuer.target, false);
+    await expect(checker.connect(admin).setTrustedIssuer(claimIssuer.target, false))
+      .to.emit(checker, 'TrustedIssuerUpdated')
+      .withArgs(claimIssuer.target, false);
     expect(await checker.isEligible(wallet.address)).to.equal(false);
   });
 
@@ -122,5 +124,51 @@ describe('OnchainIdAllowlistChecker', function () {
 
     // Deployer of MockFactory is its owner, so setChecker passes the manager check directly
     await expect(registry.setChecker(token.address, checker.target)).to.not.be.reverted;
+  });
+
+  // Two admin-guarded entry points had no test at all, and the batch setter's length check never ran
+  describe('Admin settings', function () {
+    it('should let the admin change the required topic and announce it', async function () {
+      const { admin, checker } = await loadFixture(deployFixture);
+
+      await expect(checker.connect(admin).setRequiredTopic(42)).to.emit(checker, 'RequiredTopicUpdated').withArgs(42);
+      expect(await checker.requiredTopic()).to.equal(42);
+    });
+
+    it('should refuse a required topic change from anyone else', async function () {
+      const { other, checker } = await loadFixture(deployFixture);
+
+      await expect(checker.connect(other).setRequiredTopic(42)).to.be.revertedWithCustomError(checker, 'OnlyAdmin');
+    });
+
+    it('should refuse a batch of issuers from anyone else', async function () {
+      const { other, claimIssuer, checker } = await loadFixture(deployFixture);
+
+      await expect(checker.connect(other).setTrustedIssuersBatch([claimIssuer.target], [true])).to.be.revertedWithCustomError(
+        checker,
+        'OnlyAdmin'
+      );
+    });
+
+    it('should refuse a batch whose arrays disagree in length', async function () {
+      const { admin, claimIssuer, checker } = await loadFixture(deployFixture);
+
+      await expect(
+        checker.connect(admin).setTrustedIssuersBatch([claimIssuer.target], [true, false])
+      ).to.be.revertedWithCustomError(checker, 'LengthMismatch');
+    });
+
+    it('should apply a batch of issuers', async function () {
+      const { admin, other, claimIssuer, checker } = await loadFixture(deployFixture);
+
+      await expect(checker.connect(admin).setTrustedIssuersBatch([claimIssuer.target, other.address], [true, false]))
+        .to.emit(checker, 'TrustedIssuerUpdated')
+        .withArgs(claimIssuer.target, true)
+        .and.to.emit(checker, 'TrustedIssuerUpdated')
+        .withArgs(other.address, false);
+
+      expect(await checker.isTrustedIssuer(claimIssuer.target)).to.be.true;
+      expect(await checker.isTrustedIssuer(other.address)).to.be.false;
+    });
   });
 });

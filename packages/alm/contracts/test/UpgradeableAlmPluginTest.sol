@@ -40,6 +40,11 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
     UpgradeableAbstractPlugin._authorize();
   }
 
+  /// @dev Without a pool this harness gets no afterSwap, so the module is reached through here
+  function obtainTWAPAndRebalance(int24 currentTick, int24 slowTwapTick, int24 fastTwapTick, uint32 lastBlockTimestamp) external {
+    _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastBlockTimestamp);
+  }
+
   /// @notice Get ALM implementation address (for testing)
   function getAlmImplementation() external view returns (address) {
     return almImplementation;

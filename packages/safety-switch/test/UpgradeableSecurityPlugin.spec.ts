@@ -1,79 +1,24 @@
-import { ethers } from 'hardhat';
+import { ethers, artifacts } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
 
 describe('UpgradeableSecurityPlugin', function () {
   async function deployFixture() {
-    const [owner, manager, user, otherUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeableSecurityPluginTest',
+      setup: async ({ mockPool }) => {
+        const securityImpl = await (await ethers.getContractFactory('SecurityPluginImplementation')).deploy();
+        const mockSecurityRegistry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
 
-    // Deploy MockFactory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
-
-    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
-
-    // Deploy MockPool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy MockSecurityRegistry
-    const MockSecurityRegistry = await ethers.getContractFactory('MockSecurityRegistry');
-    const mockSecurityRegistry = await MockSecurityRegistry.deploy();
-
-    // Deploy SecurityPluginImplementation
-    const SecurityPluginImplementation = await ethers.getContractFactory('SecurityPluginImplementation');
-    const securityImpl = await SecurityPluginImplementation.deploy();
-
-    // Deploy UpgradeableSecurityPluginTest (implementation for beacon)
-    const UpgradeableSecurityPluginTest = await ethers.getContractFactory('UpgradeableSecurityPluginTest');
-    const pluginImplementation = await UpgradeableSecurityPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      securityImpl.target
-    );
-
-    // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
-      mockPool.target,
-      mockSecurityRegistry.target,
-    ]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    // Get plugin interface for proxy
-    const plugin1 = UpgradeableSecurityPluginTest.attach(proxy1Address) as any;
-
-    // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1Address);
-
-    // Grant manager role to manager
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    return {
-      owner,
-      manager,
-      user,
-      otherUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      mockSecurityRegistry,
-      securityImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeableSecurityPluginTest,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-    };
+        return {
+          pluginArgs: [securityImpl.target],
+          initArgs: [mockPool.target, mockSecurityRegistry.target],
+          extra: { securityImpl, mockSecurityRegistry }
+        };
+      }
+    });
   }
-
   describe('Initialization', function () {
     it('should initialize with correct values', async function () {
       const { plugin1, mockPool, mockSecurityRegistry } = await loadFixture(deployFixture);
@@ -137,36 +82,28 @@ describe('UpgradeableSecurityPlugin', function () {
       await plugin1.connect(manager).setSecurityRegistry(ethers.ZeroAddress);
       expect(await plugin1.getSecurityRegistry()).to.equal(ethers.ZeroAddress);
     });
+
+    // The mock lives in test-utils, below this package, so it cannot inherit the interface
+    it('should be tested against a mock that keeps the ISecurityRegistry ABI', async function () {
+      const real = new ethers.Interface((await artifacts.readArtifact('ISecurityRegistry')).abi);
+      const mock = new ethers.Interface((await artifacts.readArtifact('MockSecurityRegistry')).abi);
+
+      real.forEachFunction((f) => {
+        const m = mock.getFunction(f.selector);
+        expect(m, f.format()).to.not.equal(null);
+        expect(m!.outputs.map((o) => o.type), f.format()).to.deep.equal(f.outputs.map((o) => o.type));
+      });
+      real.forEachEvent((e) => expect(mock.getEvent(e.topicHash), e.format()).to.not.equal(null));
+    });
   });
 
   describe('Storage Isolation', function () {
     it('should maintain separate storage for each proxy', async function () {
-      const {
-        beacon,
-        pluginImplementation,
-        plugin1,
-        mockPool,
-        mockSecurityRegistry,
-        UpgradeableSecurityPluginTest,
-        proxyDeployer,
-      } = await loadFixture(deployFixture);
+      const { plugin1, mockSecurityRegistry, deployProxy } = await loadFixture(deployFixture);
 
-      // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
-
-      // Deploy second MockSecurityRegistry
-      const MockSecurityRegistry = await ethers.getContractFactory('MockSecurityRegistry');
-      const mockSecurityRegistry2 = await MockSecurityRegistry.deploy();
-
-      // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        mockSecurityRegistry2.target,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2Address) as any;
+      const mockPool2 = await deployMockPool();
+      const mockSecurityRegistry2 = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, mockSecurityRegistry2.target]);
 
       // Verify different values
       expect(await plugin1.getSecurityRegistry()).to.equal(mockSecurityRegistry.target);
@@ -176,27 +113,10 @@ describe('UpgradeableSecurityPlugin', function () {
 
   describe('Immutables Shared', function () {
     it('should share immutable factory addresses across proxies', async function () {
-      const {
-        beacon,
-        mockFactory,
-        proxyDeployer,
-        pluginImplementation,
-        plugin1,
-        UpgradeableSecurityPluginTest,
-      } = await loadFixture(deployFixture);
+      const { plugin1, mockFactory, proxyDeployer, deployProxy } = await loadFixture(deployFixture);
 
-      // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
-
-      // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        ethers.ZeroAddress,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableSecurityPluginTest.attach(proxy2Address) as any;
+      const mockPool2 = await deployMockPool();
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, ethers.ZeroAddress]);
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);
@@ -206,21 +126,20 @@ describe('UpgradeableSecurityPlugin', function () {
       expect(await plugin2.pluginFactory()).to.equal(proxyDeployer.target);
     });
   });
-
   describe('Authorization', function () {
     it('should allow owner to call authorized functions', async function () {
       const { plugin1, owner, user } = await loadFixture(deployFixture);
 
       // Owner should be able to set securityRegistry
       await expect(plugin1.connect(owner).setSecurityRegistry(user.address))
-        .to.emit(plugin1, 'SecurityRegistry');
+        .to.emit(plugin1, 'SecurityRegistry').withArgs(user.address);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager, user } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setSecurityRegistry(user.address))
-        .to.emit(plugin1, 'SecurityRegistry');
+        .to.emit(plugin1, 'SecurityRegistry').withArgs(user.address);
     });
 
     it('should reject unauthorized users', async function () {
@@ -229,6 +148,39 @@ describe('UpgradeableSecurityPlugin', function () {
       await expect(
         plugin1.connect(user).setSecurityRegistry(otherUser.address)
       ).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  // The connector reads the registry straight off storage instead of delegating, so the
+  // implementation keeps a second getter no plugin reaches. Its guarded early exits are only
+  // reachable there too: a plugin always has a registry by the time the hooks run.
+  describe('Implementation kept in step with the connector', function () {
+    it('should report the same registry as the connector', async function () {
+      const { plugin1, securityImpl, mockSecurityRegistry } = await loadFixture(deployFixture);
+
+      await plugin1.setSecurityRegistry(mockSecurityRegistry.target);
+      await securityImpl.initializeSecurity(mockSecurityRegistry.target);
+
+      expect(await securityImpl.getSecurityRegistry()).to.equal(await plugin1.getSecurityRegistry());
+    });
+
+    it('should let both checks through while no registry is set', async function () {
+      const { securityImpl, mockPool } = await loadFixture(deployFixture);
+
+      expect(await securityImpl.getSecurityRegistry()).to.equal(ethers.ZeroAddress);
+
+      await expect(securityImpl.checkStatus(mockPool.target)).to.not.be.reverted;
+      await expect(securityImpl.checkStatusOnBurn(mockPool.target)).to.not.be.reverted;
+    });
+
+    it('should enforce the registry once it has one', async function () {
+      const { securityImpl, mockPool, mockSecurityRegistry } = await loadFixture(deployFixture);
+
+      await securityImpl.initializeSecurity(mockSecurityRegistry.target);
+      await mockSecurityRegistry.setPoolStatus(mockPool.target, 2);
+
+      await expect(securityImpl.checkStatus(mockPool.target)).to.be.revertedWithCustomError(securityImpl, 'PoolDisabled');
+      await expect(securityImpl.checkStatusOnBurn(mockPool.target)).to.be.revertedWithCustomError(securityImpl, 'PoolDisabled');
     });
   });
 });

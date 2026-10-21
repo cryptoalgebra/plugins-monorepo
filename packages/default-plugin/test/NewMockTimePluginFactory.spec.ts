@@ -1,8 +1,9 @@
 import { Wallet } from 'ethers';
 import { ethers } from 'hardhat';
+import { pinnedMockTimePluginFactory } from './shared/pinnedFactory';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { expect } from 'test-utils/expect';
-import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION, newMockTimeUpgradeablePluginFactoryFixture } from './shared/fixtures';
+import { ZERO_ADDRESS, DEFAULT_FEE_CONFIGURATION, newMockTimeUpgradeablePluginFactoryFixture, withImpl, impersonateAlgebraFactory, ModuleImplementations } from './shared/fixtures';
 
 import { MockFactory, NewMockTimeUpgradeablePluginFactory, MockTimeAlgebraUpgradeablePlugin } from '../typechain';
 
@@ -10,17 +11,12 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
   let wallet: Wallet, other: Wallet, almManager: Wallet;
 
   let mockPluginFactory: NewMockTimeUpgradeablePluginFactory;
-  let factoryImpl: any;
   let proxyAdmin: any;
   let proxyAdminOwner: any;
   let mockAlgebraFactory: MockFactory;
-  let implementations: {
-    volatilityOracleImpl: string;
-    dynamicFeeImpl: string;
-    farmingProxyImpl: string;
-    almImpl: string;
-    securityImpl: string;
-  };
+  // beforeCreatePoolHook is only callable by the Algebra factory, so the tests drive it from that address
+  let algebraFactorySigner: any;
+  let implementations: ModuleImplementations;
 
   before('prepare signers', async () => {
     [wallet, other, almManager] = await (ethers as any).getSigners();
@@ -29,59 +25,33 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
   beforeEach('deploy test pluginFactory', async () => {
     ({ 
       mockPluginFactory, 
-      factoryImpl, 
       proxyAdmin, 
       proxyAdminOwner, 
       mockFactory: mockAlgebraFactory,
       implementations 
     } = await loadFixture(newMockTimeUpgradeablePluginFactoryFixture));
+    algebraFactorySigner = await impersonateAlgebraFactory(mockAlgebraFactory);
   });
 
-  // ========== PROXY PATTERN ==========
+  // Deploy a plugin implementation wired to the mock factories
+  async function deployPluginImpl(contractName: string, impls: ModuleImplementations = implementations) {
+    const implFactory = await ethers.getContractFactory(contractName);
+    return implFactory.deploy(await mockAlgebraFactory.getAddress(), await mockPluginFactory.getAddress(), impls);
+  }
 
-  describe('#Transparent Proxy Pattern', () => {
-    it('is deployed as proxy', async () => {
-      const factoryAddress = await mockPluginFactory.getAddress();
-      const implAddress = await factoryImpl.getAddress();
-      expect(factoryAddress).to.not.eq(implAddress);
-    });
+  // Deploy a plugin implementation and point the beacon at it
+  async function upgradePluginsTo(contractName: string, impls: ModuleImplementations = implementations) {
+    const newImpl = await deployPluginImpl(contractName, impls);
+    await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+    return newImpl;
+  }
 
-    it('has correct algebraFactory', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      expect(await mockPluginFactory.algebraFactory()).to.eq(mockFactoryAddress);
-    });
-
-    it('has beacon address', async () => {
-      const beacon = await mockPluginFactory.beacon();
-      expect(beacon).to.not.eq(ZERO_ADDRESS);
-    });
-
-    it('implementation cannot be initialized directly', async () => {
-      await expect(
-        factoryImpl.initialize(
-          await (mockAlgebraFactory as any).getAddress(),
-          ZERO_ADDRESS,
-          DEFAULT_FEE_CONFIGURATION
-        )
-      ).to.be.revertedWith('Initializable: contract is already initialized');
-    });
-  });
+  // Thin subclass of the production factory: adds only the ALM defaults and setPluginForPool.
+  // Everything inherited is covered in AlgebraUpgradeablePluginFactory.spec.ts.
 
   // ========== FACTORY UPGRADE ==========
 
   describe('#Factory Upgrade via ProxyAdmin', () => {
-    it('ProxyAdmin owner can upgrade factory', async () => {
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
-      const newFactoryImpl = await newFactoryImplFactory.deploy();
-
-      const proxyAddress = await mockPluginFactory.getAddress();
-      await proxyAdmin.connect(proxyAdminOwner).upgrade(proxyAddress, await newFactoryImpl.getAddress());
-
-      // Verify factory still works
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      expect(await mockPluginFactory.algebraFactory()).to.eq(mockFactoryAddress);
-    });
-
     it('preserves storage after factory upgrade', async () => {
       // Set configurations before upgrade
       await mockPluginFactory.setFarmingAddress(other.address);
@@ -90,7 +60,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       await mockPluginFactory.setDefaultAlmTwapPeriods(3600, 600);
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
         await mockPluginFactory.getAddress(), 
@@ -117,7 +87,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('creates plugin for pool', async () => {
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(), 
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -127,7 +97,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('plugin has correct fee configuration', async () => {
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(), 
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -141,13 +111,13 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('cannot create plugin twice for same pool', async () => {
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(), 
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
 
       await expect(
-        mockPluginFactory.beforeCreatePoolHook(
+        mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
           await mockPool.getAddress(), 
           ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
         )
@@ -169,7 +139,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('plugin receives security configuration', async () => {
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(), 
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -192,7 +162,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       mockPool = await mockPoolFactory.deploy();
 
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(), 
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -201,29 +171,11 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress) as any;
     });
 
-    it('has implementation address', async () => {
-      const impl = await mockPluginFactory.implementation();
-      expect(impl).to.not.eq(ZERO_ADDRESS);
-    });
-
     it('can upgrade plugins', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
       // Deploy MockUpgradedPlugin
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
       // Upgrade
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Verify upgrade
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -236,21 +188,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const poolBefore = await plugin.pool();
 
       // Deploy and upgrade to MockUpgradedPlugin
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
       
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Verify storage preserved
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -262,33 +201,27 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
   });
 
-  // ========== ALM SETTERS ==========
+  // ========== ALM SETTERS (harness only) ==========
 
-  describe('#ALM Configuration', () => {
+  // Harness only setters, with no access control and no path into a created plugin.
+  // ALM configuration reaches a plugin through its own initializeALM instead.
+  describe('#ALM Configuration (harness only)', () => {
     describe('#setDefaultRebalanceManager', () => {
-      it('updates defaultRebalanceManager', async () => {
-        await mockPluginFactory.setDefaultRebalanceManager(almManager.address);
-        expect(await mockPluginFactory.defaultRebalanceManager()).to.eq(almManager.address);
-      });
-
-      it('emits RebalanceManager event', async () => {
+      it('updates defaultRebalanceManager and emits it', async () => {
         await expect(mockPluginFactory.setDefaultRebalanceManager(almManager.address))
           .to.emit(mockPluginFactory, 'RebalanceManager')
           .withArgs(almManager.address);
+        expect(await mockPluginFactory.defaultRebalanceManager()).to.eq(almManager.address);
       });
     });
 
     describe('#setDefaultAlmTwapPeriods', () => {
-      it('updates TWAP periods', async () => {
-        await mockPluginFactory.setDefaultAlmTwapPeriods(7200, 1200);
-        expect(await mockPluginFactory.defaultSlowTwapPeriod()).to.eq(7200);
-        expect(await mockPluginFactory.defaultFastTwapPeriod()).to.eq(1200);
-      });
-
-      it('emits AlmTwapPeriods event', async () => {
+      it('updates TWAP periods and emits them', async () => {
         await expect(mockPluginFactory.setDefaultAlmTwapPeriods(7200, 1200))
           .to.emit(mockPluginFactory, 'AlmTwapPeriods')
           .withArgs(7200, 1200);
+        expect(await mockPluginFactory.defaultSlowTwapPeriod()).to.eq(7200);
+        expect(await mockPluginFactory.defaultFastTwapPeriod()).to.eq(1200);
       });
 
       it('reverts if slowPeriod < fastPeriod', async () => {
@@ -296,73 +229,24 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
           mockPluginFactory.setDefaultAlmTwapPeriods(600, 3600)
         ).to.be.revertedWithCustomError(mockPluginFactory, 'InvalidAlmTwapPeriods');
       });
-    });
-  });
 
-  // ========== SECURITY SETTERS ==========
+      it('accepts equal periods', async () => {
+        // The guard is `slowPeriod < fastPeriod`, so equality is deliberately allowed
+        await expect(mockPluginFactory.setDefaultAlmTwapPeriods(3600, 3600)).to.not.be.reverted;
 
-  describe('#Security Configuration', () => {
-    describe('#setSecurityRegistry', () => {
-      it('updates securityRegistry', async () => {
-        await mockPluginFactory.setSecurityRegistry(other.address);
-        expect(await mockPluginFactory.securityRegistry()).to.eq(other.address);
+        expect(await mockPluginFactory.defaultSlowTwapPeriod()).to.eq(3600);
+        expect(await mockPluginFactory.defaultFastTwapPeriod()).to.eq(3600);
       });
 
-      it('emits SecurityRegistry event', async () => {
-        await expect(mockPluginFactory.setSecurityRegistry(other.address))
-          .to.emit(mockPluginFactory, 'SecurityRegistry')
-          .withArgs(other.address);
+      it('reverts one second below equality', async () => {
+        await expect(
+          mockPluginFactory.setDefaultAlmTwapPeriods(3599, 3600)
+        ).to.be.revertedWithCustomError(mockPluginFactory, 'InvalidAlmTwapPeriods');
       });
     });
   });
 
-  // ========== FEE CONFIGURATION ==========
-
-  describe('#Fee Configuration', () => {
-    const newConfig = {
-      alpha1: 3002,
-      alpha2: 10009,
-      beta1: 1001,
-      beta2: 1006,
-      gamma1: 20,
-      gamma2: 22,
-      baseFee: 150,
-    };
-
-    it('updates defaultFeeConfiguration', async () => {
-      await mockPluginFactory.setDefaultFeeConfiguration(newConfig);
-      const config = await mockPluginFactory.defaultFeeConfiguration();
-      expect(config.alpha1).to.eq(newConfig.alpha1);
-      expect(config.baseFee).to.eq(newConfig.baseFee);
-    });
-
-    it('emits DefaultFeeConfiguration event', async () => {
-      await expect(mockPluginFactory.setDefaultFeeConfiguration(newConfig))
-        .to.emit(mockPluginFactory, 'DefaultFeeConfiguration');
-    });
-  });
-
-  // ========== FARMING CONFIGURATION ==========
-
-  describe('#Farming Configuration', () => {
-    describe('#setFarmingAddress', () => {
-      it('updates farmingAddress', async () => {
-        await mockPluginFactory.setFarmingAddress(other.address);
-        expect(await mockPluginFactory.farmingAddress()).to.eq(other.address);
-      });
-
-      it('emits FarmingAddress event', async () => {
-        await expect(mockPluginFactory.setFarmingAddress(other.address))
-          .to.emit(mockPluginFactory, 'FarmingAddress')
-          .withArgs(other.address);
-      });
-
-      it('cannot set same address twice', async () => {
-        await mockPluginFactory.setFarmingAddress(other.address);
-        await expect(mockPluginFactory.setFarmingAddress(other.address)).to.be.reverted;
-      });
-    });
-  });
+  // Security, fee and farming setters are inherited, covered in AlgebraUpgradeablePluginFactory.spec.ts
 
   // ========== COMPLETE PLUGIN UPGRADE FLOW ==========
 
@@ -385,7 +269,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       mockPool2 = await mockPoolFactory.deploy();
 
       // Create plugin for pool 1
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -393,7 +277,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress) as any;
 
       // Create plugin for pool 2
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool2.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -410,23 +294,10 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('upgrades ALL plugins at once via beacon', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
       // Deploy new implementation
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
       // Single upgrade call affects ALL plugins
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Both plugins now use new implementation
       const upgraded1 = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -442,25 +313,17 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const pool2Before = await plugin2.pool();
       const feeConfig1Before = await plugin.feeConfig.staticCall();
       const feeConfig2Before = await plugin2.feeConfig.staticCall();
+      // Factory ALM defaults never reach a created plugin, nothing calls initializeALM.
+      // Pinned so that wiring them through would break here rather than pass quietly.
       const alm1Before = await plugin.rebalanceManager();
+      expect(alm1Before).to.eq(ZERO_ADDRESS);
+      expect(await mockPluginFactory.defaultRebalanceManager()).to.eq(almManager.address);
+
       const security1Before = await plugin.getSecurityRegistry();
 
       // Deploy and upgrade
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Verify ALL storage preserved
       const upgraded1 = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -477,7 +340,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       expect(feeConfig1After.baseFee).to.eq(feeConfig1Before.baseFee);
       expect(feeConfig2After.alpha1).to.eq(feeConfig2Before.alpha1);
 
-      // ALM config preserved
+      // ALM storage is still uninitialized, and the upgrade did not invent values for it
       expect(await upgraded1.rebalanceManager()).to.eq(alm1Before);
       expect(await upgraded1.slowTwapPeriod()).to.eq(0);
       expect(await upgraded1.fastTwapPeriod()).to.eq(0);
@@ -488,21 +351,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('new functions available after plugin upgrade', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
       const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgraded = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
 
@@ -530,8 +381,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
       // OLD: VolatilityOracle storage (algebra.storage.volatilityoracle)
     
+      // The pool was initialized and never swapped, so timepoint 0 is the only one written
       const timepointIndex = await upgraded.timepointIndex();
-      expect(timepointIndex).to.be.gte(0);
+      expect(timepointIndex).to.eq(0);
       const timepoint0 = await upgraded.timepoints(0);
       expect(timepoint0.initialized).to.eq(true);
 
@@ -560,21 +412,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('existing functions still work after plugin upgrade', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
       const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgraded = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
 
@@ -587,28 +427,15 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     });
 
     it('new plugins after upgrade use new implementation', async () => {
-      const mockFactoryAddress = await (mockAlgebraFactory as any).getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
       // Upgrade plugins
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Create NEW pool and plugin AFTER upgrade
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       const newPool = await mockPoolFactory.deploy();
 
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await newPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -648,7 +475,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       mockPool = await mockPoolFactory.deploy();
 
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -659,7 +486,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const implementationBefore = await mockPluginFactory.implementation();
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -683,7 +510,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const feeConfigBefore = await mockPluginFactory.defaultFeeConfiguration();
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -708,7 +535,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const pluginBefore = await mockPluginFactory.pluginByPool(mockPool.getAddress());
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -722,7 +549,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
     it('can create new plugins after factory upgrade', async () => {
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -734,7 +561,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       const newPool = await mockPoolFactory.deploy();
 
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await newPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -750,7 +577,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
 
     it('can modify configs after factory upgrade', async () => {
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -777,7 +604,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const feeConfigBefore = await plugin.feeConfig.staticCall();
 
       // Upgrade factory
-      const newFactoryImplFactory = await ethers.getContractFactory('NewMockTimeUpgradeablePluginFactory');
+      const newFactoryImplFactory = await pinnedMockTimePluginFactory();
       const newFactoryImpl = await newFactoryImplFactory.deploy();
 
       await proxyAdmin.connect(proxyAdminOwner).upgrade(
@@ -817,14 +644,14 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       mockPool2 = await mockPoolFactory.deploy();
 
       // Create plugins
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
       const pluginAddress = await mockPluginFactory.pluginByPool(mockPool.getAddress());
       plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress) as any;
 
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool2.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -851,22 +678,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
       // Deploy new plugin with upgraded security impl
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()  // NEW security impl!
-      );
 
       // Upgrade all plugins via beacon
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       // Verify security registry PRESERVED in both plugins
       const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
@@ -882,21 +696,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
       // Deploy and upgrade plugin
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
@@ -915,21 +716,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
@@ -958,22 +746,9 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
 
       // Single upgrade call
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       // BOTH plugins upgraded
       const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
@@ -993,21 +768,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
 
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPluginWithNewSecurity', withImpl(implementations, { security: await upgradedSecurityImpl.getAddress() }));
 
       const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
 
@@ -1040,7 +802,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const mockPoolFactory = await ethers.getContractFactory('MockPool');
       mockPool = await mockPoolFactory.deploy();
 
-      await mockPluginFactory.beforeCreatePoolHook(
+      await mockPluginFactory.connect(algebraFactorySigner).beforeCreatePoolHook(
         await mockPool.getAddress(),
         ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
       );
@@ -1072,21 +834,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       expect(timepointIndexBefore).to.be.gt(0); // Should have written several timepoints
 
       // Upgrade plugin
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Read oracle state AFTER upgrade
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -1105,21 +854,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       expect(lastTimestampBefore).to.be.gt(0);
 
       // Upgrade
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
       const lastTimestampAfter = await upgradedPlugin.lastTimepointTimestamp();
@@ -1149,21 +885,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const timepointLastBefore = await plugin.timepoints(indexBefore);
 
       // Upgrade
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       // Read timepoint data AFTER upgrade
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
@@ -1189,21 +912,8 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       const indexBefore = await plugin.timepointIndex();
 
       // Upgrade
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockTimeUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockTimeUpgradedPlugin');
 
       // Use upgraded plugin to write NEW timepoints
       const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await plugin.getAddress()) as any;
@@ -1221,36 +931,28 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
     it('volatility calculation uses preserved historical data after upgrade', async () => {
       // Build up oracle history
       for (let i = 0; i < 10; i++) {
-        await plugin.advanceTime(3600); 
+        await plugin.advanceTime(3600);
         await mockPool.swapToTick(i % 2 === 0 ? 100 : -100);
       }
 
+      const timepointIndexBefore = await plugin.timepointIndex();
+      expect(timepointIndexBefore).to.be.gt(0);
+
       // Upgrade
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
-
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
+      await upgradePluginsTo('MockUpgradedPlugin');
 
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await plugin.getAddress());
-      
-      // After upgrade, getCurrentFee() should still work (not revert)
-      // Note: fee value may differ because MockUpgradedPlugin uses real block.timestamp
-      // while MockTimeAlgebraUpgradeablePlugin used mock time
-      await expect(upgradedPlugin.getCurrentFee()).to.not.be.reverted;
-      
+
+      // The history the fee is computed from survived
+      expect(await upgradedPlugin.timepointIndex()).to.eq(timepointIndexBefore);
+
+      // The fee value itself may differ, MockUpgradedPlugin reads block.timestamp where
+      // MockTimeAlgebraUpgradeablePlugin read its own clock. The AdaptiveFee bounds still hold.
+      const feeConfig = await upgradedPlugin.feeConfig.staticCall();
       const fee = await upgradedPlugin.getCurrentFee();
-      expect(fee).to.be.gte(0); // Fee should be valid
+      expect(fee).to.be.gte(feeConfig.baseFee);
+      expect(fee).to.be.lte(feeConfig.baseFee + feeConfig.alpha1 + feeConfig.alpha2);
     });
 
     it('TWAP calculation works with preserved timepoints after upgrade', async () => {
@@ -1264,266 +966,35 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       await plugin.advanceTime(1000);
       await mockPool.swapToTick(120);
 
+      // A cumulative pair is what the average tick is derived from, so pinning the pair across the
+      // upgrade pins the calculation this case is named for. Asserting only that a later swap goes
+      // through says nothing about whether the history behind it survived.
+      const WINDOW = 2000;
+      const [cumulativeNowBefore] = await plugin.getSingleTimepoint(0);
+      const [cumulativeThenBefore] = await plugin.getSingleTimepoint(WINDOW);
+
       // Upgrade
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
 
-      const newImplFactory = await ethers.getContractFactory('MockTimeUpgradedPlugin');
-      const newImpl = await newImplFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        implementations.securityImpl
-      );
+      await upgradePluginsTo('MockTimeUpgradedPlugin');
 
-      await mockPluginFactory.upgradePlugins(await newImpl.getAddress());
 
-     
+      // Read back through the upgraded implementation. This one keeps the mock clock, so the two sides
+      // are looking at the same moment and the pair has to come back identical.
       const upgradedPlugin = await ethers.getContractAt('MockTimeUpgradedPlugin', await plugin.getAddress()) as any;
+      const [cumulativeNowAfter] = await upgradedPlugin.getSingleTimepoint(0);
+      const [cumulativeThenAfter] = await upgradedPlugin.getSingleTimepoint(WINDOW);
+
+      expect(cumulativeNowAfter).to.eq(cumulativeNowBefore);
+      expect(cumulativeThenAfter).to.eq(cumulativeThenBefore);
+      // and the window really spans a tick move, so the equality above is not two copies of one number
+      expect(cumulativeNowAfter).to.not.eq(cumulativeThenAfter);
+
       await upgradedPlugin.advanceTime(100);
-      
-      // Should not revert - TWAP calculation uses preserved timepoints
-      await expect(mockPool.swapToTick(80)).to.not.be.reverted;
-    });
-  });
 
-  // ========== SECURITY MODULE UPGRADE ==========
-
-  describe('#Security Module Upgrade via Plugin Upgrade', () => {
-    let mockPool: any;
-    let mockPool2: any;
-    let plugin: MockTimeAlgebraUpgradeablePlugin;
-    let plugin2: MockTimeAlgebraUpgradeablePlugin;
-    let securityRegistry: any;
-    let upgradedSecurityImpl: any;
-
-    beforeEach('setup pools with security', async () => {
-      // Deploy MockSecurityRegistry
-      const MockSecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
-      securityRegistry = await MockSecurityRegistryFactory.deploy();
-
-      // Configure factory with security BEFORE creating plugins
-      await mockPluginFactory.setSecurityRegistry(await securityRegistry.getAddress());
-
-      // Create two pools with plugins
-      const mockPoolFactory = await ethers.getContractFactory('MockPool');
-      mockPool = await mockPoolFactory.deploy();
-      mockPool2 = await mockPoolFactory.deploy();
-
-      // Create plugins
-      await mockPluginFactory.beforeCreatePoolHook(
-        await mockPool.getAddress(),
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
-      );
-      const pluginAddress = await mockPluginFactory.pluginByPool(mockPool.getAddress());
-      plugin = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress) as any;
-
-      await mockPluginFactory.beforeCreatePoolHook(
-        await mockPool2.getAddress(),
-        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x'
-      );
-      const pluginAddress2 = await mockPluginFactory.pluginByPool(mockPool2.getAddress());
-      plugin2 = await ethers.getContractAt('MockTimeAlgebraUpgradeablePlugin', pluginAddress2) as any;
-
-      // Connect and initialize pools
-      await mockPool.setPlugin(pluginAddress);
-      await mockPool2.setPlugin(pluginAddress2);
-
-      const initialPrice = BigInt('79228162514264337593543950336');
-      await mockPool.initialize(initialPrice);
-      await mockPool2.initialize(initialPrice);
-    });
-
-    it('security registry is preserved after upgrading to plugin with new security impl', async () => {
-      // Record security registry BEFORE upgrade
-      const securityRegistryBefore = await plugin.getSecurityRegistry();
-      const securityRegistry2Before = await plugin2.getSecurityRegistry();
-      expect(securityRegistryBefore).to.eq(await securityRegistry.getAddress());
-
-      // Deploy new security implementation
-      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
-      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
-
-      // Deploy new plugin with upgraded security impl
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()  // NEW security impl!
-      );
-
-      // Upgrade all plugins via beacon
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
-
-      // Verify security registry PRESERVED in both plugins
-      const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
-      const upgraded2 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin2.getAddress());
-
-      expect(await upgraded1.getSecurityRegistry()).to.eq(securityRegistryBefore);
-      expect(await upgraded2.getSecurityRegistry()).to.eq(securityRegistry2Before);
-    });
-
-    it('new security functions available after upgrade', async () => {
-      // Deploy upgraded security impl
-      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
-      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
-
-      // Deploy and upgrade plugin
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
-
-      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
-
-      // New V2 functions available
-      expect(await upgraded.HAS_UPGRADED_SECURITY()).to.eq(true);
-      expect(await upgraded.hasUpgradedSecurityImpl.staticCall()).to.eq(true);
-
-      // Emergency mode (new V2 feature)
-      expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(false);
-      await upgraded.setSecurityEmergencyMode(true);
-      expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(true);
-    });
-
-    it('new security storage fields work alongside old data', async () => {
-      // Deploy and upgrade
-      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
-      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
-
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
-
-      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
-
-      // OLD storage preserved
-      expect(await upgraded.getSecurityRegistry()).to.eq(await securityRegistry.getAddress());
-
-      // NEW storage initialized to defaults
-      const statsResult = await upgraded.getSecurityCheckStats.staticCall();
-      expect(statsResult.checkCount).to.eq(0);
-      expect(statsResult.lastCheckTimestamp).to.eq(0);
-
-      // Do a swap to trigger security check
-      await mockPool.swapToTick(10);
-
-      // NEW storage updated
-      const statsAfter = await upgraded.getSecurityCheckStats.staticCall();
-      expect(statsAfter.checkCount).to.eq(1);
-      expect(statsAfter.lastCheckTimestamp).to.be.gt(0);
-
-      // OLD storage still intact
-      expect(await upgraded.getSecurityRegistry()).to.eq(await securityRegistry.getAddress());
-    });
-
-    it('upgrade affects ALL pools simultaneously', async () => {
-      // Deploy and upgrade
-      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
-      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
-
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      // Single upgrade call
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
-
-      // BOTH plugins upgraded
-      const upgraded1 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
-      const upgraded2 = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin2.getAddress());
-
-      expect(await upgraded1.hasUpgradedSecurityImpl.staticCall()).to.eq(true);
-      expect(await upgraded2.hasUpgradedSecurityImpl.staticCall()).to.eq(true);
-
-      // Both can use emergency mode independently
-      await upgraded1.setSecurityEmergencyMode(true);
-      expect(await upgraded1.getSecurityEmergencyMode.staticCall()).to.eq(true);
-      expect(await upgraded2.getSecurityEmergencyMode.staticCall()).to.eq(false);
-    });
-
-    it('emergency mode blocks operations after upgrade', async () => {
-      // Deploy and upgrade
-      const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
-      upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
-
-      const mockFactoryAddress = await mockAlgebraFactory.getAddress();
-      const factoryAddress = await mockPluginFactory.getAddress();
-
-      const NewPluginFactory = await ethers.getContractFactory('MockUpgradedPluginWithNewSecurity');
-      const newPluginImpl = await NewPluginFactory.deploy(
-        mockFactoryAddress,
-        factoryAddress,
-        implementations.volatilityOracleImpl,
-        implementations.dynamicFeeImpl,
-        implementations.farmingProxyImpl,
-        implementations.almImpl,
-        await upgradedSecurityImpl.getAddress()
-      );
-
-      await mockPluginFactory.upgradePlugins(await newPluginImpl.getAddress());
-
-      const upgraded = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', await plugin.getAddress());
-
-      // Operations work normally
-      await expect(mockPool.swapToTick(10)).to.not.be.reverted;
-
-      // Enable emergency mode
-      await upgraded.setSecurityEmergencyMode(true);
-
-      // Operations blocked
-      await expect(mockPool.swapToTick(-10)).to.be.revertedWithCustomError(upgraded, 'PoolDisabled');
-      await expect(mockPool.mint(wallet.address, wallet.address, -120, 120, 1000, '0x'))
-        .to.be.revertedWithCustomError(upgraded, 'PoolDisabled');
-
-      // Disable emergency mode
-      await upgraded.setSecurityEmergencyMode(false);
-
-      // Operations work again
-      await expect(mockPool.swapToTick(20)).to.not.be.reverted;
+      const indexBeforeSwap = await upgradedPlugin.timepointIndex();
+      await mockPool.swapToTick(80);
+      // the oracle kept writing on top of the history it inherited
+      expect(await upgradedPlugin.timepointIndex()).to.be.gt(indexBeforeSwap);
     });
   });
 

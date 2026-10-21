@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import '../base/BaseRebalanceManager.sol';
+import './MockVault.sol';
 
 contract AlmPluginTest is BaseRebalanceManager {
   uint256 public depositTokenBalance;
@@ -10,6 +11,20 @@ contract AlmPluginTest is BaseRebalanceManager {
   uint256 public currentPrice;
   uint8 public depositDecimals;
   uint8 public pairedDecimals;
+
+  /// @dev Every input of a replayed reading, set in one call instead of six
+  struct Reading {
+    uint8 depositDecimals;
+    uint8 pairedDecimals;
+    uint256 totalAmount0;
+    uint256 totalAmount1;
+    uint256 slowPrice;
+    uint256 fastPrice;
+    uint256 currentPrice;
+    uint256 depositTokenBalance;
+    uint256 lastRebalanceCurrentPrice;
+    State state;
+  }
 
   constructor(address _vault, uint32 _minTimeBetweenRebalances, Thresholds memory _thresholds, int24 _tickSpacing) {
     paused = false;
@@ -51,8 +66,22 @@ contract AlmPluginTest is BaseRebalanceManager {
     _rebalance(twapResult);
   }
 
+  function setReading(Reading calldata reading) external {
+    setDecimals(reading.depositDecimals, reading.pairedDecimals);
+    MockVault(vault).setTotalAmounts(reading.totalAmount0, reading.totalAmount1);
+    setPrices(reading.slowPrice, reading.fastPrice, reading.currentPrice);
+    depositTokenBalance = reading.depositTokenBalance;
+    lastRebalanceCurrentPrice = reading.lastRebalanceCurrentPrice;
+    state = reading.state;
+  }
+
   function setDepositTokenBalance(uint256 _depositTokenBalance) public {
     depositTokenBalance = _depositTokenBalance;
+  }
+
+  /// @dev No pool to read the factory from, so tests that need authorization set it
+  function setFactory(address _factory) public {
+    factory = _factory;
   }
 
   function setState(State _state) public {

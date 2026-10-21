@@ -17,13 +17,13 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
   let mockFactory: MockFactory;
   let mockPluginFactory: MockFarmingPluginFactory;
   let mockPool: MockPool;
-  let other: Wallet;
+  let wallet: Wallet, other: Wallet;
   let farmingAddress: Wallet;
 
   const MOCK_INCENTIVE = '0x0000000000000000000000000000000000000099';
 
   beforeEach(async () => {
-    [, other, farmingAddress] = await (ethers as any).getSigners();
+    [wallet, other, farmingAddress] = await (ethers as any).getSigners();
 
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');

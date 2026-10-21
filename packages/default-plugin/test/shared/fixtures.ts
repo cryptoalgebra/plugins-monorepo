@@ -58,7 +58,7 @@ export const EMPTY_IMPLEMENTATIONS: ModuleImplementations = {
 };
 
 // The shipped AlgebraUpgradeablePlugin constructor takes the five addresses positionally
-export function moduleArgs(impls: ModuleImplementations): string[] {
+export function moduleArgs(impls: ModuleImplementations): [string, string, string, string, string] {
   return [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.alm, impls.security];
 }
 
@@ -194,7 +194,7 @@ export const pluginFactoryFixture: Fixture<PluginFactoryFixture> = async functio
   const pluginImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePlugin');
   const pluginImpl = await pluginImplFactory.deploy(mockFactoryAddress, proxyAddress, ...moduleArgs(implementations));
 
-  const pluginFactory = pluginFactoryImplFactory.attach(proxyAddress);
+  const pluginFactory = await ethers.getContractAt('AlgebraUpgradeablePluginFactory', proxyAddress);
 
   await pluginFactory.initialize(mockFactoryAddress, await pluginImpl.getAddress(), DEFAULT_FEE_CONFIGURATION);
 

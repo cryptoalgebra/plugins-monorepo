@@ -46,6 +46,7 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
   }
 
   function checkBlockTimestamp() external view returns (bool) {
+    // solhint-disable-next-line reason-string
     require(super._blockTimestamp() == uint32(block.timestamp));
     return true;
   }

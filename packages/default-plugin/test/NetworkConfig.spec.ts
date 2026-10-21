@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { network, config } from 'hardhat';
+import type { HardhatNetworkConfig } from 'hardhat/types';
 
 // Two network settings in the root hardhat.base.config.ts govern every package's test run, since
 // every package takes `networks` from it verbatim, and neither announces itself when it stops
@@ -15,7 +16,7 @@ describe('hardhat network configuration', () => {
     for (const compiler of config.solidity.compilers) {
       expect(compiler.settings.evmVersion).to.equal('paris');
     }
-    expect(network.config.hardfork).to.equal('merge');
+    expect((network.config as HardhatNetworkConfig).hardfork).to.equal('merge');
   });
 
   it('starts every run from the same instant', () => {

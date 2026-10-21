@@ -1,6 +1,6 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
-import { pinnedProxyDeployerFactory } from 'test-utils/pinnedProxy';
+import { deployPinnedProxyDeployer } from 'test-utils/pinnedProxy';
 import { Wallet, ZeroAddress } from 'ethers';
 import { SecurityRegistry, MockFactory } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
@@ -25,8 +25,7 @@ describe('SecurityPlugin', () => {
     const SecurityPluginImplementation = await ethers.getContractFactory('SecurityPluginImplementation');
     const securityImpl = await SecurityPluginImplementation.deploy();
 
-    const BeaconProxyDeployer = await pinnedProxyDeployerFactory();
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
+    const proxyDeployer = await deployPinnedProxyDeployer();
 
     const UpgradeableSecurityPluginTest = await ethers.getContractFactory('UpgradeableSecurityPluginTest');
     const pluginImplementation = await UpgradeableSecurityPluginTest.deploy(

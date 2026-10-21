@@ -13,6 +13,7 @@ abstract contract BaseAbstractPlugin is AbstractPlugin {
   }
 
   function _authorize() internal view virtual override {
+    // solhint-disable-next-line reason-string
     require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender));
   }
 }

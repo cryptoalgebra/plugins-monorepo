@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`VolatilityOracle #getTimepoints before initialization gas for getTimepoints since most recent  [ @skip-on-coverage ] 1`] = `8271`;
 

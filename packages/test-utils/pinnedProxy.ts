@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import type { BeaconProxyDeployer } from './typechain';
 
 import AlgebraPluginProxyArtifact from './pinned/AlgebraPluginProxy.json';
 import BeaconProxyDeployerArtifact from './pinned/BeaconProxyDeployer.json';
@@ -33,6 +34,7 @@ export async function pinnedProxyDeployerFactory() {
   return ethers.getContractFactory(BEACON_PROXY_DEPLOYER.abi, BEACON_PROXY_DEPLOYER.bytecode);
 }
 
-export async function deployPinnedProxyDeployer() {
-  return (await pinnedProxyDeployerFactory()).deploy();
+/// Typed by the fresh artifact's typechain: the pinned bytecode is built from the same source
+export async function deployPinnedProxyDeployer(): Promise<BeaconProxyDeployer> {
+  return (await (await pinnedProxyDeployerFactory()).deploy()) as unknown as BeaconProxyDeployer;
 }

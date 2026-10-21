@@ -8,5 +8,11 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
-  }
+    // ${configDir} is the package extending this file, so every package shares one set of paths
+    "outDir": "${configDir}/dist",
+    "typeRoots": ["${configDir}/node_modules/@types", "./node_modules/@types", "./node_modules/@nomicfoundation"],
+    "types": ["hardhat-ethers", "hardhat-network-helpers", "hardhat-chai-matchers", "mocha"]
+  },
+  // hardhat.d.ts types getContractFactory, the rest of typechain comes in through imports
+  "include": ["${configDir}/test/**/*.ts", "${configDir}/hardhat.config.ts", "${configDir}/scripts/**/*.ts", "${configDir}/typechain/hardhat.d.ts"]
 }

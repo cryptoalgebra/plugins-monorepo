@@ -14,6 +14,30 @@ export const BASE_FORK = {
   blockNumber: 40801000,
 };
 
+export const SOLC_VERSION = '0.8.20';
+export const EVM_VERSION = 'paris';
+
+// The production build, and the one the pinned bytecode in test-utils is compiled with
+export const COMPILER_SETTINGS = {
+  version: SOLC_VERSION,
+  settings: {
+    evmVersion: EVM_VERSION,
+    optimizer: {
+      enabled: true,
+      runs: 1_000_000,
+    },
+    metadata: {
+      bytecodeHash: 'none',
+    },
+  },
+};
+
+// default-plugin ships built at runs 0. POOL_ADDRESS_OFFSET depends on the optimizer being on, not on the run count
+export const LOW_RUNS_COMPILER_SETTINGS = {
+  ...COMPILER_SETTINGS,
+  settings: { ...COMPILER_SETTINGS.settings, optimizer: { enabled: true, runs: 0 } },
+};
+
 export default {
   typechain: {
     outDir: 'typechain',

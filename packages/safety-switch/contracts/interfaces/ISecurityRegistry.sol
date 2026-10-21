@@ -18,6 +18,7 @@ interface ISecurityRegistry {
   function setPoolsStatus(address[] memory pools, Status[] memory newStatuses) external;
 
   function algebraFactory() external view returns (address);
+  // solhint-disable-next-line func-name-mixedcase
   function GUARD() external pure returns (bytes32);
   function globalStatus() external view returns (Status);
   function isPoolStatusOverrided() external view returns (bool);

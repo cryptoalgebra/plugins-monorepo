@@ -16,8 +16,9 @@ abstract contract AccessListConnector is BaseConnector, IAccessListPlugin {
   using Plugins for uint8;
 
   string internal constant ACCESS_LIST_MODULE_NAME = 'Access List Plugin';
-  uint8 internal constant ACCESS_LIST_PLUGIN_CONFIG =
-    uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.AFTER_INIT_FLAG);
+  uint8 internal constant ACCESS_LIST_PLUGIN_CONFIG = uint8(
+    Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.AFTER_INIT_FLAG
+  );
 
   address internal immutable accessListImplementation;
 
@@ -44,7 +45,6 @@ abstract contract AccessListConnector is BaseConnector, IAccessListPlugin {
   function _accessListVerifyInitialize(address pool) internal {
     _delegateCall(accessListImplementation, abi.encodeCall(IAccessListPluginImplementation.verifyInitialize, (pool)));
   }
-
 
   /// @inheritdoc IAccessListPlugin
   function setAccessListRegistry(address registry) external override {

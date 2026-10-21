@@ -20,6 +20,8 @@ const BURN_ONLY = 1;
 const DISABLED = 2;
 
 describe('AlgebraUpgradeablePlugin', () => {
+  // the oracle connector adds an initialize() of its own, so the plugin's is reached by its full signature
+  const INITIALIZE = 'initialize((uint16,uint16,uint32,uint32,uint16,uint16,uint16),address)';
   let wallet: Wallet, other: Wallet;
 
   let plugin: MockTimeAlgebraUpgradeablePlugin;
@@ -154,7 +156,7 @@ describe('AlgebraUpgradeablePlugin', () => {
       await mockPool.setPlugin(plugin);
 
       const fromPool = plugin.connect(await impersonateContract(mockPool)) as any;
-      const selectorOf = (name: string) => plugin.interface.getFunction(name)!.selector;
+      const selectorOf = (name: Parameters<typeof plugin.interface.getFunction>[0]) => plugin.interface.getFunction(name)!.selector;
 
       // The init hooks go first: afterInitialize seeds the oracle and refuses to run a second time
       expect(await fromPool.beforeInitialize.staticCall(wallet.address, 100)).to.be.eq(selectorOf('beforeInitialize'));
@@ -549,7 +551,7 @@ describe('AlgebraUpgradeablePlugin', () => {
     }
 
     it('cannot be called a second time', async () => {
-      await expect(plugin.initialize(DEFAULT_FEE_CONFIGURATION, ZeroAddress)).to.be.revertedWith(
+      await expect(plugin[INITIALIZE](DEFAULT_FEE_CONFIGURATION, ZeroAddress)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       );
     });
@@ -557,7 +559,7 @@ describe('AlgebraUpgradeablePlugin', () => {
     it('cannot be called by anyone but the plugin factory', async () => {
       const uninitialized = await deployUninitializedPlugin();
 
-      await expect(uninitialized.initialize(DEFAULT_FEE_CONFIGURATION, ZeroAddress)).to.be.revertedWithCustomError(
+      await expect(uninitialized[INITIALIZE](DEFAULT_FEE_CONFIGURATION, ZeroAddress)).to.be.revertedWithCustomError(
         uninitialized,
         'OnlyPluginFactory'
       );
@@ -567,7 +569,7 @@ describe('AlgebraUpgradeablePlugin', () => {
       const uninitialized = await deployUninitializedPlugin();
       const pluginFactorySigner = await impersonateContract(mockPluginFactory);
 
-      await expect(uninitialized.connect(pluginFactorySigner).initialize(DEFAULT_FEE_CONFIGURATION, ZeroAddress))
+      await expect(uninitialized.connect(pluginFactorySigner)[INITIALIZE](DEFAULT_FEE_CONFIGURATION, ZeroAddress))
         .to.emit(uninitialized, 'PluginInitialized')
         .withArgs(await mockPool.getAddress());
     });

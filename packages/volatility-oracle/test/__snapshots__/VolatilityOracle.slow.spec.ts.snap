@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`VolatilityOracle full volatilityOracle [ @slow ] gas cost of getTimepoints(0)  [ @skip-on-coverage ] 1`] = `6335`;
 
@@ -21,4 +21,3 @@ exports[`VolatilityOracle full volatilityOracle [ @slow ] gas cost of getTimepoi
 exports[`VolatilityOracle full volatilityOracle [ @slow ] gas cost of getTimepoints(oldest)  [ @skip-on-coverage ] 1`] = `47091`;
 
 exports[`VolatilityOracle full volatilityOracle [ @slow ] gas cost of getTimepoints(oldest) after 5 seconds  [ @skip-on-coverage ] 1`] = `47091`;
-

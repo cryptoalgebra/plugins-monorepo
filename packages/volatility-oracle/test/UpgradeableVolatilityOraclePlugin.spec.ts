@@ -300,7 +300,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
 
       const [now] = await plugin1.getSingleTimepoint(0);
       const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
-      const delta = now - then;
+      const delta = BigInt(now) - BigInt(then);
 
       // Both halves of the correction's condition, so the case cannot drift into being trivial
       expect(delta).to.be.lessThan(0n);
@@ -324,7 +324,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
 
       const [now] = await plugin1.getSingleTimepoint(0);
       const [then] = await plugin1.getSingleTimepoint(TWAP_PERIOD);
-      const delta = now - then;
+      const delta = BigInt(now) - BigInt(then);
 
       // What makes the case bite: a cumulative to subtract, a positive delta, and a remainder
       expect(then).to.not.equal(0n);

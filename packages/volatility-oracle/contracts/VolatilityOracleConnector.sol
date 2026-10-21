@@ -25,6 +25,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
     volatilityOracleImplementation = _volatilityOracleImplementation;
   }
 
+  // solhint-disable-next-line func-name-mixedcase
   function _initialize_TWAP(int24 tick) internal {
     _delegateCall(
       volatilityOracleImplementation,

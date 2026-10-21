@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import type { BaseAbstractPluginTest } from '../typechain';
+
+type FunctionName = Parameters<BaseAbstractPluginTest['interface']['getFunction']>[0];
 
 // No package in this repository builds on the non-upgradeable plugin bases, so they run here through minimal harnesses
 describe('AbstractPlugin', function () {
@@ -29,7 +32,7 @@ describe('AbstractPlugin', function () {
   }
 
   describe('Hooks', function () {
-    const hooks: [string, (user: string) => unknown[]][] = [
+    const hooks: [FunctionName, (user: string) => unknown[]][] = [
       ['beforeInitialize', (user) => [user, PRICE]],
       ['afterInitialize', (user) => [user, PRICE, 0]],
       ['beforeModifyPosition', (user) => [user, user, -60, 60, 1, '0x']],

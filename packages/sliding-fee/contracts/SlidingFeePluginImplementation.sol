@@ -41,9 +41,10 @@ contract SlidingFeePluginImplementation is ISlidingFeePluginImplementation {
       currentFeeFactors = layout.feeFactors;
     }
 
-    uint256 adjustedFee = zeroToOne
-      ? (uint256(baseFee) * currentFeeFactors.zeroToOneFeeFactor) >> FEE_FACTOR_SHIFT
-      : (uint256(baseFee) * currentFeeFactors.oneToZeroFeeFactor) >> FEE_FACTOR_SHIFT;
+    uint256 adjustedFee =
+      zeroToOne
+        ? (uint256(baseFee) * currentFeeFactors.zeroToOneFeeFactor) >> FEE_FACTOR_SHIFT
+        : (uint256(baseFee) * currentFeeFactors.oneToZeroFeeFactor) >> FEE_FACTOR_SHIFT;
 
     if (adjustedFee > type(uint16).max) {
       adjustedFee = type(uint16).max;

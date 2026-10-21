@@ -4,6 +4,7 @@ import { expect } from 'test-utils/expect';
 import { loadFixture, impersonateAccount, setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { ADDRESSES,  SQRT_RATIO } from './constants';
+import { MockSecurityRegistry } from '../../typechain';
 import {
   createAndInitializePool,
   addLiquidity,
@@ -82,6 +83,9 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     return fixture;
   }
 
+  type Deployment = Awaited<ReturnType<typeof deployFixture>>;
+  type PoolSetup = Awaited<ReturnType<typeof setupPoolWithLiquidity>>;
+
   it('wires the upgradeable plugin factory in as the default one', async () => {
     const { algebraFactory, newPluginFactory, beacon } = await loadFixture(deployFixture);
 
@@ -135,20 +139,20 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
   });
 
   describe('#Plugin Upgrade on Live Network', () => {
-    let ownerSigner;
-    let algebraFactory;
-    let token0, token1;
-    let nft;
-    let swapRouter;
-    let newPluginFactory;
-    let beacon, implementationBefore;
-    let pluginAddress, plugin;
-    let deployer;
-    let mintAmount, swapAmount, swapSupply, deadline;
-    let newImplAddress;
-    let swapRouterAddress;
-    let feeConfigBefore, poolBefore, factoryBefore;
-    let swapOutput1, token1Before1;
+    let ownerSigner: Deployment['ownerSigner'];
+    let algebraFactory: Deployment['algebraFactory'];
+    let token0: Deployment['token0'], token1: Deployment['token1'];
+    let nft: Deployment['nft'];
+    let swapRouter: Deployment['swapRouter'];
+    let newPluginFactory: Deployment['newPluginFactory'];
+    let beacon: Deployment['beacon'], implementationBefore: string;
+    let pluginAddress: string, plugin: PoolSetup['plugin'];
+    let deployer: Deployment['deployer'];
+    let mintAmount: bigint, swapAmount: bigint, swapSupply: bigint, deadline: number;
+    let newImplAddress: string;
+    let swapRouterAddress: string;
+    let feeConfigBefore: Awaited<ReturnType<PoolSetup['plugin']['feeConfig']['staticCall']>>, poolBefore: string, factoryBefore: string;
+    let swapOutput1: bigint, token1Before1: bigint;
   
     
       
@@ -316,9 +320,12 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     });
   });
   describe('#Upgrade plugin with upgraded module', ()=> {
-    let ownerSigner, algebraFactory, token0, token1;
-    let nft, swapRouter, newPluginFactory, beacon;
-    let pool, pluginAddress, deployer, deadline;
+    let ownerSigner: Deployment['ownerSigner'], algebraFactory: Deployment['algebraFactory'];
+    let token0: Deployment['token0'], token1: Deployment['token1'];
+    let nft: Deployment['nft'], swapRouter: Deployment['swapRouter'];
+    let newPluginFactory: Deployment['newPluginFactory'], beacon: Deployment['beacon'];
+    let pool: PoolSetup['pool'], pluginAddress: string, deadline: number;
+    let deployer: Deployment['deployer'];
 
     beforeEach(async () => {
       ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer } = await loadFixture(deployFixture));
@@ -396,10 +403,12 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
   });
 
   describe('#Storage Collision test', () => {
-    let ownerSigner, algebraFactory, token0, token1;
-    let nft, swapRouter, newPluginFactory;
-    let plugin, pluginAddress, deployer, deadline;
-    let securityRegistry, securityRegistryAddress;
+    let ownerSigner: Deployment['ownerSigner'], algebraFactory: Deployment['algebraFactory'];
+    let token0: Deployment['token0'], token1: Deployment['token1'];
+    let nft: Deployment['nft'], swapRouter: Deployment['swapRouter'], newPluginFactory: Deployment['newPluginFactory'];
+    let plugin: PoolSetup['plugin'], pluginAddress: string, deadline: number;
+    let deployer: Deployment['deployer'];
+    let securityRegistry: MockSecurityRegistry, securityRegistryAddress: string;
 
     beforeEach(async () => {
       ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, deployer } = await loadFixture(deployFixture));
@@ -584,9 +593,12 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     });
 
   describe('#Super Upgrade - ALL Modules V2', () => {
-    let ownerSigner, algebraFactory, token0, token1;
-    let nft, swapRouter, newPluginFactory, beacon;
-    let pool, pluginAddress, deployer, deadline;
+    let ownerSigner: Deployment['ownerSigner'], algebraFactory: Deployment['algebraFactory'];
+    let token0: Deployment['token0'], token1: Deployment['token1'];
+    let nft: Deployment['nft'], swapRouter: Deployment['swapRouter'];
+    let newPluginFactory: Deployment['newPluginFactory'], beacon: Deployment['beacon'];
+    let pool: PoolSetup['pool'], pluginAddress: string, deadline: number;
+    let deployer: Deployment['deployer'];
 
     beforeEach(async () => {
       const fixture = await loadFixture(deployFixture);

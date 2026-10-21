@@ -53,9 +53,10 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   /// @notice Get current fee for direction
   function _getCurrentFee(bool zeroToOne) internal view returns (uint16) {
     SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
-    uint256 adjustedFee = zeroToOne
-      ? (uint256(layout.baseFee) * layout.feeFactors.zeroToOneFeeFactor) >> FEE_FACTOR_SHIFT
-      : (uint256(layout.baseFee) * layout.feeFactors.oneToZeroFeeFactor) >> FEE_FACTOR_SHIFT;
+    uint256 adjustedFee =
+      zeroToOne
+        ? (uint256(layout.baseFee) * layout.feeFactors.zeroToOneFeeFactor) >> FEE_FACTOR_SHIFT
+        : (uint256(layout.baseFee) * layout.feeFactors.oneToZeroFeeFactor) >> FEE_FACTOR_SHIFT;
 
     if (adjustedFee > type(uint16).max) {
       adjustedFee = type(uint16).max;

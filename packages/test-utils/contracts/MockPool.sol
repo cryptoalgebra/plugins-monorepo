@@ -71,7 +71,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   /// @inheritdoc IAlgebraPoolState
   mapping(bytes32 => Position) public override positions;
 
-  address owner;
+  address internal owner;
   uint24 public overrideFee;
   uint24 public pluginFee;
 
@@ -286,6 +286,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
 
   /// @inheritdoc IAlgebraPoolPermissionedActions
   function setPlugin(address newPluginAddress) external override {
+    // solhint-disable-next-line reason-string
     require(msg.sender == owner);
     plugin = newPluginAddress;
   }
@@ -294,14 +295,17 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   function setPluginConfig(uint8 newConfig) external override {
     // The real pool refuses a config change while no plugin is connected
     if (plugin == address(0)) revert IAlgebraPoolErrors.pluginIsNotConnected();
+    // solhint-disable-next-line reason-string
     require(msg.sender == owner || msg.sender == plugin);
     globalState.pluginConfig = newConfig;
   }
 
   /// @inheritdoc IAlgebraPoolPermissionedActions
   function setFee(uint16 newFee) external override {
+    // solhint-disable-next-line reason-string
     require(msg.sender == owner || msg.sender == plugin);
     bool isDynamicFeeEnabled = globalState.pluginConfig & uint8(Plugins.DYNAMIC_FEE) != 0;
+    // solhint-disable-next-line reason-string
     require(!isDynamicFeeEnabled && msg.sender == owner);
 
     globalState.fee = newFee;

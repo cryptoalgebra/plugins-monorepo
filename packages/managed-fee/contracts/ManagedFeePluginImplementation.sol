@@ -37,6 +37,7 @@ contract ManagedFeePluginImplementation is IManagedFeePluginImplementation {
     if (_fee >= 1000000) revert IManagedSwapFeePlugin.FeeExceedsLimit();
     if (layout.usedNonces[nonce]) revert IManagedSwapFeePlugin.InvalidNonce();
     if (expireTime < block.timestamp) revert IManagedSwapFeePlugin.Expired();
+    // solhint-disable-next-line avoid-tx-origin
     if (user != tx.origin) revert IManagedSwapFeePlugin.NotAllowed();
 
     _verifySignature(layout, ECDSA.toEthSignedMessageHash(_getParamsHash(nonce, _fee, user, expireTime)), signature);

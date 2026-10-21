@@ -5,6 +5,7 @@
   "description": "Shared test utilities and mock contracts for Algebra plugins",
   "scripts": {
     "compile": "hardhat compile",
+    "typecheck": "tsc --noEmit",
     "remove-node-modules": "rm -rf node_modules",
     "clean": "rm -rf artifacts cache typechain"
   },
@@ -15,6 +16,7 @@
     "@openzeppelin/contracts": "4.9.3",
     "bignumber.js": "^9.2.1",
     "hardhat": "^2.29.1",
+    "hardhat-contract-sizer": "^2.10.1",
     "mocha-chai-jest-snapshot": "^1.1.8"
   },
   "peerDependencies": {

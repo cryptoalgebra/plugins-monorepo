@@ -2,28 +2,13 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition-ethers";
 import "hardhat-contract-sizer";
-import { SolcUserConfig } from 'hardhat/types';
-import baseConfig from '../../hardhat.base.config';
-
-const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
-  version: '0.8.20',
-  settings: {
-    evmVersion: 'paris',
-    optimizer: {
-      enabled: true,
-      runs: 1_000_000,
-    },
-    metadata: {
-      bytecodeHash: 'none',
-    },
-  },
-};
+import baseConfig, { COMPILER_SETTINGS } from '../../hardhat.base.config';
 
 const config: HardhatUserConfig = {
   networks: baseConfig.networks,
   etherscan: baseConfig.etherscan,
   typechain: baseConfig.typechain,
-  solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,
+  solidity: COMPILER_SETTINGS,
   contractSizer: {
     alphaSort: true,
     disambiguatePaths: false,

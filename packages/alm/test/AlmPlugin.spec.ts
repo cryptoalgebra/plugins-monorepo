@@ -134,7 +134,7 @@ describe('#AlmPlugin', () => {
 					await almPlugin.setReading(readingOf(state, 18, 18));
 
 					await expect(almPlugin.rebalance(currentTick, slowTick, fastTick, lastBlockTimestamp)).to.emit(mockVault, 'MockRebalance')
-						.withArgs(rebalance.rebalance.basePosition.bottomTick, rebalance.rebalance.basePosition.topTick, rebalance.rebalance.limitPosition.bottomTick, rebalance.rebalance.limitPosition.topTick);
+						.withArgs(rebalance.rebalance.basePosition!.bottomTick, rebalance.rebalance.basePosition!.topTick, rebalance.rebalance.limitPosition!.bottomTick, rebalance.rebalance.limitPosition!.topTick);
 				});
 			}
 		}
@@ -788,7 +788,7 @@ describe('#AlmPlugin', () => {
 					await almPlugin.setReading(readingOf(state, 6, 18));
 
 					await expect(almPlugin.rebalance(currentTick, slowTick, fastTick, lastBlockTimestamp)).to.emit(mockVault, 'MockRebalance')
-						.withArgs(rebalance.rebalance.basePosition.bottomTick, rebalance.rebalance.basePosition.topTick, rebalance.rebalance.limitPosition.bottomTick, rebalance.rebalance.limitPosition.topTick);
+						.withArgs(rebalance.rebalance.basePosition!.bottomTick, rebalance.rebalance.basePosition!.topTick, rebalance.rebalance.limitPosition!.bottomTick, rebalance.rebalance.limitPosition!.topTick);
 				});
 			}
 		}
@@ -838,8 +838,8 @@ describe('#AlmPlugin', () => {
 					.withArgs(-270000, -267600, -267600, 887200);
 
 				// The recorded side, so a corpus refresh that quietly changed it would fail here
-				expect(recorded.basePosition.bottomTick).to.be.eq('-887200');
-				expect(recorded.limitPosition.topTick).to.be.eq('-260000');
+				expect(recorded.basePosition!.bottomTick).to.be.eq('-887200');
+				expect(recorded.limitPosition!.topTick).to.be.eq('-260000');
 			});
 
 			// Here the contract declines outright rather than disagreeing about the range
@@ -852,7 +852,7 @@ describe('#AlmPlugin', () => {
 
 				// Declining leaves the state alone, it is not a silent transition into another one
 				expect(await almPlugin.state()).to.be.eq(recordedState);
-				expect(recorded.limitPosition.topTick).to.be.eq('887200');
+				expect(recorded.limitPosition!.topTick).to.be.eq('887200');
 			});
 		});
 	});

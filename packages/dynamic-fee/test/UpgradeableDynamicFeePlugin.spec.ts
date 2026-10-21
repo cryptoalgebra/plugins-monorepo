@@ -9,7 +9,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
   let pluginLogic: UpgradeableDynamicFeePluginTest;
   let pluginProxy: UpgradeableDynamicFeePluginTest;
   let mockFactory: MockFactory;
-  let other: Wallet;
+  let wallet: Wallet, other: Wallet;
 
   const MOCK_POOL = '0x0000000000000000000000000000000000000001';
   const MOCK_PLUGIN_FACTORY = '0x0000000000000000000000000000000000000004';
@@ -37,7 +37,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
   };
 
   beforeEach(async () => {
-    [, other] = await (ethers as any).getSigners();
+    [wallet, other] = await (ethers as any).getSigners();
 
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');

@@ -3,7 +3,7 @@ pragma solidity >=0.5.0;
 
 /// @title Fee Auction Plugin Factory Interface
 /// @notice Interface for the Fee Auction Plugin Factory
-interface IFeeAuctionPluginFactory{
+interface IFeeAuctionPluginFactory {
   /// @notice Emitted when a new plugin is created
   /// @param pool The pool address
   /// @param plugin The created plugin address

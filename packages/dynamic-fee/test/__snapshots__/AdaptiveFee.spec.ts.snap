@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`AdaptiveFee #getFee fee grid snapshot 1`] = `
 "[Volt: 0] Fee:100 Correct: 100 Error: 0.00% 

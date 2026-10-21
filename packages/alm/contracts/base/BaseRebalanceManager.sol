@@ -155,6 +155,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
 
   function setDepositTokenUnusedThreshold(uint16 _depositTokenUnusedThreshold) external {
     _authorize();
+    // solhint-disable-next-line reason-string
     require(
       _depositTokenUnusedThreshold >= 100 && _depositTokenUnusedThreshold <= 10000,
       '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000'
@@ -211,7 +212,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
             obtainTWAPsResult.totalDepositToken == 0 ||
             (newState == State.Normal &&
               obtainTWAPsResult.totalPairedInDeposit <=
-              _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
+                _calcPart(obtainTWAPsResult.totalDepositToken + obtainTWAPsResult.totalPairedInDeposit, thresholds.limitReservePct))
           ) return;
           ranges = _getRangesWithState(newState, obtainTWAPsResult);
         } else {
@@ -548,6 +549,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
   }
 
   function _authorize() internal view {
+    // solhint-disable-next-line reason-string
     require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender));
   }
 
@@ -674,6 +676,7 @@ abstract contract BaseRebalanceManager is IRebalanceManager, Timestamp {
     require(_thresholds.highVolatility >= _thresholds.someVolatility, '_highVolatility must be >= someVolatility');
     require(_thresholds.someVolatility <= 300, '_someVolatility must be <= 300');
     require(_thresholds.extremeVolatility >= _thresholds.highVolatility, '_extremeVolatility must be >= highVolatility');
+    // solhint-disable-next-line reason-string
     require(
       _thresholds.depositTokenUnusedThreshold >= 100 && _thresholds.depositTokenUnusedThreshold <= 10000,
       '_depositTokenUnusedThreshold must be 100 <= _depositTokenUnusedThreshold <= 10000'

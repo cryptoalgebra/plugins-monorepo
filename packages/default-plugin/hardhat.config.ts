@@ -3,22 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition-ethers";
 import "hardhat-contract-sizer";
 import "hardhat-dependency-compiler";
-import { SolcUserConfig } from 'hardhat/types';
-import baseConfig from '../../hardhat.base.config';
-
-const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
-  version: '0.8.20',
-  settings: {
-    evmVersion: 'paris',
-    optimizer: {
-      enabled: true,
-      runs: 0,
-    },
-    metadata: {
-      bytecodeHash: 'none',
-    },
-  },
-};
+import baseConfig, { LOW_RUNS_COMPILER_SETTINGS } from '../../hardhat.base.config';
 
 const config: HardhatUserConfig = {
   networks: baseConfig.networks,
@@ -49,7 +34,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol',
     ],
   },
-  solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,
+  solidity: LOW_RUNS_COMPILER_SETTINGS,
   contractSizer: {
     alphaSort: true,
     disambiguatePaths: false,

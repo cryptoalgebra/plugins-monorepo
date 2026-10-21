@@ -5,10 +5,10 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ZERO_ADDRESS, limitOrderPluginFixture } from './limitOrderFixture';
 import { encodePriceSqrt, MAX_SQRT_RATIO, MIN_SQRT_RATIO} from 'test-utils/utilities';
 
-import { LimitOrderManager, TestERC20, IWNativeToken, LimitOrderTestPlugin } from '../typechain';
+import { LimitOrderManager, IWNativeToken } from '../typechain';
 
 import snapshotGasCost from 'test-utils/snapshotGasCost';
-import { AlgebraPool, TestAlgebraCallee } from '@cryptoalgebra/integral-core/typechain';
+import { AlgebraPool, TestAlgebraCallee, TestERC20 } from '@cryptoalgebra/integral-core/typechain';
 
 describe('LimitOrders', () => {
   let wallet: Wallet, other: Wallet;
@@ -167,7 +167,7 @@ describe('LimitOrders', () => {
         const balanceBefore = await ethers.provider.getBalance(wallet.address);
         const tx = await loModule.place(poolKeyWnative, -60, false, 10n**8n, {value: 1299536});
         const receipt = await tx.wait();
-        const gasUsed = receipt.gasUsed * receipt.gasPrice;
+        const gasUsed = receipt!.gasUsed * receipt!.gasPrice;
         const balanceAfter = await ethers.provider.getBalance(wallet.address);
 
         const {tickLower, tickUpper, liquidityTotal} = await loModule.epochInfos(1);

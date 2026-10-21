@@ -57,7 +57,7 @@ describe('StablePairFeePlugin', function () {
     const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
+    const initData = pluginImplementation.interface.encodeFunctionData('initialize');
     await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const plugin = StablePairFeePluginTest.attach(await proxyDeployer.lastDeployedProxy()) as any;
 
@@ -433,7 +433,7 @@ describe('StablePairFeePlugin', function () {
 
       const StablePairFeeMockPool = await ethers.getContractFactory('StablePairFeeMockPool');
       const mockPool2 = await StablePairFeeMockPool.deploy();
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
+      const initData = pluginImplementation.interface.encodeFunctionData('initialize');
       await proxyDeployer.deploy(beacon.target, mockPool2.target, initData);
       const plugin2 = StablePairFeePluginTest.attach(await proxyDeployer.lastDeployedProxy()) as any;
 
@@ -451,7 +451,7 @@ describe('StablePairFeePlugin', function () {
 
       const StablePairFeeMockPool = await ethers.getContractFactory('StablePairFeeMockPool');
       const mockPool2 = await StablePairFeeMockPool.deploy();
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
+      const initData = pluginImplementation.interface.encodeFunctionData('initialize');
       await proxyDeployer.deploy(beacon.target, mockPool2.target, initData);
       const plugin2 = StablePairFeePluginTest.attach(await proxyDeployer.lastDeployedProxy()) as any;
 

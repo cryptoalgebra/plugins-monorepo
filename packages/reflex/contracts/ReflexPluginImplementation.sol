@@ -75,9 +75,10 @@ contract ReflexPluginImplementation is IReflexPluginImplementation {
     uint256 swapAmountIn = uint256(amount0Delta > 0 ? amount0Delta : amount1Delta);
 
     // Failsafe: Use try-catch to prevent router failures from breaking the main swap
-    try
-      IReflexRouter(router).triggerBackrun(triggerPoolId, uint112(swapAmountIn), zeroForOne, recipient, layout.reflexConfigId)
-    returns (uint256 backrunProfit, address backrunProfitToken) {
+    try IReflexRouter(router).triggerBackrun(triggerPoolId, uint112(swapAmountIn), zeroForOne, recipient, layout.reflexConfigId) returns (
+      uint256 backrunProfit,
+      address backrunProfitToken
+    ) {
       return (backrunProfit, backrunProfitToken);
     } catch {
       // Router call failed, but don't revert the main transaction

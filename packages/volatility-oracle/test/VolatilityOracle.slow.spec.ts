@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers';
+import { BigNumberish, Wallet } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { VolatilityOracleTest } from '../typechain';

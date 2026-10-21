@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
+    "typecheck": "tsc --noEmit",
     "remove-node-modules": "rm -rf node_modules",
     "clean": "rm -rf node_modules artifacts cache typechain"
   },

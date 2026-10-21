@@ -188,8 +188,8 @@ contract StablePairFeePluginImplementation is IStablePairFeePluginImplementation
 
   /// @dev Keeps the optimal range inside [MIN_SQRT_RATIO, MAX_SQRT_RATIO) for any allowed optimal fee
   function _validateReferenceSqrtPriceX96(uint256 referenceSqrtPriceX96) private pure {
-    uint256 minReferenceSqrtPrice = (MIN_SQRT_RATIO * StableFeeCalculation.ONE_E6 + SQRT_ONE_MINUS_MAX_OPTIMAL_FEE_E6 - 1) /
-      SQRT_ONE_MINUS_MAX_OPTIMAL_FEE_E6;
+    uint256 minReferenceSqrtPrice =
+      (MIN_SQRT_RATIO * StableFeeCalculation.ONE_E6 + SQRT_ONE_MINUS_MAX_OPTIMAL_FEE_E6 - 1) / SQRT_ONE_MINUS_MAX_OPTIMAL_FEE_E6;
     uint256 maxReferenceSqrtPrice = (MAX_SQRT_RATIO * SQRT_ONE_MINUS_MAX_OPTIMAL_FEE_E6) / StableFeeCalculation.ONE_E6;
 
     if (referenceSqrtPriceX96 < minReferenceSqrtPrice || referenceSqrtPriceX96 >= maxReferenceSqrtPrice) {

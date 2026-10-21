@@ -23,6 +23,7 @@ contract MockSecurityRegistry {
     return address(0);
   }
 
+  // solhint-disable-next-line func-name-mixedcase
   function GUARD() external pure returns (bytes32) {
     return keccak256('GUARD');
   }
@@ -33,7 +34,7 @@ contract MockSecurityRegistry {
   }
 
   function setPoolsStatus(address[] memory pools, Status[] memory newStatuses) external {
-    for (uint i = 0; i < pools.length; i++) {
+    for (uint256 i = 0; i < pools.length; i++) {
       poolStatus[pools[i]] = newStatuses[i];
       emit PoolStatus(pools[i], newStatuses[i]);
     }

@@ -17,7 +17,7 @@ const config = {
 //
 // Usage:
 //   1. Update addresses in config above
-//   2. Run: npx hardhat ignition deploy ignition/modules/upgradeFactory.ts --network baseSepolia
+//   2. Run: npx hardhat ignition deploy ignition/modules/upgradeFactory.ts --network baseTestnet
 
 export default buildModule("UpgradeFactory", (m) => {
   

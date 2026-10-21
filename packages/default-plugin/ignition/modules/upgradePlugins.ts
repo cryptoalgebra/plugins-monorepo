@@ -5,9 +5,6 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 // Update these addresses from your deployment
 
 const config = {
-  // Algebra Core Factory address
-  algebraFactory: "0x36077D39cdC65E1e3FB65810430E5b2c4D5fA29E",
-  
   // Factory proxy address from initial deployment
   factoryProxyAddress: "0x0000000000000000000000000000000000000000",
 };
@@ -50,7 +47,7 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
 //
 // Usage:
 //   1. Update factoryProxyAddress in config above
-//   2. Run: npx hardhat ignition deploy ignition/modules/upgradePlugins.ts --network baseSepolia
+//   2. Run: npx hardhat ignition deploy ignition/modules/upgradePlugins.ts --network baseTestnet
 
 export default buildModule("UpgradePlugins", (m) => {
   
@@ -63,9 +60,19 @@ export default buildModule("UpgradePlugins", (m) => {
     securityImpl 
   } = m.useModule(ModuleImplementationsModule);
 
+  // Get factory instance at proxy address
+  const factory = m.contractAt("AlgebraUpgradeablePluginFactory", config.factoryProxyAddress, {
+    id: "FactoryForPluginUpgrade"
+  });
+
+  // The plugin must point at the same Algebra factory as the plugin factory
+  const algebraFactory = m.staticCall(factory, "algebraFactory", [], 0, {
+    id: "AlgebraFactory"
+  });
+
   // Deploy new plugin implementation
   const newPluginImpl = m.contract("AlgebraUpgradeablePlugin", [
-    config.algebraFactory,
+    algebraFactory,
     config.factoryProxyAddress,
     volatilityOracleImpl,
     dynamicFeeImpl,
@@ -74,11 +81,6 @@ export default buildModule("UpgradePlugins", (m) => {
     securityImpl
   ], {
     id: "NewPluginImplementation"
-  });
-
-  // Get factory instance at proxy address
-  const factory = m.contractAt("AlgebraUpgradeablePluginFactory", config.factoryProxyAddress, {
-    id: "FactoryForPluginUpgrade"
   });
 
   // Upgrade all plugins via beacon

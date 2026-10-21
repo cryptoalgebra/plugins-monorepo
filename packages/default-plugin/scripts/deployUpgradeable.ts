@@ -5,10 +5,10 @@ import { ethers } from "hardhat";
 
 const config = {
   // Algebra Core Factory address
-  algebraFactory: "0x000000000000000000000000000000000000000000",
+  algebraFactory: "0x0000000000000000000000000000000000000000",
 
   // Farming center address (optional, can be set later)
-  farmingCenter: "0x000000000000000000000000000000000000000000",
+  farmingCenter: "0x0000000000000000000000000000000000000000",
 
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
@@ -30,6 +30,13 @@ async function main() {
   console.log("Deploying with account:", deployer.address);
   console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
   console.log("");
+
+  // The last steps need the AlgebraFactory owner, so refuse before deploying anything
+  const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
+  const algebraFactoryOwner = await algebraFactory.owner();
+  if (algebraFactoryOwner !== deployer.address) {
+    throw new Error(`Deployer is not the AlgebraFactory owner (${algebraFactoryOwner})`);
+  }
 
   // ============= 1. DEPLOY MODULE IMPLEMENTATIONS =============
   console.log("=== Deploying Module Implementations ===");
@@ -156,7 +163,6 @@ async function main() {
 
 
   // Set DefaultPluginFactory in AlgebraFactory
-  const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
   const tx9 = await algebraFactory.setDefaultPluginFactory(factoryProxyAddress);
   await tx9.wait();
   console.log("Set DefaultPluginFactory in AlgebraFactory");

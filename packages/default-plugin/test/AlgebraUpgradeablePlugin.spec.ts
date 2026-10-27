@@ -114,7 +114,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         const config = await brokenPlugin.feeConfig();
         expect(config.baseFee).to.be.eq(0);
         expect(config.alpha1).to.be.eq(0);
-        expect(await brokenPlugin.getCurrentFee()).to.be.eq(0);
+        expect(await brokenPlugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.be.eq(0);
 
         await brokenPlugin.advanceTime(60);
         await brokenPool.swapToTick(10);
@@ -146,7 +146,9 @@ describe('AlgebraUpgradeablePlugin', () => {
       await expect(plugin.beforeModifyPosition(wallet.address, wallet.address, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
       await expect(plugin.afterModifyPosition(wallet.address, wallet.address, 100, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
       await expect(plugin.beforeSwap(wallet.address, wallet.address, true, 100, 100, false, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
-      await expect(plugin.afterSwap(wallet.address, wallet.address, true, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterSwapCalculation(wallet.address, wallet.address, true, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterCross(true, 100, 100, 100, 100, 100)).to.be.revertedWithCustomError(plugin, 'OnlyPool');
+      await expect(plugin.afterSwap(wallet.address, wallet.address, true, 100, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
       await expect(plugin.beforeFlash(wallet.address, wallet.address, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
       await expect(plugin.afterFlash(wallet.address, wallet.address, 100, 100, 100, 100, '0x')).to.be.revertedWithCustomError(plugin, 'OnlyPool');
     });
@@ -164,20 +166,23 @@ describe('AlgebraUpgradeablePlugin', () => {
 
       await initializeAtZeroTick(mockPool);
 
-      const beforeModify = await fromPool.beforeModifyPosition.staticCall(wallet.address, wallet.address, -120, 120, 100, '0x');
-      expect(beforeModify[0]).to.be.eq(selectorOf('beforeModifyPosition'));
+      expect(await fromPool.beforeModifyPosition.staticCall(wallet.address, wallet.address, -120, 120, 100, '0x')).to.be.eq(
+        selectorOf('beforeModifyPosition')
+      );
 
       expect(await fromPool.afterModifyPosition.staticCall(wallet.address, wallet.address, -120, 120, 100, 0, 0, '0x')).to.be.eq(
         selectorOf('afterModifyPosition')
       );
 
       const beforeSwap = await fromPool.beforeSwap.staticCall(wallet.address, wallet.address, true, 0, 0, false, '0x');
-      expect(beforeSwap[0]).to.be.eq(selectorOf('beforeSwap'));
+      expect(beforeSwap[1]).to.be.eq(selectorOf('beforeSwap'));
 
-      expect(await fromPool.afterSwap.staticCall(wallet.address, wallet.address, true, 0, 0, 0, 0, '0x')).to.be.eq(selectorOf('afterSwap'));
+      const afterSwapCalculation = await fromPool.afterSwapCalculation.staticCall(wallet.address, wallet.address, true, 0, 0, 0, 0, '0x');
+      expect(afterSwapCalculation[0]).to.be.eq(selectorOf('afterSwapCalculation'));
+      expect(await fromPool.afterCross.staticCall(true, 0, 0, 0, 0, 0)).to.be.eq(selectorOf('afterCross'));
+      expect(await fromPool.afterSwap.staticCall(wallet.address, wallet.address, true, 0, 0, 0, 0, 0, '0x')).to.be.eq(selectorOf('afterSwap'));
       expect(await fromPool.beforeFlash.staticCall(wallet.address, wallet.address, 1, 1, '0x')).to.be.eq(selectorOf('beforeFlash'));
       expect(await fromPool.afterFlash.staticCall(wallet.address, wallet.address, 1, 1, 0, 0, '0x')).to.be.eq(selectorOf('afterFlash'));
-      expect(await fromPool.handlePluginFee.staticCall(0, 0)).to.be.eq(selectorOf('handlePluginFee'));
     });
 
     // MockPool mirrors AlgebraPool here: an operation the plugin itself starts must not re-enter the hooks
@@ -551,9 +556,7 @@ describe('AlgebraUpgradeablePlugin', () => {
     }
 
     it('cannot be called a second time', async () => {
-      await expect(plugin[INITIALIZE](DEFAULT_FEE_CONFIGURATION, ZeroAddress)).to.be.revertedWith(
-        'Initializable: contract is already initialized'
-      );
+      await expect(plugin[INITIALIZE](DEFAULT_FEE_CONFIGURATION, ZeroAddress)).to.be.revertedWithCustomError(plugin, 'InvalidInitialization');
     });
 
     it('cannot be called by anyone but the plugin factory', async () => {
@@ -660,11 +663,6 @@ describe('AlgebraUpgradeablePlugin', () => {
 
       expect(await noReturnToken.balanceOf(other.address)).to.be.eq(400);
       expect(await noReturnToken.balanceOf(plugin)).to.be.eq(600);
-    });
-
-    // The matching positive case lives in #Hooks, which checks every hook selector in one place
-    it('handlePluginFee can only be called by the pool', async () => {
-      await expect(plugin.handlePluginFee(0, 0)).to.be.revertedWithCustomError(plugin, 'OnlyPool');
     });
   });
 
@@ -815,7 +813,7 @@ describe('AlgebraUpgradeablePlugin', () => {
       await plugin.advanceTime(60);
       await mockPool.swapToTick(100);
 
-      expect(await mockPool.overrideFee()).to.be.eq(await plugin.getCurrentFee());
+      expect(await mockPool.overrideFee()).to.be.eq(await plugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x'));
     });
 
     it('collapses to baseFee once both sigmoids are switched off', async () => {
@@ -825,14 +823,14 @@ describe('AlgebraUpgradeablePlugin', () => {
       await mockPool.swapToTick(100);
 
       expect(await mockPool.overrideFee()).to.be.eq(100);
-      expect(await plugin.getCurrentFee()).to.be.eq(100);
+      expect(await plugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.be.eq(100);
     });
 
     // Nothing has moved yet, so the oracle reports no volatility and both sigmoids evaluate to zero
     it('reports exactly baseFee while the oracle holds no volatility', async () => {
       const feeConfig = await plugin.feeConfig();
 
-      expect(await plugin.getCurrentFee()).to.be.eq(feeConfig.baseFee);
+      expect(await plugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.be.eq(feeConfig.baseFee);
     });
 
     // Two swaps inside one timestamp: the oracle must not append a second timepoint for the same second
@@ -857,7 +855,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         await mockPool.swapToTick(i % 2 === 0 ? 600 : -600);
       }
 
-      const fee = await plugin.getCurrentFee();
+      const fee = await plugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x');
       expect(fee).to.be.gte(feeConfig.baseFee);
       expect(fee).to.be.lte(feeConfig.baseFee + feeConfig.alpha1 + feeConfig.alpha2);
     });

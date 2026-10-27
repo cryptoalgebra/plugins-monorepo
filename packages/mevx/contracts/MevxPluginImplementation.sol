@@ -98,16 +98,10 @@ contract MevxPluginImplementation is IMevxPluginImplementation {
     emit MevProtectionFeeEnabledSet(oldEnabled, enabled);
   }
 
-  function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external {
-    require(caller != address(0), 'Invalid caller');
-    MevxStorage.Layout storage layout = MevxStorage.layout();
-    layout.authorizedHandlePluginFeeCallers[caller] = authorized;
-    emit AuthorizedHandlePluginFeeCallerSet(caller, authorized);
-  }
-
-  /// @notice Distributes collected plugin fees to the profit distributor
-  /// @dev Called via delegatecall from MevxConnector.handlePluginFee; address(this) is the proxy
-  function handlePluginFee(address pool, uint256 pluginFee0, uint256 pluginFee1) external {
+  /// @notice Distributes the MEV protection fee of a swap to the profit distributor
+  /// @dev Called via delegatecall from MevxConnector._distributeMevxFee; address(this) is the proxy
+  /// @dev With no distributor the fee stays on the plugin, collectPluginFee can take it
+  function distributeFee(address pool, uint256 pluginFee0, uint256 pluginFee1) external {
     MevxStorage.Layout storage layout = MevxStorage.layout();
     address recipient = layout.mevxProfitDistributor;
     if (recipient == address(0)) return;

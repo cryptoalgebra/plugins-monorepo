@@ -1,5 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import { ZeroAddress } from 'ethers';
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 import { MockTimeAlgebraPool } from '@cryptoalgebra/integral-core/typechain';
@@ -62,7 +64,23 @@ describe('AlgebraUpgradeablePlugin against a real pool', function () {
 
     // Both halves of the precondition the next two cases rest on
     expect(Number((await pool.globalState()).pluginConfig) & PLUGIN_FLAGS.DYNAMIC_FEE).to.not.equal(0);
-    expect(await plugin.getCurrentFee()).to.be.greaterThan(0);
+    expect(await plugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.be.greaterThan(0);
+  });
+
+  // The pool forwards getSwapFee to the plugin, and a router quotes with it before swapping
+  it('quotes through the pool the fee each swap then applies', async function () {
+    const { pool, plugin, swapExact0For1, wallet } = await loadFixture(realPoolFixture);
+
+    const quotes = new Set<bigint>();
+    for (let i = 0; i < 4; i++) {
+      // Big enough to move the price, so the volatility and the fee change between swaps
+      const amount = expandTo18Decimals(1) / 20n;
+      const quoted = await pool.getSwapFee(wallet.address, wallet.address, true, amount, 0, false, '0x');
+      await expect(swapExact0For1(amount, wallet.address)).to.emit(pool, 'SwapFee').withArgs(anyValue, quoted, 0, 0);
+      quotes.add(quoted);
+      await plugin.advanceTime(600);
+    }
+    expect(quotes.size).to.be.greaterThan(1);
   });
 
   it('accepts a swap while the pool config carries DYNAMIC_FEE', async function () {

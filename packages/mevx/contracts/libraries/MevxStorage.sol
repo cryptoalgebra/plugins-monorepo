@@ -15,7 +15,6 @@ library MevxStorage {
     uint256 callGasBudget;
     // MEV protection fee fields
     bool mevProtectionFeeEnabled;
-    mapping(address => bool) authorizedHandlePluginFeeCallers;
   }
 
   function layout() internal pure returns (Layout storage l) {

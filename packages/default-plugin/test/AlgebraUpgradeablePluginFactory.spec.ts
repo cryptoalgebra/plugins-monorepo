@@ -55,7 +55,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
           ZERO_ADDRESS,
           { alpha1: 1, alpha2: 1, beta1: 1, beta2: 1, gamma1: 1, gamma2: 1, baseFee: 100 }
         )
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(pluginFactoryImpl, 'InvalidInitialization');
     });
 
     it('has ProxyAdmin deployed', async () => {

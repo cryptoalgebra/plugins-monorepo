@@ -1,23 +1,31 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import '@cryptoalgebra/integral-core/contracts/libraries/Constants.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/IMevxPluginImplementation.sol';
 import './interfaces/IMevxPlugin.sol';
 import './interfaces/IMevxRouter.sol';
 import './libraries/MevxStorage.sol';
+import './libraries/MevxTransient.sol';
 
 /// @title MEVX Connector
 /// @notice This contract provides delegatecall interface to MEVX plugin implementation
 /// @dev Provides thin wrappers that delegate to implementation via delegatecall
 abstract contract MevxConnector is BaseConnector, IMevxPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant MEVX_MODULE_NAME = 'MEVX Plugin';
-  uint8 internal constant MEVX_PLUGIN_CONFIG = uint8(
-    Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE
+  /// @dev The MEV protection fee is taken as amount deltas, from beforeSwap for exactIn and afterSwapCalculation for exactOut
+  uint16 internal constant MEVX_PLUGIN_CONFIG = uint16(
+    Plugins.AFTER_INIT_FLAG |
+      Plugins.AFTER_SWAP_FLAG |
+      Plugins.BEFORE_SWAP_FLAG |
+      Plugins.DYNAMIC_FEE |
+      Plugins.AFTER_SWAP_CALCULATION_FLAG |
+      Plugins.AMOUNT_DELTAS_FLAG
   );
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
@@ -58,21 +66,46 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
     );
   }
 
-  /// @notice Internal helper for MEVX plugin fee distribution
-  /// @dev Call from the concrete plugin's handlePluginFee override.
-  ///      Auth (onlyPool / authorized callers) must be enforced by the caller.
-  /// @param pluginFee0 Amount of token0 fees to distribute
-  /// @param pluginFee1 Amount of token1 fees to distribute
-  function _handleMevxPluginFee(uint256 pluginFee0, uint256 pluginFee1) internal {
-    if (pluginFee0 > 0 || pluginFee1 > 0) {
-      _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.handlePluginFee, (_getPool(), pluginFee0, pluginFee1)));
+  // ###### MEV protection fee ######
+  // The fee is a share of the swap input. The pool sends it to the plugin, and afterSwap passes it on to the distributor
+
+  /// @notice Call from beforeSwap on every swap and return the result as amountInDecrease
+  /// @dev Takes the fee of an exactIn swap. An exactOut swap is charged in _mevxAfterSwapCalculation
+  /// @param rate The fee from _getMevxPluginFee, or zero for a swap that pays none
+  function _mevxBeforeSwap(int256 amountRequired, uint24 rate) internal returns (uint256 amountInDecrease) {
+    // Written on every swap, so nothing an earlier swap in this transaction left behind is charged
+    if (amountRequired > 0) {
+      amountInDecrease = (uint256(amountRequired) * rate) / Constants.FEE_DENOMINATOR;
+      MevxTransient.set(MevxTransient.FEE_RATE_SLOT, 0);
+    } else {
+      MevxTransient.set(MevxTransient.FEE_RATE_SLOT, rate);
     }
+    MevxTransient.set(MevxTransient.FEE_AMOUNT_SLOT, amountInDecrease);
   }
 
-  /// @notice Returns true if `caller` is authorized to trigger handlePluginFee
-  /// @dev The pool is always authorized; additional callers can be whitelisted via setAuthorizedHandlePluginFeeCaller
-  function _isAuthorizedHandlePluginFeeCaller(address caller) internal view returns (bool) {
-    return caller == _getPool() || MevxStorage.layout().authorizedHandlePluginFeeCallers[caller];
+  /// @notice Call from afterSwapCalculation and return the result as amountInIncrease
+  /// @dev Takes the fee of an exactOut swap, whose input is known only here
+  function _mevxAfterSwapCalculation(bool zeroToOne, int256 amount0, int256 amount1) internal returns (uint256 amountInIncrease) {
+    uint256 rate = MevxTransient.get(MevxTransient.FEE_RATE_SLOT);
+    if (rate == 0) return 0;
+    MevxTransient.set(MevxTransient.FEE_RATE_SLOT, 0);
+
+    // The calculated input, positive for the token the pool receives
+    uint256 amountIn = uint256(zeroToOne ? amount0 : amount1);
+    amountInIncrease = (amountIn * rate) / Constants.FEE_DENOMINATOR;
+    MevxTransient.set(MevxTransient.FEE_AMOUNT_SLOT, amountInIncrease);
+  }
+
+  /// @notice Call from afterSwap before _mevxAfterSwap
+  /// @dev The arbitrage swaps the pool again, and its hooks reuse the transient slots
+  function _distributeMevxFee(bool zeroToOne) internal {
+    uint256 amount = MevxTransient.get(MevxTransient.FEE_AMOUNT_SLOT);
+    if (amount == 0) return;
+    MevxTransient.set(MevxTransient.FEE_AMOUNT_SLOT, 0);
+
+    // The fee is in the input token
+    (uint256 amount0, uint256 amount1) = zeroToOne ? (amount, uint256(0)) : (uint256(0), amount);
+    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.distributeFee, (_getPool(), amount0, amount1)));
   }
 
   // ###### View Methods (Direct Storage Access) ######
@@ -114,9 +147,10 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
     return sender == MevxStorage.layout().mevxExecutor;
   }
 
-  /// @notice Returns the MEV protection plugin fee for a given base fee, or 0 if disabled
+  /// @notice Returns the MEV protection fee rate for a given base fee, or 0 if disabled
   /// @dev Queries the router via staticcall; fails silently and returns 0
   /// @param currentFee The base dynamic fee provided by the concrete plugin
+  /// @return pluginFee The share of the swap input, in hundredths of a bip
   function _getMevxPluginFee(uint16 currentFee) internal view returns (uint24 pluginFee) {
     MevxStorage.Layout storage layout = MevxStorage.layout();
     if (!layout.mevProtectionFeeEnabled) return 0;
@@ -166,10 +200,5 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   function setMevProtectionFeeEnabled(bool _enabled) external override {
     _authorize();
     _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setMevProtectionFeeEnabled, (_enabled)));
-  }
-
-  function setAuthorizedHandlePluginFeeCaller(address _caller, bool _authorized) external override {
-    _authorize();
-    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.setAuthorizedHandlePluginFeeCaller, (_caller, _authorized)));
   }
 }

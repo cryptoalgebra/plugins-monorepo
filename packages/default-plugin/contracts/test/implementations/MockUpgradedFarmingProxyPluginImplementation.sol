@@ -15,7 +15,7 @@ import '../interfaces/IMockV2Modules.sol';
 /// @notice Decorates the shipped module, V1 calls are forwarded instead of reimplemented
 /// @dev Implements both interfaces, so a change in either fails to compile here
 contract MockUpgradedFarmingProxyPluginImplementation is IFarmingProxyPluginImplementation, IMockV2FarmingProxy, V1Forwarder {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   constructor() V1Forwarder(address(new FarmingProxyPluginImplementation())) {}
 
@@ -39,7 +39,7 @@ contract MockUpgradedFarmingProxyPluginImplementation is IFarmingProxyPluginImpl
     if (FarmingProxyStorage.layout().incentive != targetIncentive) return false;
     if (IAlgebraPool(pool).plugin() != address(this)) return false;
 
-    (, , , uint8 pluginConfig, , ) = IAlgebraPool(pool).globalState();
+    (, , , uint16 pluginConfig, , ) = IAlgebraPool(pool).globalState();
     return pluginConfig.hasFlag(Plugins.AFTER_SWAP_FLAG);
   }
 

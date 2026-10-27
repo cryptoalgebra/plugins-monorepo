@@ -14,7 +14,7 @@ import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
-/// @title Algebra Integral 1.2.2 Upgradeable Plugin
+/// @title Algebra Integral 1.3 Upgradeable Plugin
 /// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
@@ -26,7 +26,7 @@ contract AlgebraUpgradeablePlugin is
   AlmConnector,
   SecurityConnector
 {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @notice Constructor sets immutable values shared across ALL proxies
   /// @param _factory The Algebra factory address
@@ -75,7 +75,7 @@ contract AlgebraUpgradeablePlugin is
     return activeModules;
   }
 
-  function defaultPluginConfig() public pure override returns (uint8) {
+  function defaultPluginConfig() public pure override returns (uint16) {
     return
       VOLATILITY_ORACLE_PLUGIN_CONFIG |
       DYNAMIC_FEE_PLUGIN_CONFIG |
@@ -106,7 +106,7 @@ contract AlgebraUpgradeablePlugin is
     internal
     view
     override(UpgradeableAbstractPlugin, VolatilityOracleConnector)
-    returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig)
+    returns (uint160 price, int24 tick, uint16 fee, uint16 pluginConfig)
   {
     return UpgradeableAbstractPlugin._getPoolState();
   }
@@ -138,7 +138,7 @@ contract AlgebraUpgradeablePlugin is
     int24,
     int128 desiredLiquidityDelta,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24) {
+  ) external override onlyPool returns (bytes4) {
     // Security check
     // onlyPool guarantees msg.sender is the pool
     if (desiredLiquidityDelta <= 0) {
@@ -147,7 +147,7 @@ contract AlgebraUpgradeablePlugin is
       _checkStatus(msg.sender);
     }
 
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+    return IAlgebraPlugin.beforeModifyPosition.selector;
   }
 
   /// @inheritdoc IAlgebraPlugin
@@ -174,7 +174,7 @@ contract AlgebraUpgradeablePlugin is
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     // Security check
     // since we check that the hook is called by the pool, we can use msg.sender instead of _getPool()
     _checkStatus(msg.sender);
@@ -182,7 +182,7 @@ contract AlgebraUpgradeablePlugin is
     _writeTimepoint();
     uint88 volatilityAverage = _getAverageVolatilityLast();
     uint24 fee = _getCurrentFee(volatilityAverage);
-    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, fee);
   }
 
   /// @inheritdoc IAlgebraPlugin
@@ -194,6 +194,7 @@ contract AlgebraUpgradeablePlugin is
     uint160,
     int256,
     int256,
+    uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();
@@ -224,11 +225,10 @@ contract AlgebraUpgradeablePlugin is
 
   // ========== Fee Getter ==========
 
-  /// @notice Returns current fee based on current volatility
-  /// @return fee The current fee value
-  function getCurrentFee() external view override returns (uint16 fee) {
-    uint88 volatilityAverage = _getAverageVolatilityLast();
-    fee = _getCurrentFee(volatilityAverage);
+  /// @inheritdoc IAlgebraDynamicFeePlugin
+  /// @dev The oracle extrapolates to the current tick and time, so the timepoint beforeSwap writes leaves it unchanged
+  function getSwapFee(address, address, bool, int256, uint160, bool, bytes calldata) external view override returns (uint24) {
+    return _getCurrentFee(_getAverageVolatilityLast());
   }
 
   // ========== ALM Helper Functions ==========

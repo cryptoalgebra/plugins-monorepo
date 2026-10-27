@@ -393,7 +393,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       await fixture.mockPool1.swapToTick(10);
 
       const feeConfigBefore = await fixture.plugin1.feeConfig();
-      const feeBefore = await fixture.plugin1.getCurrentFee();
+      const feeBefore = await fixture.plugin1.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x');
       expect(feeBefore).to.be.gte(feeConfigBefore.baseFee);
 
       // Upgrade
@@ -406,7 +406,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       expect(feeConfigAfter.alpha2).to.eq(feeConfigBefore.alpha2);
 
       // AdaptiveFee caps the result at baseFee + alpha1 + alpha2
-      const feeAfter = await fixture.plugin1.getCurrentFee();
+      const feeAfter = await fixture.plugin1.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x');
       expect(feeAfter).to.be.gte(feeConfigAfter.baseFee);
       expect(feeAfter).to.be.lte(feeConfigAfter.baseFee + feeConfigAfter.alpha1 + feeConfigAfter.alpha2);
     });

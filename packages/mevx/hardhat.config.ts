@@ -14,6 +14,7 @@ const config: HardhatUserConfig = {
       'test-utils/contracts/MockPool.sol',
       'test-utils/contracts/MockPluginFactory.sol',
       'test-utils/contracts/MockERC20.sol',
+      'test-utils/contracts/TestERC20.sol',
       'test-utils/contracts/BeaconImports.sol',
       '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol',
       '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol',

@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers';
+import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { pinnedMockTimePluginFactory } from './shared/pinnedFactory';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
@@ -958,7 +958,7 @@ describe('NewMockTimeUpgradeablePluginFactory', () => {
       // The fee value itself may differ, MockUpgradedPlugin reads block.timestamp where
       // MockTimeAlgebraUpgradeablePlugin read its own clock. The AdaptiveFee bounds still hold.
       const feeConfig = await upgradedPlugin.feeConfig.staticCall();
-      const fee = await upgradedPlugin.getCurrentFee();
+      const fee = await upgradedPlugin.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x');
       expect(fee).to.be.gte(feeConfig.baseFee);
       expect(fee).to.be.lte(feeConfig.baseFee + feeConfig.alpha1 + feeConfig.alpha2);
     });

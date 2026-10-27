@@ -44,7 +44,4 @@ interface IMevxPlugin {
 
   /// @notice Enables or disables the MEV protection fee
   function setMevProtectionFeeEnabled(bool enabled) external;
-
-  /// @notice Grants or revokes authorization for an address to call handlePluginFee
-  function setAuthorizedHandlePluginFeeCaller(address caller, bool authorized) external;
 }

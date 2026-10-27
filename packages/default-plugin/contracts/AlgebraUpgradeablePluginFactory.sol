@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.26;
 
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';

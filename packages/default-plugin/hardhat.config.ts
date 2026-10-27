@@ -3,22 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition-ethers";
 import "hardhat-contract-sizer";
 import "hardhat-dependency-compiler";
-import { SolcUserConfig } from 'hardhat/types';
-import baseConfig from '../../hardhat.base.config';
-
-const HIGHEST_OPTIMIZER_COMPILER_SETTINGS: SolcUserConfig = {
-  version: '0.8.20',
-  settings: {
-    evmVersion: 'paris',
-    optimizer: {
-      enabled: true,
-      runs: 0,
-    },
-    metadata: {
-      bytecodeHash: 'none',
-    },
-  },
-};
+import baseConfig, { LOW_RUNS_COMPILER_SETTINGS } from '../../hardhat.base.config';
 
 const config: HardhatUserConfig = {
   networks: baseConfig.networks,
@@ -30,6 +15,7 @@ const config: HardhatUserConfig = {
       'test-utils/contracts/MockPool.sol',
       'test-utils/contracts/MockPluginFactory.sol',
       'test-utils/contracts/MockERC20.sol',
+      'test-utils/contracts/MockSecurityRegistry.sol',
       'test-utils/contracts/BeaconImports.sol',
       '@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol',
       '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol',
@@ -37,7 +23,10 @@ const config: HardhatUserConfig = {
       '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol',
       '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol',
       'test-utils/contracts/TestERC20.sol',
+      '@cryptoalgebra/integral-periphery/contracts/interfaces/INonfungiblePositionManager.sol',
+      '@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol',
       '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOraclePluginImplementation.sol',
+      '@cryptoalgebra/volatility-oracle-plugin/contracts/test/MockVolatilityOracle.sol',
       '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeePluginImplementation.sol',
       '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyPluginImplementation.sol',
       '@cryptoalgebra/alm-plugin/contracts/AlmPluginImplementation.sol',
@@ -45,7 +34,7 @@ const config: HardhatUserConfig = {
       '@cryptoalgebra/safety-switch-plugin/contracts/SecurityRegistry.sol',
     ],
   },
-  solidity: HIGHEST_OPTIMIZER_COMPILER_SETTINGS,
+  solidity: LOW_RUNS_COMPILER_SETTINGS,
   contractSizer: {
     alphaSort: true,
     disambiguatePaths: false,

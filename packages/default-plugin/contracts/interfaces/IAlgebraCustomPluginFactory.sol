@@ -10,6 +10,7 @@ import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginF
 interface IAlgebraCustomPluginFactory is IAlgebraPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory {
   /// @notice The hash of 'ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraALMCustomPluginFactory
+  // solhint-disable-next-line func-name-mixedcase
   function ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR() external pure returns (bytes32);
 
   /// @notice Returns the address of AlgebraFactory

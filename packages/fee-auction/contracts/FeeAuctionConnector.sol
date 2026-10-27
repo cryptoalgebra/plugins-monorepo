@@ -27,10 +27,7 @@ abstract contract FeeAuctionConnector is BaseConnector, IFeeAuctionPlugin {
   /// @notice Get the MEV tax plugin fee via delegatecall to implementation
   /// @return pluginFee The calculated MEV tax plugin fee
   function _getAuctionFee() internal returns (uint24 pluginFee) {
-    bytes memory returnData = _delegateCall(
-      feeAuctionImplementation,
-      abi.encodeCall(IFeeAuctionPluginImplementation.getAuctionFee, ())
-    );
+    bytes memory returnData = _delegateCall(feeAuctionImplementation, abi.encodeCall(IFeeAuctionPluginImplementation.getAuctionFee, ()));
     return abi.decode(returnData, (uint24));
   }
 
@@ -67,10 +64,7 @@ abstract contract FeeAuctionConnector is BaseConnector, IFeeAuctionPlugin {
   /// @inheritdoc IFeeAuctionPlugin
   function setBaseFee(uint24 newBaseFee) external override {
     _authorize();
-    _delegateCall(
-      feeAuctionImplementation,
-      abi.encodeCall(IFeeAuctionPluginImplementation.setBaseFee, (newBaseFee))
-    );
+    _delegateCall(feeAuctionImplementation, abi.encodeCall(IFeeAuctionPluginImplementation.setBaseFee, (newBaseFee)));
     emit BaseFeeChanged(newBaseFee);
   }
 
@@ -87,10 +81,7 @@ abstract contract FeeAuctionConnector is BaseConnector, IFeeAuctionPlugin {
   /// @inheritdoc IFeeAuctionPlugin
   function setMevTaxEnabled(bool enabled) external override {
     _authorize();
-    _delegateCall(
-      feeAuctionImplementation,
-      abi.encodeCall(IFeeAuctionPluginImplementation.setMevTaxEnabled, (enabled))
-    );
+    _delegateCall(feeAuctionImplementation, abi.encodeCall(IFeeAuctionPluginImplementation.setMevTaxEnabled, (enabled)));
     emit MevTaxEnabledChanged(enabled);
   }
 }

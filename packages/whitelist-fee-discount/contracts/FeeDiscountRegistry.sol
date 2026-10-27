@@ -20,7 +20,7 @@ contract FeeDiscountRegistry is IFeeDiscountRegistry {
     require(IAlgebraFactory(algebraFactory).hasRoleOrOwner(FEE_DISCOUNT_MANAGER, msg.sender), 'Unauthorized');
     require(pools.length == newDiscounts.length, 'ArraysLengthMismatch');
 
-    for (uint i = 0; i < pools.length; i++) {
+    for (uint256 i = 0; i < pools.length; i++) {
       require(newDiscounts[i] <= FEE_DISCOUNT_DENOMINATOR, 'fee discount execeeds 100%');
       feeDiscounts[user][pools[i]] = newDiscounts[i];
       emit FeeDiscount(user, pools[i], newDiscounts[i]);

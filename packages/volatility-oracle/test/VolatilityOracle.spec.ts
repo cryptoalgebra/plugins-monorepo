@@ -55,12 +55,19 @@ describe('VolatilityOracle', () => {
     it('gas  [ @skip-on-coverage ]', async () => {
       await snapshotGasCost(volatilityOracle.initialize({ tick: 1, time: 1 }));
     });
+    // The last two timepoints sit more than a window apart, and the query lands strictly between them.
+    // The tick moved just before the gap, so the average starts it away from the tick and volatility accrues.
     it('should return interpolated volatility with gap > window', async () => {
+      const window = 24 * 60 * 60;
       await volatilityOracle.initialize({ tick: 46054, time: 1 });
       await volatilityOracle.update({ advanceTimeBy: 100, tick: 80054 });
-      await volatilityOracle.update({ advanceTimeBy: 1, tick: 46054 });
-      await volatilityOracle.getTimepoints([0]);
-      await volatilityOracle.getTimepoints([1]);
+      await volatilityOracle.update({ advanceTimeBy: window + 100, tick: 46054 });
+
+      // now is window + 201, so this targets window / 2 + 101, between the timepoints at 101 and window + 201
+      const { tickCumulatives, volatilityCumulatives } = await volatilityOracle.getTimepoints([window / 2 + 100]);
+      // Pinned from a run
+      expect(tickCumulatives[0]).to.eq(3462938200n);
+      expect(volatilityCumulatives[0]).to.eq(16646111323200n);
     });
   });
 
@@ -185,6 +192,39 @@ describe('VolatilityOracle', () => {
       expect(await volatilityOracle.getTickCumulativeAt(window - 1)).to.be.eq(tickCumulative + 7300n * 2n);
     });
 
+    // A target exactly a window back takes the search heuristic, and here its first step moves right over a
+    // range of a few timepoints, where a jump of eight would land past the newest one
+    it('finds a tick cumulative a window back with few timepoints inside the window', async () => {
+      const hour = 60 * 60;
+      await volatilityOracle.initialize({ tick: 10, time: 0 });
+      // Six hourly timepoints, a gap, then timepoints at 29h, 30h, 31h, 32h and 33h
+      await volatilityOracle.batchUpdate([
+        ...Array(6).fill({ advanceTimeBy: hour, tick: 10 }),
+        { advanceTimeBy: 23 * hour, tick: 10 },
+        ...Array(4).fill({ advanceTimeBy: hour, tick: 10 }),
+      ]);
+      // A window back from 55.5h is 31.5h, between the timepoints at 31h and 32h
+      await volatilityOracle.advanceTime(22.5 * hour);
+
+      expect(await volatilityOracle.getTickCumulativeAt(window)).to.be.eq(10n * BigInt(31.5 * hour));
+    });
+
+    // What a write stores as the start of its window is the index the same search returns, and a target
+    // landing exactly on a timepoint that is not the newest takes the branch returning the one after it
+    it('records the window start at the timepoint the target lands on', async () => {
+      const hour = 60 * 60;
+      await volatilityOracle.initialize({ tick: 10, time: 0 });
+      await volatilityOracle.batchUpdate([
+        { advanceTimeBy: hour, tick: 10 },
+        { advanceTimeBy: hour, tick: 10 },
+        { advanceTimeBy: hour, tick: 10 },
+        // A window on from the timepoint at 2h, which is index 2
+        { advanceTimeBy: 23 * hour, tick: 10 },
+      ]);
+
+      expect((await volatilityOracle.timepoints(4)).windowStartIndex).to.be.eq(2);
+    });
+
     describe('oldest timepoint is more than WINDOW seconds ago', async () => {
       beforeEach('initialize', async () => {
         await volatilityOracle.initialize({ tick: 7200, time: 1000 });
@@ -282,6 +322,27 @@ describe('VolatilityOracle', () => {
       expect(volatility).to.be.eq(3333);
     });
 
+    // Bessel's correction takes one off the denominator, and the guard above it stops that turning a
+    // one second sample into a division by zero. Every other case here is at least two seconds wide.
+    // The pair has to be written directly: over a single second the average tick follows the tick
+    // exactly, so a normal write accumulates nothing and there would be no difference to divide.
+    it('applies no correction to a one second sample', async () => {
+      await volatilityOracle.initialize({ tick: 7200, time: 1000000 });
+      await volatilityOracle.writeTimepointDirectly(1, {
+        initialized: true,
+        blockTimestamp: 1000001,
+        tickCumulative: 7300,
+        volatilityCumulative: 5000,
+        tick: 7300,
+        averageTick: 7200,
+        windowStartIndex: 0,
+      });
+      await volatilityOracle.setState(1000001, 1);
+
+      // the whole accumulation, not a fraction of it
+      expect(await volatilityOracle.getAverageVolatility()).to.be.eq(5000);
+    });
+
     it('specific case for binary search (atOrAfter)', async () => {
       await volatilityOracle.initialize({ tick: 7200, time: 1000 });
       await volatilityOracle.update({ advanceTimeBy: 2, tick: 7300 });
@@ -362,6 +423,20 @@ describe('VolatilityOracle', () => {
         await volatilityOracle.initialize({ tick: 2, time: 5 });
         const { tickCumulative } = await getSingleTimepoint(0);
         expect(tickCumulative).to.eq(0);
+      });
+
+      // The search narrows itself to the last window when the target falls inside it. A target further
+      // back than that cannot use the shortcut and has to be found over the whole array, and every
+      // other case here queries seconds rather than days.
+      it('searches the whole array for a target older than the window', async () => {
+        const DAY = 24 * 60 * 60;
+        await volatilityOracle.initialize({ tick: 2, time: 5 });
+        await volatilityOracle.update({ advanceTimeBy: 3 * DAY, tick: 1500 });
+
+        // the tick was 2 for the whole stretch before the update, so the answer is that tick times
+        // the seconds elapsed since initialization
+        const { tickCumulative } = await getSingleTimepoint(2 * DAY);
+        expect(tickCumulative).to.be.eq(2 * DAY);
       });
 
       it('timepoint does not change after time', async () => {
@@ -717,197 +792,17 @@ describe('VolatilityOracle', () => {
     });
   });
 
-  describe('full volatilityOracle', function () {
-    this.timeout(10_200_000);
-
-    let volatilityOracle: VolatilityOracleTest;
-
-    let BATCH_SIZE = 1000;
-    const step = 13;
-
-    const STARTING_TIME = TEST_POOL_START_TIME;
-
-    const maxedOutVolatilityOracleFixture = async () => {
-      await ethers.provider.send('hardhat_setBalance', [wallet.address, '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000000000000000']);
-      const _volatilityOracle = await volatilityOracleFixture();
-      await _volatilityOracle.initialize({ tick: 0, time: STARTING_TIME });
-
-      let i = 1;
-      for (i = 1; i < 65536; i += BATCH_SIZE) {
-        if (i + BATCH_SIZE > 65536) {
-          BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          console.log('batch update starting at', i);
-          await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
-        } else {
-          console.log('batch update starting at', i);
-          await _volatilityOracle.batchUpdateFast(BATCH_SIZE);
-        }
-      }
-      console.log('Length:', i);
-      return _volatilityOracle;
-    };
-
-    beforeEach('create a full volatilityOracle', async () => {
-      volatilityOracle = await loadFixture(maxedOutVolatilityOracleFixture);
-    });
-
-    it('index wrapped around', async () => {
-      expect(await volatilityOracle.index()).to.eq(163);
-    });
-
-    async function checkGetPoints(secondsAgo: number, expected?: { tickCumulative: BigNumberish }) {
-      const { tickCumulatives } = await volatilityOracle.getTimepoints([secondsAgo]);
-      const check = {
-        tickCumulative: tickCumulatives[0].toString(),
-      };
-      if (typeof expected === 'undefined') {
-        expect(check).to.matchSnapshot();
-      } else {
-        expect(check).to.deep.eq({
-          tickCumulative: expected.tickCumulative.toString(),
-        });
-      }
-    }
-
-    it('can getTimepoints into the ordered portion with exact seconds ago', async () => {
-      await checkGetPoints(100 * step, {
-        tickCumulative: '-27970560813',
-      });
-    });
-
-    it('can getTimepoints into the ordered portion with inexact seconds ago', async () => {
-      await checkGetPoints(100 * step + 5, {
-        tickCumulative: '-27970232823',
-      });
-    });
-
-    it('can getTimepoints at exactly the latest timepoint', async () => {
-      await checkGetPoints(0, {
-        tickCumulative: '-28055903863',
-      });
-    });
-
-    it('can getTimepoints at exactly the latest timepoint after some time passes', async () => {
-      await volatilityOracle.advanceTime(5);
-      await checkGetPoints(5, {
-        tickCumulative: '-28055903863',
-      });
-    });
-
-    it('can getTimepoints after the latest timepoint counterfactual', async () => {
-      await volatilityOracle.advanceTime(5);
-      await checkGetPoints(3, {
-        tickCumulative: '-28056035261',
-      });
-    });
-
-    it('can getTimepoints into the unordered portion of array at exact seconds ago of timepoint', async () => {
-      await checkGetPoints(200 * step, {
-        tickCumulative: '-27885347763',
-      });
-    });
-
-    it('can getTimepoints into the unordered portion of array at seconds ago between timepoints', async () => {
-      await checkGetPoints(200 * step + 5, {
-        tickCumulative: '-27885020273',
-      });
-    });
-
-    it('can getTimepoints the oldest timepoint 13*65534 seconds ago', async () => {
-      await checkGetPoints(step * 65534, {
-        tickCumulative: '-175890',
-      });
-    });
-
-    it('can getTimepoints the oldest timepoint 13*65534 + 5 seconds ago if time has elapsed', async () => {
-      await volatilityOracle.advanceTime(5);
-      await checkGetPoints(step * 65534 + 5, {
-        tickCumulative: '-175890',
-      });
-    });
-
-    describe('#getAverageVolatility', () => {
-      const window = 24 * 60 * 60;
-
-      describe('oldest timepoint is more than WINDOW seconds ago', async () => {
-        beforeEach('initialize', async () => {
-          await volatilityOracle.update({ advanceTimeBy: window + 1, tick: 7250 });
-        });
-
-        it('last timepoint is target', async () => {
-          const volatility = await volatilityOracle.getAverageVolatility();
-          expect(volatility).to.be.eq(3682928);
-        });
-
-        it('target is after last timepoint', async () => {
-          await volatilityOracle.advanceTime(10);
-          const volatility = await volatilityOracle.getAverageVolatility();
-          expect(volatility).to.be.eq(4298339);
-        });
-      });
-    });
-
-    it('gas cost of getTimepoints(0)  [ @skip-on-coverage ]', async () => {
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([0]));
-    });
-    it(`gas cost of getTimepoints(200 * ${step})  [ @skip-on-coverage ]`, async () => {
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([200 * step]));
-    });
-    it(`gas cost of getTimepoints(200 * ${step} + 5)  [ @skip-on-coverage ]`, async () => {
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([200 * step + 5]));
-    });
-    it('gas cost of getTimepoints(0) after 5 seconds  [ @skip-on-coverage ]', async () => {
-      await volatilityOracle.advanceTime(5);
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([0]));
-    });
-    it('gas cost of getTimepoints(5) after 5 seconds  [ @skip-on-coverage ]', async () => {
-      await volatilityOracle.advanceTime(5);
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([5]));
-    });
-    it('gas cost of getTimepoints(middle)  [ @skip-on-coverage ]', async () => {
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([(65534 / 2) * step]));
-    });
-    it('gas cost of getTimepoints(oldest)  [ @skip-on-coverage ]', async () => {
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([65534 * step]));
-    });
-    it('gas cost of getTimepoints(oldest) after 5 seconds  [ @skip-on-coverage ]', async () => {
-      await volatilityOracle.advanceTime(5);
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([65534 * step + 5]));
-    });
-    it('gas cost of getTimepoints(24h ago)  [ @skip-on-coverage ]', async () => {
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([24 * 60 * 60]));
-    });
-    it('gas cost of getTimepoints(24h ago) after 5 seconds  [ @skip-on-coverage ]', async () => {
-      await volatilityOracle.advanceTime(5);
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([24 * 60 * 60]));
-    });
-    it('gas cost of getTimepoints(24h ago) after 15 minutes [ @skip-on-coverage ]', async () => {
-      await volatilityOracle.advanceTime(15 * 60);
-      await snapshotGasCost(volatilityOracle.getGasCostOfGetPoints([24 * 60 * 60]));
-    });
-
-    it.skip('second index wrap', async () => {
-      let i = Number(await volatilityOracle.index());
-      for (; i < 65536; i += BATCH_SIZE) {
-        if (i + BATCH_SIZE > 65536) {
-          BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          console.log('batch update starting at', i);
-          await volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
-        } else {
-          console.log('batch update starting at', i);
-          await volatilityOracle.batchUpdateFast(BATCH_SIZE);
-        }
-      }
-      expect(await volatilityOracle.index()).to.eq(163);
-    });
-  });
-
+  // Fills the ring at maximal density, one second per timepoint. The sparse fill lives in
+  // VolatilityOracle.slow.spec.ts and runs in the same process, both cost a few seconds each.
+  // Deliberately untagged, only the sparse fill carries @slow to stay out of coverage.
   describe('full volatilityOracle, maximal density', function () {
     this.timeout(10_200_000);
 
     let volatilityOracle: VolatilityOracleTest;
 
     let BATCH_SIZE = 1000;
+    // A full batch takes ~24M gas, over the 2^24 gas limit hardhat defaults a transaction to since EIP-7825.
+    const BATCH_GAS_LIMIT = 30_000_000;
     let step = 1;
 
     const STARTING_TIME = TEST_POOL_START_TIME;
@@ -918,18 +813,14 @@ describe('VolatilityOracle', () => {
       await _volatilityOracle.initialize({ tick: 0, time: STARTING_TIME });
       await _volatilityOracle.setStep(step);
 
-      let i = 1;
-      for (i = 1; i < 65536; i += BATCH_SIZE) {
+      for (let i = 1; i < 65536; i += BATCH_SIZE) {
         if (i + BATCH_SIZE > 65536) {
           BATCH_SIZE = Math.ceil(65536 / 300) * 300 - i;
-          console.log('batch update starting at', i);
-          await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE);
+          await _volatilityOracle.batchUpdateFixedTimedelta(BATCH_SIZE, { gasLimit: BATCH_GAS_LIMIT });
         } else {
-          console.log('batch update starting at', i);
-          await _volatilityOracle.batchUpdateFast(BATCH_SIZE);
+          await _volatilityOracle.batchUpdateFast(BATCH_SIZE, { gasLimit: BATCH_GAS_LIMIT });
         }
       }
-      console.log('Length:', i);
       return _volatilityOracle;
     };
 

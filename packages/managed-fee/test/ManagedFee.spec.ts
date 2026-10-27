@@ -1,7 +1,7 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
 import { Wallet, AbiCoder, keccak256 } from 'ethers'
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 
 describe('ManagedSwapFee', () => {
@@ -12,6 +12,11 @@ describe('ManagedSwapFee', () => {
   let fee: number;
   let user: string;
   let expireTime: number;
+
+  // expireTime is signed, and the signature travels in calldata, so its zero bytes set the intrinsic
+  // cost of the transaction. Taking the time from the block made the gas snapshot flicker by 12 gas.
+  // Near the top of the uint32 range so it stays in the future whatever clock the network starts on.
+  const FIXED_EXPIRE_TIME = 4_000_000_000;
 
   async function managedSwapFeeFixture() {
     const ManagedFeePluginImplementation = await ethers.getContractFactory('ManagedFeePluginImplementation');
@@ -43,13 +48,10 @@ describe('ManagedSwapFee', () => {
 
   describe('#getManagedFee', () => {
     beforeEach('set config', async () => {
-      let provider = ethers.provider
-      const block = await provider.getBlock('latest');
-
       nonce ="0x0000000000000000000000000000000000000000000000000000000000000001"
       fee = 1000
       user = wallet.address
-      expireTime = block!.timestamp + 1000
+      expireTime = FIXED_EXPIRE_TIME
 
       pluginData = await generatePluginData(nonce, fee, user, expireTime, wallet)
       await managedSwapFeePlugin.setWhitelistStatus(wallet.address, true);
@@ -87,11 +89,25 @@ describe('ManagedSwapFee', () => {
       await expect(managedSwapFeePlugin.connect(wallet).getFeeForSwap(pluginData)).to.be.revertedWithCustomError(managedSwapFeePlugin,"Expired")
     });
 
+    it('accepts a signature expiring in the block of the swap, and not one second later', async () => {
+      // the swap lands in the next block, so its timestamp is pinned rather than read back
+      const expiry = (await time.latest()) + 100
+      await time.setNextBlockTimestamp(expiry)
+      await expect(managedSwapFeePlugin.connect(wallet).getFeeForSwap(await generatePluginData(nonce, fee, user, expiry, wallet)))
+        .to.be.emit(managedSwapFeePlugin, 'Fee')
+        .withArgs(fee)
+
+      const nextNonce = '0x0000000000000000000000000000000000000000000000000000000000000002'
+      const lateData = await generatePluginData(nextNonce, fee, user, expiry, wallet)
+      await time.setNextBlockTimestamp(expiry + 1)
+      await expect(managedSwapFeePlugin.connect(wallet).getFeeForSwap(lateData)).to.be.revertedWithCustomError(managedSwapFeePlugin, 'Expired')
+    });
+
     it('revert if user and caller missmatch', async () => {
       await expect(managedSwapFeePlugin.connect(other).getFeeForSwap(pluginData)).to.be.revertedWithCustomError(managedSwapFeePlugin,"NotAllowed")
     });
 
-    it('gas cost', async () => {
+    it('gas cost [ @skip-on-coverage ]', async () => {
       await snapshotGasCost(managedSwapFeePlugin.getFeeForSwap(pluginData));
     });
 

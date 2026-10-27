@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { abi as FACTORY_ABI, bytecode as FACTORY_BYTECODE } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraFactory.sol/AlgebraFactory.json';
+import PLUGIN_FACTORY_ARTIFACT from './pinned/UpgradeableLimitOrderTestPluginFactory.json';
 import {
   abi as TEST_CALLEE_ABI,
   bytecode as TEST_CALLEE_BYTECODE,
@@ -23,7 +24,6 @@ export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // Monday, October 5, 2020 9:00:00 AM GMT-05:00
 export const TEST_POOL_START_TIME = 1601906400;
-export const TEST_POOL_DAY_BEFORE_START = 1601906400 - 24 * 60 * 60;
 
 interface LimitOrderPluginFixture{
   loModule: LimitOrderManager;
@@ -36,6 +36,26 @@ interface LimitOrderPluginFixture{
   swapTarget: TestAlgebraCallee;
  }
 
+
+// The specs build pool keys token0/wnative and wnative/token1, and a PoolKey has to be sorted,
+// so the fixture needs token0 < wnative < token1. A deployment address cannot be chosen, so redeploy
+// until one lands between the two tokens. Takes ~8 attempts, and loadFixture runs the fixture once.
+const MAX_WNATIVE_DEPLOY_ATTEMPTS = 200;
+
+async function deployWNativeBetween(token0: string, token1: string): Promise<IWNativeToken> {
+  const wnativeFactory = await ethers.getContractFactory(WNativeToken.abi, WNativeToken.bytecode);
+
+  const lower = BigInt(token0) < BigInt(token1) ? BigInt(token0) : BigInt(token1);
+  const upper = BigInt(token0) < BigInt(token1) ? BigInt(token1) : BigInt(token0);
+
+  for (let attempt = 0; attempt < MAX_WNATIVE_DEPLOY_ATTEMPTS; attempt++) {
+    const deployed = await wnativeFactory.deploy();
+    const address = BigInt(await deployed.getAddress());
+    if (address > lower && address < upper) return deployed as any as IWNativeToken;
+  }
+
+  throw new Error('could not deploy wnative between token0 and token1');
+}
 
 export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async function (): Promise<LimitOrderPluginFixture> {
 
@@ -54,15 +74,21 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
   const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
   const poolDeployer = (await poolDeployerFactory.deploy(factory, factory)) as any as AlgebraPoolDeployer;
 
-  const wnativeFactory = await ethers.getContractFactory(WNativeToken.abi, WNativeToken.bytecode);
-  const wnative = (await wnativeFactory.deploy()) as any as IWNativeToken & { address: string};
+  const wnative = await deployWNativeBetween(await token0.getAddress(), await token1.getAddress());
 
   const calleeContractFactory = await ethers.getContractFactory(TEST_CALLEE_ABI, TEST_CALLEE_BYTECODE);
   const swapTarget = (await calleeContractFactory.deploy()) as any as TestAlgebraCallee;
 
   const poolFactory = await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE);
 
-  const pluginFactoryFactory = await ethers.getContractFactory('UpgradeableLimitOrderTestPluginFactory');
+  // Pinned bytecode on purpose. This harness builds the plugin proxy with `new AlgebraPluginProxy`,
+  // and the plugin reads the pool address out of that proxy's runtime code at a fixed offset. A
+  // coverage build compiles without the optimizer, which moves the immutable and makes every pool
+  // driven case revert OnlyPool(). See packages/test-utils/pinnedProxy.ts for the full story.
+  const pluginFactoryFactory = await ethers.getContractFactory(
+    PLUGIN_FACTORY_ARTIFACT.abi,
+    PLUGIN_FACTORY_ARTIFACT.bytecode
+  );
   const pluginFactory = (await pluginFactoryFactory.deploy(factory)) as any;
 
   const loModuleFactory = await ethers.getContractFactory('LimitOrderManager');

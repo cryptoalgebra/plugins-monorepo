@@ -16,6 +16,12 @@ contract MockAllowlistChecker is IAllowlistChecker, ERC165 {
     flags[account] = flag;
   }
 
+  /// @dev The realistic grant composes the two operation flags instead of 0xFFFF
+  /// @dev It is also the only caller of the library's | operator
+  function grantSwapAndLiquidity(address account) external {
+    flags[account] = PermissionFlags.SWAP_ALLOWED | PermissionFlags.LIQUIDITY_ALLOWED;
+  }
+
   /// @inheritdoc IAllowlistChecker
   function checkAllowlist(address account, address) external view override returns (PermissionFlag) {
     return flags[account];

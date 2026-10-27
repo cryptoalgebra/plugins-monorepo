@@ -64,7 +64,10 @@ abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolP
   /// @inheritdoc IPermissionedPoolPlugin
   function setRouterAllowed(address router, bool allowed) external override {
     _authorize();
-    _delegateCall(permissionedPoolImplementation, abi.encodeCall(IPermissionedPoolPluginImplementation.setRouterAllowed, (router, allowed)));
+    _delegateCall(
+      permissionedPoolImplementation,
+      abi.encodeCall(IPermissionedPoolPluginImplementation.setRouterAllowed, (router, allowed))
+    );
     emit RouterAllowedUpdated(router, allowed);
   }
 

@@ -1,79 +1,25 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
+import { encodePriceSqrt } from 'test-utils/utilities';
 
 describe('UpgradeableLimitOrderPlugin', function () {
   async function deployFixture() {
-    const [owner, manager, user, otherUser] = await ethers.getSigners();
+    return deployBeaconPluginFixture({
+      pluginContract: 'UpgradeableLimitOrderPluginTest',
+      setup: async ({ mockPool }) => {
+        const mockLimitOrderManager = await (await ethers.getContractFactory('MockLimitOrderManager')).deploy();
+        const limitOrderImpl = await (await ethers.getContractFactory('LimitOrderPluginImplementation')).deploy();
 
-    // Deploy MockFactory
-    const MockFactory = await ethers.getContractFactory('MockFactory');
-    const mockFactory = await MockFactory.deploy();
-
-    // Deploy BeaconProxyDeployer (acts as pluginFactory for initializer gating)
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
-
-    // Deploy MockPool
-    const MockPool = await ethers.getContractFactory('MockPool');
-    const mockPool = await MockPool.deploy();
-
-    // Deploy MockLimitOrderManager
-    const MockLimitOrderManager = await ethers.getContractFactory('MockLimitOrderManager');
-    const mockLimitOrderManager = await MockLimitOrderManager.deploy();
-
-    // Deploy LimitOrderPluginImplementation
-    const LimitOrderPluginImplementation = await ethers.getContractFactory('LimitOrderPluginImplementation');
-    const limitOrderImpl = await LimitOrderPluginImplementation.deploy();
-
-    // Deploy UpgradeableLimitOrderPluginTest (implementation for beacon)
-    const UpgradeableLimitOrderPluginTest = await ethers.getContractFactory('UpgradeableLimitOrderPluginTest');
-    const pluginImplementation = await UpgradeableLimitOrderPluginTest.deploy(
-      mockFactory.target,
-      proxyDeployer.target,
-      limitOrderImpl.target
-    );
-
-    // Deploy UpgradeableBeacon
-    const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
-    const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
-
-    // Deploy BeaconProxy for first plugin
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', [
-      mockPool.target,
-      mockLimitOrderManager.target,
-    ]);
-    await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
-    const proxy1Address = await proxyDeployer.lastDeployedProxy();
-
-    // Get plugin interface for proxy
-    const plugin1 = UpgradeableLimitOrderPluginTest.attach(proxy1Address) as any;
-
-    // Set plugin in mock pool
-    await mockPool.setPlugin(proxy1Address);
-
-    // Grant manager role to manager
-    const ALGEBRA_BASE_PLUGIN_MANAGER = ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER'));
-    await mockFactory.grantRole(ALGEBRA_BASE_PLUGIN_MANAGER, manager.address);
-
-    return {
-      owner,
-      manager,
-      user,
-      otherUser,
-      mockFactory,
-      proxyDeployer,
-      mockPool,
-      mockLimitOrderManager,
-      limitOrderImpl,
-      pluginImplementation,
-      beacon,
-      plugin1,
-      UpgradeableLimitOrderPluginTest,
-      ALGEBRA_BASE_PLUGIN_MANAGER,
-    };
+        return {
+          pluginArgs: [limitOrderImpl.target],
+          initArgs: [mockPool.target, mockLimitOrderManager.target],
+          extra: { mockLimitOrderManager, limitOrderImpl }
+        };
+      }
+    });
   }
-
   describe('Initialization', function () {
     it('should initialize with correct values', async function () {
       const { plugin1, mockPool, mockLimitOrderManager } = await loadFixture(deployFixture);
@@ -137,33 +83,27 @@ describe('UpgradeableLimitOrderPlugin', function () {
   describe('Storage Isolation', function () {
     it('should maintain separate storage for each proxy', async function () {
       const {
+        deployProxy,
         beacon,
         mockFactory,
         pluginImplementation,
         plugin1,
         mockPool,
         mockLimitOrderManager,
-        UpgradeableLimitOrderPluginTest,
+        PluginContract,
         manager,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second MockLimitOrderManager
       const MockLimitOrderManager = await ethers.getContractFactory('MockLimitOrderManager');
       const mockLimitOrderManager2 = await MockLimitOrderManager.deploy();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        mockLimitOrderManager2.target,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableLimitOrderPluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, mockLimitOrderManager2.target]);
 
       // Verify different values
       expect(await plugin1.limitOrderManager.staticCall()).to.equal(mockLimitOrderManager.target);
@@ -174,26 +114,20 @@ describe('UpgradeableLimitOrderPlugin', function () {
   describe('Immutables Shared', function () {
     it('should share immutable factory addresses across proxies', async function () {
       const {
+        deployProxy,
         beacon,
         mockFactory,
         pluginImplementation,
         plugin1,
-        UpgradeableLimitOrderPluginTest,
+        PluginContract,
         proxyDeployer,
       } = await loadFixture(deployFixture);
 
       // Deploy second MockPool
-      const MockPool = await ethers.getContractFactory('MockPool');
-      const mockPool2 = await MockPool.deploy();
+      const mockPool2 = await deployMockPool();
 
       // Deploy second proxy
-      const initData2 = pluginImplementation.interface.encodeFunctionData('initialize', [
-        mockPool2.target,
-        ethers.ZeroAddress,
-      ]);
-      await proxyDeployer.deploy(beacon.target, mockPool2.target, initData2);
-      const proxy2Address = await proxyDeployer.lastDeployedProxy();
-      const plugin2 = UpgradeableLimitOrderPluginTest.attach(proxy2Address) as any;
+      const plugin2 = await deployProxy(mockPool2, [mockPool2.target, ethers.ZeroAddress]);
 
       // Both should have same factory addresses (immutables from implementation)
       expect(await plugin1.factory()).to.equal(mockFactory.target);
@@ -210,14 +144,14 @@ describe('UpgradeableLimitOrderPlugin', function () {
 
       // Owner should be able to set limitOrderManager
       await expect(plugin1.connect(owner).setLimitOrderManager(user.address))
-        .to.emit(plugin1, 'LimitOrderManager');
+        .to.emit(plugin1, 'LimitOrderManager').withArgs(user.address);
     });
 
     it('should allow ALGEBRA_BASE_PLUGIN_MANAGER role to call authorized functions', async function () {
       const { plugin1, manager, user } = await loadFixture(deployFixture);
 
       await expect(plugin1.connect(manager).setLimitOrderManager(user.address))
-        .to.emit(plugin1, 'LimitOrderManager');
+        .to.emit(plugin1, 'LimitOrderManager').withArgs(user.address);
     });
 
     it('should reject unauthorized users', async function () {
@@ -226,6 +160,50 @@ describe('UpgradeableLimitOrderPlugin', function () {
       await expect(
         plugin1.connect(user).setLimitOrderManager(otherUser.address)
       ).to.be.revertedWith('Not authorized');
+    });
+  });
+
+  // afterSwap is the module's only route into the manager, and it runs from the pool. Nothing in this
+  // package drove it, so the connector's delegatecall and both sides of the manager check were dark.
+  describe('afterSwap', function () {
+    it('should forward the pool, direction and tick to the manager', async function () {
+      const { mockPool, mockLimitOrderManager } = await loadFixture(deployFixture);
+
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+      await mockPool.swapToTickWithDirection(-120, true);
+
+      expect(await mockLimitOrderManager.getSwapCallsCount()).to.equal(1);
+      const [pool, zeroToOne, tick] = await mockLimitOrderManager.getLastSwapCall();
+      expect(pool).to.equal(mockPool.target);
+      expect(zeroToOne).to.be.true;
+      expect(tick).to.equal(-120);
+
+      await mockPool.swapToTickWithDirection(300, false);
+      const [, secondZeroToOne, secondTick] = await mockLimitOrderManager.getLastSwapCall();
+      expect(secondZeroToOne).to.be.false;
+      expect(secondTick).to.equal(300);
+    });
+
+    it('should do nothing while no manager is set', async function () {
+      const { plugin1, mockPool, mockLimitOrderManager } = await loadFixture(deployFixture);
+
+      await plugin1.setLimitOrderManager(ethers.ZeroAddress);
+      await mockPool.initialize(encodePriceSqrt(1, 1));
+
+      await expect(mockPool.swapToTick(-120)).to.not.be.reverted;
+      expect(await mockLimitOrderManager.getSwapCallsCount()).to.equal(0);
+    });
+  });
+
+  // The connector reads the manager straight off storage instead of delegating, so the
+  // implementation keeps a second getter that no plugin reaches and that can drift
+  describe('Implementation kept in step with the connector', function () {
+    it('should report the same manager as the connector', async function () {
+      const { plugin1, limitOrderImpl, mockLimitOrderManager } = await loadFixture(deployFixture);
+
+      await limitOrderImpl.setLimitOrderManager(mockLimitOrderManager.target);
+
+      expect(await limitOrderImpl.getLimitOrderManager()).to.equal(await plugin1.limitOrderManager());
     });
   });
 });

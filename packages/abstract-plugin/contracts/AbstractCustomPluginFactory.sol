@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+// solhint-disable-next-line compiler-version
 pragma solidity ^0.8.0;
 
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoolEntryPoint.sol';
@@ -31,12 +32,14 @@ abstract contract AbstractCustomPluginFactory is ICustomPluginFactory {
     address,
     bytes calldata
   ) external virtual override returns (address) {
+    // solhint-disable-next-line reason-string
     require(msg.sender == entryPoint);
     return _createPlugin(pool);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
   function afterCreatePoolHook(address, address, address) external view virtual override {
+    // solhint-disable-next-line reason-string
     require(msg.sender == entryPoint);
   }
 

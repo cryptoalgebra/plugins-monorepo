@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ContractFactory } from 'ethers';
-import { VolatilityOracleInteractionsTest, TestERC20 } from '../typechain';
+import { VolatilityOracleInteractionsTest } from '../typechain';
+import { TestERC20 } from '@cryptoalgebra/integral-core/typechain';
 import { expandTo18Decimals } from 'test-utils/utilities';
 import snapshotGasCost from 'test-utils/snapshotGasCost';
 import { tokensFixture } from 'test-utils/externalFixtures';
@@ -81,6 +82,16 @@ describe('VolatilityOracleInteractions', () => {
       // Always round to negative infinity
       // In this case, we need to subtract one because integer division rounds to 0
       expect(oracleLibraryTick).to.equal(-1n);
+    });
+
+    it('correct output for negative tick that divides evenly', async () => {
+      const period = 3;
+      const tickCumulatives = [-6n, -12n];
+      const mockVolatilityOracle = await mockVolatilityOracleFactory.deploy([period, 0], tickCumulatives);
+      const oracleLibraryTick = await oracleLibraryTest.consult(mockVolatilityOracle, period);
+
+      // Already a whole tick, so rounding to negative infinity must not take one off
+      expect(oracleLibraryTick).to.equal(-2n);
     });
 
     it('gas test [ @skip-on-coverage ]', async () => {

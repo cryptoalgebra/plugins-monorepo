@@ -7,6 +7,37 @@ const {
   ANKR_API_KEY 
 } = config.parsed || {};
 
+// Only the integration suite in default-plugin needs the Base fork, and it resets to this itself.
+// Booting every other run on a fork cost a network round trip per process and bought nothing.
+export const BASE_FORK = {
+  url: `https://rpc.ankr.com/base/${ANKR_API_KEY}`,
+  blockNumber: 40801000,
+};
+
+export const SOLC_VERSION = '0.8.20';
+export const EVM_VERSION = 'paris';
+
+// The production build, and the one the pinned bytecode in test-utils is compiled with
+export const COMPILER_SETTINGS = {
+  version: SOLC_VERSION,
+  settings: {
+    evmVersion: EVM_VERSION,
+    optimizer: {
+      enabled: true,
+      runs: 1_000_000,
+    },
+    metadata: {
+      bytecodeHash: 'none',
+    },
+  },
+};
+
+// default-plugin ships built at runs 0. POOL_ADDRESS_OFFSET depends on the optimizer being on, not on the run count
+export const LOW_RUNS_COMPILER_SETTINGS = {
+  ...COMPILER_SETTINGS,
+  settings: { ...COMPILER_SETTINGS.settings, optimizer: { enabled: true, runs: 0 } },
+};
+
 export default {
   typechain: {
     outDir: 'typechain',
@@ -15,11 +46,14 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       loggingEnabled: false,
-      evm: 'paris',
-      forking: {
-        url: `https://rpc.ankr.com/base/${ANKR_API_KEY}`,
-        blockNumber: 40801000,
-      },
+      // Matches the evmVersion every package compiles with. Hardhat calls that fork 'merge', and the
+      // key it reads is 'hardfork': the 'evm' key it replaced was silently ignored, leaving the
+      // network on the latest fork while the bytecode targeted paris.
+      hardfork: 'merge',
+      // The fork pinned the clock as a side effect, and dropping it started the suite on real time.
+      // Matches the timestamp of Base block 40801000 so runs stay reproducible whenever they happen.
+      // No gas snapshot depends on this any more, and none should: pin the value in the test instead.
+      initialDate: '2026-01-14T11:49:07Z',
     },
     localHardhat: {
       url: `http://127.0.0.1:8545`,

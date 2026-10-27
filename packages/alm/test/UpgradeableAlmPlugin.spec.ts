@@ -1,5 +1,7 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { UpgradeableAlmPluginTest, AlmPluginImplementation, MockFactory } from '../typechain';
 import { ZERO_ADDRESS } from 'test-utils/consts';
 import { Wallet } from 'ethers';
@@ -18,20 +20,18 @@ describe('#UpgradeableAlmPlugin', () => {
   const MOCK_PLUGIN_FACTORY = '0x0000000000000000000000000000000000000004';
   const MOCK_REBALANCE_MANAGER = '0x0000000000000000000000000000000000000003';
 
-  beforeEach(async () => {
-    [wallet, other] = await (ethers as any).getSigners();
-
+  async function deployFixture() {
     // Deploy MockFactory
     const MockFactoryFactory = await ethers.getContractFactory('MockFactory');
-    mockFactory = await MockFactoryFactory.deploy() as any as MockFactory;
+    const mockFactory = await MockFactoryFactory.deploy() as any as MockFactory;
 
     // Deploy ALM Implementation (shared logic)
     const almImplFactory = await ethers.getContractFactory('AlmPluginImplementation');
-    almImplementation = await almImplFactory.deploy() as any as AlmPluginImplementation;
+    const almImplementation = await almImplFactory.deploy() as any as AlmPluginImplementation;
 
     // Deploy Plugin Logic (with real factory, pluginFactory, and implementation address as immutables)
     const pluginLogicFactory = await ethers.getContractFactory('UpgradeableAlmPluginTest');
-    pluginLogic = await pluginLogicFactory.deploy(
+    const pluginLogic = await pluginLogicFactory.deploy(
       await mockFactory.getAddress(),
       MOCK_PLUGIN_FACTORY,
       await almImplementation.getAddress()
@@ -41,7 +41,7 @@ describe('#UpgradeableAlmPlugin', () => {
     const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       MOCK_POOL,
@@ -49,7 +49,15 @@ describe('#UpgradeableAlmPlugin', () => {
     );
 
     // Get proxy as UpgradeableAlmPluginTest interface
-    pluginProxy = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy.getAddress()) as any as UpgradeableAlmPluginTest;
+    const pluginProxy = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy.getAddress()) as any as UpgradeableAlmPluginTest;
+
+    return { mockFactory, almImplementation, pluginLogic, pluginProxy };
+  }
+
+  // Every test reverts to one deployment rather than deploying the five contracts again
+  beforeEach(async () => {
+    [wallet, other] = await (ethers as any).getSigners();
+    ({ mockFactory, almImplementation, pluginLogic, pluginProxy } = await loadFixture(deployFixture));
   });
 
   describe('#initialization', () => {
@@ -76,7 +84,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
       await expect(
         pluginProxy.initialize(MOCK_POOL)
-      ).to.be.reverted;
+      ).to.be.revertedWith('Initializable: contract is already initialized');
     });
   });
 
@@ -100,10 +108,36 @@ describe('#UpgradeableAlmPlugin', () => {
       ).to.be.revertedWith('_slowTwapPeriod must be >= _fastTwapPeriod');
     });
 
+    it('should accept equal slow and fast periods', async () => {
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, FAST_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(FAST_TWAP_PERIOD);
+    });
+
     it('should revert if rebalanceManager is zero address', async () => {
       await expect(
         pluginProxy.initializeALM(ZERO_ADDRESS, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD)
       ).to.be.revertedWith('_rebalanceManager must be non zero address');
+    });
+
+    // initializeALM carries no initializer guard, unlike the plugin's own initialize. Whoever holds
+    // ALGEBRA_BASE_PLUGIN_MANAGER can therefore re-point the module and rewrite both periods at once.
+    it('can be called again and overwrites the whole configuration', async () => {
+      const OTHER_MANAGER = '0x0000000000000000000000000000000000000055';
+
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+      await pluginProxy.initializeALM(OTHER_MANAGER, 7200, 1200);
+
+      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(OTHER_MANAGER);
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(7200);
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(1200);
+    });
+
+    // A zero fast period passes the guard here, and the composed plugin then reverts on every swap
+    it('should accept a zero fastTwapPeriod', async () => {
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, 0);
+
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(0);
     });
   });
 
@@ -140,6 +174,16 @@ describe('#UpgradeableAlmPlugin', () => {
       ).to.be.revertedWith('_slowTwapPeriod must be >= fastTwapPeriod');
     });
 
+    it('should accept setSlowTwapPeriod equal to fastTwapPeriod', async () => {
+      await pluginProxy.setSlowTwapPeriod(FAST_TWAP_PERIOD);
+      expect(await pluginProxy.slowTwapPeriod.staticCall()).to.eq(FAST_TWAP_PERIOD);
+    });
+
+    it('should accept setFastTwapPeriod equal to slowTwapPeriod', async () => {
+      await pluginProxy.setFastTwapPeriod(SLOW_TWAP_PERIOD);
+      expect(await pluginProxy.fastTwapPeriod.staticCall()).to.eq(SLOW_TWAP_PERIOD);
+    });
+
     it('should revert setFastTwapPeriod if greater than slowTwapPeriod', async () => {
       await expect(
         pluginProxy.setFastTwapPeriod(10000) // greater than SLOW_TWAP_PERIOD
@@ -156,7 +200,7 @@ describe('#UpgradeableAlmPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy2.getAddress()) as any as UpgradeableAlmPluginTest;
@@ -188,7 +232,7 @@ describe('#UpgradeableAlmPlugin', () => {
       const BeaconFactory = await ethers.getContractFactory('UpgradeableBeacon');
       const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
-      const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+      const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
       const proxy2 = await AlgebraPluginProxyFactory.deploy(await beacon.getAddress(), MOCK_POOL, '0x');
 
       const pluginProxy2 = await ethers.getContractAt('UpgradeableAlmPluginTest', await proxy2.getAddress()) as any as UpgradeableAlmPluginTest;
@@ -222,6 +266,14 @@ describe('#UpgradeableAlmPlugin', () => {
       // 'other' is not owner and has no role
       await expect(
         pluginProxy.connect(other).initialize(MOCK_POOL)
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
+    });
+
+    it('should revert when unauthorized user calls initializeALM', async () => {
+      await pluginProxy.initialize(MOCK_POOL);
+
+      await expect(
+        pluginProxy.connect(other).initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD)
       ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
 
@@ -305,6 +357,61 @@ describe('#UpgradeableAlmPlugin', () => {
       await expect(
         pluginProxy.connect(other).setSlowTwapPeriod(9000)
       ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
+    });
+  });
+  // The connector reaches the module by delegatecall, and nothing in this package took that route:
+  // afterSwap lives on a composed plugin, so these lines were only ever run from default-plugin.
+  describe('#obtainTWAPAndRebalance', () => {
+    beforeEach(async () => {
+      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
+      await pluginProxy.initialize(MOCK_POOL);
+    });
+
+    it('should forward the ticks and timestamp to the rebalance manager', async () => {
+      const recorder = await (await ethers.getContractFactory('MockRebalanceManagerRecorder')).deploy();
+      await pluginProxy.initializeALM(await recorder.getAddress(), SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      await pluginProxy.obtainTWAPAndRebalance(100, -50, 25, 1234);
+
+      expect(await recorder.calls()).to.eq(1);
+      expect(await recorder.lastCurrentTick()).to.eq(100);
+      expect(await recorder.lastSlowTwapTick()).to.eq(-50);
+      expect(await recorder.lastFastTwapTick()).to.eq(25);
+      expect(await recorder.lastBlockTimestamp()).to.eq(1234);
+    });
+
+    it('should do nothing while no rebalance manager is set', async () => {
+      expect(await pluginProxy.rebalanceManager.staticCall()).to.eq(ZERO_ADDRESS);
+
+      await expect(pluginProxy.obtainTWAPAndRebalance(100, -50, 25, 1234)).to.not.be.reverted;
+    });
+
+    it('should stop forwarding once the manager is detached', async () => {
+      const recorder = await (await ethers.getContractFactory('MockRebalanceManagerRecorder')).deploy();
+      await pluginProxy.initializeALM(await recorder.getAddress(), SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+      await pluginProxy.obtainTWAPAndRebalance(100, -50, 25, 1234);
+
+      await pluginProxy.setRebalanceManager(ZERO_ADDRESS);
+      await pluginProxy.obtainTWAPAndRebalance(200, -60, 30, 5678);
+
+      expect(await recorder.calls()).to.eq(1);
+    });
+  });
+
+  // The connector recomputes all three getters off storage instead of delegating, so the
+  // implementation keeps a second copy that no plugin ever reaches and that can drift.
+  describe('#implementation kept in step with the connector', () => {
+    it('should report the same configuration as the connector', async () => {
+      await mockFactory.grantRole(await pluginProxy.ALGEBRA_BASE_PLUGIN_MANAGER(), wallet.address);
+      await pluginProxy.initialize(MOCK_POOL);
+      await pluginProxy.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      // Configure the implementation in its own storage, then compare the two copies
+      await almImplementation.initializeALM(MOCK_REBALANCE_MANAGER, SLOW_TWAP_PERIOD, FAST_TWAP_PERIOD);
+
+      expect(await almImplementation.getRebalanceManager()).to.eq(await pluginProxy.rebalanceManager.staticCall());
+      expect(await almImplementation.getSlowTwapPeriod()).to.eq(await pluginProxy.slowTwapPeriod.staticCall());
+      expect(await almImplementation.getFastTwapPeriod()).to.eq(await pluginProxy.fastTwapPeriod.staticCall());
     });
   });
 });

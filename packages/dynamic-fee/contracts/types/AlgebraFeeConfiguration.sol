@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+// solhint-disable-next-line compiler-version
 pragma solidity >=0.5.0;
 
 /// @notice coefficients for sigmoids: α / (1 + e^( (β-x) / γ))

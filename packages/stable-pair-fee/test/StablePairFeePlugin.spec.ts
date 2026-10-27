@@ -1,6 +1,7 @@
 import { ethers, network } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture, mine } from '@nomicfoundation/hardhat-network-helpers';
+import { deployPinnedProxyDeployer } from 'test-utils/pinnedProxy';
 
 describe('StablePairFeePlugin', function () {
   const Q96 = 2n ** 96n;
@@ -41,8 +42,8 @@ describe('StablePairFeePlugin', function () {
     const MockFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = await MockFactory.deploy();
 
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
+    // pinned at production settings: coverage turns the optimizer off and moves the pool in a fresh proxy
+    const proxyDeployer = await deployPinnedProxyDeployer();
 
     const StablePairFeeMockPool = await ethers.getContractFactory('StablePairFeeMockPool');
     const mockPool = await StablePairFeeMockPool.deploy();
@@ -56,7 +57,7 @@ describe('StablePairFeePlugin', function () {
     const UpgradeableBeacon = await ethers.getContractFactory('UpgradeableBeacon');
     const beacon = await UpgradeableBeacon.deploy(pluginImplementation.target);
 
-    const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
+    const initData = pluginImplementation.interface.encodeFunctionData('initialize');
     await proxyDeployer.deploy(beacon.target, mockPool.target, initData);
     const plugin = StablePairFeePluginTest.attach(await proxyDeployer.lastDeployedProxy()) as any;
 
@@ -308,6 +309,65 @@ describe('StablePairFeePlugin', function () {
       expect((await plugin.stableFeeState()).decayingFeeE12).to.equal(expected);
     });
 
+    // Moving toward the reference on the same side: the previous fee is capped at the new far boundary,
+    // kept when below it, and raised to the target when below that. The hook reads the pool price before
+    // the swap, so each step is evaluated at the price the previous swapToPrice left
+    const P = (priceE5: bigint) => sqrtBigInt((Q96 * Q96 * priceE5) / 100_000n);
+
+    async function boundsAt(calc: any, sqrtPrice: bigint, targetMultiplier: bigint) {
+      const ratio = await calc.calculatePriceRatioX96(sqrtPrice, DEFAULT_CONFIG.referenceSqrtPriceX96);
+      const close: bigint = await calc.calculateCloseBoundaryFee(ratio, DEFAULT_CONFIG.optimalFeeE6);
+      const far: bigint = await calc.calculateFarBoundaryFee(ratio, DEFAULT_CONFIG.optimalFeeE6);
+      return { far, target: far - (close * targetMultiplier) / 100n };
+    }
+
+    it('should cap the previous fee at the far boundary of a price closer to the reference', async function () {
+      const { plugin, mockPool, calc } = await loadFixture(aboveRangeFixture);
+      await mockPool.swapToPrice(false, P(100_300n));
+      await mockPool.swapToPrice(true, P(100_150n));
+      // evaluated at 1.003, further away, so the fee was raised
+      const previous = (await plugin.stableFeeState()).decayingFeeE12;
+
+      await mockPool.swapToPrice(true, P(100_150n));
+      const { far, target } = await boundsAt(calc, P(100_150n), DEFAULT_CONFIG.targetMultiplier);
+      expect(previous).to.be.greaterThan(far);
+      expect((await plugin.stableFeeState()).decayingFeeE12).to.equal(await calc.calculateDecayingFee(target, far, DEFAULT_CONFIG.k, 1n));
+    });
+
+    it('should keep a decayed previous fee below the far boundary of a price closer to the reference', async function () {
+      const { plugin, mockPool, calc } = await loadFixture(aboveRangeFixture);
+      await mockPool.swapToPrice(false, P(100_300n));
+      await mockPool.swapToPrice(true, P(100_300n));
+      await mine(500);
+      await mockPool.swapToPrice(true, P(100_250n));
+      // decayed at 1.003 for 501 blocks
+      const previous = (await plugin.stableFeeState()).decayingFeeE12;
+
+      await mockPool.swapToPrice(true, P(100_250n));
+      const { far, target } = await boundsAt(calc, P(100_250n), DEFAULT_CONFIG.targetMultiplier);
+      expect(previous).to.be.lessThan(far);
+      expect(previous).to.be.greaterThan(target);
+      expect((await plugin.stableFeeState()).decayingFeeE12).to.equal(await calc.calculateDecayingFee(target, previous, DEFAULT_CONFIG.k, 1n));
+    });
+
+    it('should raise a previous fee below the target to the target', async function () {
+      const { plugin, mockPool, calc } = await loadFixture(aboveRangeFixture);
+      // at the highest multiplier the target rises as the price comes closer to the reference
+      await plugin.setStableFeeConfig({ ...DEFAULT_CONFIG, targetMultiplier: 100n });
+      await mockPool.swapToPrice(false, P(100_300n));
+      await mockPool.swapToPrice(true, P(100_300n));
+      await mine(5000);
+      await mockPool.swapToPrice(true, P(100_250n));
+      // fully decayed to the target of 1.003
+      const previous = (await plugin.stableFeeState()).decayingFeeE12;
+
+      await mockPool.swapToPrice(true, P(100_250n));
+      const { target } = await boundsAt(calc, P(100_250n), 100n);
+      expect(previous).to.be.lessThan(target);
+      // a decay that starts at its target stays there
+      expect((await plugin.stableFeeState()).decayingFeeE12).to.equal(target);
+    });
+
     it('should restart from the far boundary after crossing the reference', async function () {
       const { plugin, mockPool, calc } = await loadFixture(aboveRangeFixture);
       const belowPrice = sqrtBigInt((Q96 * Q96 * 999n) / 1_000n);
@@ -373,7 +433,7 @@ describe('StablePairFeePlugin', function () {
 
       const StablePairFeeMockPool = await ethers.getContractFactory('StablePairFeeMockPool');
       const mockPool2 = await StablePairFeeMockPool.deploy();
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
+      const initData = pluginImplementation.interface.encodeFunctionData('initialize');
       await proxyDeployer.deploy(beacon.target, mockPool2.target, initData);
       const plugin2 = StablePairFeePluginTest.attach(await proxyDeployer.lastDeployedProxy()) as any;
 
@@ -391,7 +451,7 @@ describe('StablePairFeePlugin', function () {
 
       const StablePairFeeMockPool = await ethers.getContractFactory('StablePairFeeMockPool');
       const mockPool2 = await StablePairFeeMockPool.deploy();
-      const initData = pluginImplementation.interface.encodeFunctionData('initialize', []);
+      const initData = pluginImplementation.interface.encodeFunctionData('initialize');
       await proxyDeployer.deploy(beacon.target, mockPool2.target, initData);
       const plugin2 = StablePairFeePluginTest.attach(await proxyDeployer.lastDeployedProxy()) as any;
 

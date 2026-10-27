@@ -21,7 +21,7 @@ contract SecurityRegistry is ISecurityRegistry {
   }
 
   function setPoolsStatus(address[] memory pools, Status[] memory newStatuses) external override {
-    for (uint i = 0; i < pools.length; i++) {
+    for (uint256 i = 0; i < pools.length; i++) {
       _hasAccess(newStatuses[i]);
       poolStatus[pools[i]] = newStatuses[i];
 

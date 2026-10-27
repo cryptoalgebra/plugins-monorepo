@@ -22,7 +22,7 @@ contract UpgradeableAccessListPluginTest is UpgradeableAbstractPlugin, AccessLis
     address _accessListImplementation
   ) UpgradeableAbstractPlugin(_factory, _pluginFactory) AccessListConnector(_accessListImplementation) {}
 
-  function initialize(address , address _accessListRegistry) external initializer onlyPluginFactory {
+  function initialize(address, address _accessListRegistry) external initializer onlyPluginFactory {
     _initializeAccessList(_accessListRegistry);
   }
 

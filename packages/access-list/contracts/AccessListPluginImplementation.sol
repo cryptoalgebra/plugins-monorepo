@@ -12,7 +12,6 @@ import './libraries/AccessListStorage.sol';
 /// Non-whitelisted users are fully blocked from swap, add liquidity, flash and pool init.
 /// Remove liquidity is always allowed.
 contract AccessListPluginImplementation is IAccessListPluginImplementation {
-
   /// @notice Initialize Access List plugin
   /// @param _accessListRegistry Address of Access List registry
   function initializeAccessList(address _accessListRegistry) external {
@@ -53,6 +52,7 @@ contract AccessListPluginImplementation is IAccessListPluginImplementation {
     IAccessListRegistry registry = IAccessListRegistry(accessListRegistry);
     if (registry.isPaused()) return;
 
+    // solhint-disable-next-line avoid-tx-origin
     if (!registry.isWhitelisted(tx.origin)) revert IAccessListPlugin.AccessListNotWhitelisted();
   }
 }

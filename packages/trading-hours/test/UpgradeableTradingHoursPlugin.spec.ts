@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { deployPinnedProxyDeployer } from 'test-utils/pinnedProxy';
 
 const SECONDS_PER_DAY = 86400;
 const ALL_DAYS_MASK = 0b1111111;
@@ -12,8 +13,8 @@ describe('UpgradeableTradingHoursPluginTest', function () {
     const MockFactory = await ethers.getContractFactory('MockFactory');
     const mockFactory = await MockFactory.deploy();
 
-    const BeaconProxyDeployer = await ethers.getContractFactory('BeaconProxyDeployer');
-    const proxyDeployer = await BeaconProxyDeployer.deploy();
+    // pinned at production settings: coverage turns the optimizer off and moves the pool in a fresh proxy
+    const proxyDeployer = await deployPinnedProxyDeployer();
 
     const MockPool = await ethers.getContractFactory('MockPool');
     const mockPool = await MockPool.deploy();
@@ -171,11 +172,58 @@ describe('UpgradeableTradingHoursPluginTest', function () {
       await expect(plugin1.connect(user).setEnabled(true)).to.be.revertedWith('Not authorized');
     });
 
-    it('should reject unauthorized users for setTradingHours/setBlockedWeekdays/setBlockedWindow', async function () {
+    it('should reject unauthorized users for every schedule setter', async function () {
       const { plugin1, user } = await loadFixture(deployFixture);
       await expect(plugin1.connect(user).setTradingHours(0, SECONDS_PER_DAY)).to.be.revertedWith('Not authorized');
+      await expect(plugin1.connect(user).setDayOfWeekOffset(3600)).to.be.revertedWith('Not authorized');
       await expect(plugin1.connect(user).setBlockedWeekdays(0)).to.be.revertedWith('Not authorized');
       await expect(plugin1.connect(user).setBlockedWindow(0, 0, 0, 0)).to.be.revertedWith('Not authorized');
+      await expect(plugin1.connect(user).setBlockedWindows([{ day: 0, index: 0, startSeconds: 0, endSeconds: 0 }])).to.be.revertedWith(
+        'Not authorized'
+      );
+    });
+  });
+
+  // The implementation is tested on its own, this is the connector forwarding to it from the plugin
+  describe('Schedule through the plugin', function () {
+    it('should forward each setter, emit its event and read the result back', async function () {
+      const { plugin1, manager } = await loadFixture(deployFixture);
+      const day = 20 * SECONDS_PER_DAY;
+
+      await expect(plugin1.connect(manager).setDayOfWeekOffset(-18000)).to.emit(plugin1, 'DayOfWeekOffsetUpdated').withArgs(-18000);
+      expect(await plugin1.getDayOfWeekOffset()).to.equal(-18000);
+
+      // any timestamp of the day names that day, the event carries its start
+      await expect(plugin1.connect(manager).setBlockedWindow(day + 500, 1, 100, 200))
+        .to.emit(plugin1, 'BlockedWindowUpdated')
+        .withArgs(day, 1, 100, 200);
+      expect(await plugin1.getBlockedWindow(day + 9999, 1)).to.deep.equal([100n, 200n]);
+
+      await expect(
+        plugin1.connect(manager).setBlockedWindows([
+          { day: day + SECONDS_PER_DAY, index: 0, startSeconds: 10, endSeconds: 20 },
+          { day: day + SECONDS_PER_DAY + 7, index: 1, startSeconds: 30, endSeconds: 40 },
+        ])
+      )
+        .to.emit(plugin1, 'BlockedWindowUpdated')
+        .withArgs(day + SECONDS_PER_DAY, 0, 10, 20)
+        .and.to.emit(plugin1, 'BlockedWindowUpdated')
+        .withArgs(day + SECONDS_PER_DAY, 1, 30, 40);
+      expect(await plugin1.getBlockedWindow(day + SECONDS_PER_DAY, 0)).to.deep.equal([10n, 20n]);
+      expect(await plugin1.getBlockedWindow(day + SECONDS_PER_DAY, 1)).to.deep.equal([30n, 40n]);
+    });
+
+    it('should answer isTradingAllowed from the schedule it holds', async function () {
+      const { plugin1, manager } = await loadFixture(deployFixture);
+      const day = 20 * SECONDS_PER_DAY;
+      await plugin1.connect(manager).setTradingHours(0, SECONDS_PER_DAY);
+      await plugin1.connect(manager).setBlockedWindow(day, 0, 100, 200);
+
+      // disabled, the window does not count yet
+      expect(await plugin1.isTradingAllowed(day + 150)).to.equal(true);
+      await plugin1.connect(manager).setEnabled(true);
+      expect(await plugin1.isTradingAllowed(day + 150)).to.equal(false);
+      expect(await plugin1.isTradingAllowed(day + 200)).to.equal(true);
     });
   });
 
@@ -213,7 +261,7 @@ describe('UpgradeableTradingHoursPluginTest', function () {
       await plugin1.connect(manager).setBlockedWeekdays(ALL_DAYS_MASK);
       await plugin1.connect(manager).setEnabled(true);
       await mockPool.setPluginConfig(await plugin1.defaultPluginConfig());
-      await expect(mockPool.swapToTick(0)).to.be.reverted;
+      await expect(mockPool.swapToTick(0)).to.be.revertedWithCustomError(plugin1, 'TradingNotAllowed');
 
       await plugin1.connect(manager).setEnabled(false);
       await expect(mockPool.swapToTick(0)).to.not.be.reverted;

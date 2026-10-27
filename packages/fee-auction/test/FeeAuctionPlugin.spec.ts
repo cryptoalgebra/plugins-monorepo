@@ -1,7 +1,8 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
+import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { Wallet } from 'ethers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, setNextBlockBaseFeePerGas } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import {
   FeeAuctionPluginTest,
   FeeAuctionPluginImplementation,
@@ -55,7 +56,7 @@ describe('FeeAuctionPlugin', () => {
     const beacon = await BeaconFactory.deploy(await pluginLogic.getAddress());
 
     // Deploy Proxy
-    const AlgebraPluginProxyFactory = await ethers.getContractFactory('AlgebraPluginProxy');
+    const AlgebraPluginProxyFactory = await pinnedPluginProxyFactory();
     const proxy = await AlgebraPluginProxyFactory.deploy(
       await beacon.getAddress(),
       await mockPool.getAddress(),
@@ -122,15 +123,13 @@ describe('FeeAuctionPlugin', () => {
 
     it('should not allow double initialization', async () => {
       await initializePlugin(pluginProxy);
-      await expect(
-        initializePlugin(pluginProxy)
-      ).to.be.reverted;
+      await expect(initializePlugin(pluginProxy)).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
     it('should only allow admin to initialize', async () => {
       await expect(
         pluginProxy.connect(other).initialize(DEFAULT_BASE_FEE, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED)
-      ).to.be.reverted;
+      ).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 
@@ -147,13 +146,19 @@ describe('FeeAuctionPlugin', () => {
       expect(await pluginProxy.baseFee()).to.equal(newBaseFee);
     });
 
+    it('should accept a base fee at the maximum', async () => {
+      const maxFee = 1000000; // 100%
+      await pluginProxy.setBaseFee(maxFee);
+      expect(await pluginProxy.baseFee()).to.equal(maxFee);
+    });
+
     it('should revert if base fee exceeds maximum', async () => {
       const invalidFee = 1000001; // > 100%
       await expect(pluginProxy.setBaseFee(invalidFee)).to.be.revertedWith('Base fee too high');
     });
 
     it('should revert if called by non-admin', async () => {
-      await expect(pluginProxy.connect(other).setBaseFee(5000)).to.be.reverted;
+      await expect(pluginProxy.connect(other).setBaseFee(5000)).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 
@@ -172,6 +177,12 @@ describe('FeeAuctionPlugin', () => {
       expect(await pluginProxy.maxMevTax()).to.equal(newMaxTax);
     });
 
+    it('should accept a max MEV tax at the maximum', async () => {
+      const maxTax = 1000000; // 100%
+      await pluginProxy.setMevTaxParameters(2000, maxTax);
+      expect(await pluginProxy.maxMevTax()).to.equal(maxTax);
+    });
+
     it('should revert if max MEV tax exceeds maximum', async () => {
       const newMultiplier = 2000;
       const invalidMaxTax = 1000001; // > 100%
@@ -181,7 +192,10 @@ describe('FeeAuctionPlugin', () => {
     });
 
     it('should revert if called by non-admin', async () => {
-      await expect(pluginProxy.connect(other).setMevTaxParameters(2000, 20000)).to.be.reverted;
+      await expect(pluginProxy.connect(other).setMevTaxParameters(2000, 20000)).to.be.revertedWithCustomError(
+        pluginProxy,
+        'OnlyAdministrator'
+      );
     });
   });
 
@@ -206,7 +220,7 @@ describe('FeeAuctionPlugin', () => {
     });
 
     it('should revert if called by non-admin', async () => {
-      await expect(pluginProxy.connect(other).setMevTaxEnabled(false)).to.be.reverted;
+      await expect(pluginProxy.connect(other).setMevTaxEnabled(false)).to.be.revertedWithCustomError(pluginProxy, 'OnlyAdministrator');
     });
   });
 
@@ -232,17 +246,6 @@ describe('FeeAuctionPlugin', () => {
       expect(pluginFee).to.equal(0);
     });
 
-    it('should calculate MEV tax when enabled', async () => {
-      // Note: In hardhat local network, tx.gasprice and block.basefee may result in 0 priority fee
-      // This test verifies the mechanism works, actual MEV tax calculation depends on network conditions
-      await mockPool.swapToTick(0);
-
-      // Check the override fee stored in MockPool
-      const overrideFee = await mockPool.overrideFee();
-      expect(overrideFee).to.equal(DEFAULT_BASE_FEE);
-
-      // pluginFee may be 0 in test environment due to gasprice == basefee
-    });
   });
 
   describe('#beforeInitialize', () => {
@@ -272,6 +275,84 @@ describe('FeeAuctionPlugin', () => {
     it('should have correct implementation address', async () => {
       const implAddress = await pluginProxy.getFeeAuctionImplementation();
       expect(implAddress).to.equal(await feeAuctionImplementation.getAddress());
+    });
+  });
+
+  // initialize validates the same two bounds the setters do, and neither had been asserted there
+  describe('#initialization bounds', () => {
+    const MAX_FEE = 1000000;
+
+    it('should accept a base fee at the ceiling', async () => {
+      await pluginProxy.initialize(MAX_FEE, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED);
+
+      expect(await pluginProxy.baseFee()).to.equal(MAX_FEE);
+    });
+
+    it('should reject a base fee one over the ceiling', async () => {
+      await expect(
+        pluginProxy.initialize(MAX_FEE + 1, DEFAULT_MEV_TAX_MULTIPLIER, DEFAULT_MAX_MEV_TAX, DEFAULT_MEV_TAX_ENABLED)
+      ).to.be.revertedWith('Base fee too high');
+    });
+
+    it('should accept a max MEV tax at the ceiling', async () => {
+      await pluginProxy.initialize(DEFAULT_BASE_FEE, DEFAULT_MEV_TAX_MULTIPLIER, MAX_FEE, DEFAULT_MEV_TAX_ENABLED);
+
+      expect(await pluginProxy.maxMevTax()).to.equal(MAX_FEE);
+    });
+
+    it('should reject a max MEV tax one over the ceiling', async () => {
+      await expect(
+        pluginProxy.initialize(DEFAULT_BASE_FEE, DEFAULT_MEV_TAX_MULTIPLIER, MAX_FEE + 1, DEFAULT_MEV_TAX_ENABLED)
+      ).to.be.revertedWith('Max MEV tax too high');
+    });
+  });
+
+  // Hardhat's default tip is far below what the default multiplier and the 1e18 divisor need for a
+  // nonzero tax. Setting the gas price explicitly is what makes the multiplier and the cap observable.
+  describe('#MEV tax with a real priority fee', () => {
+    beforeEach(async () => {
+      await initializePlugin(pluginProxy);
+      await mockPool.initialize(BigInt('79228162514264337593543950336'));
+    });
+
+    // Pinned for the next block and comparable to the tips below, so the tax is exact and counting the
+    // base fee in instead of taking it out would move it
+    const BASE_FEE = 10n ** 15n;
+
+    async function swapPayingPriorityFee(priorityFee: bigint) {
+      await setNextBlockBaseFeePerGas(BASE_FEE);
+      // An explicit gas limit keeps the upfront cost affordable at these gas prices
+      await mockPool.swapToTick(0, { gasPrice: BASE_FEE + priorityFee, gasLimit: 300000 });
+    }
+
+    it('should charge a tax proportional to the priority fee', async () => {
+      // tax = priorityFee * multiplier / 1e18, half the cap here
+      const multiplier = 1_000_000n;
+      await pluginProxy.setMevTaxParameters(multiplier, DEFAULT_MAX_MEV_TAX);
+      const priorityFee = (5000n * 10n ** 18n) / multiplier;
+
+      await swapPayingPriorityFee(priorityFee);
+
+      expect(await mockPool.pluginFee()).to.equal((priorityFee * multiplier) / 10n ** 18n);
+      // The tax rides alongside the base fee rather than replacing it
+      expect(await mockPool.overrideFee()).to.equal(DEFAULT_BASE_FEE);
+    });
+
+    it('should cap the tax at maxMevTax', async () => {
+      await pluginProxy.setMevTaxParameters(16_777_215, DEFAULT_MAX_MEV_TAX);
+
+      await swapPayingPriorityFee(10n ** 16n);
+
+      expect(await mockPool.pluginFee()).to.equal(DEFAULT_MAX_MEV_TAX);
+    });
+
+    it('should charge nothing while the MEV tax is switched off', async () => {
+      await pluginProxy.setMevTaxParameters(16_777_215, DEFAULT_MAX_MEV_TAX);
+      await pluginProxy.setMevTaxEnabled(false);
+
+      await swapPayingPriorityFee(10n ** 16n);
+
+      expect(await mockPool.pluginFee()).to.equal(0);
     });
   });
 });

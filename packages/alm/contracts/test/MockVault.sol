@@ -8,11 +8,15 @@ import { IAlgebraPool } from '@cryptoalgebra/integral-core/contracts/interfaces/
 
 contract MockVault is IAlgebraVault, ERC20 {
   event MockRebalance(int24 baseLower, int24 baseUpper, int24 limitLower, int24 limitUpper);
+  /// @dev The manager writes (0, 0) only to close the vault on extreme volatility
+  /// @dev Recording it tells that arm apart from a plain pause
+  event MockDepositMax(uint256 deposit0Max, uint256 deposit1Max);
 
   address public immutable algebraVaultFactory;
   address public immutable override pool;
-  address public immutable override token0;
-  address public immutable override token1;
+  /// @dev Zero by default, setTokens fills them for tests that need real ERC20s
+  address public override token0;
+  address public override token1;
   bool public override allowToken0;
   bool public override allowToken1;
 
@@ -87,6 +91,11 @@ contract MockVault is IAlgebraVault, ERC20 {
     shouldRevertOnRebalance = _shouldRevertOnRebalance;
   }
 
+  function setTokens(address _token0, address _token1) public {
+    token0 = _token0;
+    token1 = _token1;
+  }
+
   function setAllowTokens(bool _allowToken0, bool _allowToken1) public {
     (allowToken0, allowToken1) = (_allowToken0, _allowToken1);
   }
@@ -110,7 +119,10 @@ contract MockVault is IAlgebraVault, ERC20 {
 
   function collectFees() external returns (uint256 fees0, uint256 fees1) {}
 
-  function setDepositMax(uint256 _deposit0Max, uint256 _deposit1Max) external {}
+  function setDepositMax(uint256 _deposit0Max, uint256 _deposit1Max) external {
+    (deposit0Max, deposit1Max) = (_deposit0Max, _deposit1Max);
+    emit MockDepositMax(_deposit0Max, _deposit1Max);
+  }
 
   function setAmmFeeRecipient(address _ammFeeRecipient) external {}
 

@@ -23,5 +23,6 @@ interface IAlgebraDefaultPluginFactory is IBasePluginFactory, IFarmingPluginFact
 
   /// @notice The hash of 'ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR' used as role
   /// @dev allows to change settings of AlgebraDefaultPluginFactory
+  // solhint-disable-next-line func-name-mixedcase
   function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() external pure returns (bytes32);
 }

@@ -16,7 +16,9 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   using Plugins for uint8;
 
   string internal constant MEVX_MODULE_NAME = 'MEVX Plugin';
-  uint8 internal constant MEVX_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+  uint8 internal constant MEVX_PLUGIN_CONFIG = uint8(
+    Plugins.AFTER_INIT_FLAG | Plugins.AFTER_SWAP_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE
+  );
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable mevxImplementation;
@@ -30,7 +32,10 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
 
   /// @notice Initialize MEVX plugin via delegatecall
   function _initializeMevx(address _router, address _executor, address _distributor, bytes32 _configId) internal {
-    _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.initializeMevx, (_router, _executor, _distributor, _configId)));
+    _delegateCall(
+      mevxImplementation,
+      abi.encodeCall(IMevxPluginImplementation.initializeMevx, (_router, _executor, _distributor, _configId))
+    );
   }
 
   function _initializePool(address pool, uint160 sqrtPriceX96) internal {
@@ -38,14 +43,7 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   }
 
   /// @notice Execute mevx after swap via delegatecall
-  function _mevxAfterSwap(
-    address pool,
-    address sender,
-    address recipient,
-    bool zeroToOne,
-    int256 amount0,
-    int256 amount1
-  ) internal {
+  function _mevxAfterSwap(address pool, address sender, address recipient, bool zeroToOne, int256 amount0, int256 amount1) internal {
     _delegateCall(
       mevxImplementation,
       abi.encodeCall(IMevxPluginImplementation.mevxAfterSwap, (pool, sender, recipient, zeroToOne, amount0, amount1))
@@ -53,14 +51,7 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   }
 
   /// @notice Self-call entry point used to cap the gas spent by route construction and execution
-  function runArbitrage(
-    bytes32 poolId,
-    bool zeroToOne,
-    int256 amount0,
-    int256 amount1,
-    address sender,
-    address recipient
-  ) external {
+  function runArbitrage(bytes32 poolId, bool zeroToOne, int256 amount0, int256 amount1, address sender, address recipient) external {
     _delegateCall(
       mevxImplementation,
       abi.encodeCall(IMevxPluginImplementation.runArbitrage, (poolId, zeroToOne, amount0, amount1, sender, recipient))
@@ -74,10 +65,7 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
   /// @param pluginFee1 Amount of token1 fees to distribute
   function _handleMevxPluginFee(uint256 pluginFee0, uint256 pluginFee1) internal {
     if (pluginFee0 > 0 || pluginFee1 > 0) {
-      _delegateCall(
-        mevxImplementation,
-        abi.encodeCall(IMevxPluginImplementation.handlePluginFee, (_getPool(), pluginFee0, pluginFee1))
-      );
+      _delegateCall(mevxImplementation, abi.encodeCall(IMevxPluginImplementation.handlePluginFee, (_getPool(), pluginFee0, pluginFee1)));
     }
   }
 
@@ -134,7 +122,7 @@ abstract contract MevxConnector is BaseConnector, IMevxPlugin {
     if (!layout.mevProtectionFeeEnabled) return 0;
     address router = layout.mevxRouter;
     if (router == address(0)) return 0;
-    (bool success, bytes memory returnData) = router.staticcall{gas: layout.callGasBudget}(
+    (bool success, bytes memory returnData) = router.staticcall{ gas: layout.callGasBudget }(
       abi.encodeWithSelector(IMevxRouter.getMevProtectionFee.selector, currentFee)
     );
     if (success && returnData.length == 32) {

@@ -80,6 +80,7 @@ contract LimitOrderManager is ILimitOrderManager, LimitOrderPayments {
   }
 
   function setTickSpacing(address pool, int24 tickSpacing) external override {
+    // solhint-disable-next-line reason-string
     require(IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender));
     tickSpacings[pool] = tickSpacing;
     tickLowerLasts[pool] = getTickLower(getTick(pool), tickSpacing);

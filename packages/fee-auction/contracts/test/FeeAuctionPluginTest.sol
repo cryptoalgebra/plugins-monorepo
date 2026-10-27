@@ -7,7 +7,6 @@ import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 import '../FeeAuctionConnector.sol';
 
 contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector {
-
   event PluginInitialized(address indexed pool);
 
   constructor(
@@ -16,12 +15,7 @@ contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector 
     address _feeAuctionImplementation
   ) UpgradeableAbstractPlugin(_factory, _pluginFactory) FeeAuctionConnector(_feeAuctionImplementation) {}
 
-  function initialize(
-    uint24 _baseFee,
-    uint24 _mevTaxMultiplier,
-    uint24 _maxMevTax,
-    bool _mevTaxEnabled
-  ) external initializer {
+  function initialize(uint24 _baseFee, uint24 _mevTaxMultiplier, uint24 _maxMevTax, bool _mevTaxEnabled) external initializer {
     _authorize();
     _initializeFeeAuction(_baseFee, _mevTaxMultiplier, _maxMevTax, _mevTaxEnabled);
     emit PluginInitialized(_getPool());
@@ -36,7 +30,6 @@ contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector 
   function defaultPluginConfig() public pure override returns (uint8) {
     return FEE_AUCTION_PLUGIN_CONFIG;
   }
-
 
   function _authorize() internal view override(UpgradeableAbstractPlugin, BaseConnector) {
     UpgradeableAbstractPlugin._authorize();
@@ -62,7 +55,6 @@ contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector 
     uint24 pluginFee = _getAuctionFee();
     return (IAlgebraPlugin.beforeSwap.selector, feeOverride, pluginFee);
   }
-
 
   function getFeeAuctionImplementation() external view returns (address) {
     return feeAuctionImplementation;

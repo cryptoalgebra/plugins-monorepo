@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import { ZeroAddress } from 'ethers';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { deployBeaconPluginFixture } from 'test-utils/beaconPlugin';
 import { encodePriceSqrt } from 'test-utils/utilities';
@@ -14,7 +15,7 @@ const fuzz = {
 const MIN_TICK = -887272;
 const MAX_TICK = 887272;
 const FEE_FACTOR_SHIFT = 96n;
-// the two factors start at one each and every branch of _calculateFeeFactors moves them together
+// the two factors start at one each and every branch of SlidingFeeMath.moveFeeFactors moves them together
 const FACTOR_SUM = 2n << FEE_FACTOR_SHIFT;
 
 // Draw the tick delta rather than two independent ticks. Two uniform draws over the whole range
@@ -147,7 +148,10 @@ describe('SlidingFee properties', function () {
 
           let tickBeforeSwap = 0n;
           for (const target of targets) {
+            // the pool forwards the quote to the plugin, which must name the fee beforeSwap is about to apply
+            const quoted = await mockPool.getSwapFee(ZeroAddress, ZeroAddress, zeroToOne, 1, 0, false, '0x');
             await mockPool.swapToTickWithDirection(target, zeroToOne);
+            expect(await mockPool.overrideFee()).to.equal(quoted);
 
             // the hook saw the pool as it stood before this swap, and kept that tick for the next one
             expect(await plugin1.lastTick()).to.equal(tickBeforeSwap);

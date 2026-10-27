@@ -3,14 +3,15 @@ pragma solidity =0.8.26;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraDynamicFeePlugin.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 
 import '../SlidingFeeConnector.sol';
 
 /// @title Upgradeable SlidingFee Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with SlidingFee connector
-contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFeeConnector {
-  using Plugins for uint8;
+contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFeeConnector, IAlgebraDynamicFeePlugin {
+  using Plugins for uint16;
 
   event Fee(uint16 fee);
 
@@ -43,7 +44,7 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     moduleNames[0] = SLIDING_FEE_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return SLIDING_FEE_PLUGIN_CONFIG;
   }
 
@@ -75,11 +76,17 @@ contract UpgradeableSlidingFeePluginTest is UpgradeableAbstractPlugin, SlidingFe
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     (, int24 tick, , ) = _getPoolState();
     uint16 fee = _getFeeAndUpdateFactors(zeroToOne, tick, lastTick);
     lastTick = tick;
-    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, fee);
+  }
+
+  /// @inheritdoc IAlgebraDynamicFeePlugin
+  function getSwapFee(address, address, bool zeroToOne, int256, uint160, bool, bytes calldata) external view override returns (uint24) {
+    (, int24 tick, , ) = _getPoolState();
+    return _quoteSlidingFee(zeroToOne, tick, lastTick);
   }
 
   /// @dev No plugin calls the connector's fee formula, so its clamps are reached through here

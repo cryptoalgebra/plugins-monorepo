@@ -6,16 +6,15 @@ import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/ISlidingFeePlugin.sol';
 import './interfaces/ISlidingFeePluginImplementation.sol';
 import './libraries/SlidingFeeStorage.sol';
+import './libraries/SlidingFeeMath.sol';
 
 /// @title SlidingFee Connector
 /// @notice This contract provides delegatecall interface to SlidingFee plugin implementation
 abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant SLIDING_FEE_MODULE_NAME = 'Sliding Fee Plugin';
-  uint8 internal constant SLIDING_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
-
-  uint64 internal constant FEE_FACTOR_SHIFT = 96;
+  uint16 internal constant SLIDING_FEE_PLUGIN_CONFIG = uint16(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable slidingFeeImplementation;
@@ -53,17 +52,16 @@ abstract contract SlidingFeeConnector is ISlidingFeePlugin, BaseConnector {
   /// @notice Get current fee for direction
   function _getCurrentFee(bool zeroToOne) internal view returns (uint16) {
     SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
-    uint256 adjustedFee =
-      zeroToOne
-        ? (uint256(layout.baseFee) * layout.feeFactors.zeroToOneFeeFactor) >> FEE_FACTOR_SHIFT
-        : (uint256(layout.baseFee) * layout.feeFactors.oneToZeroFeeFactor) >> FEE_FACTOR_SHIFT;
+    return SlidingFeeMath.adjustedFee(layout.baseFee, layout.feeFactors, zeroToOne);
+  }
 
-    if (adjustedFee > type(uint16).max) {
-      adjustedFee = type(uint16).max;
-    } else if (adjustedFee == 0) {
-      adjustedFee = 1;
-    }
-    return uint16(adjustedFee);
+  /// @notice The fee _getFeeAndUpdateFactors would return, without writing the factors
+  /// @dev For getSwapFee, which must quote the fee the swap applies
+  function _quoteSlidingFee(bool zeroToOne, int24 currentTick, int24 lastTick) internal view returns (uint16) {
+    SlidingFeeStorage.Layout storage layout = SlidingFeeStorage.layout();
+    SlidingFeeStorage.FeeFactors memory factors = layout.feeFactors;
+    if (currentTick != lastTick) factors = SlidingFeeMath.moveFeeFactors(factors, currentTick, lastTick, layout.priceChangeFactor);
+    return SlidingFeeMath.adjustedFee(layout.baseFee, factors, zeroToOne);
   }
 
   // ###### Public Interface (ISlidingFeePlugin) ######

@@ -114,7 +114,7 @@ library VolatilityOracleInteractions {
   function isOracleConnectedToPool(address oracleAddress, address poolAddress) internal view returns (bool connected) {
     IAlgebraPool pool = IAlgebraPool(poolAddress);
     if (oracleAddress == pool.plugin()) {
-      (, , , uint8 pluginConfig, , ) = pool.globalState();
+      (, , , uint16 pluginConfig, , ) = pool.globalState();
       connected = Plugins.hasFlag(pluginConfig, Plugins.BEFORE_SWAP_FLAG);
     }
   }

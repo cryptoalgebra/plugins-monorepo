@@ -2,7 +2,7 @@ import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
 import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
 import { UpgradeableDynamicFeePluginTest, DynamicFeePluginImplementation, MockFactory } from '../typechain';
-import { Wallet } from 'ethers';
+import { Wallet, ZeroAddress } from 'ethers';
 
 describe('#UpgradeableDynamicFeePlugin', () => {
   let dynamicFeeImplementation: DynamicFeePluginImplementation;
@@ -92,7 +92,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
 
       await expect(
         pluginProxy.initialize(MOCK_POOL, DEFAULT_FEE_CONFIG)
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(pluginProxy, 'InvalidInitialization');
     });
 
     it('should revert with invalid fee configuration (alpha1 + alpha2 + baseFee > max)', async () => {
@@ -232,7 +232,7 @@ describe('#UpgradeableDynamicFeePlugin', () => {
       await pluginProxy.changeFeeConfiguration({ ...DEFAULT_FEE_CONFIG, alpha1: 0, alpha2: 0 });
 
       expect(await pluginProxy.getCurrentFeeForVolatility(1000000)).to.eq(DEFAULT_FEE_CONFIG.baseFee);
-      expect(await pluginProxy.getCurrentFee()).to.eq(DEFAULT_FEE_CONFIG.baseFee);
+      expect(await pluginProxy.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.eq(DEFAULT_FEE_CONFIG.baseFee);
     });
 
     it('should stay within the bound AdaptiveFee guarantees at high volatility', async () => {

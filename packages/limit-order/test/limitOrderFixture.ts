@@ -72,7 +72,8 @@ export const limitOrderPluginFixture: Fixture<LimitOrderPluginFixture> = async f
   const factory = (await factoryFactory.deploy(poolDeployerAddress)) as any as AlgebraFactory;
 
   const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
-  const poolDeployer = (await poolDeployerFactory.deploy(factory, factory)) as any as AlgebraPoolDeployer;
+  // 1.3 pools delegate initialize and the setters to the extension the factory deploys
+  const poolDeployer = (await poolDeployerFactory.deploy(factory, await factory.poolExtension())) as any as AlgebraPoolDeployer;
 
   const wnative = await deployWNativeBetween(await token0.getAddress(), await token1.getAddress());
 

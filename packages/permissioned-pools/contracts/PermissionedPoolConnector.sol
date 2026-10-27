@@ -17,10 +17,10 @@ import './libraries/PermissionFlags.sol';
 /// a per-pool trust decision. AllowlistCheckerRegistry only tracks per-token checkers.
 /// See PermissionedPoolPluginImplementation for the actual verification logic.
 abstract contract PermissionedPoolConnector is BaseConnector, IPermissionedPoolPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant PERMISSIONED_POOL_MODULE_NAME = 'Permissioned Pool Plugin';
-  uint8 internal constant PERMISSIONED_POOL_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
+  uint16 internal constant PERMISSIONED_POOL_PLUGIN_CONFIG = uint16(Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG);
 
   address internal immutable permissionedPoolImplementation;
 

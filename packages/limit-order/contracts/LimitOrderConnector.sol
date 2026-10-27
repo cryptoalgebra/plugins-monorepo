@@ -10,10 +10,10 @@ import './libraries/LimitOrderStorage.sol';
 /// @title LimitOrder Connector
 /// @notice This contract provides delegatecall functions to LimitOrder implementation
 abstract contract LimitOrderConnector is ILimitOrderPlugin, BaseConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant LIMIT_ORDER_MODULE_NAME = 'Limit Order Plugin';
-  uint8 internal constant LIMIT_ORDER_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
+  uint16 internal constant LIMIT_ORDER_PLUGIN_CONFIG = uint16(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable limitOrderImplementation;

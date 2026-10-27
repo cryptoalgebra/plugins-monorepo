@@ -14,10 +14,10 @@ import './interfaces/IDynamicFeePluginImplementation.sol';
 /// @notice This contract provides delegatecall interface to DynamicFee plugin implementation
 /// @dev Inherits from BaseConnector for common delegatecall utilities
 abstract contract DynamicFeeConnector is BaseConnector, IDynamicFeeManager {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant DYNAMIC_FEE_MODULE_NAME = 'Dynamic Fee Plugin';
-  uint8 internal constant DYNAMIC_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+  uint16 internal constant DYNAMIC_FEE_PLUGIN_CONFIG = uint16(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable dynamicFeeImplementation;

@@ -9,7 +9,7 @@ import '../SecurityConnector.sol';
 /// @title Upgradeable Security Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with Security connector
 contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -34,7 +34,7 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     moduleNames[0] = SECURITY_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return SECURITY_PLUGIN_CONFIG;
   }
 
@@ -53,9 +53,9 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     _checkStatus(_getPool());
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
   }
 
   function beforeFlash(address, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
@@ -70,13 +70,13 @@ contract UpgradeableSecurityPluginTest is UpgradeableAbstractPlugin, SecurityCon
     int24,
     int128 liquidityDelta,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24) {
+  ) external override onlyPool returns (bytes4) {
     if (liquidityDelta > 0) {
       _checkStatus(_getPool());
     } else {
       _checkStatusOnBurn(_getPool());
     }
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+    return IAlgebraPlugin.beforeModifyPosition.selector;
   }
 
   // ###### Authorization ######

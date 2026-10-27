@@ -10,7 +10,7 @@ import '../interfaces/IPermissionedPoolPlugin.sol';
 /// @title Upgradeable Permissioned Pool Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with Permissioned Pool connector
 contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, PermissionedPoolConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -32,7 +32,7 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
     moduleNames[0] = PERMISSIONED_POOL_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public pure override returns (uint8) {
+  function defaultPluginConfig() public pure override returns (uint16) {
     return PERMISSIONED_POOL_PLUGIN_CONFIG;
   }
 
@@ -51,9 +51,9 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     _permissionedPoolVerifySwap(_getPool(), sender);
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
   }
 
   function beforeModifyPosition(
@@ -63,12 +63,12 @@ contract UpgradeablePermissionedPoolPluginTest is UpgradeableAbstractPlugin, Per
     int24,
     int128 liquidityDelta,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24) {
+  ) external override onlyPool returns (bytes4) {
     // Only verify on add liquidity (positive delta), allow remove always
     if (liquidityDelta > 0) {
       _permissionedPoolVerifyAddLiquidity(_getPool(), sender);
     }
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+    return IAlgebraPlugin.beforeModifyPosition.selector;
   }
 
   // ###### Authorization ######

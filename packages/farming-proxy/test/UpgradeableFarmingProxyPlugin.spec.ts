@@ -83,7 +83,7 @@ describe('#UpgradeableFarmingProxyPlugin', () => {
 
       await expect(
         pluginProxy.initialize(poolAddress)
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(pluginProxy, 'InvalidInitialization');
     });
   });
 

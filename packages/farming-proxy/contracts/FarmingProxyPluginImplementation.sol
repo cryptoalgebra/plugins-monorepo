@@ -12,7 +12,7 @@ import './libraries/FarmingProxyStorage.sol';
 /// @notice FarmingProxy module logic using namespaced storage
 /// @dev Executed via delegatecall from FarmingProxyConnector
 contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @notice Set or clear the active incentive
   /// @param newIncentive The new incentive address
@@ -51,8 +51,8 @@ contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
 
     // Enable plugin flags if connected
     if (isPluginConnected) {
-      (, , , uint8 currentPluginConfig, , ) = IAlgebraPool(pool).globalState();
-      uint8 newPluginConfig = currentPluginConfig | uint8(Plugins.AFTER_SWAP_FLAG);
+      (, , , uint16 currentPluginConfig, , ) = IAlgebraPool(pool).globalState();
+      uint16 newPluginConfig = currentPluginConfig | uint16(Plugins.AFTER_SWAP_FLAG);
       if (currentPluginConfig != newPluginConfig) {
         IAlgebraPool(pool).setPluginConfig(newPluginConfig);
       }
@@ -71,7 +71,7 @@ contract FarmingProxyPluginImplementation is IFarmingProxyPluginImplementation {
     address currentPlugin = IAlgebraPool(pool).plugin();
     if (currentPlugin != address(this)) return false;
 
-    (, , , uint8 pluginConfig, , ) = IAlgebraPool(pool).globalState();
+    (, , , uint16 pluginConfig, , ) = IAlgebraPool(pool).globalState();
     if (!pluginConfig.hasFlag(Plugins.AFTER_SWAP_FLAG)) return false;
 
     return true;

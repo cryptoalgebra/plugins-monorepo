@@ -14,10 +14,10 @@ import './libraries/TradingHoursLib.sol';
 /// (add and remove) are always allowed.
 /// Trading hours and blocked windows are plain UTC. Configured weekdays are always blocked while enabled.
 abstract contract TradingHoursConnector is BaseConnector, ITradingHoursPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant TRADING_HOURS_MODULE_NAME = 'Trading Hours Plugin';
-  uint8 internal constant TRADING_HOURS_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG);
+  uint16 internal constant TRADING_HOURS_PLUGIN_CONFIG = uint16(Plugins.BEFORE_SWAP_FLAG);
 
   address internal immutable tradingHoursImplementation;
 

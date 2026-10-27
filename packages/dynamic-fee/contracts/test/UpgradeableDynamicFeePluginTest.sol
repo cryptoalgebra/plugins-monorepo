@@ -35,13 +35,13 @@ contract UpgradeableDynamicFeePluginTest is UpgradeableAbstractPlugin, DynamicFe
     moduleNames[0] = DYNAMIC_FEE_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return DYNAMIC_FEE_PLUGIN_CONFIG;
   }
 
   /// @inheritdoc IAlgebraDynamicFeePlugin
   /// @dev There is no oracle in this harness, so the fee is quoted at zero volatility
-  function getCurrentFee() external view override returns (uint16 fee) {
+  function getSwapFee(address, address, bool, int256, uint160, bool, bytes calldata) external view override returns (uint24 fee) {
     return _getCurrentFee(0);
   }
 

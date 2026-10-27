@@ -13,10 +13,10 @@ import './libraries/AccessListStorage.sol';
 /// Non-whitelisted users are fully blocked from swap, add liquidity, flash and pool init.
 /// Remove liquidity is always allowed.
 abstract contract AccessListConnector is BaseConnector, IAccessListPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant ACCESS_LIST_MODULE_NAME = 'Access List Plugin';
-  uint8 internal constant ACCESS_LIST_PLUGIN_CONFIG = uint8(
+  uint16 internal constant ACCESS_LIST_PLUGIN_CONFIG = uint16(
     Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.AFTER_INIT_FLAG
   );
 

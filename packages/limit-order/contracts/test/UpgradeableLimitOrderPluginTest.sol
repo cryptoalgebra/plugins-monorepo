@@ -10,7 +10,7 @@ import '../interfaces/ILimitOrderManager.sol';
 /// @title Upgradeable LimitOrder Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with LimitOrder connector
 contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrderConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -35,7 +35,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
     moduleNames[0] = LIMIT_ORDER_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return LIMIT_ORDER_PLUGIN_CONFIG;
   }
 
@@ -54,6 +54,7 @@ contract UpgradeableLimitOrderPluginTest is UpgradeableAbstractPlugin, LimitOrde
     uint160,
     int256,
     int256,
+    uint256,
     bytes calldata
   ) external override onlyPool returns (bytes4) {
     (, int24 tick, , ) = _getPoolState();

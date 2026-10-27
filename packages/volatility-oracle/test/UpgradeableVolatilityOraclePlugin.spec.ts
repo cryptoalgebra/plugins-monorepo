@@ -96,7 +96,7 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
 
       await expect(
         plugin1.initializePlugin()
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(plugin1, 'InvalidInitialization');
     });
 
     it('should set correct default plugin config', async function () {
@@ -132,9 +132,9 @@ describe('UpgradeableVolatilityOraclePlugin', function () {
       await mockPool2.setPlugin(proxy2.target);
 
       // Initialization state is stored per-proxy (must be isolated)
-      await expect(plugin1.initializePlugin()).to.be.revertedWith('Initializable: contract is already initialized');
+      await expect(plugin1.initializePlugin()).to.be.revertedWithCustomError(plugin1, 'InvalidInitialization');
       await expect(plugin2.initializePlugin()).to.not.be.reverted;
-      await expect(plugin2.initializePlugin()).to.be.revertedWith('Initializable: contract is already initialized');
+      await expect(plugin2.initializePlugin()).to.be.revertedWithCustomError(plugin2, 'InvalidInitialization');
     });
   });
 

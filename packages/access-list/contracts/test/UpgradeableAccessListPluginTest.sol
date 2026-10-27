@@ -10,7 +10,7 @@ import '../interfaces/IAccessListPlugin.sol';
 /// @title Upgradeable Access List Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with Access List connector
 contract UpgradeableAccessListPluginTest is UpgradeableAbstractPlugin, AccessListConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -32,7 +32,7 @@ contract UpgradeableAccessListPluginTest is UpgradeableAbstractPlugin, AccessLis
     moduleNames[0] = ACCESS_LIST_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public pure override returns (uint8) {
+  function defaultPluginConfig() public pure override returns (uint16) {
     return ACCESS_LIST_PLUGIN_CONFIG;
   }
 
@@ -56,9 +56,9 @@ contract UpgradeableAccessListPluginTest is UpgradeableAbstractPlugin, AccessLis
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     _accessListVerifySwap(_getPool());
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
   }
 
   function beforeModifyPosition(
@@ -68,12 +68,12 @@ contract UpgradeableAccessListPluginTest is UpgradeableAbstractPlugin, AccessLis
     int24,
     int128 liquidityDelta,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24) {
+  ) external override onlyPool returns (bytes4) {
     // Only verify on add liquidity (positive delta), allow remove always
     if (liquidityDelta > 0) {
       _accessListVerifyAddLiquidity(_getPool());
     }
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+    return IAlgebraPlugin.beforeModifyPosition.selector;
   }
 
   function beforeFlash(address, address, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {

@@ -84,7 +84,7 @@ describe('#UpgradeableAlmPlugin', () => {
 
       await expect(
         pluginProxy.initialize(MOCK_POOL)
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(pluginProxy, 'InvalidInitialization');
     });
   });
 

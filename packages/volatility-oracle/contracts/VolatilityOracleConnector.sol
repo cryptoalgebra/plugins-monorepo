@@ -11,12 +11,12 @@ import './interfaces/IVolatilityOraclePluginImplementation.sol';
 /// @title VolatilityOracle Connector
 /// @notice This contract provides delegatecall interface to VolatilityOracle plugin implementation
 abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle {
-  using Plugins for uint8;
+  using Plugins for uint16;
   uint256 internal constant UINT16_MODULO = 65536;
   using VolatilityOracle for VolatilityOracle.Timepoint[UINT16_MODULO];
 
   string internal constant VOLATILITY_ORACLE_MODULE_NAME = 'Volatility Oracle Plugin';
-  uint8 internal constant VOLATILITY_ORACLE_PLUGIN_CONFIG = uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
+  uint16 internal constant VOLATILITY_ORACLE_PLUGIN_CONFIG = uint16(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG);
 
   /// @dev changes only on full plugin upgrade
   address internal immutable volatilityOracleImplementation;
@@ -34,7 +34,7 @@ abstract contract VolatilityOracleConnector is BaseConnector, IVolatilityOracle 
   }
 
   /// @dev Get pool state - must be implemented by inheriting contract
-  function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig);
+  function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint16 pluginConfig);
 
   /// @dev Get block timestamp - must be implemented by inheriting contract
   function _blockTimestamp() internal view virtual returns (uint32);

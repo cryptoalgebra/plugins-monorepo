@@ -10,7 +10,7 @@ import '../interfaces/ITradingHoursPlugin.sol';
 /// @title Upgradeable Trading Hours Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with Trading Hours connector
 contract UpgradeableTradingHoursPluginTest is UpgradeableAbstractPlugin, TradingHoursConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -39,7 +39,7 @@ contract UpgradeableTradingHoursPluginTest is UpgradeableAbstractPlugin, Trading
     moduleNames[0] = TRADING_HOURS_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public pure override returns (uint8) {
+  function defaultPluginConfig() public pure override returns (uint16) {
     return TRADING_HOURS_PLUGIN_CONFIG;
   }
 
@@ -58,9 +58,9 @@ contract UpgradeableTradingHoursPluginTest is UpgradeableAbstractPlugin, Trading
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     _verifyTrading();
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
   }
 
   // ###### Authorization ######

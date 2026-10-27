@@ -89,7 +89,7 @@ describe('UpgradeableTradingHoursPluginTest', function () {
 
       await expect(
         plugin1.initialize(mockPool.target, 0, SECONDS_PER_DAY, 0, 0, false)
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(plugin1, 'InvalidInitialization');
     });
 
     it('should set correct default plugin config (BEFORE_SWAP_FLAG only)', async function () {

@@ -12,7 +12,7 @@ import '../libraries/VolatilityOracle.sol';
 /// @title Upgradeable VolatilityOracle Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with VolatilityOracle connector
 contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, VolatilityOracleConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -33,7 +33,7 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
     moduleNames[0] = VOLATILITY_ORACLE_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return VOLATILITY_ORACLE_PLUGIN_CONFIG;
   }
 
@@ -57,9 +57,9 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     _writeTimepoint();
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
   }
 
   // ###### Connector passthroughs ######
@@ -84,7 +84,7 @@ contract UpgradeableVolatilityOraclePluginTest is UpgradeableAbstractPlugin, Vol
     internal
     view
     override(UpgradeableAbstractPlugin, VolatilityOracleConnector)
-    returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig)
+    returns (uint160 price, int24 tick, uint16 fee, uint16 pluginConfig)
   {
     return UpgradeableAbstractPlugin._getPoolState();
   }

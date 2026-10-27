@@ -11,10 +11,10 @@ import './libraries/ReflexStorage.sol';
 /// @notice This contract provides delegatecall interface to Reflex plugin implementation
 /// @dev Provides thin wrappers that delegate to implementation via delegatecall
 abstract contract ReflexConnector is BaseConnector, IReflexPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant REFLEX_MODULE_NAME = 'Reflex Plugin';
-  uint8 internal constant REFLEX_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
+  uint16 internal constant REFLEX_PLUGIN_CONFIG = uint16(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable reflexImplementation;

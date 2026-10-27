@@ -31,7 +31,7 @@ contract UpgradeableAlmPluginTest is UpgradeableAbstractPlugin, AlmConnector {
     moduleNames[0] = ALM_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return ALM_PLUGIN_CONFIG;
   }
 

@@ -31,7 +31,7 @@ contract UpgradeableFarmingProxyPluginTest is UpgradeableAbstractPlugin, Farming
     moduleNames[0] = FARMING_PROXY_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return FARMING_PROXY_PLUGIN_CONFIG;
   }
 

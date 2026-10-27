@@ -10,10 +10,10 @@ import './libraries/FarmingProxyStorage.sol';
 /// @title FarmingProxy Connector
 /// @notice This contract provides delegatecall interface to FarmingProxy plugin implementation
 abstract contract FarmingProxyConnector is BaseConnector, IFarmingPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant FARMING_PROXY_MODULE_NAME = 'Farming Proxy Plugin';
-  uint8 internal constant FARMING_PROXY_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
+  uint16 internal constant FARMING_PROXY_PLUGIN_CONFIG = uint16(Plugins.AFTER_SWAP_FLAG);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable farmingProxyImplementation;

@@ -10,10 +10,10 @@ import './libraries/SecurityStorage.sol';
 /// @title Security Connector
 /// @notice This contract provides delegatecall interface to Security plugin implementation
 abstract contract SecurityConnector is BaseConnector, ISecurityPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant SECURITY_MODULE_NAME = 'Security Plugin';
-  uint8 internal constant SECURITY_PLUGIN_CONFIG = uint8(
+  uint16 internal constant SECURITY_PLUGIN_CONFIG = uint16(
     Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG
   );
 

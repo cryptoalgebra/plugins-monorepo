@@ -10,10 +10,10 @@ import './libraries/AlmStorage.sol';
 /// @title ALM Connector
 /// @notice This contract provides delegatecall interface to ALM plugin implementation
 abstract contract AlmConnector is BaseConnector, IAlmPlugin {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant ALM_MODULE_NAME = 'ALM Plugin';
-  uint8 internal constant ALM_PLUGIN_CONFIG = uint8(Plugins.AFTER_SWAP_FLAG);
+  uint16 internal constant ALM_PLUGIN_CONFIG = uint16(Plugins.AFTER_SWAP_FLAG);
   address internal immutable almImplementation;
 
   constructor(address _almImplementation) {

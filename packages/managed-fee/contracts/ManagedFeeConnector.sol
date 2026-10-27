@@ -6,14 +6,15 @@ import '@cryptoalgebra/abstract-plugin/contracts/BaseConnector.sol';
 import './interfaces/IManagedSwapFeePlugin.sol';
 import './interfaces/IManagedFeePluginImplementation.sol';
 import './libraries/ManagedFeeStorage.sol';
+import './libraries/ManagedFeeVerifier.sol';
 
 /// @title ManagedFee Connector
 /// @notice ManagedFee module provides delegatecall functions to ManagedFee implementation
 abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   string internal constant MANAGED_FEE_MODULE_NAME = 'Managed Fee Plugin';
-  uint8 internal constant MANAGED_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+  uint16 internal constant MANAGED_FEE_PLUGIN_CONFIG = uint16(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable managedFeeImplementation;
@@ -34,6 +35,12 @@ abstract contract ManagedFeeConnector is IManagedSwapFeePlugin, BaseConnector {
       abi.encodeCall(IManagedFeePluginImplementation.getManagedFee, (pluginData))
     );
     return abi.decode(returnData, (uint24));
+  }
+
+  /// @notice The fee _getManagedFee would return, without spending the nonce
+  /// @dev For getSwapFee. Reverts where the swap would
+  function _quoteManagedFee(bytes memory pluginData) internal view returns (uint24 fee) {
+    (fee, ) = ManagedFeeVerifier.verify(ManagedFeeStorage.layout(), pluginData);
   }
 
   // ###### Public Interface (IManagedSwapFeePlugin) ######

@@ -1,7 +1,7 @@
 import { expect } from 'test-utils/expect';
 import { ethers } from 'hardhat';
 import { pinnedPluginProxyFactory } from 'test-utils/pinnedProxy';
-import { Wallet } from 'ethers';
+import { Wallet, ZeroAddress } from 'ethers';
 import { loadFixture, setNextBlockBaseFeePerGas } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import {
   FeeAuctionPluginTest,
@@ -123,7 +123,7 @@ describe('FeeAuctionPlugin', () => {
 
     it('should not allow double initialization', async () => {
       await initializePlugin(pluginProxy);
-      await expect(initializePlugin(pluginProxy)).to.be.revertedWith('Initializable: contract is already initialized');
+      await expect(initializePlugin(pluginProxy)).to.be.revertedWithCustomError(pluginProxy, 'InvalidInitialization');
     });
 
     it('should only allow admin to initialize', async () => {
@@ -241,9 +241,15 @@ describe('FeeAuctionPlugin', () => {
       // Check the override fee stored in MockPool
       const overrideFee = await mockPool.overrideFee();
       expect(overrideFee).to.equal(DEFAULT_BASE_FEE);
+      expect(await mockPool.amountInDecrease()).to.equal(0);
+    });
 
-      const pluginFee = await mockPool.pluginFee();
-      expect(pluginFee).to.equal(0);
+    it('should quote through the pool the fee the swap applies', async () => {
+      await pluginProxy.setMevTaxEnabled(false);
+
+      const quoted = await mockPool.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x');
+      await mockPool.swapToTick(0);
+      expect(await mockPool.overrideFee()).to.equal(quoted);
     });
 
   });
@@ -333,9 +339,15 @@ describe('FeeAuctionPlugin', () => {
 
       await swapPayingPriorityFee(priorityFee);
 
-      expect(await mockPool.pluginFee()).to.equal((priorityFee * multiplier) / 10n ** 18n);
-      // The tax rides alongside the base fee rather than replacing it
-      expect(await mockPool.overrideFee()).to.equal(DEFAULT_BASE_FEE);
+      // The tax rides on top of the base fee and goes to the LPs with it
+      expect(await mockPool.overrideFee()).to.equal(BigInt(DEFAULT_BASE_FEE) + (priorityFee * multiplier) / 10n ** 18n);
+    });
+
+    // The tax follows the priority fee of the swap itself, which a quote cannot know
+    it('should quote the base fee alone for a call without a gas price', async () => {
+      await pluginProxy.setMevTaxParameters(16_777_215, DEFAULT_MAX_MEV_TAX);
+
+      expect(await mockPool.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x', { gasPrice: 0 })).to.equal(DEFAULT_BASE_FEE);
     });
 
     it('should cap the tax at maxMevTax', async () => {
@@ -343,7 +355,7 @@ describe('FeeAuctionPlugin', () => {
 
       await swapPayingPriorityFee(10n ** 16n);
 
-      expect(await mockPool.pluginFee()).to.equal(DEFAULT_MAX_MEV_TAX);
+      expect(await mockPool.overrideFee()).to.equal(DEFAULT_BASE_FEE + DEFAULT_MAX_MEV_TAX);
     });
 
     it('should charge nothing while the MEV tax is switched off', async () => {
@@ -352,7 +364,7 @@ describe('FeeAuctionPlugin', () => {
 
       await swapPayingPriorityFee(10n ** 16n);
 
-      expect(await mockPool.pluginFee()).to.equal(0);
+      expect(await mockPool.overrideFee()).to.equal(DEFAULT_BASE_FEE);
     });
   });
 });

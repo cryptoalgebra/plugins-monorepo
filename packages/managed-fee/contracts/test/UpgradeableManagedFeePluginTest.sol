@@ -2,14 +2,15 @@
 pragma solidity =0.8.26;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraDynamicFeePlugin.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 
 import '../ManagedFeeConnector.sol';
 
 /// @title Upgradeable ManagedFee Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with ManagedFee connector
-contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFeeConnector {
-  using Plugins for uint8;
+contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFeeConnector, IAlgebraDynamicFeePlugin {
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -30,7 +31,7 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
     moduleNames[0] = MANAGED_FEE_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public view override returns (uint8) {
+  function defaultPluginConfig() public view override returns (uint16) {
     return MANAGED_FEE_PLUGIN_CONFIG;
   }
 
@@ -49,12 +50,20 @@ contract UpgradeableManagedFeePluginTest is UpgradeableAbstractPlugin, ManagedFe
     uint160,
     bool,
     bytes calldata pluginData
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
-    uint24 fee = 0;
-    if (pluginData.length > 0) {
-      fee = _getManagedFee(pluginData);
-    }
-    return (IAlgebraPlugin.beforeSwap.selector, fee, 0);
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
+    uint24 fee = pluginData.length > 0 ? _getManagedFee(pluginData) : _poolFee();
+    return (0, IAlgebraPlugin.beforeSwap.selector, fee);
+  }
+
+  /// @inheritdoc IAlgebraDynamicFeePlugin
+  function getSwapFee(address, address, bool, int256, uint160, bool, bytes calldata pluginData) external view override returns (uint24) {
+    return pluginData.length > 0 ? _quoteManagedFee(pluginData) : _poolFee();
+  }
+
+  /// @dev A swap without a signed fee pays the pool fee. With DYNAMIC_FEE a zero would make it free
+  function _poolFee() private view returns (uint24) {
+    (, , uint16 fee, ) = _getPoolState();
+    return fee;
   }
 
   // ###### Authorization ######

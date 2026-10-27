@@ -16,10 +16,10 @@ interface IPluginPool {
 /// @title Stable Pair Fee Connector
 /// @notice StablePairFee module provides delegatecall functions to StablePairFee implementation
 /// @dev The fee replaces the pool fee, so do not combine with other LP fee modules
-/// @dev Composing plugin must keep the returned fee plus its plugin fee below 1e6
+/// @dev A zero fee is applied as is, the swap is free
 abstract contract StablePairFeeConnector is IStablePairFeePlugin, BaseConnector {
   string internal constant STABLE_PAIR_FEE_MODULE_NAME = 'Stable Pair Fee Plugin';
-  uint8 internal constant STABLE_PAIR_FEE_PLUGIN_CONFIG = uint8(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
+  uint16 internal constant STABLE_PAIR_FEE_PLUGIN_CONFIG = uint16(Plugins.BEFORE_SWAP_FLAG | Plugins.DYNAMIC_FEE);
 
   /// @dev Immutable implementation address - set in constructor, changes only on full plugin upgrade
   address internal immutable stablePairFeeImplementation;
@@ -65,9 +65,19 @@ abstract contract StablePairFeeConnector is IStablePairFeePlugin, BaseConnector 
 
   /// @inheritdoc IStablePairFeePlugin
   function getStableFees() external view override returns (uint24 feeZeroToOne, uint24 feeOneToZero) {
-    StablePairFeeStorage.Layout storage layout = StablePairFeeStorage.layout();
     (uint160 sqrtPriceX96, , , , , ) = IAlgebraPoolState(IPluginPool(address(this)).pool()).globalState();
+    return _quoteStableFees(sqrtPriceX96);
+  }
 
+  /// @notice The fee _getStableFeeAndUpdateState would return in this block, for getSwapFee
+  /// @dev A quote made in an earlier block than the swap can differ, the fee decays per block
+  function _quoteStableFee(bool zeroToOne, uint160 sqrtPriceX96) internal view returns (uint24) {
+    (uint24 feeZeroToOne, uint24 feeOneToZero) = _quoteStableFees(sqrtPriceX96);
+    return zeroToOne ? feeZeroToOne : feeOneToZero;
+  }
+
+  function _quoteStableFees(uint160 sqrtPriceX96) private view returns (uint24, uint24) {
+    StablePairFeeStorage.Layout storage layout = StablePairFeeStorage.layout();
     // Staticcall runs in implementation storage, so pass a snapshot of ours
     return IStablePairFeePluginImplementation(stablePairFeeImplementation).quoteFees(layout.feeConfig, layout.feeState, sqrtPriceX96);
   }

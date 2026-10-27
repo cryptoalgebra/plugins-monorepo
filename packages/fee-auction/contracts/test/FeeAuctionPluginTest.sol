@@ -3,10 +3,11 @@ pragma solidity =0.8.26;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraDynamicFeePlugin.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 import '../FeeAuctionConnector.sol';
 
-contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector {
+contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector, IAlgebraDynamicFeePlugin {
   event PluginInitialized(address indexed pool);
 
   constructor(
@@ -27,7 +28,7 @@ contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector 
     moduleNames[0] = FEE_AUCTION_MODULE_NAME;
   }
 
-  function defaultPluginConfig() public pure override returns (uint8) {
+  function defaultPluginConfig() public pure override returns (uint16) {
     return FEE_AUCTION_PLUGIN_CONFIG;
   }
 
@@ -50,10 +51,13 @@ contract FeeAuctionPluginTest is UpgradeableAbstractPlugin, FeeAuctionConnector 
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
-    uint24 feeOverride = FeeAuctionStorage.layout().baseFee;
-    uint24 pluginFee = _getAuctionFee();
-    return (IAlgebraPlugin.beforeSwap.selector, feeOverride, pluginFee);
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
+    return (0, IAlgebraPlugin.beforeSwap.selector, _getFeeAuctionSwapFee());
+  }
+
+  /// @inheritdoc IAlgebraDynamicFeePlugin
+  function getSwapFee(address, address, bool, int256, uint160, bool, bytes calldata) external view override returns (uint24) {
+    return _quoteFeeAuctionSwapFee();
   }
 
   function getFeeAuctionImplementation() external view returns (address) {

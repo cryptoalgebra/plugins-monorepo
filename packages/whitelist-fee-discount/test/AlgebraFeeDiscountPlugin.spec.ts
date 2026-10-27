@@ -82,8 +82,10 @@ describe('AlgebraFeeDiscountPlugin', () => {
 
     describe('default fee discount 0% ', async () => {
       it('charges the base fee', async () => {
+        const quoted = await mockPool.getSwapFee(wallet.address, wallet.address, true, 1, 0, false, '0x')
         await mockPool.swapToTick(10); 
         let overrideFee = await mockPool.overrideFee()
+        expect(overrideFee).to.be.eq(quoted)
  
         expect(overrideFee).to.be.eq(defaultFee);
       });
@@ -92,8 +94,10 @@ describe('AlgebraFeeDiscountPlugin', () => {
     describe('fee discount 30%', async () => {
       it('charges 70 percent of the base fee', async () => {
         await registry.setFeeDiscount(wallet.address, [mockPool.target], [300])
+        const quoted = await mockPool.getSwapFee(wallet.address, wallet.address, true, 1, 0, false, '0x')
         await mockPool.swapToTick(10); 
         let overrideFee = await mockPool.overrideFee()
+        expect(overrideFee).to.be.eq(quoted)
  
         expect(overrideFee).to.be.eq(defaultFee * 7n / 10n);
       });
@@ -102,8 +106,10 @@ describe('AlgebraFeeDiscountPlugin', () => {
     describe('fee discount 50%', async () => {
       it('charges half the base fee', async () => {
         await registry.setFeeDiscount(wallet.address, [mockPool.target], [500])
+        const quoted = await mockPool.getSwapFee(wallet.address, wallet.address, true, 1, 0, false, '0x')
         await mockPool.swapToTick(10); 
         let overrideFee = await mockPool.overrideFee()
+        expect(overrideFee).to.be.eq(quoted)
  
         expect(overrideFee).to.be.eq(defaultFee * 1n / 2n);
       });
@@ -112,8 +118,10 @@ describe('AlgebraFeeDiscountPlugin', () => {
     describe('fee discount 100%', async () => {
       it('charges nothing', async () => {
         await registry.setFeeDiscount(wallet.address, [mockPool.target], [1000])
+        const quoted = await mockPool.getSwapFee(wallet.address, wallet.address, true, 1, 0, false, '0x')
         await mockPool.swapToTick(10); 
         let overrideFee = await mockPool.overrideFee()
+        expect(overrideFee).to.be.eq(quoted)
  
         expect(overrideFee).to.be.eq(defaultFee * 0n);
       });

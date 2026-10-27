@@ -3,6 +3,7 @@ pragma solidity =0.8.26;
 
 import './interfaces/IFeeAuctionPluginImplementation.sol';
 import './libraries/FeeAuctionStorage.sol';
+import './libraries/FeeAuctionMath.sol';
 
 /// @title FeeAuction Plugin Implementation
 /// @notice FeeAuction module logic using namespaced storage
@@ -31,11 +32,8 @@ contract FeeAuctionPluginImplementation is IFeeAuctionPluginImplementation {
   }
 
   /// @inheritdoc IFeeAuctionPluginImplementation
-  function getAuctionFee() external view override returns (uint24 pluginFee) {
-    FeeAuctionStorage.Layout storage s = FeeAuctionStorage.layout();
-    if (s.mevTaxEnabled) {
-      pluginFee = _calculateMevTax(s.mevTaxMultiplier, s.maxMevTax);
-    }
+  function getAuctionFee() external view override returns (uint24 mevTax) {
+    return FeeAuctionMath.mevTax(FeeAuctionStorage.layout());
   }
 
   /// @inheritdoc IFeeAuctionPluginImplementation
@@ -47,18 +45,5 @@ contract FeeAuctionPluginImplementation is IFeeAuctionPluginImplementation {
     s.mevTaxMultiplier = _mevTaxMultiplier;
     s.maxMevTax = _maxMevTax;
     s.mevTaxEnabled = _mevTaxEnabled;
-  }
-
-  /// @notice Calculates the MEV tax based on priority fee
-  /// @param _mevTaxMultiplier The MEV tax multiplier
-  /// @param _maxMevTax The maximum MEV tax cap
-  /// @return The calculated MEV tax
-  function _calculateMevTax(uint24 _mevTaxMultiplier, uint24 _maxMevTax) internal view returns (uint24) {
-    uint256 priorityFee = tx.gasprice - block.basefee;
-    uint256 mevTax = (priorityFee * _mevTaxMultiplier) / 1e18;
-    if (mevTax > _maxMevTax) {
-      mevTax = _maxMevTax;
-    }
-    return uint24(mevTax);
   }
 }

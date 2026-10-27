@@ -107,6 +107,22 @@ describe('ManagedSwapFee', () => {
       await expect(managedSwapFeePlugin.connect(other).getFeeForSwap(pluginData)).to.be.revertedWithCustomError(managedSwapFeePlugin,"NotAllowed")
     });
 
+    it('quotes the fee the swap applies, without spending the nonce', async () => {
+      expect(await managedSwapFeePlugin.connect(wallet).quoteFee(pluginData)).to.eq(fee)
+      expect(await managedSwapFeePlugin.connect(wallet).quoteFee(pluginData)).to.eq(fee)
+
+      await expect(managedSwapFeePlugin.connect(wallet).getFeeForSwap(pluginData))
+        .to.be.emit(managedSwapFeePlugin, 'Fee')
+        .withArgs(fee)
+      await expect(managedSwapFeePlugin.connect(wallet).quoteFee(pluginData)).to.be.revertedWithCustomError(managedSwapFeePlugin, 'InvalidNonce')
+    });
+
+    it('refuses to quote what the swap would refuse', async () => {
+      await expect(managedSwapFeePlugin.connect(other).quoteFee(pluginData)).to.be.revertedWithCustomError(managedSwapFeePlugin, 'NotAllowed')
+      const unsigned = await generatePluginData(nonce, fee, user, expireTime, other)
+      await expect(managedSwapFeePlugin.connect(wallet).quoteFee(unsigned)).to.be.revertedWithCustomError(managedSwapFeePlugin, 'NotWhitelisted')
+    });
+
     it('gas cost [ @skip-on-coverage ]', async () => {
       await snapshotGasCost(managedSwapFeePlugin.getFeeForSwap(pluginData));
     });

@@ -3,14 +3,15 @@ pragma solidity =0.8.26;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraDynamicFeePlugin.sol';
 import '@cryptoalgebra/abstract-plugin/contracts/UpgradeableAbstractPlugin.sol';
 
 import '../FeeDiscountConnector.sol';
 
 /// @title Upgradeable FeeDiscount Plugin for Testing
 /// @notice Test implementation of an upgradeable plugin using Beacon Proxy pattern with FeeDiscount connector
-contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDiscountConnector {
-  using Plugins for uint8;
+contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDiscountConnector, IAlgebraDynamicFeePlugin {
+  using Plugins for uint16;
 
   /// @dev Constructor sets immutable implementation address
   /// @param _factory The Algebra factory address
@@ -37,8 +38,8 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
 
   /// @dev Core needs DYNAMIC_FEE for a fee override
   /// @dev Shipped plugins get it from a fee module, this harness has none
-  function defaultPluginConfig() public view override returns (uint8) {
-    return FEE_DISCOUNT_PLUGIN_CONFIG | uint8(Plugins.DYNAMIC_FEE);
+  function defaultPluginConfig() public view override returns (uint16) {
+    return FEE_DISCOUNT_PLUGIN_CONFIG | uint16(Plugins.DYNAMIC_FEE);
   }
 
   // ###### HOOKS ######
@@ -56,10 +57,17 @@ contract UpgradeableFeeDiscountPluginTest is UpgradeableAbstractPlugin, FeeDisco
     uint160,
     bool,
     bytes calldata
-  ) external override onlyPool returns (bytes4, uint24, uint24) {
+  ) external override onlyPool returns (uint256, bytes4, uint24) {
     (, , uint16 fee, ) = _getPoolState();
     uint24 discountedFee = _applyFeeDiscount(sender, _getPool(), fee);
-    return (IAlgebraPlugin.beforeSwap.selector, discountedFee, 0);
+    return (0, IAlgebraPlugin.beforeSwap.selector, discountedFee);
+  }
+
+  /// @inheritdoc IAlgebraDynamicFeePlugin
+  /// @dev The discount is keyed by sender, so the quote is for the address that will call the pool
+  function getSwapFee(address sender, address, bool, int256, uint160, bool, bytes calldata) external view override returns (uint24) {
+    (, , uint16 fee, ) = _getPoolState();
+    return _quoteFeeDiscount(sender, _getPool(), fee);
   }
 
   // ###### Authorization ######

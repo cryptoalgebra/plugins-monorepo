@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { ZeroAddress } from 'ethers';
 import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { deployBeaconPluginFixture, deployMockPool } from 'test-utils/beaconPlugin';
@@ -37,7 +38,7 @@ describe('UpgradeableManagedFeePlugin', function () {
 
       await expect(
         plugin1.initialize()
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(plugin1, 'InvalidInitialization');
     });
 
     it('should set correct default plugin config', async function () {
@@ -49,6 +50,21 @@ describe('UpgradeableManagedFeePlugin', function () {
       const config = await plugin1.defaultPluginConfig();
       expect(config & BEFORE_SWAP_FLAG).to.equal(BEFORE_SWAP_FLAG);
       expect(config & DYNAMIC_FEE).to.equal(DYNAMIC_FEE);
+    });
+  });
+
+  describe('Swap fee', function () {
+    // 1.3 applies a zero dynamic fee as is, so a swap without a signed fee must name the pool fee itself
+    it('should charge the pool fee to a swap without a signed fee', async function () {
+      const { plugin1, mockPool } = await loadFixture(deployFixture);
+      await mockPool.initialize(2n ** 96n);
+      const [, , poolFee] = await mockPool.globalState();
+
+      expect(await mockPool.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.equal(poolFee);
+      await mockPool.swapToTick(10);
+      expect(await mockPool.overrideFee()).to.equal(poolFee);
+      expect(poolFee).to.be.greaterThan(0);
+      expect(await plugin1.getSwapFee(ZeroAddress, ZeroAddress, true, 1, 0, false, '0x')).to.equal(poolFee);
     });
   });
 

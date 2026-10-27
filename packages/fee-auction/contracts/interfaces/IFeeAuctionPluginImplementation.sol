@@ -18,9 +18,9 @@ interface IFeeAuctionPluginImplementation {
   /// @param enabled Whether to enable MEV tax
   function setMevTaxEnabled(bool enabled) external;
 
-  /// @notice Calculates the MEV tax plugin fee based on stored parameters and current priority fee
-  /// @return pluginFee The calculated MEV tax plugin fee
-  function getAuctionFee() external view returns (uint24 pluginFee);
+  /// @notice Calculates the MEV tax based on stored parameters and current priority fee
+  /// @return mevTax The MEV tax of the current transaction
+  function getAuctionFee() external view returns (uint24 mevTax);
 
   /// @notice Initializes fee auction storage parameters
   /// @param _baseFee The initial base fee

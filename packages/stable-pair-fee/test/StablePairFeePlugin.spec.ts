@@ -1,4 +1,5 @@
 import { ethers, network } from 'hardhat';
+import { ZeroAddress } from 'ethers';
 import { expect } from 'chai';
 import { loadFixture, mine } from '@nomicfoundation/hardhat-network-helpers';
 import { deployPinnedProxyDeployer } from 'test-utils/pinnedProxy';
@@ -125,7 +126,7 @@ describe('StablePairFeePlugin', function () {
 
     it('should not allow double initialization', async function () {
       const { plugin } = await loadFixture(deployFixture);
-      await expect(plugin.initialize()).to.be.revertedWith('Initializable: contract is already initialized');
+      await expect(plugin.initialize()).to.be.revertedWithCustomError(plugin, 'InvalidInitialization');
     });
 
     it('should set correct default plugin config', async function () {
@@ -261,6 +262,28 @@ describe('StablePairFeePlugin', function () {
       await mockPool.swapToPrice(true, Q96);
       expect((await plugin.stableFeeState()).decayingFeeE12).to.equal(UNDEFINED_DECAYING_FEE_E12);
     });
+  });
+
+  describe('Swap fee quote', function () {
+    // The fee decays per block, so quote in the block the swap lands in, as an integrator would
+    const quote = (mockPool: any, zeroToOne: boolean) =>
+      mockPool.getSwapFee(ZeroAddress, ZeroAddress, zeroToOne, 1, 0, false, '0x', { blockTag: 'pending' });
+
+    for (const zeroToOne of [true, false]) {
+      it(`should quote the fee a ${zeroToOne ? 'zeroToOne' : 'oneToZero'} swap applies inside the optimal range`, async function () {
+        const { mockPool } = await loadFixture(configuredFixture);
+        const quoted = await quote(mockPool, zeroToOne);
+        await mockPool.swapToPrice(zeroToOne, Q96);
+        expect(await mockPool.overrideFee()).to.equal(quoted);
+      });
+
+      it(`should quote the fee a ${zeroToOne ? 'zeroToOne' : 'oneToZero'} swap applies outside the optimal range`, async function () {
+        const { mockPool } = await loadFixture(aboveRangeFixture);
+        const quoted = await quote(mockPool, zeroToOne);
+        await mockPool.swapToPrice(zeroToOne, ABOVE_RANGE_PRICE);
+        expect(await mockPool.overrideFee()).to.equal(quoted);
+      });
+    }
   });
 
   describe('Outside optimal range', function () {

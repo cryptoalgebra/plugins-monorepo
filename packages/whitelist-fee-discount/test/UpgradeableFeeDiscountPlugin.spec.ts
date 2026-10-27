@@ -39,7 +39,7 @@ describe('UpgradeableFeeDiscountPlugin', function () {
 
       await expect(
         plugin1.initialize(mockPool.target, mockFeeDiscountRegistry.target)
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.be.revertedWithCustomError(plugin1, 'InvalidInitialization');
     });
 
     it('should set correct default plugin config', async function () {

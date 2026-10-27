@@ -8,5 +8,5 @@ interface IFeeDiscountPluginImplementation {
   function initializeFeeDiscount(address _feeDiscountRegistry) external;
   function setFeeDiscountRegistry(address _feeDiscountRegistry) external;
   function getFeeDiscountRegistry() external view returns (address);
-  function applyFeeDiscount(address user, address pool, uint24 fee) external returns (uint24 updatedFee);
+  function applyFeeDiscount(address user, address pool, uint24 fee) external view returns (uint24 updatedFee);
 }

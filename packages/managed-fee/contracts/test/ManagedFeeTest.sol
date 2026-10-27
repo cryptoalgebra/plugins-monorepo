@@ -15,5 +15,9 @@ contract ManagedFeeTest is ManagedFeeConnector {
     emit Fee(fee);
   }
 
+  function quoteFee(bytes calldata pluginData) external view returns (uint24) {
+    return _quoteManagedFee(pluginData);
+  }
+
   function _authorize() internal view override {}
 }

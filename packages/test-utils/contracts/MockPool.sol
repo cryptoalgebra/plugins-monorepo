@@ -11,6 +11,7 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolPermissionedActions.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolErrors.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraDynamicFeePlugin.sol';
 
 /// @title Mock of Algebra concentrated liquidity pool for plugins testing
 /// @dev Shared test contract - import from @cryptoalgebra/test-utils
@@ -19,7 +20,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
     uint160 price;
     int24 tick;
     uint16 fee;
-    uint8 pluginConfig;
+    uint16 pluginConfig;
     uint16 communityFee;
     bool unlocked;
   }
@@ -51,7 +52,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   /// @inheritdoc IAlgebraPoolState
   int24 public override tickSpacing;
   /// @inheritdoc IAlgebraPoolState
-  uint32 public override lastFeeTransferTimestamp;
+  uint8 public override feeMode;
 
   /// @inheritdoc IAlgebraPoolState
   uint32 public override tickTreeRoot;
@@ -81,8 +82,11 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   mapping(bytes32 => Position) public override positions;
 
   address internal owner;
+  /// @dev What the plugin returned on the last swap
   uint24 public overrideFee;
-  uint24 public pluginFee;
+  uint256 public amountInDecrease;
+  uint256 public amountInIncrease;
+  uint256 public amountOutDecrease;
 
   /// @notice Optional token0/token1, settable for plugins that need pool currencies (e.g. permissioned-pool)
   address public token0;
@@ -99,18 +103,34 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolState
-  function getPluginFeePending() external pure override returns (uint128, uint128) {
+  function safelyGetStateOfAMM() external pure override returns (uint160, int24, uint16, uint16, uint128, int24, int24) {
     revert('not implemented');
   }
 
   /// @inheritdoc IAlgebraPoolState
-  function fee() external pure returns (uint16) {
-    revert('not implemented');
-  }
-
-  /// @inheritdoc IAlgebraPoolState
-  function safelyGetStateOfAMM() external pure override returns (uint160, int24, uint16, uint8, uint128, int24, int24) {
-    revert('not implemented');
+  /// @dev Mirrors AlgebraPoolBase: the plugin is asked only with DYNAMIC_FEE and not for its own swaps
+  function getSwapFee(
+    address sender,
+    address recipient,
+    bool zeroToOne,
+    int256 amountRequired,
+    uint160 limitSqrtPrice,
+    bool withPaymentInAdvance,
+    bytes calldata data
+  ) external view override returns (uint24) {
+    if (Plugins.hasFlag(globalState.pluginConfig, Plugins.DYNAMIC_FEE) && sender != plugin) {
+      return
+        IAlgebraDynamicFeePlugin(plugin).getSwapFee(
+          sender,
+          recipient,
+          zeroToOne,
+          amountRequired,
+          limitSqrtPrice,
+          withPaymentInAdvance,
+          data
+        );
+    }
+    return globalState.fee;
   }
 
   constructor() {
@@ -139,7 +159,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
 
     tickSpacing = 60;
 
-    uint8 pluginConfig = globalState.pluginConfig;
+    uint16 pluginConfig = globalState.pluginConfig;
 
     globalState.price = initialPrice;
     globalState.tick = tick;
@@ -165,16 +185,10 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
     if (_isPlugin()) return;
 
     if (globalState.pluginConfig & Plugins.BEFORE_POSITION_MODIFY_FLAG != 0) {
-      (bytes4 selector, uint24 positionPluginFee) = IAlgebraPlugin(plugin).beforeModifyPosition(
-        msg.sender,
-        positionOwner,
-        bottomTick,
-        topTick,
-        liquidityDelta,
-        data
+      Plugins.shouldReturn(
+        IAlgebraPlugin(plugin).beforeModifyPosition(msg.sender, positionOwner, bottomTick, topTick, liquidityDelta, data),
+        IAlgebraPlugin.beforeModifyPosition.selector
       );
-      if (positionPluginFee >= 1e6) revert IAlgebraPoolErrors.incorrectPluginFee();
-      Plugins.shouldReturn(selector, IAlgebraPlugin.beforeModifyPosition.selector);
     }
 
     if (globalState.pluginConfig & Plugins.AFTER_POSITION_MODIFY_FLAG != 0) {
@@ -220,32 +234,69 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   function swapToTick(int24 targetTick) external {
-    _swapToTick(targetTick, true);
+    _swapToTick(targetTick, true, 0);
   }
 
   /// @notice Same as swapToTick, but reports the swap direction the real pool would report
   /// @dev Not an overload, so existing swapToTick calls keep resolving
   function swapToTickWithDirection(int24 targetTick, bool zeroToOne) external {
-    _swapToTick(targetTick, zeroToOne);
+    _swapToTick(targetTick, zeroToOne, 0);
   }
 
-  function _swapToTick(int24 targetTick, bool zeroToOne) internal {
-    IAlgebraPlugin _plugin = IAlgebraPlugin(plugin);
-    uint8 pluginConfig = globalState.pluginConfig;
+  /// @notice Same as swapToTickWithDirection, with the amountRequired the hooks get
+  /// @dev Positive is exactIn, negative is exactOut. The mock computes no amounts, the hooks get zero amount0 and amount1
+  function swapToTickWithAmount(int24 targetTick, bool zeroToOne, int256 amountRequired) external {
+    _swapToTick(targetTick, zeroToOne, amountRequired);
+  }
 
-    if (pluginConfig & Plugins.BEFORE_SWAP_FLAG != 0 && !_isPlugin()) {
+  /// @dev Checks the hook results as AlgebraPool does
+  function _swapToTick(int24 targetTick, bool zeroToOne, int256 amountRequired) internal {
+    IAlgebraPlugin _plugin = IAlgebraPlugin(plugin);
+    uint16 pluginConfig = globalState.pluginConfig;
+    bool fromPlugin = _isPlugin();
+
+    if (Plugins.hasFlag(pluginConfig, Plugins.BEFORE_SWAP_FLAG) && !fromPlugin) {
       bytes4 selector;
-      (selector, overrideFee, pluginFee) = _plugin.beforeSwap(msg.sender, msg.sender, zeroToOne, 0, 0, false, '');
-      // The real pool refuses a fee from a plugin whose pool config does not carry DYNAMIC_FEE
-      if (pluginConfig & Plugins.DYNAMIC_FEE == 0 && (overrideFee > 0 || pluginFee > 0)) revert IAlgebraPoolErrors.dynamicFeeDisabled();
+      (amountInDecrease, selector, overrideFee) = _plugin.beforeSwap(msg.sender, msg.sender, zeroToOne, amountRequired, 0, false, '');
+      if (Plugins.hasFlag(pluginConfig, Plugins.DYNAMIC_FEE)) {
+        if (overrideFee >= Constants.FEE_DENOMINATOR) revert IAlgebraPoolErrors.invalidOverrideFee();
+      } else if (overrideFee > 0) revert IAlgebraPoolErrors.dynamicFeeDisabled();
+      if (amountInDecrease != 0) {
+        if (!Plugins.hasFlag(pluginConfig, Plugins.AMOUNT_DELTAS_FLAG)) revert IAlgebraPoolErrors.amountDeltasDisabled();
+        if (amountRequired < 0 || amountInDecrease >= uint256(amountRequired)) revert IAlgebraPoolErrors.invalidAmountInDecrease();
+      }
       Plugins.shouldReturn(selector, IAlgebraPlugin.beforeSwap.selector);
     }
 
     globalState.price = TickMath.getSqrtRatioAtTick(targetTick);
     globalState.tick = targetTick;
 
-    if (globalState.pluginConfig & Plugins.AFTER_SWAP_FLAG != 0 && !_isPlugin()) {
-      Plugins.shouldReturn(_plugin.afterSwap(msg.sender, msg.sender, zeroToOne, 0, 0, 0, 0, ''), IAlgebraPlugin.afterSwap.selector);
+    if (Plugins.hasFlag(pluginConfig, Plugins.AFTER_SWAP_CALCULATION_FLAG) && !fromPlugin) {
+      bytes4 selector;
+      (selector, amountInIncrease, amountOutDecrease) = _plugin.afterSwapCalculation(
+        msg.sender,
+        msg.sender,
+        zeroToOne,
+        amountRequired,
+        0,
+        0,
+        0,
+        ''
+      );
+      if ((amountInIncrease | amountOutDecrease) != 0 && !Plugins.hasFlag(pluginConfig, Plugins.AMOUNT_DELTAS_FLAG))
+        revert IAlgebraPoolErrors.amountDeltasDisabled();
+      if (amountInIncrease > 0 && (amountRequired > 0 || amountInIncrease > uint256(type(int256).max)))
+        revert IAlgebraPoolErrors.invalidAmountInIncrease();
+      // The mock output is zero, so any output delta exceeds it
+      if (amountOutDecrease > 0) revert IAlgebraPoolErrors.invalidAmountOutDecrease();
+      Plugins.shouldReturn(selector, IAlgebraPlugin.afterSwapCalculation.selector);
+    }
+
+    if (Plugins.hasFlag(globalState.pluginConfig, Plugins.AFTER_SWAP_FLAG) && !fromPlugin) {
+      Plugins.shouldReturn(
+        _plugin.afterSwap(msg.sender, msg.sender, zeroToOne, amountRequired, 0, 0, 0, 0, ''),
+        IAlgebraPlugin.afterSwap.selector
+      );
     }
   }
 
@@ -263,7 +314,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
 
   /// @inheritdoc IAlgebraPoolActions
   function flash(address recipient, uint256 amount0, uint256 amount1, bytes calldata data) external override {
-    uint8 pluginConfig = globalState.pluginConfig;
+    uint16 pluginConfig = globalState.pluginConfig;
     if (pluginConfig & Plugins.BEFORE_FLASH_FLAG != 0) {
       Plugins.shouldReturn(
         IAlgebraPlugin(plugin).beforeFlash(msg.sender, recipient, amount0, amount1, data),
@@ -287,6 +338,12 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolPermissionedActions
+  function setFeeMode(uint8 newFeeMode) external override {
+    if (newFeeMode > Constants.MAX_FEE_MODE || newFeeMode == feeMode) revert IAlgebraPoolErrors.invalidNewFeeMode();
+    feeMode = newFeeMode;
+  }
+
+  /// @inheritdoc IAlgebraPoolPermissionedActions
   function setTickSpacing(int24 newTickSpacing) external override {
     if (newTickSpacing <= 0 || newTickSpacing > Constants.MAX_TICK_SPACING || tickSpacing == newTickSpacing)
       revert IAlgebraPoolErrors.invalidNewTickSpacing();
@@ -301,11 +358,18 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolPermissionedActions
-  function setPluginConfig(uint8 newConfig) external override {
+  function setPluginConfig(uint16 newConfig) external override {
     // The real pool refuses a config change while no plugin is connected
     if (plugin == address(0)) revert IAlgebraPoolErrors.pluginIsNotConnected();
     // solhint-disable-next-line reason-string
     require(msg.sender == owner || msg.sender == plugin);
+    // The flag dependencies the real pool enforces
+    if (Plugins.hasFlag(newConfig, Plugins.DYNAMIC_FEE) && !Plugins.hasFlag(newConfig, Plugins.BEFORE_SWAP_FLAG))
+      revert IAlgebraPoolErrors.invalidNewPluginConfig();
+    if (
+      Plugins.hasFlag(newConfig, Plugins.AMOUNT_DELTAS_FLAG) &&
+      !Plugins.hasFlag(newConfig, Plugins.BEFORE_SWAP_FLAG | Plugins.AFTER_SWAP_CALCULATION_FLAG)
+    ) revert IAlgebraPoolErrors.invalidNewPluginConfig();
     globalState.pluginConfig = newConfig;
   }
 
@@ -313,7 +377,7 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   function setFee(uint16 newFee) external override {
     // solhint-disable-next-line reason-string
     require(msg.sender == owner || msg.sender == plugin);
-    bool isDynamicFeeEnabled = globalState.pluginConfig & uint8(Plugins.DYNAMIC_FEE) != 0;
+    bool isDynamicFeeEnabled = Plugins.hasFlag(globalState.pluginConfig, Plugins.DYNAMIC_FEE);
     // solhint-disable-next-line reason-string
     require(!isDynamicFeeEnabled && msg.sender == owner);
 
@@ -331,6 +395,11 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
 
   /// @inheritdoc IAlgebraPoolPermissionedActions
   function skim() external pure override {
+    revert('Not implemented');
+  }
+
+  /// @inheritdoc IAlgebraPoolPermissionedActions
+  function claimCommunityFee() external pure override returns (uint128, uint128) {
     revert('Not implemented');
   }
 }

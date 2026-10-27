@@ -7,18 +7,18 @@ import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 /// @dev Counts config writes so a skipped one shows
 contract PluginPoolMock {
   address public plugin;
-  uint8 public pluginConfig;
+  uint16 public pluginConfig;
   uint256 public setPluginConfigCalls;
 
   function setPlugin(address newPlugin) external {
     plugin = newPlugin;
   }
 
-  function globalState() external view returns (uint160, int24, uint16, uint8, uint16, bool) {
+  function globalState() external view returns (uint160, int24, uint16, uint16, uint16, bool) {
     return (0, 0, 0, pluginConfig, 0, true);
   }
 
-  function setPluginConfig(uint8 newConfig) external {
+  function setPluginConfig(uint16 newConfig) external {
     require(msg.sender == plugin);
     pluginConfig = newConfig;
     setPluginConfigCalls++;

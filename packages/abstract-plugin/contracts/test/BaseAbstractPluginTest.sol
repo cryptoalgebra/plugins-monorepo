@@ -17,7 +17,7 @@ contract BaseAbstractPluginTest is BaseAbstractPlugin {
     }
   }
 
-  function updatePluginConfigInPool(uint8 newPluginConfig) external {
+  function updatePluginConfigInPool(uint16 newPluginConfig) external {
     _updatePluginConfigInPool(newPluginConfig);
   }
 }
@@ -38,7 +38,7 @@ contract CustomPluginFactoryTest is AbstractCustomPluginFactory {
 
   function setPlugin(address, address) external override {}
 
-  function setPluginConfig(address, uint8) external override {}
+  function setPluginConfig(address, uint16) external override {}
 
   function setFee(address, uint16) external override {}
 }

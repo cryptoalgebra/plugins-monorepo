@@ -10,15 +10,15 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts/proxy/utils/Initializable.sol';
 
 import './interfaces/IAbstractPlugin.sol';
 import './interfaces/IAlgebraPluginProxy.sol';
 
-/// @title Algebra Integral 1.2.2 Upgradeable Abstract Plugin
+/// @title Algebra Integral 1.3 Upgradeable Abstract Plugin
 /// @notice Base contract for upgradeable plugins using Beacon Proxy pattern
 abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, Timestamp {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev Offset in AlgebraPluginProxy bytecode
   uint256 public constant POOL_ADDRESS_OFFSET = 56;
@@ -66,7 +66,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     if (!IAlgebraFactory(factory).hasRoleOrOwner(ALGEBRA_BASE_PLUGIN_MANAGER, msg.sender)) revert OnlyAdministrator();
   }
 
-  function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
+  function _getPoolState() internal view virtual returns (uint160 price, int24 tick, uint16 fee, uint16 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(_getPool()).globalState();
   }
 
@@ -84,17 +84,12 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
 
   /// @notice Returns the default plugin config
   /// @dev Must be implemented by the default plugin, used to sync config into the pool
-  function defaultPluginConfig() public view virtual returns (uint8);
+  function defaultPluginConfig() public view virtual returns (uint16);
 
   /// @inheritdoc IAbstractPlugin
   function collectPluginFee(address token, uint256 amount, address recipient) external virtual override {
     _authorize();
     SafeTransfer.safeTransfer(token, recipient, amount);
-  }
-
-  /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external view virtual override onlyPool returns (bytes4) {
-    return IAlgebraPlugin.handlePluginFee.selector;
   }
 
   // ###### HOOKS ######
@@ -114,8 +109,8 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     int24,
     int128,
     bytes calldata
-  ) external virtual override onlyPool returns (bytes4, uint24) {
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+  ) external virtual override onlyPool returns (bytes4) {
+    return IAlgebraPlugin.beforeModifyPosition.selector;
   }
 
   function afterModifyPosition(
@@ -139,8 +134,25 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     uint160,
     bool,
     bytes calldata
-  ) external virtual override onlyPool returns (bytes4, uint24, uint24) {
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+  ) external virtual override onlyPool returns (uint256, bytes4, uint24) {
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
+  }
+
+  function afterSwapCalculation(
+    address,
+    address,
+    bool,
+    int256,
+    uint160,
+    int256,
+    int256,
+    bytes memory
+  ) external virtual override onlyPool returns (bytes4, uint256, uint256) {
+    return (IAlgebraPlugin.afterSwapCalculation.selector, 0, 0);
+  }
+
+  function afterCross(bool, uint256, uint256, int24, int128, uint128) external virtual override onlyPool returns (bytes4) {
+    return IAlgebraPlugin.afterCross.selector;
   }
 
   function afterSwap(
@@ -151,6 +163,7 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     uint160,
     int256,
     int256,
+    uint256,
     bytes calldata
   ) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.afterSwap.selector;
@@ -172,8 +185,8 @@ abstract contract UpgradeableAbstractPlugin is Initializable, IAbstractPlugin, T
     return IAlgebraPlugin.afterFlash.selector;
   }
 
-  function _updatePluginConfigInPool(uint8 newPluginConfig) internal {
-    (, , , uint8 currentPluginConfig) = _getPoolState();
+  function _updatePluginConfigInPool(uint16 newPluginConfig) internal {
+    (, , , uint16 currentPluginConfig) = _getPoolState();
     if (currentPluginConfig != newPluginConfig) {
       IAlgebraPool(_getPool()).setPluginConfig(newPluginConfig);
     }

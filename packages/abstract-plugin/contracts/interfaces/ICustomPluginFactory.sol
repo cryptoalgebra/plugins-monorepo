@@ -32,7 +32,7 @@ interface ICustomPluginFactory is IAlgebraPluginFactory {
   /// @notice Sets plugin config in a deployed custom pool
   /// @param pool The address of custom pool
   /// @param newConfig The new config
-  function setPluginConfig(address pool, uint8 newConfig) external;
+  function setPluginConfig(address pool, uint16 newConfig) external;
 
   /// @notice Sets fee in a deployed custom pool
   /// @param pool The address of custom pool

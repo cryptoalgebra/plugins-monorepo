@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import './AbstractPlugin.sol';
 
-/// @title Algebra's internal Integral 1.2.1 abstract plugin for `Base` plugins
+/// @title Algebra's internal Integral 1.3 abstract plugin for `Base` plugins
 /// @notice This contract inherits AbstractPlugin
 abstract contract BaseAbstractPlugin is AbstractPlugin {
   address internal immutable factory;

@@ -11,15 +11,15 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 
 import './interfaces/IAbstractPlugin.sol';
 
-/// @title Algebra Integral 1.2.1 plugin base
+/// @title Algebra Integral 1.3 plugin base
 /// @notice This contract simplifies development process of plugins by providing base functionality
 abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
-  using Plugins for uint8;
+  using Plugins for uint16;
 
   /// @dev The role can be granted in AlgebraFactory
   bytes32 public constant ALGEBRA_BASE_PLUGIN_MANAGER = keccak256('ALGEBRA_BASE_PLUGIN_MANAGER');
 
-  uint8 public defaultPluginConfig = 0;
+  uint16 public defaultPluginConfig = 0;
   string[] public activeModules;
 
   address public immutable pool;
@@ -47,7 +47,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     }
   }
 
-  function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
+  function _getPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint16 pluginConfig) {
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
   }
 
@@ -59,11 +59,6 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
   function collectPluginFee(address token, uint256 amount, address recipient) external virtual override {
     _authorize();
     SafeTransfer.safeTransfer(token, recipient, amount);
-  }
-
-  /// @inheritdoc IAlgebraPlugin
-  function handlePluginFee(uint256, uint256) external view virtual override onlyPool returns (bytes4) {
-    return IAlgebraPlugin.handlePluginFee.selector;
   }
 
   // ###### HOOKS ######
@@ -83,8 +78,8 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     int24,
     int128,
     bytes calldata
-  ) external virtual override onlyPool returns (bytes4, uint24) {
-    return (IAlgebraPlugin.beforeModifyPosition.selector, 0);
+  ) external virtual override onlyPool returns (bytes4) {
+    return IAlgebraPlugin.beforeModifyPosition.selector;
   }
 
   function afterModifyPosition(
@@ -108,8 +103,25 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     uint160,
     bool,
     bytes calldata
-  ) external virtual override onlyPool returns (bytes4, uint24, uint24) {
-    return (IAlgebraPlugin.beforeSwap.selector, 0, 0);
+  ) external virtual override onlyPool returns (uint256, bytes4, uint24) {
+    return (0, IAlgebraPlugin.beforeSwap.selector, 0);
+  }
+
+  function afterSwapCalculation(
+    address,
+    address,
+    bool,
+    int256,
+    uint160,
+    int256,
+    int256,
+    bytes memory
+  ) external virtual override onlyPool returns (bytes4, uint256, uint256) {
+    return (IAlgebraPlugin.afterSwapCalculation.selector, 0, 0);
+  }
+
+  function afterCross(bool, uint256, uint256, int24, int128, uint128) external virtual override onlyPool returns (bytes4) {
+    return IAlgebraPlugin.afterCross.selector;
   }
 
   function afterSwap(
@@ -120,6 +132,7 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     uint160,
     int256,
     int256,
+    uint256,
     bytes calldata
   ) external virtual override onlyPool returns (bytes4) {
     return IAlgebraPlugin.afterSwap.selector;
@@ -141,8 +154,8 @@ abstract contract AbstractPlugin is IAbstractPlugin, Timestamp {
     return IAlgebraPlugin.afterFlash.selector;
   }
 
-  function _updatePluginConfigInPool(uint8 newPluginConfig) internal {
-    (, , , uint8 currentPluginConfig) = _getPoolState();
+  function _updatePluginConfigInPool(uint16 newPluginConfig) internal {
+    (, , , uint16 currentPluginConfig) = _getPoolState();
     if (currentPluginConfig != newPluginConfig) {
       IAlgebraPool(pool).setPluginConfig(newPluginConfig);
     }

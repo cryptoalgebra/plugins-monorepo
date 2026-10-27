@@ -32,19 +32,21 @@ describe('AbstractPlugin', function () {
   }
 
   describe('Hooks', function () {
-    const hooks: [FunctionName, (user: string) => unknown[]][] = [
-      ['beforeInitialize', (user) => [user, PRICE]],
-      ['afterInitialize', (user) => [user, PRICE, 0]],
-      ['beforeModifyPosition', (user) => [user, user, -60, 60, 1, '0x']],
-      ['afterModifyPosition', (user) => [user, user, -60, 60, 1, 0, 0, '0x']],
-      ['beforeSwap', (user) => [user, user, true, 1, PRICE, false, '0x']],
-      ['afterSwap', (user) => [user, user, true, 1, PRICE, 1, -1, '0x']],
-      ['beforeFlash', (user) => [user, user, 1, 1, '0x']],
-      ['afterFlash', (user) => [user, user, 1, 1, 0, 0, '0x']],
-      ['handlePluginFee', () => [1, 1]],
+    // The last entry is where the selector sits in the returned tuple
+    const hooks: [FunctionName, (user: string) => unknown[], number][] = [
+      ['beforeInitialize', (user) => [user, PRICE], 0],
+      ['afterInitialize', (user) => [user, PRICE, 0], 0],
+      ['beforeModifyPosition', (user) => [user, user, -60, 60, 1, '0x'], 0],
+      ['afterModifyPosition', (user) => [user, user, -60, 60, 1, 0, 0, '0x'], 0],
+      ['beforeSwap', (user) => [user, user, true, 1, PRICE, false, '0x'], 1],
+      ['afterSwapCalculation', (user) => [user, user, true, 1, PRICE, 1, -1, '0x'], 0],
+      ['afterCross', () => [true, 1, 1, 60, 1, 1], 0],
+      ['afterSwap', (user) => [user, user, true, 1, PRICE, 1, -1, 1, '0x'], 0],
+      ['beforeFlash', (user) => [user, user, 1, 1, '0x'], 0],
+      ['afterFlash', (user) => [user, user, 1, 1, 0, 0, '0x'], 0],
     ];
 
-    for (const [hook, args] of hooks) {
+    for (const [hook, args, selectorIndex] of hooks) {
       it(`should refuse ${hook} from anyone but the pool`, async function () {
         const { pluginOnAccount, user } = await loadFixture(deployFixture);
 
@@ -59,10 +61,30 @@ describe('AbstractPlugin', function () {
 
         const result = await (pluginOnAccount.connect(poolAccount) as any)[hook].staticCall(...args(user.address));
 
-        const selector = typeof result === 'string' ? result : result[0];
+        const selector = typeof result === 'string' ? result : result[selectorIndex];
         expect(selector).to.equal(pluginOnAccount.interface.getFunction(hook)!.selector);
       });
     }
+
+    it('should return no fee override and no amount deltas by default', async function () {
+      const { pluginOnAccount, poolAccount, user } = await loadFixture(deployFixture);
+      const plugin = pluginOnAccount.connect(poolAccount);
+
+      const [amountInDecrease, , feeOverride] = await plugin.beforeSwap.staticCall(user.address, user.address, true, 1, PRICE, false, '0x');
+      expect([amountInDecrease, feeOverride]).to.deep.equal([0n, 0n]);
+
+      const [, amountInIncrease, amountOutDecrease] = await plugin.afterSwapCalculation.staticCall(
+        user.address,
+        user.address,
+        true,
+        1,
+        PRICE,
+        1,
+        -1,
+        '0x'
+      );
+      expect([amountInIncrease, amountOutDecrease]).to.deep.equal([0n, 0n]);
+    });
   });
 
   describe('Active modules', function () {

@@ -6,7 +6,7 @@ library AbstractPluginStorage {
   bytes32 internal constant NAMESPACE = 0x19d84dc05fb3c50d3b0098bed2a255f5b0b8a5c0636a4569059118df8ed92600;
 
   struct Layout {
-    uint8 defaultPluginConfig;
+    uint16 defaultPluginConfig;
     string[] activeModules;
   }
 

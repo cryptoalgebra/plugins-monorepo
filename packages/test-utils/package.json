@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@cryptoalgebra/abstract-plugin": "workspace:^",
-    "@cryptoalgebra/integral-core": "1.2.10",
+    "@cryptoalgebra/integral-core": "1.3.0-beta",
     "@ethersproject/abstract-provider": "^5.8.0",
     "@openzeppelin/contracts": "5.4.0",
     "bignumber.js": "^9.2.1",

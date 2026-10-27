@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: ^1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       chai:
         specifier: ~4.2.0
         version: 4.2.0
@@ -73,17 +73,14 @@ importers:
   packages/abstract-plugin:
     dependencies:
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
 
   packages/access-list:
     dependencies:
@@ -91,17 +88,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -116,17 +110,14 @@ importers:
         specifier: 1.2.2
         version: 1.2.2
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -147,11 +138,11 @@ importers:
         specifier: workspace:^
         version: link:../farming-proxy
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/safety-switch-plugin':
         specifier: workspace:^
         version: link:../safety-switch
@@ -161,9 +152,6 @@ importers:
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       decimal.js:
         specifier: ^10.6.0
@@ -181,17 +169,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -203,17 +188,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -225,17 +207,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -247,17 +226,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -269,17 +245,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -291,8 +264,8 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
@@ -307,17 +280,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -329,8 +299,8 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
@@ -345,17 +315,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -367,17 +334,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -389,17 +353,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -411,8 +372,8 @@ importers:
         specifier: workspace:^
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@ethersproject/abstract-provider':
         specifier: ^5.8.0
         version: 5.8.0
@@ -438,17 +399,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -460,17 +418,14 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
     devDependencies:
       test-utils:
         specifier: workspace:^
@@ -482,14 +437,11 @@ importers:
         specifier: ^2.2.1
         version: link:../abstract-plugin
       '@cryptoalgebra/integral-core':
-        specifier: 1.2.10
-        version: 1.2.10
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
       '@cryptoalgebra/integral-periphery':
-        specifier: 1.2.5
-        version: 1.2.5
-      '@openzeppelin/contracts-upgradeable':
-        specifier: ^4.9.3
-        version: 4.9.6
+        specifier: 1.3.0-beta
+        version: 1.3.0-beta
     devDependencies:
       '@openzeppelin/contracts':
         specifier: 5.4.0
@@ -714,6 +666,10 @@ packages:
     resolution: {integrity: sha512-8a2/W/3BDWThJpMORIjfN7eN3KCKDQ7i2unCB3YBsnT7kXrUN6ntpJgl3clSe1o/nG/9SjpXHyLz75J4r2YGEw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
+  '@cryptoalgebra/integral-core@1.3.0-beta':
+    resolution: {integrity: sha512-kCiZKQN761cTckNxVAb1HHL/xniZeF526hmcLBDvkWAv3CacB334eyd3RfnSu9TNO0YU2weNif6qwHaHVbzS4g==}
+    engines: {node: '>=18.18.0', npm: '>=10.0.0'}
+
   '@cryptoalgebra/integral-farming@1.2.4':
     resolution: {integrity: sha512-+c7ahj73v/I3JN4cJVOSRntQi8JkGrq6nXZNYDmHyWQapY+vvSXKYZ0IQ6MJrgECv4lJwYj+Q3kvkRRj+ZH1yA==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -724,6 +680,10 @@ packages:
 
   '@cryptoalgebra/integral-periphery@1.2.5':
     resolution: {integrity: sha512-+MLbQtWCE4yCqnSxkFMgCuQisEUButbKcpbF2KvlCaqYxDeSH463cwNl8P4Av+nlpI6CC323yyLf3199PLKMZQ==}
+    engines: {node: '>=18.18.0', npm: '>=10.0.0'}
+
+  '@cryptoalgebra/integral-periphery@1.3.0-beta':
+    resolution: {integrity: sha512-YGhJfq27cSu2UfZ5awnj9Q1sr47bVpIyeJdfk95cOqWj1iK9Jc1ViuGSawy8Ysbbr1g+Ci1zCmErn1eMDOuIZw==}
     engines: {node: '>=18.18.0', npm: '>=10.0.0'}
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':
@@ -5294,6 +5254,10 @@ snapshots:
     dependencies:
       '@openzeppelin/contracts': 4.9.3
 
+  '@cryptoalgebra/integral-core@1.3.0-beta':
+    dependencies:
+      '@openzeppelin/contracts': 5.4.0
+
   '@cryptoalgebra/integral-farming@1.2.4':
     dependencies:
       '@cryptoalgebra/integral-base-plugin': 1.2.4
@@ -5311,6 +5275,12 @@ snapshots:
     dependencies:
       '@cryptoalgebra/integral-core': 1.2.10
       '@openzeppelin/contracts': 4.9.3
+      '@uniswap/v2-core': 1.0.1
+
+  '@cryptoalgebra/integral-periphery@1.3.0-beta':
+    dependencies:
+      '@cryptoalgebra/integral-core': 1.3.0-beta
+      '@openzeppelin/contracts': 5.4.0
       '@uniswap/v2-core': 1.0.1
 
   '@cryptoalgebra/volatility-oracle-plugin@2.1.0':

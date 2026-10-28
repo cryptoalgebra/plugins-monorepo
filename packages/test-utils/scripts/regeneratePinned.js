@@ -28,6 +28,7 @@ const TARGETS = {
     artifacts: {
       'NewMockTimeUpgradeablePluginFactory.json':
         'contracts/test/factories/NewMockTimeUpgradeablePluginFactory.sol/NewMockTimeUpgradeablePluginFactory.json',
+      'AlgebraCustomPluginFactory.json': 'contracts/AlgebraCustomPluginFactory.sol/AlgebraCustomPluginFactory.json',
     },
   },
   'limit-order': {

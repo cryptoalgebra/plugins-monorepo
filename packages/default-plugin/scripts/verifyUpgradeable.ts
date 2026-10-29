@@ -21,6 +21,8 @@ const deployed = {
 // ============= SAME CONFIG AS DEPLOY SCRIPT =============
 const config = {
   algebraFactory: "0x0000000000000000000000000000000000000000",
+  // Set for a deployCustomFactory deployment, its factory is initialized with the entry point
+  entryPoint: "0x0000000000000000000000000000000000000000",
   defaultFeeConfig: {
     alpha1: 2900,
     alpha2: 12000,
@@ -58,6 +60,9 @@ async function main() {
   console.log("=== CONTRACT VERIFICATION ===");
   console.log("========================================\n");
 
+  const isCustom = config.entryPoint !== "0x0000000000000000000000000000000000000000";
+  const factoryName = isCustom ? "AlgebraCustomPluginFactory" : "AlgebraUpgradeablePluginFactory";
+
   // 1. Module implementations (no constructor args)
   const noArgContracts = [
     ["VolatilityOraclePluginImplementation", deployed.volatilityOracleImpl],
@@ -65,7 +70,7 @@ async function main() {
     ["FarmingProxyPluginImplementation", deployed.farmingProxyImpl],
     ["AlmPluginImplementation", deployed.almImpl],
     ["SecurityPluginImplementation", deployed.securityImpl],
-    ["AlgebraUpgradeablePluginFactory", deployed.factoryImpl],
+    [factoryName, deployed.factoryImpl],
   ] as const;
 
   for (const [name, address] of noArgContracts) {
@@ -73,9 +78,9 @@ async function main() {
   }
 
   // 2. TransparentUpgradeableProxy and the ProxyAdmin it deployed
-  const factoryInterface = (await ethers.getContractFactory("AlgebraUpgradeablePluginFactory")).interface;
+  const factoryInterface = (await ethers.getContractFactory(factoryName)).interface;
   const initData = factoryInterface.encodeFunctionData("initialize", [
-    config.algebraFactory,
+    isCustom ? config.entryPoint : config.algebraFactory,
     deployed.factoryImpl,
     config.defaultFeeConfig,
   ]);

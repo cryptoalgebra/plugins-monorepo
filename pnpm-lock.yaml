@@ -128,9 +128,9 @@ importers:
       '@cryptoalgebra/abstract-plugin':
         specifier: workspace:^
         version: link:../abstract-plugin
-      '@cryptoalgebra/alm-plugin':
+      '@cryptoalgebra/limit-order-plugin':
         specifier: workspace:^
-        version: link:../alm
+        version: link:../limit-order
       '@cryptoalgebra/dynamic-fee-plugin':
         specifier: workspace:^
         version: link:../dynamic-fee

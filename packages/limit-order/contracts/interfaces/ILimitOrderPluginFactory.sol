@@ -6,5 +6,8 @@ pragma abicoder v2;
 interface ILimitOrderPluginFactory {
   event LimitOrderManager(address newLimitOrderManager);
 
+  /// @notice Default manager copied by newly created plugins
+  function limitOrderManager() external view returns (address);
+
   function setLimitOrderManager(address newLimitOrderManager) external;
 }

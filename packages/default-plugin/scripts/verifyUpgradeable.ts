@@ -7,7 +7,7 @@ const deployed = {
   volatilityOracleImpl: "0x0000000000000000000000000000000000000000",
   dynamicFeeImpl: "0x0000000000000000000000000000000000000000",
   farmingProxyImpl: "0x0000000000000000000000000000000000000000",
-  almImpl: "0x0000000000000000000000000000000000000000",
+  limitOrderImpl: "0x0000000000000000000000000000000000000000",
   securityImpl: "0x0000000000000000000000000000000000000000",
   proxyAdmin: "0x0000000000000000000000000000000000000000",
   // The deployer, which owns the ProxyAdmin the factory proxy deployed
@@ -15,12 +15,14 @@ const deployed = {
   factoryProxy: "0x0000000000000000000000000000000000000000",
   pluginImpl: "0x0000000000000000000000000000000000000000",
   factoryImpl: "0x0000000000000000000000000000000000000000",
+  limitOrderManager: "0x0000000000000000000000000000000000000000",
   securityRegistry: "0x0000000000000000000000000000000000000000",
 };
 
 // ============= SAME CONFIG AS DEPLOY SCRIPT =============
 const config = {
   algebraFactory: "0x0000000000000000000000000000000000000000",
+  wNativeToken: "0x0000000000000000000000000000000000000000",
   // Set for a deployCustomFactory deployment, its factory is initialized with the entry point
   entryPoint: "0x0000000000000000000000000000000000000000",
   defaultFeeConfig: {
@@ -68,7 +70,7 @@ async function main() {
     ["VolatilityOraclePluginImplementation", deployed.volatilityOracleImpl],
     ["DynamicFeePluginImplementation", deployed.dynamicFeeImpl],
     ["FarmingProxyPluginImplementation", deployed.farmingProxyImpl],
-    ["AlmPluginImplementation", deployed.almImpl],
+    ["LimitOrderPluginImplementation", deployed.limitOrderImpl],
     ["SecurityPluginImplementation", deployed.securityImpl],
     [factoryName, deployed.factoryImpl],
   ] as const;
@@ -98,13 +100,20 @@ async function main() {
     deployed.volatilityOracleImpl,
     deployed.dynamicFeeImpl,
     deployed.farmingProxyImpl,
-    deployed.almImpl,
+    deployed.limitOrderImpl,
     deployed.securityImpl,
   ]);
 
   // 4. SecurityRegistry
   await verify("SecurityRegistry", deployed.securityRegistry, [config.algebraFactory]);
 
+
+  if (deployed.limitOrderManager !== ethers.ZeroAddress) {
+    const core = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
+    await verify("LimitOrderManager", deployed.limitOrderManager, [
+      config.wNativeToken, await core.poolDeployer(), deployed.factoryProxy, config.algebraFactory,
+    ]);
+  }
 
   console.log("\n========================================");
   console.log("=== VERIFICATION COMPLETE ===");

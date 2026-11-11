@@ -8,6 +8,6 @@ struct ModuleImplementations {
   address volatilityOracle;
   address dynamicFee;
   address farmingProxy;
-  address alm;
+  address limitOrder;
   address security;
 }

@@ -31,19 +31,19 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
   // factory deployed to Base: its proxies keep the pool address at the old bytecode offset.
   async function deployFixture() {
     await helpers.mine();
-    
+
     const algebraFactory = await ethers.getContractAt('IAlgebraFactory', ADDRESSES.ALGEBRA_FACTORY);
     const nft = await ethers.getContractAt('INonfungiblePositionManager', ADDRESSES.NFT_POSITION_MANAGER);
     const swapRouter = await ethers.getContractAt('ISwapRouter', ADDRESSES.SWAP_ROUTER);
-    
+
     const owner = await algebraFactory.owner();
     await impersonateAccount(owner);
     await setBalance(owner, ethers.parseEther('10'));
     const ownerSigner = await ethers.getSigner(owner);
-    
+
     // Get the deployer signer (first signer) who will deploy and own the test tokens
     const [deployer] = await ethers.getSigners();
-    
+
     // Deploy test tokens
     const tokenFactory = await ethers.getContractFactory('TestERC20');
     const tokenAContract = await tokenFactory.connect(deployer).deploy(ethers.parseEther('10000000000000000000'));
@@ -65,20 +65,20 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     const newPluginFactory = await ethers.getContractAt('AlgebraUpgradeablePluginFactory', proxyAddress);
     await newPluginFactory.initialize(ADDRESSES.ALGEBRA_FACTORY, await pluginImpl.getAddress(), DEFAULT_FEE_CONFIGURATION);
     await newPluginFactory.connect(ownerSigner).setFarmingAddress(ADDRESSES.FARMING_ADDRESS);
-    
+
     // Get beacon
     const beaconAddress = await newPluginFactory.beacon();
     const beacon = await ethers.getContractAt('UpgradeableBeacon', beaconAddress);
-    
+
     // Set default plugin factory
     await algebraFactory.connect(ownerSigner).setDefaultPluginFactory(await newPluginFactory.getAddress());
 
     return {
-      owner, 
-      ownerSigner, 
+      owner,
+      ownerSigner,
       algebraFactory,
-      token0, 
-      token1, 
+      token0,
+      token1,
       nft,
       swapRouter,
       newPluginFactory,
@@ -101,15 +101,15 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
 
   it('creates pool and adds liquidity', async () => {
     const { ownerSigner, algebraFactory, token0, token1, nft, deployer } = await loadFixture(deployFixture);
-    
+
     const mintAmount = ethers.parseEther('100000');
-    
+
     // Create pool and initialize
     const { pool } = await createAndInitializePool(nft, ownerSigner, token0, token1, algebraFactory);
-    
+
     // Add liquidity
     await addLiquidity(token0, token1, nft, deployer, ownerSigner, mintAmount);
-    
+
     // Verify reserves
     const reserves = await pool.getReserves();
     expect(reserves[0]).to.equal(100000000000000000000000n);
@@ -118,16 +118,16 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
 
   it('performs swap on pool with upgradeable plugin', async () => {
     const { ownerSigner, algebraFactory, token0, token1, nft, swapRouter, deployer } = await loadFixture(deployFixture);
-    
+
     const mintAmount = ethers.parseEther('1000000000');
     const swapAmount = ethers.parseEther('1000000');
-    
+
     // Create pool
     const { pool } = await createAndInitializePool(nft, ownerSigner, token0, token1, algebraFactory);
-    
+
     // Add liquidity
     const deadline = await addLiquidity(token0, token1, nft, deployer, ownerSigner, mintAmount);
-    
+
     const liquidity = await pool.liquidity();
     expect(liquidity).to.equal(1000000000000000000054353274n);
 
@@ -158,9 +158,9 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     let swapRouterAddress: string;
     let feeConfigBefore: Awaited<ReturnType<PoolSetup['plugin']['feeConfig']['staticCall']>>, poolBefore: string, factoryBefore: string;
     let swapOutput1: bigint, token1Before1: bigint;
-  
-    
-      
+
+
+
     beforeEach(async function(){
       ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer, implementations } = await loadFixture(deployFixture));
 
@@ -168,28 +168,28 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       const poolData = await createAndInitializePool(nft, ownerSigner, token0, token1, algebraFactory);
       plugin = poolData.plugin;
       pluginAddress = poolData.pluginAddress;
-      
+
       // Add liquidity
       mintAmount = ethers.parseEther('100000000');
       deadline = await addLiquidity(token0, token1, nft, deployer, ownerSigner, mintAmount);
-      
+
       // Prepare swap funds
       swapSupply = ethers.parseEther('10000');
       await token0.connect(deployer).transfer(ownerSigner.address, swapSupply);
       await token1.connect(deployer).transfer(ownerSigner.address, swapSupply);
-    
+
       // Perform initial swap
       swapAmount = ethers.parseEther('1000');
       swapRouterAddress = await swapRouter.getAddress();
       await token0.connect(ownerSigner).approve(swapRouterAddress, swapAmount * 3n);
-      
+
       token1Before1 = await token1.balanceOf(ownerSigner.address);
       await performSwap( swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const token1After1 = await token1.balanceOf(ownerSigner.address);
       swapOutput1 = token1After1 - token1Before1;
       expect(swapOutput1).to.equal(999890002099869003409n);
-      
+
       // Store plugin state before upgrade
       feeConfigBefore = await plugin.feeConfig.staticCall();
       poolBefore = await plugin.pool();
@@ -202,7 +202,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         newPluginFactory,
         implementations
       );
-      
+
       newImplAddress = result.address;
     });
 
@@ -236,28 +236,28 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     it('upgrades plugin implementation via beacon and swaps still work', async () => {
       // Upgrade plugin
       await newPluginFactory.connect(ownerSigner).upgradePlugins(newImplAddress);
-      
+
       const implementationAfter = await beacon.implementation();
       expect(implementationAfter).to.equal(newImplAddress);
-      
+
       // Verify plugin state preserved
       const pluginAfterUpgrade = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
-      
+
       const feeConfigAfter = await pluginAfterUpgrade.feeConfig.staticCall();
       const poolAfter = await pluginAfterUpgrade.pool();
       const factoryAfter = await pluginAfterUpgrade.pluginFactory();
-      
+
       expect(poolAfter).to.equal(poolBefore);
       expect(factoryAfter).to.equal(factoryBefore);
       expect(feeConfigAfter.baseFee).to.equal(feeConfigBefore.baseFee);
-      
+
       // Perform swap after upgrade
       const token1Before2 = await token1.balanceOf(ownerSigner.address);
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const token1After2 = await token1.balanceOf(ownerSigner.address);
       const swapOutput2 = token1After2 - token1Before2;
-      
+
       // Verify swap worked
       expect(swapOutput2).to.equal(999870006699475027308n);
     });
@@ -265,23 +265,23 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
     it('multiple swaps work correctly after plugin upgrade', async () => {
       // Upgrade plugin
       await newPluginFactory.connect(ownerSigner).upgradePlugins(newImplAddress);
-      
+
       // Additional funds for swaps
       const swapSupply = ethers.parseEther('10000');
       await token0.connect(deployer).transfer(ownerSigner.address, swapSupply);
       await token1.connect(deployer).transfer(ownerSigner.address, swapSupply);
-      
+
       // Perform multiple bidirectional swaps
       const swapAmount = ethers.parseEther('500');
       const swapRouterAddress = await swapRouter.getAddress();
-      
+
       await token0.connect(ownerSigner).approve(swapRouterAddress, swapAmount * 10n);
       await token1.connect(ownerSigner).approve(swapRouterAddress, swapAmount * 10n);
-      
+
       const outputs: bigint[] = [];
       for (let i = 0; i < 3; i++) {
         const balance1Before: bigint = await token1.balanceOf(ownerSigner.address);
-        
+
         // Swap token0 -> token1
         await swapRouter.connect(ownerSigner).exactInputSingle({
           tokenIn: token0,
@@ -293,7 +293,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
           amountOutMinimum: 0,
           limitSqrtPrice: SQRT_RATIO.MIN + 1n
         });
-        
+
         const balance1After: bigint = await token1.balanceOf(ownerSigner.address);
         outputs.push(balance1After - balance1Before);
 
@@ -309,7 +309,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
           amountOutMinimum: 0,
           limitSqrtPrice: SQRT_RATIO.MAX - 1n
         });
-        
+
         const balance0After: bigint = await token0.balanceOf(ownerSigner.address);
         outputs.push(balance0After - balance0Before);
       }
@@ -332,14 +332,14 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
 
     beforeEach(async () => {
       ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, beacon, deployer, implementations } = await loadFixture(deployFixture));
-      
+
       // Setup pool with liquidity and one initial swap
       const poolData = await setupPoolWithLiquidity(
         nft, ownerSigner,
         token0, token1, algebraFactory, deployer, swapRouter,
         { mintAmount: ethers.parseEther('100000'), performSwaps: true, swapAmount: ethers.parseEther('100') }
       );
-      
+
       pool = poolData.pool;
       pluginAddress = poolData.pluginAddress;
       deadline = poolData.deadline;
@@ -347,14 +347,14 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
 
     it('upgrades security module and new functions work while plugin stays attached to pool', async () => {
       expect(await pool.plugin()).to.equal(pluginAddress);
-      
-      
-      
+
+
+
       const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
       const upgradedSecurityAddress = await upgradedSecurityImpl.getAddress();
-      
-      
+
+
       // Deploy new plugin with upgraded security
       const result = await deployNewPluginImplementation(
         'MockUpgradedPluginWithNewSecurity',
@@ -363,44 +363,44 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         implementations,
         { security: upgradedSecurityAddress }
       );
-      
-      
-      
+
+
+
       // Upgrade to new implementation
       await newPluginFactory.connect(ownerSigner).upgradePlugins(result.address);
-      
+
       const implementationAfter = await beacon.implementation();
       expect(implementationAfter).to.equal(result.address);
-      
+
       // Verify plugin still attached to pool
       const poolPluginAfter = await pool.plugin();
       expect(poolPluginAfter).to.equal(pluginAddress);
-      
+
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', pluginAddress);
-      
+
       // Verify new security functions available
       expect(await upgradedPlugin.HAS_UPGRADED_SECURITY()).to.equal(true);
       expect(await upgradedPlugin.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
       expect(await upgradedPlugin.getSecurityEmergencyMode.staticCall()).to.equal(false);
-      
+
       await upgradedPlugin.connect(ownerSigner).setSecurityEmergencyMode(true);
       expect(await upgradedPlugin.getSecurityEmergencyMode.staticCall()).to.equal(true);
-      
+
       await upgradedPlugin.connect(ownerSigner).setSecurityEmergencyMode(false);
       expect(await upgradedPlugin.getSecurityEmergencyMode.staticCall()).to.equal(false);
-      
+
       const statsResult = await upgradedPlugin.getSecurityCheckStats.staticCall();
-      
+
       // Perform swap after upgrade
       const swapAmount = ethers.parseEther('100');
       const token1Before = await token1.balanceOf(ownerSigner.address);
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const token1After = await token1.balanceOf(ownerSigner.address);
       const swapOutput = token1After - token1Before;
-      
+
       expect(swapOutput).to.equal(99690061082052222693n);
-      
+
       const statsAfterSwap = await upgradedPlugin.getSecurityCheckStats.staticCall();
       expect(statsAfterSwap.checkCount).to.be.gt(statsResult.checkCount);
     });
@@ -416,20 +416,20 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
 
     beforeEach(async () => {
       ({ ownerSigner, algebraFactory, token0, token1, nft, swapRouter, newPluginFactory, deployer, implementations } = await loadFixture(deployFixture));
-      
+
       // Deploy and set security registry
       const SecurityRegistryFactory = await ethers.getContractFactory('MockSecurityRegistry');
       securityRegistry = await SecurityRegistryFactory.deploy();
       securityRegistryAddress = await securityRegistry.getAddress();
       await newPluginFactory.connect(ownerSigner).setSecurityRegistry(securityRegistryAddress);
-      
+
       // Setup pool with liquidity and multiple swaps
       const poolData = await setupPoolWithLiquidity(
         nft, ownerSigner,
         token0, token1, algebraFactory, deployer, swapRouter,
         { performSwaps: true, swapAmount: ethers.parseEther('100'), swapCount: 3 }
       );
-      
+
       plugin = poolData.plugin;
       pluginAddress = poolData.pluginAddress;
       deadline = poolData.deadline;
@@ -440,8 +440,8 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       const securityRegistryBefore = await plugin.getSecurityRegistry();
       expect(securityRegistryBefore).to.equal(securityRegistryAddress);
       expect(securityRegistryBefore).to.not.equal(ethers.ZeroAddress);
-      
-      const rebalanceManagerBefore = await plugin.rebalanceManager();
+
+      const limitOrderManagerBefore = await plugin.limitOrderManager();
       const incentiveBefore = await plugin.incentive();
       const feeConfigBefore = await plugin.feeConfig();
       const isInitializedBefore = await plugin.isInitialized();
@@ -449,12 +449,12 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       const lastTimestampBefore = await plugin.lastTimepointTimestamp();
       // Raw stored timepoint, unlike getSingleTimepoint(0) it does not extrapolate to block.timestamp
       const timepoint0Before = await plugin.timepoints(0);
-      
+
       // Deploy upgraded security implementation
       const UpgradedSecurityImplFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurityImpl = await UpgradedSecurityImplFactory.deploy();
       const upgradedSecurityAddress = await upgradedSecurityImpl.getAddress();
-      
+
       // Deploy new plugin with upgraded security
       const result = await deployNewPluginImplementation(
         'MockUpgradedPluginWithNewSecurity',
@@ -463,24 +463,24 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         implementations,
         { security: upgradedSecurityAddress }
       );
-      
+
       await newPluginFactory.connect(ownerSigner).upgradePlugins(result.address);
-      
-      
+
+
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewSecurity', pluginAddress);
-      
+
       const securityRegistryAfter = await upgradedPlugin.getSecurityRegistry();
       expect(securityRegistryAfter).to.equal(securityRegistryBefore);
       expect(securityRegistryAfter).to.equal(securityRegistryAddress);
       expect(securityRegistryAfter).to.not.equal(ethers.ZeroAddress);
-      
-      expect(await upgradedPlugin.rebalanceManager()).to.equal(rebalanceManagerBefore);
-      
+
+      expect(await upgradedPlugin.limitOrderManager()).to.equal(limitOrderManagerBefore);
+
       expect(await upgradedPlugin.incentive()).to.equal(incentiveBefore);
-      
+
       const feeConfigAfter = await upgradedPlugin.feeConfig();
       expect(feeConfigAfter.baseFee).to.equal(feeConfigBefore.baseFee);
-      
+
       const isInitializedAfter = await upgradedPlugin.isInitialized();
       const timepointIndexAfter = await upgradedPlugin.timepointIndex();
       expect(isInitializedAfter).to.equal(isInitializedBefore);
@@ -499,58 +499,58 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       expect(timepoint0After.tick).to.equal(timepoint0Before.tick);
       expect(timepoint0After.averageTick).to.equal(timepoint0Before.averageTick);
 
-      
+
       expect(await upgradedPlugin.HAS_UPGRADED_SECURITY()).to.equal(true);
       expect(await upgradedPlugin.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
-      
+
       expect(await upgradedPlugin.getSecurityEmergencyMode.staticCall()).to.equal(false);
       await upgradedPlugin.connect(ownerSigner).setSecurityEmergencyMode(true);
       expect(await upgradedPlugin.getSecurityEmergencyMode.staticCall()).to.equal(true);
-      
+
       const statsBefore = await upgradedPlugin.getSecurityCheckStats.staticCall();
-      
-      
-      
+
+
+
       expect(await upgradedPlugin.getSecurityRegistry()).to.equal(securityRegistryAddress);
-      
-      expect(await upgradedPlugin.rebalanceManager()).to.equal(rebalanceManagerBefore);
-      
+
+      expect(await upgradedPlugin.limitOrderManager()).to.equal(limitOrderManagerBefore);
+
       const volatilityFinal = await upgradedPlugin.getSingleTimepoint(0);
       expect(volatilityFinal.tickCumulative).to.not.equal(0n);
-      
-      
+
+
       await upgradedPlugin.connect(ownerSigner).setSecurityEmergencyMode(false);
-      
+
       const swapAmount = ethers.parseEther('100');
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const statsAfterSwap = await upgradedPlugin.getSecurityCheckStats.staticCall();
       expect(statsAfterSwap.checkCount).to.be.gt(statsBefore.checkCount);
       expect(statsAfterSwap.lastCheckTimestamp).to.be.gt(0);
 
       const newTimepointIndex = await upgradedPlugin.timepointIndex();
       expect(newTimepointIndex).to.be.gt(timepointIndexBefore);
-      
+
       expect(await upgradedPlugin.getSecurityRegistry()).to.equal(securityRegistryAddress);
-    
+
     });
   });
-  
+
   it('upgrades FarmingProxy module and new functions work while plugin stays attached', async () => {
       const { algebraFactory, ownerSigner, newPluginFactory, beacon, token0, token1, nft, deployer, swapRouter, implementations } = await loadFixture(deployFixture);
-      
+
       // Create pool and add liquidity
       const mintAmount = ethers.parseEther('100000');
       const { pool, pluginAddress, deadline } = await setupPoolWithLiquidity(
         nft, ownerSigner, token0, token1, algebraFactory, deployer,
         swapRouter, { mintAmount }
       );
-      
+
       // Deploy upgraded farming implementation
       const UpgradedFarmingImplFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
       const upgradedFarmingImpl = await UpgradedFarmingImplFactory.deploy();
       const upgradedFarmingAddress = await upgradedFarmingImpl.getAddress();
-      
+
       // Deploy new plugin with upgraded farming
       const result = await deployNewPluginImplementation(
         'MockUpgradedPluginWithNewFarming',
@@ -559,43 +559,43 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         implementations,
         { farming: upgradedFarmingAddress }
       );
-      
+
       // Upgrade to new implementation
       await newPluginFactory.connect(ownerSigner).upgradePlugins(result.address);
-      
+
       const implementationAfter = await beacon.implementation();
       expect(implementationAfter).to.equal(result.address);
-      
-      
+
+
       // Verify plugin still attached
       const poolPluginAfter = await pool.plugin();
       expect(poolPluginAfter).to.equal(pluginAddress);
-      
+
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPluginWithNewFarming', pluginAddress);
-      
+
       // Verify new farming functions
       expect(await upgradedPlugin.HAS_UPGRADED_FARMING()).to.equal(true);
       expect(await upgradedPlugin.hasUpgradedFarmingImpl.staticCall()).to.equal(true);
       expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(false);
-      
+
       await upgradedPlugin.connect(ownerSigner).setFarmingPausedMode(true);
       expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(true);
-      
+
       await upgradedPlugin.connect(ownerSigner).setFarmingPausedMode(false);
       expect(await upgradedPlugin.getFarmingPausedMode.staticCall()).to.equal(false);
-      
-      
+
+
       // Perform swap after upgrade
       const swapAmount = ethers.parseEther('100');
       const token1Before = await token1.balanceOf(ownerSigner.address);
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const token1After = await token1.balanceOf(ownerSigner.address);
       const swapOutput = token1After - token1Before;
-      
+
       expect(swapOutput).to.equal(99890119869142844070n);
-      
-      
+
+
     });
 
   describe('#Super Upgrade - ALL Modules V2', () => {
@@ -619,14 +619,14 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       newPluginFactory = fixture.newPluginFactory;
       beacon = fixture.beacon;
       deployer = fixture.deployer;
-      
+
       // Setup pool with liquidity and one initial swap
       const poolData = await setupPoolWithLiquidity(
         nft, ownerSigner,
         token0, token1, algebraFactory, deployer, swapRouter,
         { performSwaps: true, swapAmount: ethers.parseEther('100') }
       );
-      
+
       pool = poolData.pool;
       pluginAddress = poolData.pluginAddress;
       deadline = poolData.deadline;
@@ -636,175 +636,175 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       // Deploy all 5 upgraded module implementations
       const UpgradedVolatilityFactory = await ethers.getContractFactory('MockUpgradedVolatilityOraclePluginImplementation');
       const upgradedVolatility = await UpgradedVolatilityFactory.deploy();
-      
+
       const UpgradedDynamicFeeFactory = await ethers.getContractFactory('MockUpgradedDynamicFeePluginImplementation');
       const upgradedDynamicFee = await UpgradedDynamicFeeFactory.deploy();
-      
+
       const UpgradedFarmingFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
       const upgradedFarming = await UpgradedFarmingFactory.deploy();
-      
-      const UpgradedAlmFactory = await ethers.getContractFactory('MockUpgradedALMPluginImplementation');
-      const upgradedAlm = await UpgradedAlmFactory.deploy();
-      
+
+      const UpgradedLimitOrderFactory = await ethers.getContractFactory('MockUpgradedLimitOrderPluginImplementation');
+      const upgradedLimitOrder = await UpgradedLimitOrderFactory.deploy();
+
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
-      
+
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
       const pluginFactoryAddress = await newPluginFactory.getAddress();
-      
+
       const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
       const superPlugin = await SuperPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, {
         volatilityOracle: await upgradedVolatility.getAddress(),
         dynamicFee: await upgradedDynamicFee.getAddress(),
         farmingProxy: await upgradedFarming.getAddress(),
-        alm: await upgradedAlm.getAddress(),
+        limitOrder: await upgradedLimitOrder.getAddress(),
         security: await upgradedSecurity.getAddress()
       });
-      
+
       const superPluginAddress = await superPlugin.getAddress();
-      
+
       // Upgrade to super plugin
       await newPluginFactory.connect(ownerSigner).upgradePlugins(superPluginAddress);
-      
+
       const implementationAfter = await beacon.implementation();
       expect(implementationAfter).to.equal(superPluginAddress);
-      
+
       const upgradedPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
-      
-      
+
+
       expect(await upgradedPluginProxy.HAS_UPGRADED_VOLATILITY()).to.equal(true);
       expect(await upgradedPluginProxy.HAS_UPGRADED_DYNAMIC_FEE()).to.equal(true);
       expect(await upgradedPluginProxy.HAS_UPGRADED_FARMING()).to.equal(true);
-      expect(await upgradedPluginProxy.HAS_UPGRADED_ALM()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_LIMIT_ORDER()).to.equal(true);
       expect(await upgradedPluginProxy.HAS_UPGRADED_SECURITY()).to.equal(true);
-      
-      
+
+
       expect(await upgradedPluginProxy.hasUpgradedVolatilityImpl.staticCall()).to.equal(true);
       expect(await upgradedPluginProxy.hasUpgradedDynamicFeeImpl.staticCall()).to.equal(true);
       expect(await upgradedPluginProxy.hasUpgradedFarmingImpl.staticCall()).to.equal(true);
-      expect(await upgradedPluginProxy.hasUpgradedAlmImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedLimitOrderImpl.staticCall()).to.equal(true);
       expect(await upgradedPluginProxy.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
-      
-      
+
+
       await upgradedPluginProxy.connect(ownerSigner).setAdvancedFeeMode(true);
       expect(await upgradedPluginProxy.getAdvancedFeeMode.staticCall()).to.equal(true);
-      
-      
+
+
       await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(true);
       expect(await upgradedPluginProxy.getFarmingPausedMode.staticCall()).to.equal(true);
       await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(false);
-      
-      
-      await upgradedPluginProxy.connect(ownerSigner).setAlmAdvancedMode(true);
-      expect(await upgradedPluginProxy.getAlmAdvancedMode.staticCall()).to.equal(true);
-      
-      
+
+
+      await upgradedPluginProxy.connect(ownerSigner).setLimitOrderAdvancedMode(true);
+      expect(await upgradedPluginProxy.getLimitOrderAdvancedMode.staticCall()).to.equal(true);
+
+
       await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(true);
       expect(await upgradedPluginProxy.getSecurityEmergencyMode.staticCall()).to.equal(true);
       await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(false);
-      
+
       // Perform swap to verify all modules work together
       const swapAmount = ethers.parseEther('100');
       const token1Before = await token1.balanceOf(ownerSigner.address);
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const token1After = await token1.balanceOf(ownerSigner.address);
       const swapOutput = token1After - token1Before;
-      
+
       expect(swapOutput).to.equal(99690061082052222693n);
-      
+
       // Verify stats from upgraded modules
       const securityStats = await upgradedPluginProxy.getSecurityCheckStats.staticCall();
-      
+
       expect(securityStats.checkCount).to.equal(1n);
-      
+
     });
     it('Downgrades from super plugin to plugin with oracle module', async () => {
       // Deploy all 5 upgraded module implementations
       const UpgradedVolatilityFactory = await ethers.getContractFactory('MockUpgradedVolatilityOraclePluginImplementation');
       const upgradedVolatility = await UpgradedVolatilityFactory.deploy();
-      
+
       const UpgradedDynamicFeeFactory = await ethers.getContractFactory('MockUpgradedDynamicFeePluginImplementation');
       const upgradedDynamicFee = await UpgradedDynamicFeeFactory.deploy();
-      
+
       const UpgradedFarmingFactory = await ethers.getContractFactory('MockUpgradedFarmingProxyPluginImplementation');
       const upgradedFarming = await UpgradedFarmingFactory.deploy();
-      
-      const UpgradedAlmFactory = await ethers.getContractFactory('MockUpgradedALMPluginImplementation');
-      const upgradedAlm = await UpgradedAlmFactory.deploy();
-      
+
+      const UpgradedLimitOrderFactory = await ethers.getContractFactory('MockUpgradedLimitOrderPluginImplementation');
+      const upgradedLimitOrder = await UpgradedLimitOrderFactory.deploy();
+
       const UpgradedSecurityFactory = await ethers.getContractFactory('MockUpgradedSecurityPluginImplementation');
       const upgradedSecurity = await UpgradedSecurityFactory.deploy();
-      
+
       // Deploy super plugin with all upgraded modules
       const mockFactoryAddress = await algebraFactory.getAddress();
       const pluginFactoryAddress = await newPluginFactory.getAddress();
-      
+
       const SuperPluginFactory = await ethers.getContractFactory('MockSuperUpgradedPlugin');
       const superPlugin = await SuperPluginFactory.deploy(mockFactoryAddress, pluginFactoryAddress, {
         volatilityOracle: await upgradedVolatility.getAddress(),
         dynamicFee: await upgradedDynamicFee.getAddress(),
         farmingProxy: await upgradedFarming.getAddress(),
-        alm: await upgradedAlm.getAddress(),
+        limitOrder: await upgradedLimitOrder.getAddress(),
         security: await upgradedSecurity.getAddress()
       });
-      
+
       const superPluginAddress = await superPlugin.getAddress();
-      
+
       // Upgrade to super plugin
       await newPluginFactory.connect(ownerSigner).upgradePlugins(superPluginAddress);
-      
+
       const implementationAfterUpgrade = await beacon.implementation();
       expect(implementationAfterUpgrade).to.equal(superPluginAddress);
-      
+
       const upgradedPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
-      
+
       // Verify all upgraded modules are active
       expect(await upgradedPluginProxy.HAS_UPGRADED_VOLATILITY()).to.equal(true);
       expect(await upgradedPluginProxy.HAS_UPGRADED_DYNAMIC_FEE()).to.equal(true);
       expect(await upgradedPluginProxy.HAS_UPGRADED_FARMING()).to.equal(true);
-      expect(await upgradedPluginProxy.HAS_UPGRADED_ALM()).to.equal(true);
+      expect(await upgradedPluginProxy.HAS_UPGRADED_LIMIT_ORDER()).to.equal(true);
       expect(await upgradedPluginProxy.HAS_UPGRADED_SECURITY()).to.equal(true);
-      
+
       expect(await upgradedPluginProxy.hasUpgradedVolatilityImpl.staticCall()).to.equal(true);
       expect(await upgradedPluginProxy.hasUpgradedDynamicFeeImpl.staticCall()).to.equal(true);
       expect(await upgradedPluginProxy.hasUpgradedFarmingImpl.staticCall()).to.equal(true);
-      expect(await upgradedPluginProxy.hasUpgradedAlmImpl.staticCall()).to.equal(true);
+      expect(await upgradedPluginProxy.hasUpgradedLimitOrderImpl.staticCall()).to.equal(true);
       expect(await upgradedPluginProxy.hasUpgradedSecurityImpl.staticCall()).to.equal(true);
-      
+
       // Set states in various modules
       await upgradedPluginProxy.connect(ownerSigner).setAdvancedFeeMode(true);
       expect(await upgradedPluginProxy.getAdvancedFeeMode.staticCall()).to.equal(true);
-      
+
       await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(true);
       expect(await upgradedPluginProxy.getFarmingPausedMode.staticCall()).to.equal(true);
       await upgradedPluginProxy.connect(ownerSigner).setFarmingPausedMode(false);
-      
-      await upgradedPluginProxy.connect(ownerSigner).setAlmAdvancedMode(true);
-      expect(await upgradedPluginProxy.getAlmAdvancedMode.staticCall()).to.equal(true);
-      
+
+      await upgradedPluginProxy.connect(ownerSigner).setLimitOrderAdvancedMode(true);
+      expect(await upgradedPluginProxy.getLimitOrderAdvancedMode.staticCall()).to.equal(true);
+
       await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(true);
       expect(await upgradedPluginProxy.getSecurityEmergencyMode.staticCall()).to.equal(true);
       await upgradedPluginProxy.connect(ownerSigner).setSecurityEmergencyMode(false);
-      
+
       // Perform swap to generate oracle data
       const swapAmount = ethers.parseEther('100');
       const token1Before = await token1.balanceOf(ownerSigner.address);
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount, deadline);
-      
+
       const token1After = await token1.balanceOf(ownerSigner.address);
       const swapOutput = token1After - token1Before;
-      
+
       expect(swapOutput).to.equal(99690061082052222693n);
-      
+
       const timepointIndexBefore = await upgradedPluginProxy.timepointIndex();
       const lastTimestampBefore = await upgradedPluginProxy.lastTimepointTimestamp();
       const volatilityDataBefore = await upgradedPluginProxy.getSingleTimepoint(0);
-      
+
       expect(timepointIndexBefore).to.equal(2n);
       expect(volatilityDataBefore.tickCumulative).to.not.equal(0n);
-      
+
       // Downgrade
       const result = await deployNewPluginImplementation(
         'AlgebraUpgradeablePlugin',
@@ -812,45 +812,45 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
         newPluginFactory,
         implementations
       );
-      
+
       // Downgrade to base plugin
       await newPluginFactory.connect(ownerSigner).upgradePlugins(result.address);
-      
+
       const implementationAfterDowngrade = await beacon.implementation();
       expect(implementationAfterDowngrade).to.equal(result.address);
-      
+
       const poolPluginAfter = await pool.plugin();
       expect(poolPluginAfter).to.equal(pluginAddress);
-      
+
       const basePlugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
-      
+
       // Verify oracle data persisted after downgrade
       const timepointIndexAfter = await basePlugin.timepointIndex();
       const lastTimestampAfter = await basePlugin.lastTimepointTimestamp();
       const volatilityDataAfter = await basePlugin.getSingleTimepoint(0);
-      
+
       expect(timepointIndexAfter).to.equal(timepointIndexBefore);
       expect(lastTimestampAfter).to.equal(lastTimestampBefore);
       expect(volatilityDataAfter.tickCumulative).to.not.equal(0n);
-      
-     
+
+
       // Perform swap after downgrade to verify basic functionality still works
       const swapAmount2 = ethers.parseEther('100');
       const token1Before2 = await token1.balanceOf(ownerSigner.address);
       await performSwap(swapRouter, deployer, ownerSigner, token0, token1, swapAmount2, deadline);
-      
+
       const token1After2 = await token1.balanceOf(ownerSigner.address);
       const swapOutput2 = token1After2 - token1Before2;
-      
+
       expect(swapOutput2).to.equal(98010871359006808849n);
-      
+
       // Verify oracle continues to accumulate data with base implementation
       const newTimepointIndex = await basePlugin.timepointIndex();
       expect(newTimepointIndex).to.be.gt(timepointIndexBefore);
-      
+
       const volatilityDataFinal = await basePlugin.getSingleTimepoint(0);
       expect(volatilityDataFinal.tickCumulative).to.not.equal(0n);
-      
+
       // Verify base oracle functions still work
       const isInitialized = await basePlugin.isInitialized();
       expect(isInitialized).to.equal(true);
@@ -859,7 +859,7 @@ describe('Integration Tests - Fork [ @skip-on-coverage ]', function() {
       // The downgraded implementation has no such selector and no fallback, so the call reverts with
       // no return data at all. revertedWithoutReason pins that, and would fail if a later downgrade
       // kept the function and made it revert for a reason of its own.
-      
+
       const superPluginProxy = await ethers.getContractAt('MockSuperUpgradedPlugin', pluginAddress);
       await expect(
         superPluginProxy.getAdvancedFeeMode.staticCall()

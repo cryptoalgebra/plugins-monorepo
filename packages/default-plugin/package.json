@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@cryptoalgebra/abstract-plugin": "workspace:^",
-    "@cryptoalgebra/alm-plugin": "workspace:^",
+    "@cryptoalgebra/limit-order-plugin": "workspace:^",
     "@cryptoalgebra/dynamic-fee-plugin": "workspace:^",
     "@cryptoalgebra/farming-proxy-plugin": "workspace:^",
     "@cryptoalgebra/integral-core": "1.3.0-beta",

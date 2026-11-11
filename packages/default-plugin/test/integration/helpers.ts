@@ -118,7 +118,7 @@ export async function deployNewPluginImplementation(
     volatility?: string;
     dynamicFee?: string;
     farming?: string;
-    alm?: string;
+    limitOrder?: string;
     security?: string;
   }
 ) {
@@ -129,14 +129,14 @@ export async function deployNewPluginImplementation(
     volatilityOracle: moduleOverrides?.volatility ?? modules.volatilityOracle,
     dynamicFee: moduleOverrides?.dynamicFee ?? modules.dynamicFee,
     farmingProxy: moduleOverrides?.farming ?? modules.farmingProxy,
-    alm: moduleOverrides?.alm ?? modules.alm,
+    limitOrder: moduleOverrides?.limitOrder ?? modules.limitOrder,
     security: moduleOverrides?.security ?? modules.security
   };
 
   // The shipped plugin takes the five module addresses positionally, the harnesses take one struct
   const constructorArgs =
     contractName === 'AlgebraUpgradeablePlugin'
-      ? [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.alm, impls.security]
+      ? [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.limitOrder, impls.security]
       : [impls];
 
   const NewPluginFactory = await ethers.getContractFactory(contractName);

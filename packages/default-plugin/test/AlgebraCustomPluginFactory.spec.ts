@@ -500,6 +500,7 @@ describe('AlgebraCustomPluginFactory', function () {
       await f.customFactory.setDefaultFeeConfiguration(OTHER_FEE_CONFIGURATION);
       await f.customFactory.setFarmingAddress(f.other.address);
       await f.customFactory.setSecurityRegistry(f.wallet.address);
+      await f.customFactory.setLimitOrderManager(f.other.address);
       const beacon = await f.customFactory.beacon();
 
       const newImpl = await (await ethers.getContractFactory('AlgebraCustomPluginFactory')).deploy();
@@ -512,6 +513,7 @@ describe('AlgebraCustomPluginFactory', function () {
       expect(await f.customFactory.defaultFeeConfiguration()).to.deep.equal(Object.values(OTHER_FEE_CONFIGURATION).map(BigInt));
       expect(await f.customFactory.farmingAddress()).to.equal(f.other.address);
       expect(await f.customFactory.securityRegistry()).to.equal(f.wallet.address);
+      expect(await f.customFactory.limitOrderManager()).to.equal(f.other.address);
     });
 
     it('should reject a factory upgrade from anyone but the ProxyAdmin owner', async function () {

@@ -20,7 +20,7 @@ contract MockPluginWithModuleGetters is MockTimeAlgebraUpgradeablePlugin {
         volatilityOracle: volatilityOracleImplementation,
         dynamicFee: dynamicFeeImplementation,
         farmingProxy: farmingProxyImplementation,
-        alm: almImplementation,
+        limitOrder: limitOrderImplementation,
         security: securityImplementation
       });
   }

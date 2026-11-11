@@ -5,9 +5,9 @@ import { expect } from 'test-utils/expect';
 import { encodePriceSqrt } from 'test-utils/utilities';
 import { ZERO_ADDRESS, deployImplementations, deployPluginFactory, impersonateAlgebraFactory, withImpl } from './shared/fixtures';
 
-import { 
-  MockFactory, 
-  MockPool, 
+import {
+  MockFactory,
+  MockPool,
   MockTimeAlgebraUpgradeablePlugin,
 } from '../typechain';
 
@@ -69,7 +69,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
   describe('#Beacon Proxy Architecture', () => {
     it('all proxies share the same beacon', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Both plugins should point to the same implementation via beacon
       const impl = await fixture.beacon.implementation();
       expect(impl).to.eq(fixture.originalImplementation);
@@ -77,12 +77,12 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('plugins are properly initialized', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Check plugin1 is initialized
       const pool1 = await fixture.plugin1.pool();
       expect(pool1).to.eq(await fixture.mockPool1.getAddress());
-      
-      // Check plugin2 is initialized  
+
+      // Check plugin2 is initialized
       const pool2 = await fixture.plugin2.pool();
       expect(pool2).to.eq(await fixture.mockPool2.getAddress());
     });
@@ -124,7 +124,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
   describe('#Upgrade Process', () => {
     it('only authorized can upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Other user cannot upgrade
       await expect(
         fixture.beacon.connect(other).upgradeTo(fixture.upgradedImplementation)
@@ -133,7 +133,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('owner can upgrade beacon', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Before upgrade
       const implBefore = await fixture.beacon.implementation();
       expect(implBefore).to.eq(fixture.originalImplementation);
@@ -148,7 +148,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('upgrade affects all existing proxies', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Setup pools before upgrade
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool2.setPlugin(fixture.plugin2);
@@ -168,7 +168,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('user with ALGEBRA_BASE_PLUGIN_MANAGER role cannot upgrade beacon directly (owner-only beacon)', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Granting role in algebraFactory does not affect owner-only beacon authorization
       await fixture.mockFactory.grantRole(
         ethers.keccak256(ethers.toUtf8Bytes('ALGEBRA_BASE_PLUGIN_MANAGER')),
@@ -182,12 +182,12 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('owner of algebraFactory cannot upgrade beacon directly (owner-only beacon)', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // wallet is owner of mockFactory, so should be able to upgrade
       // Need to call beacon.upgradeTo directly, not through factory
       const beaconAddress = await fixture.beacon.getAddress();
       const beacon = await ethers.getContractAt('UpgradeableBeacon', beaconAddress);
-      
+
       await expect(
         beacon.connect(wallet).upgradeTo(fixture.upgradedImplementation)
       ).to.be.revertedWithCustomError(beacon, 'OwnableUnauthorizedAccount').withArgs(wallet.address);
@@ -197,7 +197,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
   describe('#Storage Preservation', () => {
     it('pool address is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
@@ -212,7 +212,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('defaultPluginConfig is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
 
       const configBefore = await fixture.plugin1.defaultPluginConfig();
@@ -226,7 +226,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('fee configuration is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
 
       const feeConfigBefore = await fixture.plugin1.feeConfig();
@@ -235,7 +235,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
 
       const feeConfigAfter = await fixture.plugin1.feeConfig();
-      
+
       expect(feeConfigAfter.alpha1).to.eq(feeConfigBefore.alpha1);
       expect(feeConfigAfter.alpha2).to.eq(feeConfigBefore.alpha2);
       expect(feeConfigAfter.baseFee).to.eq(feeConfigBefore.baseFee);
@@ -243,16 +243,16 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('incentive is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
       // Set farming address and incentive
       await fixture.pluginFactory.setFarmingAddress(wallet.address);
-      
+
       const vpFactory = await ethers.getContractFactory('MockTimeVirtualPool');
       const virtualPool = await vpFactory.deploy();
-      
+
       await fixture.plugin1.setIncentive(virtualPool);
       const incentiveBefore = await fixture.plugin1.incentive();
 
@@ -265,7 +265,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('timepoints data is preserved after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
@@ -287,17 +287,17 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
   describe('#New Functionality After Upgrade', () => {
     it('new functions are available after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
 
       // Upgrade
       await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
 
       const upgradedPlugin = await ethers.getContractAt('MockUpgradedPlugin', await fixture.plugin1.getAddress());
-      
+
       // New function should work
       expect(await upgradedPlugin.isUpgraded()).to.eq(true);
-      
+
       // Call new upgradeable function
       const result = await upgradedPlugin.newUpgradeableFunction();
       expect(result).to.eq(42);
@@ -305,7 +305,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('existing functions still work after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
@@ -324,7 +324,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
   describe('#Factory Upgrade Management', () => {
     it('factory tracks current implementation', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       const implBefore = await fixture.pluginFactory.implementation();
       expect(implBefore).to.eq(fixture.originalImplementation);
 
@@ -336,7 +336,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('new plugins after upgrade use new implementation', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       // Upgrade first
       await fixture.pluginFactory.upgradePlugins(fixture.upgradedImplementation);
 
@@ -345,11 +345,11 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       const newPool = await mockPoolFactory.deploy();
 
       await fixture.pluginFactory.connect(fixture.algebraFactorySigner).beforeCreatePoolHook(
-        newPool, 
-        ZERO_ADDRESS, 
-        ZERO_ADDRESS, 
-        ZERO_ADDRESS, 
-        ZERO_ADDRESS, 
+        newPool,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
         '0x'
       );
 
@@ -364,7 +364,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
   describe('#Module Functionality After Upgrade', () => {
     it('volatility oracle still works after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
@@ -384,7 +384,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('dynamic fee still works after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
@@ -413,7 +413,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
     it('farming proxy still works after upgrade', async () => {
       const fixture = await loadFixture(upgradeFixture);
-      
+
       await fixture.mockPool1.setPlugin(fixture.plugin1);
       await fixture.mockPool1.initialize(encodePriceSqrt(1, 1));
 
@@ -440,7 +440,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
           'MockUpgradedVolatilityOraclePluginImplementation',
           'MockUpgradedDynamicFeePluginImplementation',
           'MockUpgradedFarmingProxyPluginImplementation',
-          'MockUpgradedALMPluginImplementation',
+          'MockUpgradedLimitOrderPluginImplementation',
           'MockUpgradedSecurityPluginImplementation',
         ].map(async (name) => (await (await ethers.getContractFactory(name)).deploy()).getAddress())
       );
@@ -449,7 +449,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
         volatilityOracle: v2[0],
         dynamicFee: v2[1],
         farmingProxy: v2[2],
-        alm: v2[3],
+        limitOrder: v2[3],
         security: v2[4],
       });
 
@@ -472,8 +472,8 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       const registry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
       await fixture.plugin1.setSecurityRegistry(registry);
 
-      const rebalanceManager = await (await ethers.getContractFactory('MockRebalanceManager')).deploy();
-      await fixture.plugin1.initializeALM(rebalanceManager, 3600, 600);
+      const manager = await (await ethers.getContractFactory('MockLimitOrderManager')).deploy();
+      await fixture.plugin1.setLimitOrderManager(manager);
 
       await fixture.mockPool1.mint(wallet.address, wallet.address, -120, 120, 1000000, '0x');
       await fixture.plugin1.advanceTime(60);
@@ -487,9 +487,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
         lastTimepointTimestamp: await fixture.plugin1.lastTimepointTimestamp(),
         timepoint0: await fixture.plugin1.timepoints(0),
         incentive: await fixture.plugin1.incentive(),
-        rebalanceManager: await fixture.plugin1.rebalanceManager(),
-        slowTwapPeriod: await fixture.plugin1.slowTwapPeriod(),
-        fastTwapPeriod: await fixture.plugin1.fastTwapPeriod(),
+        limitOrderManager: await fixture.plugin1.limitOrderManager(),
         securityRegistry: await fixture.plugin1.getSecurityRegistry(),
       };
 
@@ -499,20 +497,20 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       expect(await upgraded.hasUpgradedVolatilityImpl.staticCall()).to.eq(true);
       expect(await upgraded.hasUpgradedDynamicFeeImpl.staticCall()).to.eq(true);
       expect(await upgraded.hasUpgradedFarmingImpl.staticCall()).to.eq(true);
-      expect(await upgraded.hasUpgradedAlmImpl.staticCall()).to.eq(true);
+      expect(await upgraded.hasUpgradedLimitOrderImpl.staticCall()).to.eq(true);
       expect(await upgraded.hasUpgradedSecurityImpl.staticCall()).to.eq(true);
 
       // Write into all five V2 namespaces
       await upgraded.setVolatilityEnhancedMode(true);
       await upgraded.setAdvancedFeeMode(true);
       await upgraded.setFarmingPausedMode(true);
-      await upgraded.setAlmAdvancedMode(true);
+      await upgraded.setLimitOrderAdvancedMode(true);
       await upgraded.setSecurityEmergencyMode(true);
 
       expect(await upgraded.getVolatilityEnhancedMode.staticCall()).to.eq(true);
       expect(await upgraded.getAdvancedFeeMode.staticCall()).to.eq(true);
       expect(await upgraded.getFarmingPausedMode.staticCall()).to.eq(true);
-      expect(await upgraded.getAlmAdvancedMode.staticCall()).to.eq(true);
+      expect(await upgraded.getLimitOrderAdvancedMode.staticCall()).to.eq(true);
       expect(await upgraded.getSecurityEmergencyMode.staticCall()).to.eq(true);
 
       // Not one V1 field moved
@@ -540,9 +538,7 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
       expect(await upgraded.incentive()).to.eq(before.incentive);
 
-      expect(await upgraded.rebalanceManager()).to.eq(before.rebalanceManager);
-      expect(await upgraded.slowTwapPeriod()).to.eq(before.slowTwapPeriod);
-      expect(await upgraded.fastTwapPeriod()).to.eq(before.fastTwapPeriod);
+      expect(await upgraded.limitOrderManager()).to.eq(before.limitOrderManager);
 
       expect(await upgraded.getSecurityRegistry()).to.eq(before.securityRegistry);
     });
@@ -556,9 +552,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
       const upgraded = await upgradeToSuperPlugin(fixture);
 
       // Turning one module's flag on must not drag the others with it
-      await upgraded.setAlmAdvancedMode(true);
+      await upgraded.setLimitOrderAdvancedMode(true);
 
-      expect(await upgraded.getAlmAdvancedMode.staticCall()).to.eq(true);
+      expect(await upgraded.getLimitOrderAdvancedMode.staticCall()).to.eq(true);
       expect(await upgraded.getVolatilityEnhancedMode.staticCall()).to.eq(false);
       expect(await upgraded.getAdvancedFeeMode.staticCall()).to.eq(false);
       expect(await upgraded.getFarmingPausedMode.staticCall()).to.eq(false);
@@ -566,9 +562,9 @@ describe('AlgebraUpgradeablePlugin - Upgrade Tests', () => {
 
       // And turning it back off must not disturb one that was set in between
       await upgraded.setAdvancedFeeMode(true);
-      await upgraded.setAlmAdvancedMode(false);
+      await upgraded.setLimitOrderAdvancedMode(false);
 
-      expect(await upgraded.getAlmAdvancedMode.staticCall()).to.eq(false);
+      expect(await upgraded.getLimitOrderAdvancedMode.staticCall()).to.eq(false);
       expect(await upgraded.getAdvancedFeeMode.staticCall()).to.eq(true);
     });
 

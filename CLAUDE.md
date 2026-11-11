@@ -22,7 +22,7 @@ Every feature is a **module**, and a shipped plugin is a composition of modules.
    
    Some modules also ship a `<Name>Registry.sol`, a separate contract holding config shared across pools.
 
-3. **`packages/default-plugin`** is the composition root, not a default implementation. `AlgebraUpgradeablePlugin` inherits `UpgradeableAbstractPlugin` plus the connectors it bundles (VolatilityOracle, DynamicFee, FarmingProxy, ALM, Security) and passes each implementation address into the constructor. Those addresses are immutables, so every beacon proxy shares them.
+3. **`packages/default-plugin`** is the composition root, not a default implementation. `AlgebraUpgradeablePlugin` inherits `UpgradeableAbstractPlugin` plus the connectors it bundles (VolatilityOracle, DynamicFee, FarmingProxy, LimitOrder, Security) and passes each implementation address into the constructor. Those addresses are immutables, so every beacon proxy shares them.
 
 A module contributes its pool hook flags (`Plugins.BEFORE_SWAP_FLAG` and friends) and its name in `activeModules`. Adding a module to a plugin means inheriting its connector, calling its initializer, and OR-ing its config flags.
 

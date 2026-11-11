@@ -11,7 +11,7 @@ describe('ERC-7201 storage namespaces', function () {
   // The namespaces AlgebraUpgradeablePlugin composes into one storage
   const COMPOSED = [
     'abstract-plugin/contracts/libraries/AbstractPluginStorage.sol',
-    'alm/contracts/libraries/AlmStorage.sol',
+    'limit-order/contracts/libraries/LimitOrderStorage.sol',
     'dynamic-fee/contracts/libraries/DynamicFeeStorage.sol',
     'farming-proxy/contracts/libraries/FarmingProxyStorage.sol',
     'safety-switch/contracts/libraries/SecurityStorage.sol',

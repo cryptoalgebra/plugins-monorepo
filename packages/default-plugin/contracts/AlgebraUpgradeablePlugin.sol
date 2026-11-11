@@ -9,13 +9,14 @@ import '@cryptoalgebra/dynamic-fee-plugin/contracts/DynamicFeeConnector.sol';
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/types/AlgebraFeeConfiguration.sol';
 import '@cryptoalgebra/volatility-oracle-plugin/contracts/VolatilityOracleConnector.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/FarmingProxyConnector.sol';
-import '@cryptoalgebra/alm-plugin/contracts/AlmConnector.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/LimitOrderConnector.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/SecurityConnector.sol';
 
 import './interfaces/IAlgebraUpgradeablePlugin.sol';
 
 /// @title Algebra Integral 1.3 Upgradeable Plugin
-/// @notice Full-featured upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, ALM and Security
+/// @notice Upgradeable plugin with VolatilityOracle, DynamicFee, FarmingProxy, LimitOrder and Security
 /// @dev Uses Beacon Proxy pattern via UpgradeableAbstractPlugin
 contract AlgebraUpgradeablePlugin is
   UpgradeableAbstractPlugin,
@@ -23,7 +24,7 @@ contract AlgebraUpgradeablePlugin is
   VolatilityOracleConnector,
   DynamicFeeConnector,
   FarmingProxyConnector,
-  AlmConnector,
+  LimitOrderConnector,
   SecurityConnector
 {
   using Plugins for uint16;
@@ -34,7 +35,7 @@ contract AlgebraUpgradeablePlugin is
   /// @param _volatilityOracleImpl VolatilityOracle implementation address
   /// @param _dynamicFeeImpl DynamicFee implementation address
   /// @param _farmingProxyImpl FarmingProxy implementation address
-  /// @param _almImpl ALM implementation address
+  /// @param _limitOrderImpl LimitOrder implementation address
   /// @param _securityImpl Security implementation address
   constructor(
     address _factory,
@@ -42,14 +43,14 @@ contract AlgebraUpgradeablePlugin is
     address _volatilityOracleImpl,
     address _dynamicFeeImpl,
     address _farmingProxyImpl,
-    address _almImpl,
+    address _limitOrderImpl,
     address _securityImpl
   )
     UpgradeableAbstractPlugin(_factory, _pluginFactory)
     VolatilityOracleConnector(_volatilityOracleImpl)
     DynamicFeeConnector(_dynamicFeeImpl)
     FarmingProxyConnector(_farmingProxyImpl)
-    AlmConnector(_almImpl)
+    LimitOrderConnector(_limitOrderImpl)
     SecurityConnector(_securityImpl)
   {}
 
@@ -61,6 +62,7 @@ contract AlgebraUpgradeablePlugin is
     // Initialize modules that require state setup
     _initializeDynamicFee(feeConfig);
     _initializeSecurity(securityRegistry);
+    _initializeLimitOrder(ILimitOrderPluginFactory(pluginFactory).limitOrderManager());
 
     emit PluginInitialized(_getPool());
   }
@@ -70,7 +72,7 @@ contract AlgebraUpgradeablePlugin is
     activeModules[0] = VOLATILITY_ORACLE_MODULE_NAME;
     activeModules[1] = DYNAMIC_FEE_MODULE_NAME;
     activeModules[2] = FARMING_PROXY_MODULE_NAME;
-    activeModules[3] = ALM_MODULE_NAME;
+    activeModules[3] = LIMIT_ORDER_MODULE_NAME;
     activeModules[4] = SECURITY_MODULE_NAME;
     return activeModules;
   }
@@ -80,7 +82,7 @@ contract AlgebraUpgradeablePlugin is
       VOLATILITY_ORACLE_PLUGIN_CONFIG |
       DYNAMIC_FEE_PLUGIN_CONFIG |
       FARMING_PROXY_PLUGIN_CONFIG |
-      ALM_PLUGIN_CONFIG |
+      LIMIT_ORDER_PLUGIN_CONFIG |
       SECURITY_PLUGIN_CONFIG;
   }
 
@@ -96,7 +98,7 @@ contract AlgebraUpgradeablePlugin is
     return UpgradeableAbstractPlugin._getPool();
   }
 
-  /// @dev Required by DynamicFeeConnector, AlmConnector, SecurityConnector - use base class implementation
+  /// @dev Shared authorization for module connectors
   function _authorize() internal view override(UpgradeableAbstractPlugin, BaseConnector) {
     UpgradeableAbstractPlugin._authorize();
   }
@@ -202,8 +204,7 @@ contract AlgebraUpgradeablePlugin is
     // Update virtual pool for farming
     _updateVirtualPoolTick(zeroToOne, tick);
 
-    // Obtain TWAP and trigger rebalance
-    _triggerAlmRebalance(tick);
+    _updateLimitOrderManagerState(msg.sender, zeroToOne, tick);
 
     return IAlgebraPlugin.afterSwap.selector;
   }
@@ -229,21 +230,5 @@ contract AlgebraUpgradeablePlugin is
   /// @dev The oracle extrapolates to the current tick and time, so the timepoint beforeSwap writes leaves it unchanged
   function getSwapFee(address, address, bool, int256, uint160, bool, bytes calldata) external view override returns (uint24) {
     return _getCurrentFee(_getAverageVolatilityLast());
-  }
-
-  // ========== ALM Helper Functions ==========
-
-  /// @dev Trigger ALM rebalance with TWAP data
-  function _triggerAlmRebalance(int24 currentTick) internal {
-    // Get TWAP periods from ALM
-    uint32 slowPeriod = slowTwapPeriod();
-    uint32 fastPeriod = fastTwapPeriod();
-
-    // rebalance happens only if rebalanceManager != 0 and we have enough history for slowTwapPeriod.
-    if (rebalanceManager() != address(0) && _canGetTwap(slowPeriod)) {
-      int24 slowTwapTick = _getTwapTick(slowPeriod);
-      int24 fastTwapTick = _getTwapTick(fastPeriod);
-      _obtainTWAPAndRebalance(currentTick, slowTwapTick, fastTwapTick, lastTimepointTimestamp());
-    }
   }
 }

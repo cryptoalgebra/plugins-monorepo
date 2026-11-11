@@ -25,19 +25,19 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "FarmingProxyImpl"
   });
 
-  const almImpl = m.contract("AlmPluginImplementation", [], {
-    id: "AlmImpl"
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
   });
 
   const securityImpl = m.contract("SecurityPluginImplementation", [], {
     id: "SecurityImpl"
   });
 
-  return { 
+  return {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
+    limitOrderImpl,
     securityImpl
   };
 });
@@ -52,14 +52,14 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
 //   2. Run: npx hardhat ignition deploy ignition/modules/upgradePlugins.ts --network baseTestnet
 
 export default buildModule("UpgradePlugins", (m) => {
-  
+
   // Deploy new module implementations
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    limitOrderImpl,
+    securityImpl
   } = m.useModule(ModuleImplementationsModule);
 
   // Get factory instance at proxy address
@@ -79,7 +79,7 @@ export default buildModule("UpgradePlugins", (m) => {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
+    limitOrderImpl,
     securityImpl
   ], {
     id: "NewPluginImplementation"
@@ -90,12 +90,12 @@ export default buildModule("UpgradePlugins", (m) => {
     id: "UpgradeAllPlugins"
   });
 
-  return { 
+  return {
     newPluginImpl,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
+    limitOrderImpl,
     securityImpl
   };
 });

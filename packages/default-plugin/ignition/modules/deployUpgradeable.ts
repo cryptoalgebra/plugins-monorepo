@@ -7,10 +7,10 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 const config = {
   // Algebra Core Factory address
   algebraFactory: "0x51a744E9FEdb15842c3080d0937C99A365C6c358",
-  
+
   // Farming center address (optional, can be set later)
   farmingCenter: "0x3aA96eDb755C44F3E50C5408a36abb52f28326Ba",
-  
+
   // Default fee configuration for dynamic fee module
   defaultFeeConfig: {
     alpha1: 2900,
@@ -39,8 +39,8 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     id: "FarmingProxyImpl"
   });
 
-  const almImpl = m.contract("AlmPluginImplementation", [], {
-    id: "AlmImpl"
+  const limitOrderImpl = m.contract("LimitOrderPluginImplementation", [], {
+    id: "LimitOrderImpl"
   });
 
   const securityImpl = m.contract("SecurityPluginImplementation", [], {
@@ -51,7 +51,7 @@ const ModuleImplementationsModule = buildModule("ModuleImplementations", (m) => 
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
+    limitOrderImpl,
     securityImpl
   };
 });
@@ -104,12 +104,12 @@ const FactoryProxyModule = buildModule("FactoryProxy", (m) => {
 // ============= PLUGIN IMPLEMENTATION =============
 
 const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
-  const { 
-    volatilityOracleImpl, 
-    dynamicFeeImpl, 
-    farmingProxyImpl, 
-    almImpl, 
-    securityImpl 
+  const {
+    volatilityOracleImpl,
+    dynamicFeeImpl,
+    farmingProxyImpl,
+    limitOrderImpl,
+    securityImpl
   } = m.useModule(ModuleImplementationsModule);
   const { factoryProxy } = m.useModule(FactoryProxyModule);
 
@@ -119,18 +119,18 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
+    limitOrderImpl,
     securityImpl
   ], {
     id: "PluginImplementation"
   });
 
-  return { 
+  return {
     pluginImpl,
     volatilityOracleImpl,
     dynamicFeeImpl,
     farmingProxyImpl,
-    almImpl,
+    limitOrderImpl,
     securityImpl
   };
 });
@@ -140,7 +140,7 @@ const PluginImplementationModule = buildModule("PluginImplementation", (m) => {
 export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // 1. Deploy all module implementations first
   const moduleImpls = m.useModule(ModuleImplementationsModule);
-  
+
   // 2. Deploy factory implementation and its initialized proxy
   const { factoryImpl } = m.useModule(FactoryImplementationModule);
   const { factoryProxy, proxyAdmin } = m.useModule(FactoryProxyModule);
@@ -153,10 +153,6 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     id: "Factory"
   });
 
-  const setPluginImplementation = m.call(factory, "upgradePlugins", [pluginImpl], {
-    id: "SetPluginImplementation"
-  });
-
   const algebraFactory = m.contractAt("IAlgebraFactory", config.algebraFactory, {
     id: "AlgebraFactory"
   });
@@ -165,23 +161,26 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
   // Always deploy SecurityRegistry for the target AlgebraFactory.
   const securityRegistry = m.contract("SecurityRegistry", [config.algebraFactory], { id: "SecurityRegistry" });
 
-  // ============= POST-DEPLOYMENT CONFIGURATION =============
-
-  // Set farming address if provided
-  if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
-    m.call(factory, "setFarmingAddress", [config.farmingCenter], {
-      id: "SetFarmingAddress",
-      after: [setPluginImplementation]
-    });
-  }
-
-  // Always set SecurityRegistry (either provided or freshly deployed)
-  m.call(factory, "setSecurityRegistry", [securityRegistry], {
-    id: "SetSecurityRegistry",
-    after: [setPluginImplementation, securityRegistry]
+  // Required Ignition parameter for native-token limit orders.
+  const wNativeToken = m.getParameter("wNativeToken");
+  const poolDeployer = m.staticCall(algebraFactory, "poolDeployer", [], 0, { id: "PoolDeployer" });
+  const limitOrderManager = m.contract("LimitOrderManager", [
+    wNativeToken, poolDeployer, factoryProxy, config.algebraFactory
+  ], { id: "LimitOrderManager" });
+  const setLimitOrderManager = m.call(factory, "setLimitOrderManager", [limitOrderManager], {
+    id: "SetLimitOrderManager"
   });
-
-  // Set DefaultPluginFactory in AlgebraFactory
+  const setSecurityRegistry = m.call(factory, "setSecurityRegistry", [securityRegistry], {
+    id: "SetSecurityRegistry"
+  });
+  const configured = [setLimitOrderManager, setSecurityRegistry];
+  if (config.farmingCenter !== "0x0000000000000000000000000000000000000000") {
+    configured.push(m.call(factory, "setFarmingAddress", [config.farmingCenter], { id: "SetFarmingAddress" }));
+  }
+  const setPluginImplementation = m.call(factory, "upgradePlugins", [pluginImpl], {
+    id: "SetPluginImplementation",
+    after: configured
+  });
   m.call(algebraFactory, "setDefaultPluginFactory", [factoryProxy], {
     id: "SetDefaultPluginFactory",
     after: [setPluginImplementation]
@@ -193,6 +192,7 @@ export default buildModule("AlgebraUpgradeablePluginFactoryDeployment", (m) => {
     factoryProxy,
     proxyAdmin,
     securityRegistry,
+    limitOrderManager,
     ...m.useModule(PluginImplementationModule)
   };
 });

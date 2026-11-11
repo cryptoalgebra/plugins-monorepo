@@ -110,6 +110,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       // Set some configuration before upgrade
       await pluginFactory.setDefaultFeeConfiguration(configuration);
       await pluginFactory.setFarmingAddress(other.address);
+      await pluginFactory.setLimitOrderManager(other.address);
 
       // Deploy a new factory implementation
       const newFactoryImplFactory = await ethers.getContractFactory('AlgebraUpgradeablePluginFactory');
@@ -124,6 +125,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       const newConfig = await pluginFactory.defaultFeeConfiguration();
       expect(newConfig.baseFee).to.eq(configuration.baseFee);
       expect(await pluginFactory.farmingAddress()).to.eq(other.address);
+      expect(await pluginFactory.limitOrderManager()).to.eq(other.address);
     });
   });
 
@@ -206,7 +208,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
       const pluginAddress = await pluginFactory.pluginByPool(other.address);
       expect(pluginAddress).to.not.be.eq(ZERO_ADDRESS);
-      
+
       const plugin = await ethers.getContractAt('AlgebraUpgradeablePlugin', pluginAddress);
       const feeConfig = await plugin.feeConfig();
       expect(feeConfig.baseFee).to.be.not.eq(0);
@@ -358,7 +360,7 @@ describe('AlgebraUpgradeablePluginFactory', () => {
       // Create plugin first
       await mockAlgebraFactory.stubPool(wallet.address, other.address, other.address);
       await pluginFactory.createPluginForExistingPool(wallet.address, other.address);
-      
+
       const implBefore = await pluginFactory.implementation();
 
       // Deploy new implementation

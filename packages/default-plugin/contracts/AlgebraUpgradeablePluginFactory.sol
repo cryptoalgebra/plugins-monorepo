@@ -35,6 +35,8 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
     address farmingAddress;
     // Security
     address securityRegistry;
+    // Limit orders. Append fields to preserve the proxy storage layout.
+    address limitOrderManager;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("erc7201:algebra.pluginfactory.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -157,6 +159,17 @@ contract AlgebraUpgradeablePluginFactory is Initializable, IAlgebraDefaultPlugin
   }
 
   // ========== Configuration Setters ==========
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function limitOrderManager() external view override returns (address) {
+    return _getStorage().limitOrderManager;
+  }
+
+  /// @inheritdoc ILimitOrderPluginFactory
+  function setLimitOrderManager(address newLimitOrderManager) external override onlyAdministrator {
+    _getStorage().limitOrderManager = newLimitOrderManager;
+    emit LimitOrderManager(newLimitOrderManager);
+  }
 
   /// @inheritdoc IDynamicFeePluginFactory
   function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external override onlyAdministrator {

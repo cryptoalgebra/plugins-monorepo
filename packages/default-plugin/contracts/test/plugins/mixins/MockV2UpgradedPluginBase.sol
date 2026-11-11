@@ -13,7 +13,7 @@ abstract contract MockV2UpgradedPluginBase is
   V2VolatilityAccessors,
   V2DynamicFeeAccessors,
   V2FarmingAccessors,
-  V2AlmAccessors,
+  V2LimitOrderAccessors,
   V2SecurityAccessors
 {
   constructor(
@@ -42,8 +42,8 @@ abstract contract MockV2UpgradedPluginBase is
     return farmingProxyImplementation;
   }
 
-  function _v2AlmImpl() internal view override returns (address) {
-    return almImplementation;
+  function _v2LimitOrderImpl() internal view override returns (address) {
+    return limitOrderImplementation;
   }
 
   function _v2SecurityImpl() internal view override returns (address) {

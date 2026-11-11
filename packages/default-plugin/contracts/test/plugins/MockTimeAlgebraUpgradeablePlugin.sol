@@ -30,7 +30,7 @@ contract MockTimeAlgebraUpgradeablePlugin is AlgebraUpgradeablePlugin {
       impls.volatilityOracle,
       impls.dynamicFee,
       impls.farmingProxy,
-      impls.alm,
+      impls.limitOrder,
       impls.security
     )
   {}

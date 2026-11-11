@@ -1,8 +1,8 @@
 import { ethers } from "hardhat";
 
 // ============= CONFIGURATION =============
-// The manager takes the base plugin factory as an immutable, so deploy the plugin factory first
-// (default-plugin/scripts/deployUpgradeable.ts) and paste its PROXY address here.
+// Deploy or replace a manager for an existing plugin factory. The default-plugin deployment
+// scripts already deploy and register one. Use the factory PROXY address here.
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -60,10 +60,42 @@ async function main() {
   requireAddress(config.pluginFactory, "pluginFactory");
   requireAddress(config.wNativeToken, "wNativeToken");
 
+  if (config.existingManager !== "") requireAddress(config.existingManager, "existingManager");
+
   const algebraFactory = await ethers.getContractAt("IAlgebraFactory", config.algebraFactory);
   const poolDeployer = await algebraFactory.poolDeployer();
   console.log(`poolDeployer: ${poolDeployer}`);
   console.log("");
+
+  const pluginFactory = new ethers.Contract(
+    config.pluginFactory,
+    [
+      "function algebraFactory() view returns (address)",
+      "function limitOrderManager() view returns (address)",
+      "function setLimitOrderManager(address)",
+    ],
+    deployer,
+  );
+  if ((await pluginFactory.algebraFactory()).toLowerCase() !== config.algebraFactory.toLowerCase()) {
+    throw new Error("Plugin factory belongs to a different AlgebraFactory");
+  }
+  // Fail before deploying if the factory has not been upgraded to support limit orders.
+  await pluginFactory.limitOrderManager();
+  if (config.setOnPluginFactory) {
+    const defaultAdmin = ethers.id("ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR");
+    const customAdmin = ethers.id("ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR");
+    // Read the actual role from the selected factory, since either kind can own a manager.
+    const roleABI = new ethers.Contract(config.pluginFactory, [
+      "function ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR() view returns (bytes32)",
+      "function ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR() view returns (bytes32)",
+    ], deployer);
+    let role: string;
+    try { role = await roleABI.ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR(); }
+    catch { role = await roleABI.ALGEBRA_CUSTOM_PLUGIN_ADMINISTRATOR(); }
+    if ((role !== defaultAdmin && role !== customAdmin) || !(await algebraFactory.hasRoleOrOwner(role, deployer.address))) {
+      throw new Error("Deployer lacks the plugin factory administrator role");
+    }
+  }
 
   // ============= 1. DEPLOY =============
 
@@ -87,16 +119,21 @@ async function main() {
   }
   console.log("");
 
+  const manager = await ethers.getContractAt("LimitOrderManager", managerAddress);
+  const bindings = [
+    [await manager.basePluginFactory(), config.pluginFactory],
+    [await manager.factory(), config.algebraFactory],
+    [await manager.poolDeployer(), poolDeployer],
+    [await manager.wNativeToken(), config.wNativeToken],
+  ];
+  if (bindings.some(([actual, expected]) => actual.toLowerCase() !== expected.toLowerCase())) {
+    throw new Error("LimitOrderManager immutables do not match this deployment");
+  }
+
   // ============= 2. REGISTER ON THE PLUGIN FACTORY =============
 
   if (config.setOnPluginFactory) {
     console.log("=== Registering on the plugin factory ===");
-    // Minimal ABI on purpose: the factory's artifact belongs to the default-plugin package.
-    const pluginFactory = new ethers.Contract(
-      config.pluginFactory,
-      ["function setLimitOrderManager(address newLimitOrderManager)", "function limitOrderManager() view returns (address)"],
-      deployer,
-    );
     // Plugins created from here on pick the manager up in their initialize call.
     // Plugins created earlier keep whatever manager they were initialized with.
     await waitTx(await pluginFactory.setLimitOrderManager(managerAddress), "setLimitOrderManager");

@@ -15,7 +15,7 @@ import '../LimitOrderPluginImplementation.sol';
 /// @title Upgradeable LimitOrder Plugin Factory (test)
 /// @notice Deploys BeaconProxy instances of UpgradeableLimitOrderPluginTest for Algebra pools
 contract UpgradeableLimitOrderTestPluginFactory is IBasePluginFactory, ILimitOrderPluginFactory {
-  address public limitOrderManager;
+  address public override limitOrderManager;
 
   address public immutable override algebraFactory;
 

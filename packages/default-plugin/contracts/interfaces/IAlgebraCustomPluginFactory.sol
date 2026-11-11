@@ -6,10 +6,17 @@ import '@cryptoalgebra/abstract-plugin/contracts/interfaces/ICustomPluginFactory
 import '@cryptoalgebra/dynamic-fee-plugin/contracts/interfaces/IDynamicFeePluginFactory.sol';
 import '@cryptoalgebra/farming-proxy-plugin/contracts/interfaces/IFarmingPluginFactory.sol';
 import '@cryptoalgebra/safety-switch-plugin/contracts/interfaces/ISecurityPluginFactory.sol';
+import '@cryptoalgebra/limit-order-plugin/contracts/interfaces/ILimitOrderPluginFactory.sol';
 
 /// @title The interface for the AlgebraCustomPluginFactory
 /// @notice Creates Algebra default plugins for custom pools deployed through the AlgebraCustomPoolEntryPoint
-interface IAlgebraCustomPluginFactory is ICustomPluginFactory, IDynamicFeePluginFactory, IFarmingPluginFactory, ISecurityPluginFactory {
+interface IAlgebraCustomPluginFactory is
+  ICustomPluginFactory,
+  IDynamicFeePluginFactory,
+  IFarmingPluginFactory,
+  ISecurityPluginFactory,
+  ILimitOrderPluginFactory
+{
   error OnlyAdministrator();
   error OnlyEntryPoint();
   error PluginAlreadyCreated();

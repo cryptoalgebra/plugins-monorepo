@@ -79,23 +79,23 @@ abstract contract V2FarmingAccessors is V2AccessorsBase {
   }
 }
 
-/// @dev Plugin level accessors for the V2 functions of MockUpgradedALMPluginImplementation.
-abstract contract V2AlmAccessors is V2AccessorsBase {
-  bool public constant HAS_UPGRADED_ALM = true;
+/// @dev Plugin level accessors for the V2 functions of MockUpgradedLimitOrderPluginImplementation.
+abstract contract V2LimitOrderAccessors is V2AccessorsBase {
+  bool public constant HAS_UPGRADED_LIMIT_ORDER = true;
 
-  function _v2AlmImpl() internal view virtual returns (address);
+  function _v2LimitOrderImpl() internal view virtual returns (address);
 
-  function setAlmAdvancedMode(bool enabled) external {
+  function setLimitOrderAdvancedMode(bool enabled) external {
     _v2Authorize();
-    _v2Call(_v2AlmImpl(), abi.encodeCall(IMockV2Alm.setAdvancedMode, (enabled)));
+    _v2Call(_v2LimitOrderImpl(), abi.encodeCall(IMockV2LimitOrder.setAdvancedMode, (enabled)));
   }
 
-  function getAlmAdvancedMode() external returns (bool) {
-    return abi.decode(_v2Call(_v2AlmImpl(), abi.encodeCall(IMockV2Alm.getAdvancedMode, ())), (bool));
+  function getLimitOrderAdvancedMode() external returns (bool) {
+    return abi.decode(_v2Call(_v2LimitOrderImpl(), abi.encodeCall(IMockV2LimitOrder.getAdvancedMode, ())), (bool));
   }
 
-  function hasUpgradedAlmImpl() external returns (bool) {
-    return abi.decode(_v2Call(_v2AlmImpl(), abi.encodeCall(IMockV2Alm.isUpgradedAlmImpl, ())), (bool));
+  function hasUpgradedLimitOrderImpl() external returns (bool) {
+    return abi.decode(_v2Call(_v2LimitOrderImpl(), abi.encodeCall(IMockV2LimitOrder.isUpgradedLimitOrderImpl, ())), (bool));
   }
 }
 

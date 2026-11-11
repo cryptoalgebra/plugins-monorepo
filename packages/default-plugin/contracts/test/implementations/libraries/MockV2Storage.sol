@@ -18,7 +18,7 @@ library MockV2Storage {
     bool pausedMode;
   }
 
-  struct AlmLayout {
+  struct LimitOrderLayout {
     bool advancedMode;
   }
 
@@ -31,7 +31,7 @@ library MockV2Storage {
   bytes32 internal constant VOLATILITY_NAMESPACE = keccak256('algebra.storage.mock.volatilityoracle.v2');
   bytes32 internal constant DYNAMIC_FEE_NAMESPACE = keccak256('algebra.storage.mock.dynamicfee.v2');
   bytes32 internal constant FARMING_NAMESPACE = keccak256('algebra.storage.mock.farmingproxy.v2');
-  bytes32 internal constant ALM_NAMESPACE = keccak256('algebra.storage.mock.alm.v2');
+  bytes32 internal constant LIMIT_ORDER_NAMESPACE = keccak256('algebra.storage.mock.limitorder.v2');
   bytes32 internal constant SECURITY_NAMESPACE = keccak256('algebra.storage.mock.security.v2');
 
   function volatility() internal pure returns (VolatilityLayout storage s) {
@@ -55,8 +55,8 @@ library MockV2Storage {
     }
   }
 
-  function alm() internal pure returns (AlmLayout storage s) {
-    bytes32 position = ALM_NAMESPACE;
+  function limitOrder() internal pure returns (LimitOrderLayout storage s) {
+    bytes32 position = LIMIT_ORDER_NAMESPACE;
     assembly {
       s.slot := position
     }

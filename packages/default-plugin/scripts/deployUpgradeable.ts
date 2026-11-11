@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { deployLimitOrderManager, requireAddress } from "./shared/deployLimitOrderManager";
 
 // ============= CONFIGURATION =============
 // Update these addresses for your deployment network
@@ -6,6 +7,12 @@ import { ethers } from "hardhat";
 const config = {
   // Algebra Core Factory address
   algebraFactory: "0x0000000000000000000000000000000000000000",
+
+  // Wrapped native token for native-token limit orders (required).
+  wNativeToken: "0x0000000000000000000000000000000000000000",
+
+  // Optional manager already bound to THIS plugin factory proxy.
+  limitOrderManager: "0x0000000000000000000000000000000000000000",
 
   // Farming center address (optional, can be set later)
   farmingCenter: "0x0000000000000000000000000000000000000000",
@@ -26,6 +33,8 @@ const config = {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 async function main() {
+  requireAddress(config.wNativeToken, "wNativeToken");
+  requireAddress(config.algebraFactory, "algebraFactory");
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
   console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
@@ -56,16 +65,15 @@ async function main() {
   await farmingProxyImpl.waitForDeployment();
   console.log("FarmingProxyImpl:", await farmingProxyImpl.getAddress());
 
-  const AlmImpl = await ethers.getContractFactory("AlmPluginImplementation");
-  const almImpl = await AlmImpl.deploy();
-  await almImpl.waitForDeployment();
-  console.log("AlmImpl:", await almImpl.getAddress());
+  const LimitOrderImpl = await ethers.getContractFactory("LimitOrderPluginImplementation");
+  const limitOrderImpl = await LimitOrderImpl.deploy();
+  await limitOrderImpl.waitForDeployment();
+  console.log("LimitOrderImpl:", await limitOrderImpl.getAddress());
 
   const SecurityImpl = await ethers.getContractFactory("SecurityPluginImplementation");
   const securityImpl = await SecurityImpl.deploy();
   await securityImpl.waitForDeployment();
   console.log("SecurityImpl:", await securityImpl.getAddress());
-
 
   // ============= 2. DEPLOY FACTORY IMPLEMENTATION =============
   console.log("=== Deploying Factory Implementation ===");
@@ -82,7 +90,7 @@ async function main() {
 
   // The proxy deploys its own ProxyAdmin, owned by the deployer, and initializes in its constructor,
   // so no one can initialize it first. The plugin implementation needs the proxy address, so the
-  // beacon starts on the factory implementation and is moved to the plugin in step 5.
+  // beacon starts on the factory implementation and is moved to the plugin after configuration.
   const initData = FactoryImpl.interface.encodeFunctionData("initialize", [
     config.algebraFactory,
     factoryImplAddress,
@@ -113,7 +121,7 @@ async function main() {
     await volatilityOracleImpl.getAddress(),
     await dynamicFeeImpl.getAddress(),
     await farmingProxyImpl.getAddress(),
-    await almImpl.getAddress(),
+    await limitOrderImpl.getAddress(),
     await securityImpl.getAddress()
   );
   await pluginImpl.waitForDeployment();
@@ -121,16 +129,9 @@ async function main() {
   console.log("PluginImplementation:", pluginImplAddress);
   console.log("");
 
-  // ============= 5. POINT THE BEACON AT THE PLUGIN =============
-  console.log("=== Setting Plugin Implementation ===");
-
   const factory = await ethers.getContractAt("AlgebraUpgradeablePluginFactory", factoryProxyAddress);
-  const upgradeTx = await factory.upgradePlugins(pluginImplAddress);
-  await upgradeTx.wait();
-  console.log("Beacon implementation:", pluginImplAddress);
-  console.log("");
 
-  // ============= 6. DEPLOY AUXILIARY CONTRACTS =============
+  // ============= 5. DEPLOY AUXILIARY CONTRACTS =============
   console.log("=== Deploying Auxiliary Contracts ===");
 
   const SecurityRegistryFactory = await ethers.getContractFactory("SecurityRegistry");
@@ -138,8 +139,12 @@ async function main() {
   await securityRegistry.waitForDeployment();
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
 
+  const limitOrderManager = await deployLimitOrderManager(
+    config.algebraFactory, factoryProxyAddress, config.wNativeToken, config.limitOrderManager,
+  );
+  await (await factory.setLimitOrderManager(await limitOrderManager.getAddress())).wait();
 
-  // ============= 7. POST-DEPLOYMENT CONFIGURATION =============
+  // ============= 6. POST-DEPLOYMENT CONFIGURATION =============
   console.log("=== Post-Deployment Configuration ===");
 
   // Set farming address
@@ -154,7 +159,13 @@ async function main() {
   await tx2.wait();
   console.log("Set SecurityRegistry");
 
+  // ============= 7. POINT THE BEACON AT THE PLUGIN =============
+  console.log("=== Setting Plugin Implementation ===");
 
+  const upgradeTx = await factory.upgradePlugins(pluginImplAddress);
+  await upgradeTx.wait();
+  console.log("Beacon implementation:", pluginImplAddress);
+  console.log("");
 
   // Set DefaultPluginFactory in AlgebraFactory
   const tx9 = await algebraFactory.setDefaultPluginFactory(factoryProxyAddress);
@@ -176,10 +187,11 @@ async function main() {
   console.log("VolatilityOracle:", await volatilityOracleImpl.getAddress());
   console.log("DynamicFee:", await dynamicFeeImpl.getAddress());
   console.log("FarmingProxy:", await farmingProxyImpl.getAddress());
-  console.log("ALM:", await almImpl.getAddress());
+  console.log("LimitOrder:", await limitOrderImpl.getAddress());
   console.log("Security:", await securityImpl.getAddress());
   console.log("");
   console.log("--- Auxiliary ---");
+  console.log("LimitOrderManager:", await limitOrderManager.getAddress());
   console.log("SecurityRegistry:", await securityRegistry.getAddress());
 }
 

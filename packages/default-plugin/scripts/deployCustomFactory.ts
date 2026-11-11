@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { deployLimitOrderManager, requireAddress } from "./shared/deployLimitOrderManager";
 
 // ============= CONFIGURATION =============
 // Update these addresses for your deployment network
@@ -7,6 +8,12 @@ const config = {
   // AlgebraCustomPoolEntryPoint address (integral-periphery). The Algebra factory is read from it.
   // The entry point must hold CUSTOM_POOL_DEPLOYER and POOLS_ADMINISTRATOR_ROLE in the AlgebraFactory.
   entryPoint: "0x0000000000000000000000000000000000000000",
+
+  // Wrapped native token for native-token limit orders (required).
+  wNativeToken: "0x0000000000000000000000000000000000000000",
+
+  // Optional manager already bound to THIS plugin factory proxy.
+  limitOrderManager: "0x0000000000000000000000000000000000000000",
 
   // Farming center address (optional, can be set later)
   farmingCenter: "0x0000000000000000000000000000000000000000",
@@ -20,7 +27,7 @@ const config = {
     volatilityOracle: "0x0000000000000000000000000000000000000000",
     dynamicFee: "0x0000000000000000000000000000000000000000",
     farmingProxy: "0x0000000000000000000000000000000000000000",
-    alm: "0x0000000000000000000000000000000000000000",
+    limitOrder: "0x0000000000000000000000000000000000000000",
     security: "0x0000000000000000000000000000000000000000",
   },
 
@@ -42,11 +49,12 @@ const MODULE_CONTRACTS = {
   volatilityOracle: "VolatilityOraclePluginImplementation",
   dynamicFee: "DynamicFeePluginImplementation",
   farmingProxy: "FarmingProxyPluginImplementation",
-  alm: "AlmPluginImplementation",
+  limitOrder: "LimitOrderPluginImplementation",
   security: "SecurityPluginImplementation",
 } as const;
 
 async function main() {
+  requireAddress(config.wNativeToken, "wNativeToken");
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
   console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
@@ -141,7 +149,7 @@ async function main() {
     modules.volatilityOracle,
     modules.dynamicFee,
     modules.farmingProxy,
-    modules.alm,
+    modules.limitOrder,
     modules.security
   );
   await pluginImpl.waitForDeployment();
@@ -178,6 +186,11 @@ async function main() {
   console.log("Set SecurityRegistry");
   console.log("");
 
+  const limitOrderManager = await deployLimitOrderManager(
+    algebraFactoryAddress, factoryProxyAddress, config.wNativeToken, config.limitOrderManager,
+  );
+  await (await factory.setLimitOrderManager(await limitOrderManager.getAddress())).wait();
+
   // ============= 7. POINT THE BEACON AT THE PLUGIN =============
   console.log("=== Setting Plugin Implementation ===");
 
@@ -207,6 +220,7 @@ async function main() {
   for (const [module, address] of Object.entries(modules)) console.log(`${module}:`, address);
   console.log("");
   console.log("--- Auxiliary ---");
+  console.log("LimitOrderManager:", await limitOrderManager.getAddress());
   console.log("SecurityRegistry:", securityRegistryAddress);
 }
 

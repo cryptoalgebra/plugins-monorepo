@@ -61,11 +61,11 @@ describe('AlgebraUpgradeablePlugin', () => {
       expect(wired.volatilityOracle).to.be.eq(implementations.volatilityOracle);
       expect(wired.dynamicFee).to.be.eq(implementations.dynamicFee);
       expect(wired.farmingProxy).to.be.eq(implementations.farmingProxy);
-      expect(wired.alm).to.be.eq(implementations.alm);
+      expect(wired.limitOrder).to.be.eq(implementations.limitOrder);
       expect(wired.security).to.be.eq(implementations.security);
 
       // A swap between two fields would still leave five distinct addresses, the equalities above are what catches it
-      const addresses = [wired.volatilityOracle, wired.dynamicFee, wired.farmingProxy, wired.alm, wired.security];
+      const addresses = [wired.volatilityOracle, wired.dynamicFee, wired.farmingProxy, wired.limitOrder, wired.security];
       expect(new Set(addresses).size).to.be.eq(5);
     });
 
@@ -496,10 +496,10 @@ describe('AlgebraUpgradeablePlugin', () => {
     describe('#getActiveModuleNames', () => {
       it('returns array with all module names', async () => {
         const moduleNames = await plugin.getActiveModuleNames();
-        
+
         expect(moduleNames).to.be.an('array');
         expect(moduleNames.length).to.eq(5);
-        
+
         // Check each module name is a non-empty string
         for (const moduleName of moduleNames) {
           expect(moduleName).to.be.a('string');
@@ -515,7 +515,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         expect(moduleNames).to.include('Dynamic Fee Plugin');
         expect(moduleNames).to.include('Farming Proxy Plugin');
         expect(moduleNames).to.include('Security Plugin');
-        expect(moduleNames).to.include('ALM Plugin');
+        expect(moduleNames).to.include('Limit Order Plugin');
 
         // Verify module count
         expect(moduleNames).to.have.lengthOf(5);
@@ -528,7 +528,7 @@ describe('AlgebraUpgradeablePlugin', () => {
         // Dropping a module from the OR in defaultPluginConfig() has to fail here
         const expected =
           PLUGIN_FLAGS.BEFORE_SWAP_FLAG | // VolatilityOracle, DynamicFee, Security
-          PLUGIN_FLAGS.AFTER_SWAP_FLAG | // FarmingProxy, ALM
+          PLUGIN_FLAGS.AFTER_SWAP_FLAG | // FarmingProxy, LimitOrder
           PLUGIN_FLAGS.BEFORE_POSITION_MODIFY_FLAG | // Security
           PLUGIN_FLAGS.BEFORE_FLASH_FLAG | // Security
           PLUGIN_FLAGS.AFTER_INIT_FLAG | // VolatilityOracle
@@ -583,11 +583,7 @@ describe('AlgebraUpgradeablePlugin', () => {
     const guardedCalls: { name: string; call: (p: any) => Promise<any> }[] = [
       { name: 'changeFeeConfiguration', call: (p) => p.changeFeeConfiguration(DEFAULT_FEE_CONFIGURATION) },
       { name: 'setSecurityRegistry', call: (p) => p.setSecurityRegistry(ZeroAddress) },
-      { name: 'setRebalanceManager', call: (p) => p.setRebalanceManager(ZeroAddress) },
-      { name: 'setSlowTwapPeriod', call: (p) => p.setSlowTwapPeriod(3600) },
-      { name: 'setFastTwapPeriod', call: (p) => p.setFastTwapPeriod(0) },
-      // initializeALM rejects a zero manager on its own, so it needs a real address to reach _authorize's outcome
-      { name: 'initializeALM', call: (p) => p.initializeALM(wallet.address, 3600, 600) },
+      { name: 'setLimitOrderManager', call: (p) => p.setLimitOrderManager(ZeroAddress) },
     ];
 
     for (const { name, call } of guardedCalls) {
@@ -861,204 +857,87 @@ describe('AlgebraUpgradeablePlugin', () => {
     });
   });
 
-  describe('#ALM rebalance trigger', () => {
-    const SLOW_PERIOD = 3600;
-    const FAST_PERIOD = 600;
-    // Start the oracle well away from zero so `currentTime - period` never underflows in canGetTwap
-    const HISTORY_BASE = 100000;
+  describe('#Limit orders', () => {
+    let manager: any;
 
-    let rebalanceManager: any;
-
-    beforeEach('deploy a rebalance manager and open the pool with history', async () => {
-      rebalanceManager = await (await ethers.getContractFactory('MockRebalanceManager')).deploy();
-
+    beforeEach(async () => {
+      manager = await (await ethers.getContractFactory('MockLimitOrderManager')).deploy();
       await mockPool.setPlugin(plugin);
-      await plugin.advanceTime(HISTORY_BASE);
       await initializeAtZeroTick(mockPool);
     });
 
-    it('leaves ALM uninitialized when the plugin is created', async () => {
-      expect(await plugin.rebalanceManager()).to.be.eq(ZeroAddress);
-      expect(await plugin.slowTwapPeriod()).to.be.eq(0);
-      expect(await plugin.fastTwapPeriod()).to.be.eq(0);
+    it('trades with the manager disabled', async () => {
+      expect(await plugin.limitOrderManager()).to.eq(ZeroAddress);
+      await expect(mockPool.swapToTick(100)).not.to.be.reverted;
     });
 
-    it('does not rebalance while no manager is set', async () => {
-      await plugin.advanceTime(2 * SLOW_PERIOD);
+    it('forwards the pool, direction and final tick on every swap', async () => {
+      await plugin.setLimitOrderManager(manager);
+      await mockPool.swapToTickWithDirection(100, false);
+      expect(await manager.getLastSwapCall()).to.deep.eq([await mockPool.getAddress(), false, 100n]);
+      await mockPool.swapToTickWithDirection(-100, true);
+      expect(await manager.getLastSwapCall()).to.deep.eq([await mockPool.getAddress(), true, -100n]);
+      expect(await manager.getSwapCallsCount()).to.eq(2);
+    });
+
+    it('stops notifying a detached manager', async () => {
+      await plugin.setLimitOrderManager(manager);
       await mockPool.swapToTick(100);
-
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(0);
-    });
-
-    it('does not rebalance while the oracle holds less history than slowTwapPeriod', async () => {
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
-
-      await plugin.advanceTime(SLOW_PERIOD / 2);
-      await mockPool.swapToTick(100);
-
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(0);
-    });
-
-    it('forwards the current and TWAP ticks once there is enough history', async () => {
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
-
-      expect(await plugin.rebalanceManager()).to.be.eq(await rebalanceManager.getAddress());
-      expect(await plugin.slowTwapPeriod()).to.be.eq(SLOW_PERIOD);
-      expect(await plugin.fastTwapPeriod()).to.be.eq(FAST_PERIOD);
-
-      await plugin.advanceTime(2 * SLOW_PERIOD);
-      await mockPool.swapToTick(100);
-
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
-      expect(await rebalanceManager.lastCurrentTick()).to.be.eq((await mockPool.globalState()).tick);
-      expect(await rebalanceManager.lastTimestamp()).to.be.eq(await plugin.lastTimepointTimestamp());
-    });
-
-    // The two periods are what the module exists for, so the manager has to receive one tick per period
-    // and they have to be the right way round. Asserting only the current tick would miss a swap of the two.
-    it('hands the manager the slow and the fast TWAP tick, not the same tick twice', async () => {
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
-
-      // Build history that is far from flat, so the two windows cannot agree by accident
-      await plugin.advanceTime(2 * SLOW_PERIOD);
-      await mockPool.swapToTick(-600);
-      await plugin.advanceTime(SLOW_PERIOD);
-      await mockPool.swapToTick(600);
-      await plugin.advanceTime(FAST_PERIOD);
-      await mockPool.swapToTick(100);
-
-      const twapTick = async (period: number) => {
-        const [cumulativeNow] = await plugin.getSingleTimepoint(0);
-        const [cumulativeThen] = await plugin.getSingleTimepoint(period);
-        const delta = cumulativeNow - cumulativeThen;
-        // getTwapTick rounds towards negative infinity, BigInt division truncates towards zero
-        return delta < 0n && delta % BigInt(period) !== 0n ? delta / BigInt(period) - 1n : delta / BigInt(period);
-      };
-
-      expect(await rebalanceManager.lastSlowTwapTick()).to.be.eq(await twapTick(SLOW_PERIOD));
-      expect(await rebalanceManager.lastFastTwapTick()).to.be.eq(await twapTick(FAST_PERIOD));
-      expect(await rebalanceManager.lastSlowTwapTick()).to.not.be.eq(await rebalanceManager.lastFastTwapTick());
-    });
-
-    // getTwapTick refuses a zero period, and afterSwap has no way to skip it, so every swap on the pool
-    // reverts for as long as the period stays zero. initializeALM accepts a zero fast period too.
-    it('a zero fastTwapPeriod stops every swap on the pool', async () => {
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
-      await plugin.advanceTime(2 * SLOW_PERIOD);
-      await mockPool.swapToTick(100);
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
-
-      await plugin.setFastTwapPeriod(0);
-
-      await plugin.advanceTime(SLOW_PERIOD);
-      await expect(mockPool.swapToTick(-100)).to.be.revertedWith('Period is zero');
-
-      // Restoring the period brings the pool back
-      await plugin.setFastTwapPeriod(FAST_PERIOD);
-      await expect(mockPool.swapToTick(-100)).to.not.be.reverted;
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(2);
-    });
-
-    // The same zero period is harmless until the oracle has slowTwapPeriod of history, because the
-    // rebalance branch is skipped entirely. A pool configured this way trades normally and then stops,
-    // with nobody having sent a transaction in between.
-    it('a pool initialized with a zero fastTwapPeriod trades until enough history accumulates', async () => {
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, 0);
-
-      await plugin.advanceTime(SLOW_PERIOD / 2);
-      await expect(mockPool.swapToTick(100)).to.not.be.reverted;
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(0);
-
-      // Only time has passed since the swap above, nothing was called on the plugin
-      await plugin.advanceTime(2 * SLOW_PERIOD);
-      await expect(mockPool.swapToTick(-100)).to.be.revertedWith('Period is zero');
-    });
-
-    it('stops rebalancing again once the manager is detached', async () => {
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
-      await plugin.advanceTime(2 * SLOW_PERIOD);
-      await mockPool.swapToTick(100);
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
-
-      await plugin.setRebalanceManager(ZeroAddress);
-      await plugin.advanceTime(SLOW_PERIOD);
+      await plugin.setLimitOrderManager(ZeroAddress);
       await mockPool.swapToTick(-100);
-
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+      expect(await manager.getSwapCallsCount()).to.eq(1);
     });
   });
 
-  // Every block above exercises one module with the others idle. This is the composition root, so the
-  // interesting behaviour is what the modules do to each other inside a single swap.
   describe('#Modules together', () => {
-    const SLOW_PERIOD = 3600;
-    const FAST_PERIOD = 600;
-    const HISTORY_BASE = 100000;
-
     let registry: any;
     let incentive: any;
-    let rebalanceManager: any;
+    let manager: any;
 
-    beforeEach('attach security, farming and ALM to one pool', async () => {
+    beforeEach(async () => {
       registry = await (await ethers.getContractFactory('MockSecurityRegistry')).deploy();
       incentive = await (await ethers.getContractFactory('MockDirectionVirtualPool')).deploy();
-      rebalanceManager = await (await ethers.getContractFactory('MockRebalanceManager')).deploy();
-
+      manager = await (await ethers.getContractFactory('MockLimitOrderManager')).deploy();
       await plugin.setSecurityRegistry(registry);
+      await plugin.setLimitOrderManager(manager);
       await mockPluginFactory.setFarmingAddress(wallet.address);
       await mockPool.setPlugin(plugin);
-      await plugin.advanceTime(HISTORY_BASE);
       await initializeAtZeroTick(mockPool);
-
       await plugin.setIncentive(incentive);
-      await plugin.initializeALM(rebalanceManager, SLOW_PERIOD, FAST_PERIOD);
-      await plugin.advanceTime(2 * SLOW_PERIOD);
     });
 
-    // The positive control: without it, "the counters stayed at zero" below would prove nothing
-    it('notifies both the incentive and the rebalance manager on one swap', async () => {
+    it('notifies farming and limit orders on the same swap', async () => {
       await mockPool.swapToTick(100);
-
-      expect(await incentive.crossToCount()).to.be.eq(1);
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+      expect(await incentive.crossToCount()).to.eq(1);
+      expect(await manager.getSwapCallsCount()).to.eq(1);
     });
 
-    // A reverted transaction leaves no trace by itself, so the counters staying at zero proves nothing.
-    // What is worth knowing is that a rejected swap leaves the modules usable: the next swap still works.
-    it('leaves both modules working after the registry rejects a swap', async () => {
+    it('keeps both modules usable after Security rejects a swap', async () => {
       await registry.setPoolStatus(mockPool, DISABLED);
       await expect(mockPool.swapToTick(100)).to.be.revertedWithCustomError(plugin, 'PoolDisabled');
-
       await registry.setPoolStatus(mockPool, 0);
       await mockPool.swapToTick(100);
-
-      expect(await incentive.crossToCount()).to.be.eq(1);
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+      expect(await incentive.crossToCount()).to.eq(1);
+      expect(await manager.getSwapCallsCount()).to.eq(1);
     });
 
-    // afterSwap notifies farming first and triggers ALM second, so a broken ALM configuration takes
-    // the whole swap down. The farming module has to survive that and keep working once ALM is fixed.
-    it('leaves both modules working after ALM brings a swap down', async () => {
-      await plugin.setFastTwapPeriod(0);
-      await expect(mockPool.swapToTick(100)).to.be.revertedWith('Period is zero');
-
-      await plugin.setFastTwapPeriod(FAST_PERIOD);
+    it('rolls farming back when the manager fails and recovers after replacement', async () => {
+      await plugin.setLimitOrderManager(other.address);
+      await expect(mockPool.swapToTick(100)).to.be.reverted;
+      expect(await incentive.crossToCount()).to.eq(0);
+      await plugin.setLimitOrderManager(manager);
       await mockPool.swapToTick(100);
-
-      expect(await incentive.crossToCount()).to.be.eq(1);
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(1);
+      expect(await incentive.crossToCount()).to.eq(1);
+      expect(await manager.getSwapCallsCount()).to.eq(1);
     });
 
-    it('keeps burning available with every module attached while the pool is BURN_ONLY', async () => {
+    it('allows burns in BURN_ONLY without notifying either module', async () => {
       await mockPool.mint(wallet.address, wallet.address, -120, 120, 100, '0x');
       await registry.setPoolStatus(mockPool, BURN_ONLY);
-
       await expect(mockPool.swapToTick(100)).to.be.revertedWithCustomError(plugin, 'BurnOnly');
-      await expect(mockPool.burn(-120, 120, 100, '0x')).to.not.be.reverted;
-
-      // The burn goes through, and a burn never reaches afterSwap, so neither module hears about it
-      expect(await incentive.crossToCount()).to.be.eq(0);
-      expect(await rebalanceManager.rebalanceCount()).to.be.eq(0);
+      await expect(mockPool.burn(-120, 120, 100, '0x')).not.to.be.reverted;
+      expect(await incentive.crossToCount()).to.eq(0);
+      expect(await manager.getSwapCallsCount()).to.eq(0);
     });
   });
 });

@@ -25,7 +25,7 @@ export interface ModuleImplementations {
   volatilityOracle: string;
   dynamicFee: string;
   farmingProxy: string;
-  alm: string;
+  limitOrder: string;
   security: string;
 }
 
@@ -33,7 +33,7 @@ const IMPLEMENTATION_CONTRACTS: Record<keyof ModuleImplementations, string> = {
   volatilityOracle: 'VolatilityOraclePluginImplementation',
   dynamicFee: 'DynamicFeePluginImplementation',
   farmingProxy: 'FarmingProxyPluginImplementation',
-  alm: 'AlmPluginImplementation',
+  limitOrder: 'LimitOrderPluginImplementation',
   security: 'SecurityPluginImplementation'
 };
 
@@ -53,13 +53,13 @@ export const EMPTY_IMPLEMENTATIONS: ModuleImplementations = {
   volatilityOracle: ZERO_ADDRESS,
   dynamicFee: ZERO_ADDRESS,
   farmingProxy: ZERO_ADDRESS,
-  alm: ZERO_ADDRESS,
+  limitOrder: ZERO_ADDRESS,
   security: ZERO_ADDRESS
 };
 
 // The shipped AlgebraUpgradeablePlugin constructor takes the five addresses positionally
 export function moduleArgs(impls: ModuleImplementations): [string, string, string, string, string] {
-  return [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.alm, impls.security];
+  return [impls.volatilityOracle, impls.dynamicFee, impls.farmingProxy, impls.limitOrder, impls.security];
 }
 
 // Same module set with some modules pointed at other implementations

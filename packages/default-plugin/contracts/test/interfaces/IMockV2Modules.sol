@@ -30,12 +30,12 @@ interface IMockV2FarmingProxy {
   function isUpgradedFarmingImpl() external pure returns (bool);
 }
 
-interface IMockV2Alm {
+interface IMockV2LimitOrder {
   function setAdvancedMode(bool enabled) external;
 
   function getAdvancedMode() external view returns (bool);
 
-  function isUpgradedAlmImpl() external pure returns (bool);
+  function isUpgradedLimitOrderImpl() external pure returns (bool);
 }
 
 interface IMockV2Security {
